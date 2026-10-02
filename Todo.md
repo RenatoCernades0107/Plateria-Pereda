@@ -308,17 +308,17 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `test: configura Playwright con proyectos desktop y móvil`
 
 #### Paso 1.4 — shadcn/ui, tema y layout base
-- [ ] Tailwind + `shadcn init`; componentes base: button, input, form, card, badge, dialog, sheet, sidebar, table, dropdown-menu, command, popover, select, tabs, sonner, skeleton, calendar, chart.
-- [ ] Tema con colores de la marca, tipografía, formato de soles y fechas `es-PE`.
-- [ ] `AppShell`: sidebar en desktop / menú en `Sheet` en celular, header con usuario, breadcrumbs; páginas vacías de cada módulo.
-- [ ] Utilidades `formatMoney` y `formatDate` en `src/lib/format.ts`.
+- [x] Tailwind + shadcn (estilo new-york para Tailwind 4, `components.json`); componentes base: button, input, form, card, badge, dialog, sheet, sidebar, table, dropdown-menu, command, popover, select, tabs, sonner, skeleton, calendar, chart (+ label, separator, tooltip, breadcrumb, avatar). Como ui.shadcn.com está bloqueado en el entorno de desarrollo, se copiaron desde el repositorio oficial de shadcn en GitHub. Código de terceros: fuera de la cobertura de tests.
+- [x] Tema (paleta neutra de shadcn; se cambia a los colores de la marca cuando llegue el logo, Paso 0.2), tipografía Geist, formato de soles y fechas `es-PE`.
+- [x] `AppShell`: sidebar en desktop / menú en `Sheet` en celular, header con usuario (texto fijo hasta el Paso 2.2), breadcrumbs; páginas vacías de cada módulo; `/` redirige a `/dashboard`.
+- [x] Utilidades `formatMoney`, `formatDate` y `formatDateTime` en `src/lib/format.ts`.
 - **Unit:**
-  - [ ] `formatMoney`: `S/ 1,234.50`, cero, negativos, redondeo.
-  - [ ] `formatDate` en zona Lima (cerca de medianoche UTC).
-  - [ ] `AppShell` renderiza los enlaces de navegación.
+  - [x] `formatMoney`: `S/ 1,234.50`, cero, negativos, redondeo.
+  - [x] `formatDate` en zona Lima (cerca de medianoche UTC).
+  - [x] `AppShell` renderiza los enlaces de navegación y marca el módulo actual.
 - **E2E:**
-  - [ ] Navegación entre módulos en desktop.
-  - [ ] `@mobile` el menú se abre en `Sheet` y navega.
+  - [x] Navegación entre módulos en desktop.
+  - [x] `@mobile` el menú se abre en `Sheet` y navega.
 - Commit: `feat(ui): agrega shadcn/ui, tema de la marca y layout responsive`
 
 #### Paso 1.5 — Supabase local con Docker

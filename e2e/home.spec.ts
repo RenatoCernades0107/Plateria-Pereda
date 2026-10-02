@@ -1,13 +1,16 @@
 import { expect, test } from "./fixtures";
 
 test.describe("Página inicial", () => {
-  test("carga sin violaciones graves de accesibilidad @smoke @mobile", async ({
+  test("redirige al dashboard sin violaciones graves de accesibilidad @smoke @mobile", async ({
     page,
     makeAxeBuilder,
   }) => {
-    const response = await page.goto("/");
-    expect(response?.status()).toBe(200);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.goto("/");
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Dashboard" }),
+    ).toBeVisible();
+    await expect(page).toHaveTitle("Dashboard · Platería Pereda");
 
     const { violations } = await makeAxeBuilder().analyze();
     const graves = violations.filter(

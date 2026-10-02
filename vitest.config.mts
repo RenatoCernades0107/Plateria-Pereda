@@ -33,7 +33,8 @@ export default defineConfig({
       exclude: [
         "src/**/*.test.{ts,tsx}",
         "src/**/*.int.test.ts",
-        "src/app/**/layout.tsx",
+        "src/app/**/{layout,page}.tsx",
+        "src/components/ui/**",
       ],
       thresholds: {
         lines: 70,
