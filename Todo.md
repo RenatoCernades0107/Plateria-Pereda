@@ -301,10 +301,10 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `test: configura Vitest, Testing Library y MSW`
 
 #### Paso 1.3 — Infraestructura E2E
-- [ ] Playwright con proyectos `desktop-chromium` y `mobile`; `webServer` que levanta la app; trazas y reporte HTML en fallos; `@axe-core/playwright`; fixtures base (`loginAs(role)` se completa en 2.2).
+- [x] Playwright con proyectos `desktop-chromium` y `mobile` (Pixel 7, solo tests `@mobile`); `webServer` que levanta la app (dev en local, build + start en CI); trazas y reporte HTML en fallos; `@axe-core/playwright`; fixtures base (`loginAs(role)` se completa en 2.2). Variable opcional `PLAYWRIGHT_CHROMIUM_EXECUTABLE` para usar un Chromium ya instalado.
 - **Unit:** No aplica.
 - **E2E:**
-  - [ ] La página inicial carga y no tiene violaciones críticas de accesibilidad (axe).
+  - [x] La página inicial carga y no tiene violaciones críticas ni serias de accesibilidad (axe).
 - Commit: `test: configura Playwright con proyectos desktop y móvil`
 
 #### Paso 1.4 — shadcn/ui, tema y layout base
@@ -346,7 +346,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
 #### Paso 1.7 — Guía de desarrollo
-- [ ] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local, comandos, convenciones de commits y de tests.
+- [ ] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local, comandos, convenciones de commits y de tests (incluida `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).
 - Tests: No aplica (documentación).
 - Commit: `docs: agrega guía de desarrollo local`
 

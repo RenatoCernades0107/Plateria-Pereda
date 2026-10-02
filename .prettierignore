@@ -5,3 +5,6 @@ coverage
 Notas.md
 Todo.md
 AGENTS.md
+playwright-report
+test-results
+blob-report
