@@ -1,0 +1,52 @@
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: { tsconfigPaths: true },
+  test: {
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          exclude: ["**/*.int.test.ts", "node_modules/**"],
+          setupFiles: ["tests/setup/unit.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["**/*.int.test.ts"],
+          exclude: ["node_modules/**"],
+        },
+      },
+    ],
+    passWithNoTests: true,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/**/*.int.test.ts",
+        "src/app/**/layout.tsx",
+      ],
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
+        "src/domain/**": {
+          lines: 90,
+          functions: 90,
+          branches: 90,
+          statements: 90,
+        },
+      },
+    },
+  },
+});

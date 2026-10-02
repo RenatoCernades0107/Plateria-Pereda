@@ -293,10 +293,10 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `chore: inicializa proyecto Next.js con TypeScript, ESLint y Prettier`
 
 #### Paso 1.2 — Infraestructura de tests unitarios
-- [ ] Vitest con proyectos `unit` (jsdom/node) e `integration` (node); Testing Library, jest-dom, user-event, MSW; cobertura v8 con umbrales.
+- [x] Vitest con proyectos `unit` (jsdom) e `integration` (node); Testing Library, jest-dom, user-event, MSW (sin salida a la red: falla si una petición no tiene handler); cobertura v8 con umbrales (70 % global, 90 % en `src/domain`). Scripts `test`, `test:watch`, `test:int`, `test:coverage`.
 - **Unit:**
-  - [ ] Test de humo de la utilidad `cn`.
-  - [ ] Test de humo de un componente simple.
+  - [x] Test de humo de la utilidad `cn` (y del alias `@/*`).
+  - [x] Test de humo de un componente simple (página inicial) y de MSW.
 - **E2E:** No aplica.
 - Commit: `test: configura Vitest, Testing Library y MSW`
 
