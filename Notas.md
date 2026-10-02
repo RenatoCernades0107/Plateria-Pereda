@@ -4,16 +4,16 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-02
+**Última actualización:** 2026-10-03
 
 ## Resumen de pendientes
 
 | Estado | Preguntas |
 |---|---|
-| Bloqueantes | P12 (en discusión), P41, P42 (detalles), P43, P45 |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23–P29, P31–P39, P44 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P18, P22, P40, N1, N2 |
-| Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
+| Bloqueantes | P12 (2 puntos: título de la línea y cambio de cliente en Shopify) |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23–P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P18, P22, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Respondidas en parte | P12, P17 (→ P41), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
 > 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
@@ -134,8 +134,12 @@
   | Pagos | Se registran en la orden (P43) | No se editan; un error lo corrige el admin con un reembolso |
   | Entregar una pieza | Solo si P44 = sí | Marca la línea como preparada |
 
-  - **Nunca editables:** código, orden de Shopify, fechas de cada estado (cambian solo con las transiciones) y quién lo creó.
-  - **Antes de crear la orden** (antes de aprobar) todo es editable por ventas y admin, y también queda auditado.
+  - **Nunca editables:** código, cliente (ver abajo), orden de Shopify, fechas de cada estado (cambian solo con las transiciones) y quién lo creó.
+  - **Antes de crear la orden** (antes de aprobar) todo es editable por ventas y admin, salvo el cliente, y también queda auditado.
+- **Respuesta (2026-10-03):** ✅ Las propuestas de precio, agregar pieza, anular pieza, pagos y entrega están bien. **El cliente no se puede cambiar** una vez registrada la restauración; si hace falta, lo cambian en Shopify.
+- **Pendiente:**
+  - (1) **Título de la línea.** Ejemplo: la pieza se registra como "Fuente de plata – Limpieza". Si el título en Shopify es `Restauración RES-000123-1 · Fuente de plata · Limpieza` y luego el asesor corrige la descripción a "Fuente ovalada de plata 950", Shopify no permite renombrar una línea: habría que quitarla y agregar otra, o dejar el texto viejo en Shopify. Si el título es solo `Restauración RES-000123-1` (como su "Guía #10117"), la descripción y el servicio se corrigen solo en nuestro sistema, sin tocar Shopify; el detalle se ve en el sistema con el enlace que va en la nota de la orden. — **Propuesta:** título solo con el código.
+  - (2) Si cambian el cliente de una orden en Shopify, ¿la restauración también debe mostrar el nuevo cliente? — **Propuesta:** sí; el sistema lo toma de Shopify automáticamente (queda auditado como cambio hecho desde Shopify).
 
 ### P13 · ¿Los precios incluyen IGV?
 - **Contexto:** aplica a restauraciones (orden de Shopify y mensaje de WhatsApp) y a cotizaciones (PDF). Depende también de la configuración de impuestos de la tienda.
@@ -213,7 +217,8 @@
 - **Respuesta:** _pendiente_
 
 ### P24 · ¿Qué formato de código usamos? ¿Necesitan etiquetas impresas?
-- **Propuesta:** restauración `RES-000123`, pieza `RES-000123-1`. Imprimir etiquetas o stickers para identificar las piezas físicas queda como mejora futura (no incluida).
+- **Contexto (2026-10-03):** hoy la "guía" (registro de la restauración) se llena en papel y en Shopify solo se registra el pago, como venta personalizada con el número de guía (p. ej., "Guía #10117").
+- **Propuesta:** restauración `RES-000123`, pieza `RES-000123-1`. Alternativa: llamarla "Guía" y seguir la numeración de sus guías de papel (p. ej., `G-10118`, pieza `G-10118-1`). Imprimir etiquetas o stickers para identificar las piezas físicas queda como mejora futura (no incluida).
 - **Respuesta:** _pendiente_
 
 ### P25 · ¿Cómo debe verse el mensaje de cotización por WhatsApp?
@@ -328,15 +333,15 @@
 
 ### P41 · Transiciones pendientes de la pieza — Bloqueante (Fase 8)
 - (a') Si el cliente **rechaza** la propuesta de la consulta, ¿qué pasa?
-  - **Respuesta:** ✅ El rechazo **no se registra** en el sistema: el asesor coordina con el cliente por WhatsApp y la pieza sigue "En consulta" hasta que el cliente acepta; entonces el asesor (ventas/admin) la pasa a "Aprobada".
+  - **Respuesta:** ✅ El rechazo **no se registra** en el sistema como estado propio; el asesor coordina con el cliente por WhatsApp.
   - **Supuesto:** si el cliente finalmente no acepta, la pieza se anula con un motivo.
-- (g) **Nueva:** ¿seguimos usando el estado "En espera de respuesta del cliente"? Por lo que describes, "En consulta" ya cubre el tiempo en que se coordina con el cliente. — **Propuesta:** quitarlo (En consulta → Aprobada), salvo que les sirva para distinguir "estamos revisando la pieza" de "ya le enviamos la propuesta al cliente".
+- (g) ¿Seguimos usando el estado "En espera de respuesta del cliente"? Por lo que describes, "En consulta" ya cubre el tiempo en que se coordina con el cliente. — **Propuesta:** quitarlo (En consulta → Aprobada), salvo que les sirva para distinguir "estamos revisando la pieza" de "ya le enviamos la propuesta al cliente".
 - (b) ¿Se puede "Observar" una pieza ya **entregada** (reclamo posterior)? Ya estuvo en el taller, así que encaja con la regla de P17. — **Propuesta:** sí.
 - (c) ¿Una pieza anulada se puede **reactivar**? — **Propuesta:** no; se agrega una pieza nueva.
 - (d) ¿Se puede **anular** una pieza que está en el taller? — **Propuesta:** solo el administrador.
 - (e) ¿Se puede pasar de "Registrada" directo a "Aprobada" sin consulta? — **Propuesta:** sí.
 - (f) ¿Una pieza "Devuelta por el taller" puede volver al taller sin pasar por "Observada"? — **Propuesta:** no.
-- **Respuesta (b)–(g):** _pendiente_
+- **Respuesta (b)–(g):** ✅ (g) **Se mantiene** "En espera de respuesta del cliente". Flujo: la consulta es opcional (para piezas en condiciones especiales o complicadas; si el cliente acepta en el momento, pasa directo a "Aprobada"). Cuando se le envía el mensaje al cliente por WhatsApp, la pieza pasa a "En espera de respuesta del cliente"; si el cliente acepta, se aprueba; si no, se anula. (e) Sí: de "Registrada" a "Aprobada" directo. (b), (c), (d) y (f): no hubo comentarios, así que se aplican las propuestas mientras no se diga lo contrario.
 
 ### P42 · ¿Validan el resto de la matriz de permisos (P30)? — Bloqueante (Fase 2)
 - **Respuesta:** ✅ "Por ahora está bien", con estos cambios para **logística**: no ve precios, pagos, métricas ni el historial; no crea restauraciones; de los datos de la restauración solo edita las **fotos**: antes y después de cada pieza y una **foto general** de todas las piezas.
@@ -361,6 +366,7 @@
 | Cotizador | ✅ | ✅ | ❌ |
 | Dashboard (todas las métricas) | ✅ | ✅ | ❌ |
 | Pestaña "Historial" (quién cambió qué y cuándo) | ✅ | ✅ | ❌ |
+| Restauraciones pasadas (entregadas o anuladas) | ✅ | ✅ | ❌ |
 | Usuarios, configuración y catálogos | ✅ | ❌ | ❌ |
 | Auditoría de todo el sistema | ✅ | ❌ | ❌ |
 
@@ -368,7 +374,7 @@
 - **Detalles pendientes:**
   - (a) Cuando dices que logística no ve "el historial", ¿te refieres a la pestaña "Historial" (quién cambió qué y cuándo)? — **Propuesta:** no la ve, pero sí ve el estado actual de cada pieza y la nota de la última observación (la necesita para explicarle al taller qué corregir).
   - (b) En su vista de piezas, ¿logística ve cuántos días lleva cada pieza en el taller? — **Propuesta:** sí; es un dato para hacerle seguimiento al taller, no una métrica del dashboard.
-  - **Respuesta:** _pendiente_
+  - **Respuesta (2026-10-03):** ✅ Logística no ve el historial de cambios **ni el historial de pedidos** (restauraciones pasadas, entregadas o anuladas). Sí ve la nota de la última observación y cuántos días lleva cada pieza en el taller.
 
 ### P43 · ¿Cómo registramos los pagos con el plan Grow? — Bloqueante (Fase 9 y 11)
 - **Contexto:** prefieren registrar los pagos desde nuestro sistema (N1). Pero en Grow, Shopify solo permite pagos **parciales** desde el POS; en el panel y por API son exclusivos de Plus. Por API en Grow sí se puede: (1) crear la orden con pagos ya incluidos, aunque sean parciales, y (2) registrar el pago que completa el saldo.
@@ -381,17 +387,19 @@
   6. Lo validamos en el spike (4.1) con la tienda de desarrollo.
 - **Alternativa:** seguir registrando los adelantos en el POS (que sí permite pagos parciales) y que el sistema solo los lea.
 - **Dato que nos ayudaría:** ¿cómo registran hoy el adelanto en el panel? En Grow el panel no permite montos parciales: ¿usan alguna app o lo hacen solo en el POS?
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-03):** ✅ De acuerdo. Hoy la guía se llena **en papel** y solo el pago se registra en el POS de Shopify (iPhone y Android), poniendo los datos de la guía en un texto libre. El objetivo es digitalizar la guía con un formulario adecuado y registrar los pagos desde el sistema.
+  - **Ejemplo del flujo:** total S/ 400. Al aprobar, el cliente paga el adelanto de S/ 200 por Yape; el asesor lo registra en el sistema y la orden se crea en Shopify con S/ 200 pagados ("Parcialmente pagada"). El día del recojo paga S/ 200 en efectivo; el asesor lo registra en el sistema y este le avisa a Shopify que se pagó el resto, así que la orden queda "Pagada". Nadie tiene que entrar a Shopify.
+  - **Único límite:** si el saldo se paga en partes (S/ 100 y luego S/ 100), el primer pago queda solo en el sistema hasta que llegue el segundo; entonces Shopify recibe los S/ 200 juntos.
 
 ### P44 · ¿Marcamos la pieza como "Preparada" en Shopify al entregarla?
 - **Contexto:** sus ventas del POS quedan "Pagado · Preparado · Archivado" (orden #4063). Si el sistema no marca las entregas, las órdenes de restauración quedan "No preparadas" para siempre y se mezclan con los pedidos pendientes de preparar.
 - **Propuesta:** sí; al entregar una pieza, el sistema marca su línea como preparada en Shopify. Cuando todas las piezas están entregadas y la orden está pagada, queda igual que sus ventas del POS. Requiere los permisos `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders`.
-- **Respuesta:** _pendiente_
+- **Respuesta:** ✅ Sí, se marca como preparada al entregarla.
 
 ### P45 · ¿Se puede entregar una pieza si falta pagar el saldo? — Bloqueante (Fase 11)
 - **Contexto:** el saldo se cobra antes de la entrega (N1), pero logística puede marcar entregas y no ve pagos.
 - **Propuesta:** si la restauración tiene saldo pendiente (y no es "Al crédito"), el sistema no deja marcar "Entregada" y muestra "Falta cobrar el saldo", sin montos. Ventas y admin pueden entregar igual confirmándolo, para casos especiales (entregas parciales, clientes de confianza).
-- **Respuesta:** _pendiente_
+- **Respuesta:** ✅ De acuerdo con la propuesta.
 
 ---
 
@@ -450,6 +458,13 @@
 | D20 | Los pagos se registran desde nuestro sistema (efectivo, tarjeta, Yape, Plin), siempre en la misma orden | N1 |
 | D21 | El rechazo del cliente no se registra: la pieza sigue "En consulta" hasta que el asesor la aprueba | P41 |
 | D22 | Toda edición queda en la auditoría (quién, cuándo, antes → después) | P12 |
+| D23 | Se mantiene "En espera de respuesta del cliente": consulta (opcional) → en espera → aprobada o anulada | P41 |
+| D24 | Logística no ve restauraciones pasadas (entregadas o anuladas); sí ve la última observación y los días en taller | P42 |
+| D25 | El cliente de una restauración no se cambia en el sistema; solo desde Shopify | P12 |
+| D26 | Cambios de precio (admin), piezas agregadas o anuladas se reflejan automáticamente en la orden; correcciones de pagos con reembolso | P12 |
+| D27 | Al entregar una pieza se marca su línea como "Preparado" en Shopify | P44 |
+| D28 | Con saldo pendiente no se puede entregar (salvo "Al crédito"); ventas y admin pueden hacerlo confirmándolo | P45 |
+| D29 | La guía de papel se digitaliza en el sistema y los pagos se registran desde ahí | P43 |
 
 ---
 
@@ -459,3 +474,4 @@
 |---|---|---|
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
+| 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
