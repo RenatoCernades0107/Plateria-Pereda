@@ -10,10 +10,10 @@
 
 | Estado | Preguntas |
 |---|---|
-| Bloqueantes | P12 (2 puntos: título de la línea y cambio de cliente en Shopify) |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23–P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P18, P22, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
-| Respondidas en parte | P12, P17 (→ P41), P28, P30 (→ P42) |
+| Bloqueantes | Ninguna |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23, P25–P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
 > 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
@@ -102,9 +102,9 @@
 - **Contexto:** las restauraciones no son productos del catálogo.
 - **Propuesta:** una línea personalizada por pieza (no afecta stock); la orden lleva la etiqueta `restauracion` y el código.
 - **Respuesta:** ✅ Ya usan **líneas personalizadas** (venta personalizada) en sus órdenes: p. ej., la orden #4063 del POS de Miraflores tiene la línea "Guía #10117" (S/ 30.00, `_shopify_item_type: custom_sale`). Usamos una línea personalizada por pieza, sin afectar stock.
-  - **Título de la línea:** propuesta nueva en P12: solo el código (`Restauración RES-000123-1`), igual que su "Guía #10117".
+  - **Título de la línea:** ✅ solo el código (P12) (`Restauración RES-00123-1`), igual que su "Guía #10117".
 
-### P12 · ¿Qué hacemos con cambios después de crear la orden? — Bloqueante (Fase 7 y 9) · En discusión
+### P12 · ¿Qué hacemos con cambios después de crear la orden? — Bloqueante (Fase 7 y 9)
 - **Contexto:** después de aprobar puede anularse una pieza, cambiar un precio o agregarse una pieza nueva.
 - **Propuesta inicial (2026-09-30):**
   - Anular pieza → la orden de Shopify se edita automáticamente (se quita la línea).
@@ -120,7 +120,7 @@
   |---|---|
   | Restauración | Contacto, tipo de pago, % de adelanto, notas |
   | Pieza | Medida, material, peso, taller, notas, fotos |
-  | Pieza (si el título de la línea lleva solo el código) | Descripción, servicio |
+  | Pieza (el título de la línea lleva solo el código) | Descripción, servicio |
 
   **Sí tocan Shopify** → a conversar:
 
@@ -137,9 +137,9 @@
   - **Nunca editables:** código, cliente (ver abajo), orden de Shopify, fechas de cada estado (cambian solo con las transiciones) y quién lo creó.
   - **Antes de crear la orden** (antes de aprobar) todo es editable por ventas y admin, salvo el cliente, y también queda auditado.
 - **Respuesta (2026-10-03):** ✅ Las propuestas de precio, agregar pieza, anular pieza, pagos y entrega están bien. **El cliente no se puede cambiar** una vez registrada la restauración; si hace falta, lo cambian en Shopify.
-- **Pendiente:**
-  - (1) **Título de la línea.** Ejemplo: la pieza se registra como "Fuente de plata – Limpieza". Si el título en Shopify es `Restauración RES-000123-1 · Fuente de plata · Limpieza` y luego el asesor corrige la descripción a "Fuente ovalada de plata 950", Shopify no permite renombrar una línea: habría que quitarla y agregar otra, o dejar el texto viejo en Shopify. Si el título es solo `Restauración RES-000123-1` (como su "Guía #10117"), la descripción y el servicio se corrigen solo en nuestro sistema, sin tocar Shopify; el detalle se ve en el sistema con el enlace que va en la nota de la orden. — **Propuesta:** título solo con el código.
-  - (2) Si cambian el cliente de una orden en Shopify, ¿la restauración también debe mostrar el nuevo cliente? — **Propuesta:** sí; el sistema lo toma de Shopify automáticamente (queda auditado como cambio hecho desde Shopify).
+- **Puntos finales (respondidos el 2026-10-03):**
+  - (1) **Título de la línea.** Ejemplo: la pieza se registra como "Fuente de plata – Limpieza". Si el título en Shopify es `Restauración RES-00123-1 · Fuente de plata · Limpieza` y luego el asesor corrige la descripción a "Fuente ovalada de plata 950", Shopify no permite renombrar una línea: habría que quitarla y agregar otra, o dejar el texto viejo en Shopify. Si el título es solo `Restauración RES-00123-1` (como su "Guía #10117"), la descripción y el servicio se corrigen solo en nuestro sistema, sin tocar Shopify; el detalle se ve en el sistema con el enlace que va en la nota de la orden. — ✅ **Respuesta:** título solo con el código.
+  - (2) Si cambian el cliente de una orden en Shopify, ¿la restauración también debe mostrar el nuevo cliente? — ✅ **Respuesta:** sí; el sistema lo toma de Shopify automáticamente por webhook (queda auditado como cambio hecho desde Shopify).
 
 ### P13 · ¿Los precios incluyen IGV?
 - **Contexto:** aplica a restauraciones (orden de Shopify y mensaje de WhatsApp) y a cotizaciones (PDF). Depende también de la configuración de impuestos de la tienda.
@@ -218,8 +218,8 @@
 
 ### P24 · ¿Qué formato de código usamos? ¿Necesitan etiquetas impresas?
 - **Contexto (2026-10-03):** hoy la "guía" (registro de la restauración) se llena en papel y en Shopify solo se registra el pago, como venta personalizada con el número de guía (p. ej., "Guía #10117").
-- **Propuesta:** restauración `RES-000123`, pieza `RES-000123-1`. Alternativa: llamarla "Guía" y seguir la numeración de sus guías de papel (p. ej., `G-10118`, pieza `G-10118-1`). Imprimir etiquetas o stickers para identificar las piezas físicas queda como mejora futura (no incluida).
-- **Respuesta:** _pendiente_
+- **Propuesta:** restauración `RES-00123`, pieza `RES-00123-1`. Alternativa: llamarla "Guía" y seguir la numeración de sus guías de papel (p. ej., `G-10118`, pieza `G-10118-1`). Imprimir etiquetas o stickers para identificar las piezas físicas queda como mejora futura (no incluida).
+- **Respuesta:** ✅ Formato `RES-XXXXX` (5 dígitos): restauración `RES-00001`, pieza `RES-00001-1`. Etiquetas impresas: mejora futura.
 
 ### P25 · ¿Cómo debe verse el mensaje de cotización por WhatsApp?
 - **Contexto:** si tienen un ejemplo del mensaje que envían hoy, lo usamos como base. La plantilla será editable desde "Configuración".
@@ -465,6 +465,9 @@
 | D27 | Al entregar una pieza se marca su línea como "Preparado" en Shopify | P44 |
 | D28 | Con saldo pendiente no se puede entregar (salvo "Al crédito"); ventas y admin pueden hacerlo confirmándolo | P45 |
 | D29 | La guía de papel se digitaliza en el sistema y los pagos se registran desde ahí | P43 |
+| D30 | Título de la línea en Shopify: solo el código (`Restauración RES-00001-1`) | P11, P12 |
+| D31 | Si cambian el cliente de la orden en Shopify, la restauración se actualiza por webhook | P12 |
+| D32 | Códigos `RES-00001` y pieza `RES-00001-1` | P24 |
 
 ---
 
@@ -475,3 +478,4 @@
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
 | 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
+| 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |

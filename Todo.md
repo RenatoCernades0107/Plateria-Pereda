@@ -173,8 +173,8 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
 - `materials`, `services` — catálogos editables; la pieza guarda el id del catálogo o un texto libre (P22).
 - `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
-- `restorations` — código `RES-000001`, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
-- `pieces` — restoration_id, código `RES-000001-1`, workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `received_at`, `first_sent_at`, `last_returned_at`, `delivered_at`, `cancelled_at`), notas.
+- `restorations` — código `RES-00001`, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
+- `pieces` — restoration_id, código `RES-00001-1`, workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `received_at`, `first_sent_at`, `last_returned_at`, `delivered_at`, `cancelled_at`), notas.
 - `piece_status_transitions` — from, to, roles permitidos, requiere nota, requiere taller. **Fuente de verdad** de la máquina de estados.
 - `piece_status_history` — piece_id, from, to, nota, actor, fecha.
 - `restoration_files` — restoration_id, piece_id (vacío = foto general de todas las piezas), ruta en Storage, tipo (`antes`, `despues`, `documento`, `otro`), mime, tamaño, subido por.
@@ -268,7 +268,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 0 — Preparación (sin código)
 
 #### Paso 0.1 — Resolver preguntas bloqueantes
-- [ ] Responder las preguntas de `Notas.md` marcadas como bloqueantes (P12: título de la línea y cambios de cliente hechos en Shopify).
+- [x] Responder las preguntas de `Notas.md` marcadas como bloqueantes (todas respondidas el 2026-10-03).
 - [ ] Registrar respuestas y decisiones en `Notas.md` y ajustar este plan.
 - Tests: No aplica (documentación).
 - Commit: `docs(notas): registra respuestas y decisiones`
@@ -601,8 +601,8 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 7 — Restauraciones: registro y cotización por WhatsApp
 
-#### Paso 7.1 — Esquema de restauraciones y piezas ⛔ P24
-- [ ] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-000001`, pieza `RES-000001-1`); RLS; auditoría; índices.
+#### Paso 7.1 — Esquema de restauraciones y piezas
+- [ ] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-00001`, pieza `RES-00001-1`); RLS; auditoría; índices.
 - [ ] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
 - [ ] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
 - **Unit:** No aplica (SQL).
@@ -678,10 +678,10 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] `@mobile` legible sin scroll horizontal.
 - Commit: `feat(restauraciones): agrega vista de detalle`
 
-#### Paso 7.7 — Edición de restauraciones y piezas ⛔ P12
+#### Paso 7.7 — Edición de restauraciones y piezas
 - [ ] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
-- [ ] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio si el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
-- [ ] El cliente no se puede cambiar una vez registrada la restauración (P12); si hace falta, se cambia en Shopify.
+- [ ] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio, porque el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
+- [ ] El cliente no se puede cambiar en el sistema una vez registrada la restauración (P12); si hace falta, se cambia en Shopify y llega por webhook (11.3).
 - [ ] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
 - **Unit:**
   - [ ] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
@@ -768,7 +768,7 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 9 — Orden automática en Shopify
 
 #### Paso 9.1 — Creación de la orden al aprobar ⛔ P13
-- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título según P12), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
+- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
 - [ ] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
   - [ ] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
@@ -782,7 +782,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] `@shopify-live` (manual) el mismo flujo contra la tienda de desarrollo.
 - Commit: `feat(shopify): crea orden de venta al aprobar la restauración`
 
-#### Paso 9.2 — Cambios posteriores a la orden ⛔ P12
+#### Paso 9.2 — Cambios posteriores a la orden
 - [ ] Según P12: anular una pieza (con motivo; alerta de reembolso si ya pagó más que el nuevo total), cambiar un precio (solo admin, con motivo) o agregar una pieza (cuando se aprueba) → edición automática de la orden vía Order Editing (encolado). Todo queda en la auditoría.
 - **Unit:**
   - [ ] Cálculo del cambio (líneas a quitar o ajustar).
@@ -863,6 +863,7 @@ Objetivo: validar con llamadas reales antes de construir.
 
 #### Paso 11.3 — Pagos hechos en Shopify (webhooks)
 - [ ] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
+- [ ] `orders/updated` también actualiza el cliente de la restauración si lo cambiaron en Shopify (lo busca o crea localmente por `shopify_customer_id`; auditado como cambio desde Shopify).
 - [ ] Las órdenes que no son de restauraciones se ignoran.
 - **Unit:**
   - [ ] Parseo de los fixtures reales del spike.
@@ -872,6 +873,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Un pago enviado por el sistema no se duplica al llegar su webhook.
   - [ ] Webhooks duplicados o desordenados → resultado correcto.
   - [ ] Reembolso → recalcula saldo y estado.
+  - [ ] Cambio de cliente en Shopify → la restauración muestra el nuevo cliente y queda auditado.
 - **E2E:**
   - [ ] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
 - Commit: `feat(pagos): recibe pagos hechos en Shopify mediante webhooks`
