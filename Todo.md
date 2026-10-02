@@ -284,10 +284,10 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 1 — Fundaciones
 
 #### Paso 1.1 — Scaffold del proyecto
-- [ ] `create-next-app` con TypeScript, App Router, carpeta `src/`, alias `@/*`, ESLint; pnpm; `.nvmrc`; `engines` en `package.json`.
-- [ ] TypeScript `strict` + `noUncheckedIndexedAccess`; Prettier + plugin de Tailwind.
-- [ ] Estructura de carpetas de §5 y scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `format`, `test`, `test:int`, `test:e2e`, `db:start`, `db:reset`, `db:test`, `db:types`.
-- [ ] `.env.example` y `.gitignore`.
+- [x] `create-next-app` con TypeScript, App Router, carpeta `src/`, alias `@/*`, ESLint; pnpm; `.nvmrc`; `engines` en `package.json`.
+- [x] TypeScript `strict` + `noUncheckedIndexedAccess`; Prettier + plugin de Tailwind.
+- [x] Estructura de carpetas de §5 y scripts: `dev`, `build`, `start`, `lint`, `typecheck` (`next typegen` + `tsc`), `format`, `format:check`. Los scripts `test`, `test:int`, `test:e2e` y `db:*` se agregan en los pasos 1.2, 1.3 y 1.5, junto con sus herramientas.
+- [x] `.env.example` y `.gitignore`.
 - **Unit:** No aplica (Vitest se configura en 1.2).
 - **E2E:** No aplica (Playwright se configura en 1.3).
 - Commit: `chore: inicializa proyecto Next.js con TypeScript, ESLint y Prettier`

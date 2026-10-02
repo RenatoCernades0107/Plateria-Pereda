@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+.next
+node_modules
+coverage
+Notas.md
+Todo.md
+AGENTS.md
