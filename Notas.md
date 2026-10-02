@@ -4,17 +4,21 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-09-30
+**Última actualización:** 2026-10-02
 
 ## Resumen de pendientes
 
 | Estado | Preguntas |
 |---|---|
-| Bloqueantes | P01, P08, P09 (→ N1), P12, P41, P42 |
-| Pendientes (no bloquean el inicio) | P03–P06, P13–P16, P19–P21, P23–P29, P31–P39, P40 |
-| Para preguntar al negocio | N1, N2 |
-| Respondidas | P02, P07, P10 (confirmar N2), P11, P18, P22 |
-| Respondidas en parte | P09, P17, P30 |
+| Bloqueantes | P12 (en discusión), P41, P42 (detalles), P43, P45 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23–P29, P31–P39, P44 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P18, P22, P40, N1, N2 |
+| Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
+
+> **Hallazgos del 2026-10-02 (cambian el plan):**
+> 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
+> 2. Desde el 1 de enero de 2026 las apps ya no se crean desde el panel de Shopify sino en el **Dev Dashboard**. La app de producción debe pertenecer a la organización de la Platería → ver **P07**.
+> 3. Desde abril de 2026 el plan Grow incluye **perfiles de empresa** (Companies) → nueva opción en **P14**.
 
 ---
 
@@ -35,12 +39,12 @@
 ### P01 · ¿Quién es dueño de las cuentas? — Bloqueante (Fase 0)
 - **Contexto:** se necesitan cuentas de GitHub, Supabase, Vercel, la app de Shopify y el dominio.
 - **Propuesta:** todas a nombre de la Platería (dueña de los datos y la facturación), con acceso de colaborador para el equipo de desarrollo.
-- **Respuesta:** _pendiente_
+- **Respuesta:** ✅ Vercel y Supabase están a nombre del desarrollador (también el repositorio de GitHub). La tienda de Shopify es de la Platería, así que la app de producción se crea en la organización de la Platería (ver P07). El dominio se define en P04.
 
 ### P02 · ¿Qué planes de Supabase y Vercel se contratarán? — Bloqueante (Fase 4 y 16)
 - **Contexto:** el plan Hobby de Vercel es solo para uso personal no comercial y su cron corre como máximo una vez al día (necesitamos reintentos frecuentes hacia Shopify). El plan Free de Supabase pausa los proyectos inactivos y no incluye backups diarios.
 - **Propuesta:** Vercel Pro + Supabase Pro (backups diarios incluidos). Si se prefiere no pagar Vercel Pro, los reintentos pueden correr con `pg_cron` de Supabase.
-- **Respuesta:** ✅ Para el desarrollo se usan los planes **gratuitos** (Supabase Free + Vercel Hobby). Consecuencia: los reintentos hacia Shopify corren con `pg_cron` + `pg_net` de Supabase (el cron de Vercel Hobby es 1 vez al día). Antes del lanzamiento hay que volver a decidir los planes de producción (Hobby no permite uso comercial y Supabase Free no tiene backups diarios) → ver **P40**.
+- **Respuesta:** ✅ Desarrollo con planes **gratuitos** (Supabase Free + Vercel Hobby); producción con **Pro** (P40). Los reintentos hacia Shopify usan Vercel Cron cada 5 minutos, que requiere Pro: en Hobby el deploy falla si el cron corre más de una vez al día, así que se activa al pasar a Pro (Paso 16.2).
 
 ### P03 · ¿Qué hacemos con los "preview deployments" de Vercel?
 - **Contexto:** solo habrá 2 entornos (local y producción). Un preview en Vercel no tendría una base de datos propia y apuntaría a producción.
@@ -65,42 +69,73 @@
 ## B. Shopify
 
 ### P07 · ¿Qué plan de Shopify tienen y quién puede crear la app? — Bloqueante (Fase 0)
-- **Contexto:** necesitamos una app en la tienda con acceso a la API (clientes, órdenes, borradores de orden, edición de órdenes y productos). Algunas funciones (p. ej., B2B/Companies) dependen del plan.
-- **Propuesta:** que el dueño de la tienda nos dé acceso de colaborador para crear la app con estos permisos mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products`.
-- **Respuesta:** ✅ Plan **Grow**. Implicancias: B2B/Companies y los depósitos en borradores de orden son exclusivos de Shopify Plus, así que no los usamos (refuerza la propuesta de P14). Order Editing y el registro de pagos manuales parciales por API (`orderCreateManualPayment`) sí están disponibles. Queda pendiente quién crea la app (P01).
+- **Contexto:** necesitamos una app en la tienda con acceso a la API (clientes, órdenes, borradores de orden, edición de órdenes y productos). Algunas funciones dependen del plan.
+- **Propuesta:** que el dueño de la tienda nos dé acceso para crear la app con los permisos mínimos.
+- **Respuesta:** ✅ Plan **Grow**. Implicancias (actualizado el 2026-10-02):
+  - **Pagos parciales y depósitos:** solo Plus, tanto en el panel como por API (el monto de `orderCreateManualPayment` exige Plus). En Grow la API solo registra un pago que complete el saldo. El POS sí permite pagos parciales en Grow → ver **P43**. _(Corrige lo anotado el 2026-09-30.)_
+  - **Perfiles de empresa (Companies):** disponibles en Grow desde abril de 2026 → ver **P14**.
+  - **Edición de órdenes:** disponible.
+  - **Creación de la app:** desde el 1 de enero de 2026 se crea en el **Dev Dashboard** (ya no en "Desarrollar apps" del panel). Para que el sistema obtenga su token sin intervención (*client credentials*: token de 24 h que el sistema renueva solo), la app debe pertenecer a la **misma organización que la tienda**. Por eso la Platería debe crearla o darle acceso al desarrollador a su organización para crearla. Se valida en el spike (4.1); alternativa: instalar la app con un enlace de instalación (OAuth).
+  - **Permisos mínimos:** `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products` (+ `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders` si P44 = sí).
 
 ### P08 · ¿Podemos usar una tienda de desarrollo para pruebas? — Bloqueante (Fase 4)
 - **Contexto:** no queremos crear clientes ni órdenes de prueba en la tienda real.
 - **Propuesta:** crear una tienda de desarrollo gratuita con algunos productos copiados del catálogo real. Los tests automáticos usan un "Shopify falso" y la tienda de desarrollo solo se usa para pruebas manuales.
-- **Respuesta:** _pendiente_
+- **Respuesta:** ✅ La tienda real es de la Platería y no se usa para pruebas. La tienda de desarrollo (gratuita) y su app de prueba se crean en la organización del desarrollador.
 
 ### P09 · ¿Cómo registran hoy los pagos en Shopify? — Bloqueante (Fase 4)
-- **Contexto:** los pagos llegan al sistema por webhook, así que necesitamos saber por dónde se registran: ¿POS en tienda?, ¿admin de Shopify ("marcar como pagado")?, ¿links de pago?, ¿transferencias/Yape/Plin registrados a mano? Para "A cuenta" hay que poder registrar **pagos parciales** en la orden.
-- **Propuesta:** validarlo en el spike técnico (Paso 4.1). Si el canal que usan no permite registrar pagos parciales cómodamente, agregar en nuestro sistema un botón "Registrar pago" que lo registre en Shopify vía API.
-- **Respuesta:** 🟡 Registran los pagos desde el **panel de administración** de Shopify. Falta confirmar con el negocio cómo registran hoy los pagos **a cuenta** → ver **Preguntas para el negocio · N1**.
+- **Contexto:** necesitamos saber por dónde se registran los pagos (POS, panel, links de pago, Yape/Plin a mano). Para "A cuenta" hay que poder registrar **pagos parciales** en la orden.
+- **Propuesta:** validarlo en el spike técnico (Paso 4.1); si hace falta, un botón "Registrar pago" en nuestro sistema.
+- **Respuesta:** ✅ Hoy registran los pagos en el POS y en el panel (N1). Desde ahora se registrarán **desde nuestro sistema** → diseño en **P43**.
 
 ### P10 · ¿Qué pasa si el cliente deja un adelanto antes de que exista la orden? — Bloqueante (Fase 9)
-- **Contexto:** la orden en Shopify se crea cuando la restauración se **aprueba** (todas las piezas aprobadas). Pero en "A cuenta" el cliente podría dejar el adelanto al registrar, cuando todavía no hay orden donde registrar el pago (sobre todo si alguna pieza queda "En consulta").
+- **Contexto:** la orden en Shopify se crea cuando la restauración se **aprueba** (todas las piezas aprobadas).
 - **Opciones:**
   - (a) El adelanto se cobra solo al aprobar la restauración.
   - (b) La orden se crea al registrar (pendiente de pago) y se actualiza al aprobar.
   - (c) El adelanto se anota en nuestro sistema y se traslada a la orden cuando se cree.
 - **Propuesta:** (a) si su proceso lo permite; si no, (b).
-- **Respuesta:** ✅ Opción **(a)**: el adelanto se entrega solo cuando la cotización ya fue aprobada, así que siempre existe la orden donde registrarlo. Confirmar con el negocio → **N2**.
+- **Respuesta:** ✅ Opción **(a)**, confirmada por el negocio (N2): el adelanto siempre se paga después de aprobar la cotización. Es el **50 %** del total y en algunos casos otro porcentaje.
+  - **Supuesto:** en el caso raro de P18 (piezas en el taller mientras otras siguen en consulta), el adelanto se cobra cuando toda la cotización queda aprobada, que es cuando se crea la orden.
 
 ### P11 · ¿Cómo se ven las líneas de la orden en Shopify? — Bloqueante (Fase 9)
 - **Contexto:** las restauraciones no son productos del catálogo.
-- **Propuesta:** una línea personalizada por pieza (no afecta stock), con título "Restauración RES-000123-1 · {descripción} · {servicio}" y su precio; la orden lleva la etiqueta `restauracion` y el código. Alternativa: un producto genérico "Servicio de restauración" para reportes en Shopify.
-- **Respuesta:** ✅ Ya usan **líneas personalizadas** (venta personalizada) en sus órdenes: p. ej., la orden #4063 del POS de Miraflores tiene la línea "Guía #10117" (S/ 30.00, `_shopify_item_type: custom_sale`). Usamos una línea personalizada por pieza, sin afectar stock, con título `Restauración RES-000123-1 · {descripción} · {servicio}`.
+- **Propuesta:** una línea personalizada por pieza (no afecta stock); la orden lleva la etiqueta `restauracion` y el código.
+- **Respuesta:** ✅ Ya usan **líneas personalizadas** (venta personalizada) en sus órdenes: p. ej., la orden #4063 del POS de Miraflores tiene la línea "Guía #10117" (S/ 30.00, `_shopify_item_type: custom_sale`). Usamos una línea personalizada por pieza, sin afectar stock.
+  - **Título de la línea:** propuesta nueva en P12: solo el código (`Restauración RES-000123-1`), igual que su "Guía #10117".
 
-### P12 · ¿Qué hacemos con cambios después de crear la orden? — Bloqueante (Fase 7 y 9)
+### P12 · ¿Qué hacemos con cambios después de crear la orden? — Bloqueante (Fase 7 y 9) · En discusión
 - **Contexto:** después de aprobar puede anularse una pieza, cambiar un precio o agregarse una pieza nueva.
-- **Propuesta:**
+- **Propuesta inicial (2026-09-30):**
   - Anular pieza → la orden de Shopify se edita automáticamente (se quita la línea).
   - Cambiar precio → solo el administrador; la orden se edita automáticamente.
   - Agregar pieza → se agrega a la orden cuando esa pieza se apruebe.
-  - Si el cliente ya pagó más que el nuevo total → alerta para hacer el reembolso manualmente en Shopify.
-- **Respuesta:** _pendiente_
+  - Si el cliente ya pagó más que el nuevo total → alerta para hacer el reembolso.
+- **Respuesta:** 🟡 Todo cambio debe quedar **registrado para auditarlo** (quién, cuándo, valor anterior → nuevo). Se pueden actualizar los campos que **no interfieren con Shopify**; el resto hay que conversarlo.
+- **Análisis de campos (para conversar):**
+
+  **No tocan Shopify** → editables por ventas y admin, con auditoría (logística solo fotos):
+
+  | Dónde | Campos |
+  |---|---|
+  | Restauración | Contacto, tipo de pago, % de adelanto, notas |
+  | Pieza | Medida, material, peso, taller, notas, fotos |
+  | Pieza (si el título de la línea lleva solo el código) | Descripción, servicio |
+
+  **Sí tocan Shopify** → a conversar:
+
+  | Cambio | Efecto en Shopify | Propuesta |
+  |---|---|---|
+  | Precio de una pieza | Cambia la línea y el total de la orden | Solo admin, con motivo; la orden se edita sola |
+  | Agregar una pieza | Nueva línea en la orden | Se agrega cuando esa pieza se aprueba |
+  | Anular una pieza | Se quita la línea; si ya pagó más que el nuevo total, hay que devolver dinero | Con motivo; alerta de reembolso |
+  | Cambiar el cliente | Cambia el cliente de la orden | Solo admin; si la API no lo permite (se ve en el spike), se corrige a mano en Shopify |
+  | Descripción o servicio | Solo si van en el título de la línea | Título solo con el código → dejan de tocar Shopify |
+  | Pagos | Se registran en la orden (P43) | No se editan; un error lo corrige el admin con un reembolso |
+  | Entregar una pieza | Solo si P44 = sí | Marca la línea como preparada |
+
+  - **Nunca editables:** código, orden de Shopify, fechas de cada estado (cambian solo con las transiciones) y quién lo creó.
+  - **Antes de crear la orden** (antes de aprobar) todo es editable por ventas y admin, y también queda auditado.
 
 ### P13 · ¿Los precios incluyen IGV?
 - **Contexto:** aplica a restauraciones (orden de Shopify y mensaje de WhatsApp) y a cotizaciones (PDF). Depende también de la configuración de impuestos de la tienda.
@@ -108,8 +143,11 @@
 - **Respuesta:** _pendiente_
 
 ### P14 · ¿Cómo registramos a las empresas en Shopify?
-- **Contexto:** las funciones B2B/Companies de Shopify dependen del plan.
-- **Propuesta:** la empresa se crea como cliente de Shopify con la razón social como nombre y el RUC en un metacampo; sus contactos se guardan solo en nuestra base de datos.
+- **Contexto:** desde abril de 2026 el plan Grow incluye perfiles de empresa (Companies), con contactos y ubicaciones.
+- **Opciones:**
+  - (a) La empresa es un cliente de Shopify, con la razón social como nombre y el RUC en un metacampo; sus contactos solo están en nuestro sistema. Simple.
+  - (b) La empresa es una "Company" de Shopify y sus contactos son contactos de la empresa; las órdenes quedan a nombre de la empresa. Más fiel a la realidad, pero más compleja.
+- **Propuesta:** (a); revisamos (b) en el spike (4.1).
 - **Respuesta:** _pendiente_
 
 ### P15 · ¿Hay clientes existentes en Shopify? ¿Los importamos?
@@ -133,9 +171,8 @@
   - (e) ¿Se puede pasar de "Registrada" directo a "Aprobada" sin consulta? — **Propuesta:** sí.
   - (f) ¿Una pieza "Devuelta por el taller" puede volver al taller sin pasar por "Observada"? — **Propuesta:** no; siempre pasa por "Observada" (queda registrado el motivo).
 - **Respuesta:** 🟡 Parcial:
-  - (a) Ese caso **no existe**: una pieza solo puede pasar a "Observada" después de haber llegado al taller. Se elimina la transición "En espera de respuesta → Observada".
-  - Pendiente: ¿qué pasa cuando el cliente **rechaza** la propuesta de la consulta? (propuesta: vuelve a "En consulta" para una nueva propuesta, o se anula) → **P41**.
-  - Pendiente: (b)–(f) → **P41**.
+  - (a) Ese caso **no existe**: una pieza solo puede pasar a "Observada" después de haber llegado al taller.
+  - El resto continúa en **P41**.
 
 ### P18 · ¿Se puede enviar una pieza al taller mientras otras piezas de la misma restauración siguen en consulta? — Bloqueante (Fase 8)
 - **Contexto:** afecta el estado general y el momento en que se crea la orden en Shopify (que espera a que **todas** las piezas estén aprobadas).
@@ -218,8 +255,8 @@
 
 ### P28 · Detalles de los tipos de pago
 - **Preguntas:** ¿"A cuenta" exige un adelanto mínimo (%)? ¿"Al contado" significa que paga todo al aprobar? ¿"Al crédito" está disponible para cualquier cliente o solo para algunos (p. ej., empresas)? ¿Se puede cambiar el tipo de pago después?
-- **Propuesta:** % mínimo de adelanto configurable (por defecto 50 %); crédito disponible para todos, pero solo ventas/admin lo eligen; el tipo de pago se puede cambiar mientras no haya pagos registrados.
-- **Respuesta:** _pendiente_
+- **Propuesta:** % de adelanto configurable (por defecto 50 %); crédito disponible para todos, pero solo ventas/admin lo eligen; el tipo de pago se puede cambiar mientras no haya pagos registrados.
+- **Respuesta:** 🟡 El adelanto es el **50 %** del total por defecto y en algunos casos otro porcentaje (N2) → % por defecto configurable y editable en cada restauración. Pendiente: ¿"Al contado" = paga todo al aprobar? ¿Crédito para quién? ¿Se puede cambiar el tipo de pago después?
 
 ### P29 · ¿Qué estados de pago usamos?
 - **Propuesta:** Pendiente, Parcial, Pagado y Reembolsado (si se devuelve el dinero).
@@ -230,30 +267,7 @@
 ## F. Roles y usuarios
 
 ### P30 · ¿Validan la matriz de permisos? — Bloqueante (Fase 2)
-- **Propuesta:**
-
-| Acción | Admin | Ventas | Logística |
-|---|:-:|:-:|:-:|
-| Ver restauraciones y piezas | ✅ | ✅ | ✅ |
-| Registrar / editar restauraciones y piezas | ✅ | ✅ | ❌ |
-| Ver precios, pagos y saldos | ✅ | ✅ | ❌ |
-| Consultas, aprobar y anular piezas | ✅ | ✅ | ❌ |
-| Marcar llegada a tienda | ✅ | ✅ | ✅ |
-| Enviar al taller y marcar devuelta por el taller | ✅ | ❌ | ✅ |
-| Asignar / cambiar taller | ✅ | ✅ | ✅ |
-| Entregar al cliente y observar | ✅ | ✅ | ✅ |
-| Subir fotos y archivos | ✅ | ✅ | ✅ |
-| Eliminar fotos y archivos | ✅ | Solo los suyos | Solo los suyos |
-| Gestionar talleres | ✅ | ❌ | ✅ |
-| Clientes y contactos | ✅ | ✅ | Solo ver |
-| Cotizador | ✅ | ✅ | ❌ |
-| Dashboard: métricas de ventas | ✅ | ✅ | ❌ |
-| Dashboard: métricas operativas (estados, días en taller) | ✅ | ✅ | ✅ |
-| Usuarios, configuración y catálogos | ✅ | ❌ | ❌ |
-| Auditoría | ✅ | ❌ | ❌ |
-
-- **Nota:** ocultar precios a logística se hace en la base de datos (no solo en pantalla), así que es importante definirlo desde el inicio.
-- **Respuesta:** 🟡 Confirmado: **logística no ve precios ni pagos** (se aplica en la base de datos). Falta validar el resto de la matriz → **P42**.
+- **Respuesta:** 🟡 Logística no ve precios ni pagos (2026-09-30). La matriz actualizada está en **P42**.
 
 ### P31 · ¿Cuántos usuarios habrá y cómo inician sesión?
 - **Propuesta:** email + contraseña; el administrador crea/invita a los usuarios (no hay registro público).
@@ -264,7 +278,8 @@
 ## G. Fotos y archivos
 
 ### P32 · ¿Qué archivos se pueden subir y quién puede borrarlos?
-- **Propuesta:** JPG, PNG, HEIC/WebP y PDF; máximo 10 MB por archivo; las fotos se comprimen automáticamente (lado mayor 1920 px) para ahorrar espacio; sin límite de cantidad por pieza; clasificación Antes / Después / Documento / Otro; borran el administrador y quien lo subió.
+- **Contexto:** además de las fotos de cada pieza, habrá una **foto general** de todas las piezas de la restauración (P42).
+- **Propuesta:** JPG, PNG, HEIC/WebP y PDF; máximo 10 MB por archivo; las fotos se comprimen automáticamente (lado mayor 1920 px) para ahorrar espacio; sin límite de cantidad; clasificación Antes / Después / Documento / Otro; borran el administrador y quien lo subió.
 - **Respuesta:** _pendiente_
 
 ---
@@ -309,20 +324,73 @@
 
 ### P40 · ¿Qué planes usaremos en producción? — Bloqueante (Fase 16)
 - **Contexto:** el desarrollo arranca con planes gratuitos (P02). Vercel Hobby no permite uso comercial y Supabase Free pausa proyectos inactivos y no tiene backups diarios.
-- **Propuesta:** decidirlo antes del lanzamiento; como mínimo Supabase Pro (backups) y Vercel Pro, o hospedar la app en otro servicio si no se quiere pagar Vercel.
-- **Respuesta:** _pendiente_
+- **Respuesta:** ✅ Producción con **Vercel Pro + Supabase Pro**. Con Pro: cron cada 5 minutos (Vercel), backups diarios y sin pausa por inactividad (Supabase).
 
 ### P41 · Transiciones pendientes de la pieza — Bloqueante (Fase 8)
-- (a') Si el cliente **rechaza** la propuesta de la consulta, ¿qué pasa? — **Propuesta:** vuelve a "En consulta" (se prepara otra propuesta) o se anula la pieza.
+- (a') Si el cliente **rechaza** la propuesta de la consulta, ¿qué pasa?
+  - **Respuesta:** ✅ El rechazo **no se registra** en el sistema: el asesor coordina con el cliente por WhatsApp y la pieza sigue "En consulta" hasta que el cliente acepta; entonces el asesor (ventas/admin) la pasa a "Aprobada".
+  - **Supuesto:** si el cliente finalmente no acepta, la pieza se anula con un motivo.
+- (g) **Nueva:** ¿seguimos usando el estado "En espera de respuesta del cliente"? Por lo que describes, "En consulta" ya cubre el tiempo en que se coordina con el cliente. — **Propuesta:** quitarlo (En consulta → Aprobada), salvo que les sirva para distinguir "estamos revisando la pieza" de "ya le enviamos la propuesta al cliente".
 - (b) ¿Se puede "Observar" una pieza ya **entregada** (reclamo posterior)? Ya estuvo en el taller, así que encaja con la regla de P17. — **Propuesta:** sí.
 - (c) ¿Una pieza anulada se puede **reactivar**? — **Propuesta:** no; se agrega una pieza nueva.
 - (d) ¿Se puede **anular** una pieza que está en el taller? — **Propuesta:** solo el administrador.
 - (e) ¿Se puede pasar de "Registrada" directo a "Aprobada" sin consulta? — **Propuesta:** sí.
 - (f) ¿Una pieza "Devuelta por el taller" puede volver al taller sin pasar por "Observada"? — **Propuesta:** no.
-- **Respuesta:** _pendiente_
+- **Respuesta (b)–(g):** _pendiente_
 
 ### P42 · ¿Validan el resto de la matriz de permisos (P30)? — Bloqueante (Fase 2)
-- **Contexto:** ya está confirmado que logística no ve precios ni pagos (tampoco el cotizador ni las métricas de ventas). Faltan las demás filas de la tabla de P30.
+- **Respuesta:** ✅ "Por ahora está bien", con estos cambios para **logística**: no ve precios, pagos, métricas ni el historial; no crea restauraciones; de los datos de la restauración solo edita las **fotos**: antes y después de cada pieza y una **foto general** de todas las piezas.
+- **Matriz actualizada:**
+
+| Acción | Admin | Ventas | Logística |
+|---|:-:|:-:|:-:|
+| Ver restauraciones y piezas | ✅ | ✅ | ✅ (sin precios) |
+| Registrar / editar restauraciones y piezas | ✅ | ✅ | ❌ |
+| Ver precios, pagos y saldos | ✅ | ✅ | ❌ |
+| Registrar pagos | ✅ | ✅ | ❌ |
+| Corregir pagos (reembolso) | ✅ | ❌ | ❌ |
+| Consultas, aprobar y anular piezas | ✅ | ✅ | ❌ |
+| Marcar llegada a tienda | ✅ | ✅ | ✅ |
+| Enviar al taller y marcar devuelta por el taller | ✅ | ❌ | ✅ |
+| Asignar / cambiar taller | ✅ | ✅ | ✅ |
+| Entregar al cliente (ver P45) y observar | ✅ | ✅ | ✅ |
+| Subir y editar fotos (por pieza y foto general) | ✅ | ✅ | ✅ |
+| Eliminar fotos y archivos | ✅ | Solo los suyos | Solo los suyos |
+| Gestionar talleres | ✅ | ❌ | ✅ |
+| Clientes y contactos | ✅ | ✅ | Solo ver |
+| Cotizador | ✅ | ✅ | ❌ |
+| Dashboard (todas las métricas) | ✅ | ✅ | ❌ |
+| Pestaña "Historial" (quién cambió qué y cuándo) | ✅ | ✅ | ❌ |
+| Usuarios, configuración y catálogos | ✅ | ❌ | ❌ |
+| Auditoría de todo el sistema | ✅ | ❌ | ❌ |
+
+- Como logística no tiene dashboard, al iniciar sesión entra directo a su vista de piezas.
+- **Detalles pendientes:**
+  - (a) Cuando dices que logística no ve "el historial", ¿te refieres a la pestaña "Historial" (quién cambió qué y cuándo)? — **Propuesta:** no la ve, pero sí ve el estado actual de cada pieza y la nota de la última observación (la necesita para explicarle al taller qué corregir).
+  - (b) En su vista de piezas, ¿logística ve cuántos días lleva cada pieza en el taller? — **Propuesta:** sí; es un dato para hacerle seguimiento al taller, no una métrica del dashboard.
+  - **Respuesta:** _pendiente_
+
+### P43 · ¿Cómo registramos los pagos con el plan Grow? — Bloqueante (Fase 9 y 11)
+- **Contexto:** prefieren registrar los pagos desde nuestro sistema (N1). Pero en Grow, Shopify solo permite pagos **parciales** desde el POS; en el panel y por API son exclusivos de Plus. Por API en Grow sí se puede: (1) crear la orden con pagos ya incluidos, aunque sean parciales, y (2) registrar el pago que completa el saldo.
+- **Propuesta:**
+  1. Nuestro sistema lleva el **registro de pagos**: monto, método (efectivo, tarjeta, Yape, Plin), fecha y quién lo registró.
+  2. **Adelanto:** al aprobar, el asesor lo registra en el mismo paso (monto sugerido: 50 % del total, editable). La orden de Shopify se crea con el adelanto incluido y queda "Parcialmente pagada", igual que hoy con el POS.
+  3. **Saldo:** antes de la entrega se registra en el sistema; en Shopify entra como el pago que completa la orden, que queda "Pagada".
+  4. **Casos especiales** (adelanto registrado después de crear la orden o saldo pagado en partes): se guardan en el sistema y llegan a Shopify junto con el pago que completa el saldo. Mientras tanto, Shopify muestra un monto pagado menor que el real; nuestro sistema muestra el real.
+  5. Si alguien registra un pago directamente en el POS o el panel, igual llega al sistema por webhook y no se duplica.
+  6. Lo validamos en el spike (4.1) con la tienda de desarrollo.
+- **Alternativa:** seguir registrando los adelantos en el POS (que sí permite pagos parciales) y que el sistema solo los lea.
+- **Dato que nos ayudaría:** ¿cómo registran hoy el adelanto en el panel? En Grow el panel no permite montos parciales: ¿usan alguna app o lo hacen solo en el POS?
+- **Respuesta:** _pendiente_
+
+### P44 · ¿Marcamos la pieza como "Preparada" en Shopify al entregarla?
+- **Contexto:** sus ventas del POS quedan "Pagado · Preparado · Archivado" (orden #4063). Si el sistema no marca las entregas, las órdenes de restauración quedan "No preparadas" para siempre y se mezclan con los pedidos pendientes de preparar.
+- **Propuesta:** sí; al entregar una pieza, el sistema marca su línea como preparada en Shopify. Cuando todas las piezas están entregadas y la orden está pagada, queda igual que sus ventas del POS. Requiere los permisos `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders`.
+- **Respuesta:** _pendiente_
+
+### P45 · ¿Se puede entregar una pieza si falta pagar el saldo? — Bloqueante (Fase 11)
+- **Contexto:** el saldo se cobra antes de la entrega (N1), pero logística puede marcar entregas y no ve pagos.
+- **Propuesta:** si la restauración tiene saldo pendiente (y no es "Al crédito"), el sistema no deja marcar "Entregada" y muestra "Falta cobrar el saldo", sin montos. Ventas y admin pueden entregar igual confirmándolo, para casos especiales (entregas parciales, clientes de confianza).
 - **Respuesta:** _pendiente_
 
 ---
@@ -331,30 +399,28 @@
 
 > Preguntas redactadas para hacérselas directamente a la Platería.
 
-### N1 · ¿Cómo registran hoy los pagos a cuenta (adelanto + saldo)? — Bloqueante (Fase 4)
+### N1 · ¿Cómo registran hoy los pagos a cuenta (adelanto + saldo)? — ✅ Respondida
 
-**Qué averiguamos (plan Grow):**
+**Respuestas (2026-10-02):**
+1. Dónde registran el adelanto: **en ambos** (POS y panel).
+2. Medios de pago: **efectivo, tarjeta, Yape y Plin**.
+3. Cuándo: el **adelanto** al aprobar la cotización y el **saldo** al final, antes de la entrega.
+4. El saldo se registra en la **misma orden**.
+5. Usan el POS en **iPhone/iPad y en Android**. En Android el POS no permite cobrar el saldo de una orden parcialmente pagada (solo en iPhone/iPad).
+6. Prefieren registrar los pagos **desde nuestro sistema** → diseño en **P43**.
 
-| # | Forma | ¿Permite pago parcial? | Comentario |
+**Formas de registrar pagos en Shopify (plan Grow, corregido el 2026-10-02):**
+
+| # | Forma | ¿Pago parcial en Grow? | Comentario |
 |---|---|---|---|
-| 1 | **Admin → orden con pago pendiente → "Cobrar pago" → "Marcar como pagado"** | ❌ Solo el total | Sirve para "Al contado", no para adelantos. |
-| 2 | **Admin → orden con condiciones de pago (payment terms) → registrar pago con monto** (efectivo, transferencia, Yape, etc.) | ✅ | La orden queda "Parcialmente pagada". Hay que verificar en la tienda de desarrollo que esté disponible en Grow (los *depósitos* automáticos en borradores de orden son solo Plus). |
-| 3 | **POS (iPhone/iPad) → cobrar un monto → "Marcar como parcial"**; luego se recupera la orden y se cobra el saldo | ✅ | En POS para Android se puede dejar el pago parcial, pero el saldo solo se cobra desde iPhone/iPad. Su orden #4063 salió del POS de Miraflores. |
-| 4 | **Admin → "Enviar factura" / link de pago** por el adelanto o el saldo | ✅ (el cliente paga en línea) | Útil si el cliente paga con tarjeta a distancia. |
-| 5 | **Botón "Registrar pago" en nuestro sistema** (API `orderCreateManualPayment`) | ✅ | Registra el pago manual en la orden de Shopify sin depender de la interfaz de Shopify. Opción de respaldo si la 2 o la 3 no les resultan cómodas. |
+| 1 | Panel → "Cobrar pago" → "Marcar como pagado" | ❌ Solo el total | |
+| 2 | Panel → registrar un pago con monto | ❌ Solo Plus | Los pagos parciales y depósitos en el panel son exclusivos de Plus. |
+| 3 | POS → cobrar un monto → "Marcar como parcial" | ✅ | El saldo solo se cobra desde iPhone/iPad. |
+| 4 | API: registrar un pago (`orderCreateManualPayment`) | ❌ Solo Plus | En Grow solo registra el pago que completa el saldo. |
+| 5 | API: crear la orden con pagos incluidos (`orderCreate`) | ✅ Al crear la orden | Base de la propuesta de P43; se valida en el spike. |
 
-**Preguntas tipo:**
-1. Cuando un cliente deja un adelanto, ¿dónde lo registran hoy: en el POS de la tienda o en el panel de administración de Shopify? ¿Nos pueden mostrar cómo lo hacen con una orden real?
-2. ¿Con qué medios pagan los clientes el adelanto y el saldo? (efectivo, tarjeta, Yape, Plin, transferencia…)
-3. ¿Quién registra el pago y en qué momento: al recibir el dinero o después, al revisar la cuenta bancaria?
-4. Cuando el cliente paga el saldo, ¿lo registran en la **misma orden** del adelanto o crean una orden nueva?
-5. ¿El POS que usan es en iPhone/iPad o en Android?
-6. ¿Les serviría registrar el pago desde nuestro sistema (y que se refleje solo en Shopify), o prefieren seguir haciéndolo en Shopify?
-
-### N2 · ¿El adelanto se entrega siempre después de aprobar la cotización?
-
-**Pregunta tipo:** "Cuando un cliente deja una pieza para restaurar, ¿en algún caso les deja dinero **antes** de aprobar la cotización? Por ejemplo, un pago por diagnóstico, por 'separar' el trabajo o porque ya sabe que quiere el servicio. Si pasa, ¿cómo lo registran hoy?"
-- **Por qué importa:** la orden de Shopify se crea recién al aprobar; si hubiera pagos antes, habría que guardarlos en nuestro sistema y trasladarlos a la orden después (P10 opción c).
+### N2 · ¿El adelanto se entrega siempre después de aprobar la cotización? — ✅ Respondida
+- **Respuesta (2026-10-02):** sí, siempre después de aprobar, porque el adelanto se calcula como el **50 %** del costo total. En algunos casos es otro porcentaje.
 
 ---
 
@@ -370,14 +436,20 @@
 | D06 | La BD es la fuente de verdad de los estados (RPC + triggers) y hay un test de consistencia con la máquina de estados en TypeScript | Evitar reglas duplicadas que diverjan |
 | D07 | Conventional Commits en español; un commit por cada cambio o feature | Pedido del proyecto |
 | D08 | pnpm y Node LTS | Reproducibilidad |
-| D09 | Desarrollo con planes gratuitos; reintentos del outbox con `pg_cron` + `pg_net` de Supabase | P02 |
-| D10 | Sin B2B/Companies ni depósitos de Shopify Plus (tienda en plan Grow) | P07 |
-| D11 | El adelanto se registra en la orden de Shopify, que se crea al aprobar | P10 |
+| D09 | Desarrollo con planes gratuitos (Vercel Hobby, Supabase Free) y producción con Vercel Pro + Supabase Pro; reintentos del outbox con Vercel Cron cada 5 min (requiere Pro) | P02, P40 |
+| D10 | Plan Grow: sin pagos parciales ni depósitos en el panel ni por API (solo Plus); los perfiles de empresa sí están disponibles desde abril de 2026 | P07 |
+| D11 | El adelanto se cobra después de aprobar: 50 % del total por defecto, editable por restauración | P10, N2 |
 | D12 | Una línea personalizada (custom sale) por pieza en la orden | P11 |
 | D13 | "Observada" solo es posible después de que la pieza estuvo en el taller | P17 |
 | D14 | Se puede enviar una pieza al taller aunque otras sigan en consulta | P18 |
 | D15 | Material y servicio: lista + texto libre | P22 |
-| D16 | Logística no ve precios ni pagos (RLS en BD) | P30 |
+| D16 | Logística no ve precios, pagos, métricas ni la pestaña "Historial"; no registra restauraciones; sube y edita fotos (por pieza y foto general) | P30, P42 |
+| D17 | GitHub, Vercel y Supabase a nombre del desarrollador; la tienda de Shopify es de la Platería | P01 |
+| D18 | Pruebas en una tienda de desarrollo de la organización del desarrollador; la tienda real no se usa para pruebas | P08 |
+| D19 | Apps de Shopify creadas en el Dev Dashboard (token de 24 h que el sistema renueva); la de producción, en la organización de la Platería | P07 |
+| D20 | Los pagos se registran desde nuestro sistema (efectivo, tarjeta, Yape, Plin), siempre en la misma orden | N1 |
+| D21 | El rechazo del cliente no se registra: la pieza sigue "En consulta" hasta que el asesor la aprueba | P41 |
+| D22 | Toda edición queda en la auditoría (quién, cuándo, antes → después) | P12 |
 
 ---
 
@@ -386,3 +458,4 @@
 | Fecha | Preguntas | Resumen |
 |---|---|---|
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
+| 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |

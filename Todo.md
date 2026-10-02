@@ -1,7 +1,7 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
 > **Estado:** planificación (todavía no se desarrolla).
-> **Última actualización:** 2026-09-30
+> **Última actualización:** 2026-10-02
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
 
@@ -58,7 +58,7 @@
 | Fechas | date-fns + date-fns-tz (zona `America/Lima`) | Cálculo de días correcto |
 | BD / Auth / Storage | Supabase (Postgres + RLS, Auth, Storage) | Pedido |
 | Cliente Supabase | `@supabase/ssr` + tipos generados con `supabase gen types` | Sesión en SSR, tipado de punta a punta |
-| Shopify | Admin GraphQL API (versión fijada) con token de una app de la tienda | Clientes, órdenes, productos, webhooks |
+| Shopify | Admin GraphQL API (versión fijada) con una app del Dev Dashboard (token de 24 h que el sistema pide y renueva solo) | Clientes, órdenes, pagos, productos, webhooks |
 | PDF | `@react-pdf/renderer` en un Route Handler (runtime Node) | PDF con componentes React |
 | Tests | Vitest, Testing Library, MSW, Playwright, @axe-core/playwright, pgTAP | Ver §4 |
 | Paquetes | pnpm, Node LTS (fijado en `.nvmrc` y `engines`) | Reproducibilidad |
@@ -82,18 +82,18 @@ El resto (Data Table, Date Range Picker, Combobox, Sidebar, Charts) son recetas 
 
 | | Prueba (local) | Producción (nube) |
 |---|---|---|
-| App | `pnpm dev` / `pnpm build && pnpm start` | Vercel (rama `main`) |
-| Supabase | Supabase CLI sobre Docker (`supabase start`) | Proyecto en Supabase Cloud (región sugerida `sa-east-1`, São Paulo); plan Free durante el desarrollo, plan de producción ⛔ P40 |
+| App | `pnpm dev` / `pnpm build && pnpm start` | Vercel (rama `main`); plan Hobby durante el desarrollo y Pro en producción (P40) |
+| Supabase | Supabase CLI sobre Docker (`supabase start`) | Proyecto en Supabase Cloud (región sugerida `sa-east-1`, São Paulo); plan Free durante el desarrollo y Pro en producción (P40) |
 | Datos | `supabase/seed.sql` + fábricas de test | Datos reales; migraciones con `supabase db push` desde CI |
 | Correos de Auth | Mailpit local (incluido en Supabase CLI) | SMTP propio ⛔ P05 |
-| Shopify | `SHOPIFY_MODE=fake` (adaptador en memoria) por defecto; `live` contra la tienda de desarrollo para pruebas manuales ⛔ P08 | Tienda real |
+| Shopify | `SHOPIFY_MODE=fake` (adaptador en memoria) por defecto; `live` contra la tienda de desarrollo (organización del desarrollador, con su propia app) para pruebas manuales | Tienda real (app en la organización de la Platería) |
 | Webhooks | Simulados con un script que firma el payload (o túnel opcional hacia la tienda de desarrollo) | URL pública de Vercel |
 
 **Variables de entorno** (validadas al arrancar con zod en `src/lib/env.ts`; `.env.example` versionado, `.env*.local` ignorado):
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (clave pública / anon)
 - `SUPABASE_SECRET_KEY` (clave secreta / service role — **solo servidor**)
-- `SHOPIFY_MODE` (`fake` o `live`), `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_ADMIN_ACCESS_TOKEN`, `SHOPIFY_API_VERSION`, `SHOPIFY_WEBHOOK_SECRET`
+- `SHOPIFY_MODE` (`fake` o `live`), `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` (con ellos el sistema pide el token de 24 h y verifica la firma de los webhooks), `SHOPIFY_API_VERSION`
 - `CRON_SECRET`, `APP_URL`, `APP_TIMEZONE=America/Lima`
 - Regla de seguridad: la app **no arranca** si `SHOPIFY_MODE=fake` en producción.
 
@@ -170,16 +170,18 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `clients` — tipo (`persona`, `empresa`), nombres/apellidos o razón social, tipo y número de documento, email, teléfono, dirección, `shopify_customer_id`, estado de sincronización.
 - `contacts` — client_id, nombre, documento, teléfono, email, cargo/relación, activo.
 - `workshops` — nombre, contacto, teléfono, dirección, notas, activo.
-- `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % mínimo de adelanto.
+- `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
 - `materials`, `services` — catálogos editables; la pieza guarda el id del catálogo o un texto libre (P22).
-- `restorations` — código `RES-000001`, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), adelanto acordado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
+- `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
+- `restorations` — código `RES-000001`, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
 - `pieces` — restoration_id, código `RES-000001-1`, workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `received_at`, `first_sent_at`, `last_returned_at`, `delivered_at`, `cancelled_at`), notas.
 - `piece_status_transitions` — from, to, roles permitidos, requiere nota, requiere taller. **Fuente de verdad** de la máquina de estados.
 - `piece_status_history` — piece_id, from, to, nota, actor, fecha.
-- `piece_files` — piece_id, ruta en Storage, tipo (`antes`, `despues`, `documento`, `otro`), mime, tamaño, subido por.
-- `payments` — restoration_id, id de transacción en Shopify (único), tipo, monto, fecha, payload crudo.
+- `restoration_files` — restoration_id, piece_id (vacío = foto general de todas las piezas), ruta en Storage, tipo (`antes`, `despues`, `documento`, `otro`), mime, tamaño, subido por.
+- `payments` — **registro de pagos del sistema**: restoration_id, tipo (`pago`, `reembolso`), monto, método, fecha, registrado por, origen (`sistema`, `shopify`), id de transacción en Shopify (único cuando existe), estado de envío a Shopify (`enviado`, `pendiente`, `error`), payload crudo.
 - `shopify_sync_jobs` — tipo, entidad, payload, estado (`pendiente`, `procesando`, `ok`, `error`), intentos, próximo intento, último error.
 - `shopify_webhook_events` — webhook_id (único), topic, payload, estado, error.
+- `shopify_tokens` — token de acceso vigente y su vencimiento (solo servidor; sin acceso desde el navegador).
 - `quotes` — código `COT-000001`, cliente (interno o de Shopify) + snapshot de sus datos, contacto, fecha de emisión, vigencia, estado, subtotal, total, notas/condiciones.
 - `quote_items` — quote_id, producto/variante de Shopify, título, imagen, personalización, cantidad, precio unitario, subtotal.
 - `audit_log` — tabla, id del registro, acción, cambios (`jsonb`), actor, fecha.
@@ -195,10 +197,9 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 |---|---|---|
 | Registrada | En consulta | Nota obligatoria (motivo de la consulta) |
 | Registrada | Aprobada | Si la pieza ya llegó a tienda, pasa directo a **Recibida** |
-| En consulta | En espera de respuesta del cliente | Nota (propuesta enviada; puede ajustar el precio) |
-| En consulta | Aprobada | Revisión que no necesita consultar al cliente (→ Recibida si ya llegó) |
-| En espera de respuesta | Aprobada | Cliente acepta (→ Recibida si ya llegó) |
-| En espera de respuesta | ⛔ P41 | Cliente rechaza la propuesta (propuesta: vuelve a En consulta o se anula). No pasa a Observada: "Observada" solo existe después del taller (P17) |
+| En consulta | En espera de respuesta del cliente ⛔ P41 | Nota (propuesta enviada; puede ajustar el precio). Este estado podría eliminarse (P41 g) |
+| En consulta | Aprobada | El cliente aceptó (coordinado por WhatsApp); lo hace el asesor (→ Recibida si ya llegó) |
+| En espera de respuesta ⛔ P41 | Aprobada | Cliente acepta (→ Recibida si ya llegó) |
 | Aprobada | Recibida | Al marcar la llegada a tienda |
 | Recibida | Enviada al taller | Taller asignado obligatorio |
 | Enviada al taller | Devuelta por el taller | |
@@ -208,8 +209,9 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 | Entregada | Observada | Reclamo posterior a la entrega ⛔ P41 |
 | Cualquiera excepto Entregada | Anulada | Nota (motivo) obligatoria; estado final ⛔ P41 |
 
+- **Sin rechazo en el sistema (P41):** el asesor coordina con el cliente por WhatsApp; la pieza sigue en consulta hasta que el cliente acepta y el asesor la aprueba. Si el cliente finalmente no acepta, la pieza se anula con un motivo. "Observada" solo existe después del taller (P17).
 - Acción aparte **"Marcar llegada a tienda"** (registra `arrived_at`): disponible mientras la pieza está en Registrada, En consulta, En espera o Aprobada. Si está Aprobada, pasa a Recibida.
-- Qué rol puede ejecutar cada transición: ver matriz en P30 (⛔ P42).
+- Qué rol puede ejecutar cada transición: ver la matriz de P42 (consultar, aprobar y anular: ventas y admin).
 
 ### 7.2 Ubicación de la pieza (columna generada) ⛔ P21
 
@@ -235,7 +237,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 7. Si no → **Registrada**
 
 - El estado puede retroceder (p. ej., una pieza devuelta que se observa y vuelve al taller).
-- **Creación de la orden en Shopify:** se dispara cuando todas las piezas no anuladas fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general.
+- **Creación de la orden en Shopify:** se dispara cuando todas las piezas no anuladas fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general. Incluye los pagos registrados al aprobar (adelanto), ver §7.5.
 
 ### 7.4 Fechas y tiempos ⛔ P23
 
@@ -243,13 +245,20 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - **Días en taller** = suma de los intervalos entre cada "Enviada al taller" y la siguiente salida de ese estado (incluye reenvíos por observación). Si la pieza sigue en el taller se cuenta hasta hoy y se muestra como "en curso".
 - **Días de cumplimiento** = desde el registro hasta la entrega (propuesta). Días calendario en zona `America/Lima`.
 
-### 7.5 Pagos ⛔ N1 ⛔ P28 ⛔ P29
-
-- El adelanto se entrega después de aprobar la cotización (P10), por lo que siempre se registra en la orden de Shopify.
+### 7.5 Pagos ⛔ P43 ⛔ P45 ⛔ P28 ⛔ P29
 
 - Tipo de pago: **Al contado** (paga el total), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto).
-- Pagado = transacciones exitosas en Shopify − reembolsos. Saldo = Total − Pagado.
+- **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
+- Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
+- **Envío a Shopify** (plan Grow: la API no acepta pagos parciales en una orden ya creada; P43, a validar en el spike):
+  - Los pagos registrados al aprobar (adelanto) se incluyen al **crear la orden** → "Parcialmente pagada".
+  - El pago que **completa el saldo** se registra como pago completo → "Pagada".
+  - Los pagos intermedios (registrados con la orden ya creada y sin completar el saldo) quedan "pendientes de envío" y llegan a Shopify con el pago que completa el saldo.
+  - Los pagos hechos directamente en el POS o el panel llegan por webhook y se suman al registro sin duplicarse (conciliación por id de transacción).
+- Pagado = pagos − reembolsos del registro del sistema. Saldo = Total − Pagado.
 - Estado de pago automático: **Pendiente** (pagado = 0) → **Parcial** (0 < pagado < total) → **Pagado** (pagado ≥ total).
+- Un pago no se edita: si hubo un error, el admin lo corrige con un reembolso (con motivo y auditado).
+- Entrega con saldo pendiente: ⛔ P45.
 
 ---
 
@@ -258,15 +267,16 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 0 — Preparación (sin código)
 
 #### Paso 0.1 — Resolver preguntas bloqueantes
-- [ ] Responder las preguntas de `Notas.md` marcadas como bloqueantes (P01, P08, P12, P41, P42) y las preguntas para el negocio (N1, N2).
+- [ ] Responder las preguntas de `Notas.md` marcadas como bloqueantes (P12, P41, P42, P43, P45).
 - [ ] Registrar respuestas y decisiones en `Notas.md` y ajustar este plan.
 - Tests: No aplica (documentación).
 - Commit: `docs(notas): registra respuestas y decisiones`
 
-#### Paso 0.2 — Cuentas y accesos ⛔ P01 ⛔ P07 ⛔ P08
-- [ ] Repositorio en GitHub con rama `main` protegida (PR + CI en verde).
-- [ ] Tienda de desarrollo de Shopify + app con scopes mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products`.
-- [ ] Proyecto de Supabase Cloud (prod) y proyecto de Vercel creados (se configuran en la Fase 16).
+#### Paso 0.2 — Cuentas y accesos
+- [ ] Repositorio en GitHub (cuenta del desarrollador) con rama `main` protegida (PR + CI en verde).
+- [ ] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
+- [ ] Pedir a la Platería que cree la app de producción en el Dev Dashboard de su organización (o que le dé acceso al desarrollador para crearla), con los permisos mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products` (+ `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders` si ⛔ P44 = sí).
+- [ ] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
 - [ ] Logo en alta resolución (SVG/PNG) y colores de marca.
 - Tests: No aplica (configuración de cuentas).
 
@@ -377,7 +387,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
   - [ ] Test de tabla que recorre **toda** la matriz rol × acción.
   - [ ] `requirePermission` lanza error de acceso denegado.
 - **E2E:**
-  - [ ] Logística no ve "Usuarios", "Configuración" ni "Cotizaciones" en el menú y recibe 403 al entrar por URL.
+  - [ ] Logística no ve "Dashboard", "Usuarios", "Configuración", "Cotizaciones" ni "Auditoría" en el menú, recibe 403 al entrar por URL y al iniciar sesión entra directo a `/piezas`.
   - [ ] Admin ve todos los módulos.
 - Commit: `feat(auth): agrega matriz de permisos por rol`
 
@@ -411,7 +421,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 
 #### Paso 3.2 — Interfaz de auditoría
 - [ ] Página `/auditoria` (admin): filtros por usuario, entidad, acción y fechas; paginación.
-- [ ] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller).
+- [ ] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller); logística no la ve (P42).
 - **Unit:**
   - [ ] `EntityHistory` renderiza cambios legibles.
   - [ ] Los filtros se serializan y leen desde la URL.
@@ -422,19 +432,23 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 
 ### Fase 4 — Integración con Shopify (base)
 
-#### Paso 4.1 — Spike técnico en la tienda de desarrollo ⛔ P08 ⛔ N1 ⛔ P14
+#### Paso 4.1 — Spike técnico en la tienda de desarrollo ⛔ P14 ⛔ P43
 Objetivo: validar con llamadas reales antes de construir.
-- [ ] Crear cliente persona y empresa (cómo guardar RUC y razón social).
-- [ ] Crear una orden con líneas personalizadas y pago pendiente (comparar `orderCreate` vs. borrador de orden + completar).
-- [ ] Registrar un pago parcial y luego el total por el canal que usa la tienda (N1: admin con condiciones de pago, POS "Marcar como parcial", factura/link de pago y API `orderCreateManualPayment`), verificar qué está disponible en plan Grow y ver qué webhooks llegan.
-- [ ] Editar una orden (quitar línea / cambiar precio) con Order Editing.
+- [ ] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
+- [ ] Crear cliente persona y empresa (cliente + metacampo vs. perfil de empresa, P14).
+- [ ] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
+- [ ] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
+- [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan.
+- [ ] Editar una orden (quitar línea, cambiar precio, agregar línea, cambiar cliente) con Order Editing; reembolsar un pago manual.
+- [ ] Marcar líneas como preparadas (si ⛔ P44 = sí).
 - [ ] Buscar clientes y productos (paginación, variantes, imágenes).
 - [ ] Documentar resultados y decisiones en `Notas.md`; guardar payloads reales anonimizados como fixtures en `tests/fixtures/shopify/`.
 - Tests: No aplica (exploratorio); los fixtures alimentan los tests de los pasos siguientes.
 - Commit: `docs(shopify): documenta resultados del spike y agrega fixtures`
 
 #### Paso 4.2 — Puerto `ShopifyGateway` y adaptadores
-- [ ] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder`, `findOrderByTag`, `getOrderFinancials`, `editOrder`, `searchProducts`, `getProduct`.
+- [ ] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder` (con pagos iniciales), `findOrderByTag`, `getOrderFinancials`, `editOrder`, `recordFullPayment`, `refundPayment`, `searchProducts`, `getProduct` (+ `fulfillLines` si P44 = sí).
+- [ ] Autenticación: pide el token con *client credentials*, lo guarda en `shopify_tokens` y lo renueva antes de que venza (o ante un 401).
 - [ ] Adaptador `live`: cliente GraphQL (fetch, versión de API fijada, timeout, reintentos con backoff ante throttling y 5xx, `userErrors` → errores de dominio tipados).
 - [ ] Adaptador `fake` en memoria + ruta `/api/test/shopify` (inspeccionar, resetear, forzar errores; 404 fuera del modo fake).
 - [ ] Factory que elige el adaptador según `SHOPIFY_MODE`.
@@ -442,6 +456,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Mapeo de respuestas a tipos del dominio.
   - [ ] `userErrors` → error tipado.
   - [ ] Reintenta ante `THROTTLED` y 5xx; no reintenta ante 4xx.
+  - [ ] Renueva el token vencido o rechazado (401) y reintenta una sola vez.
   - [ ] Paginación de búsquedas.
   - [ ] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
 - **E2E:** No aplica (sin interfaz). Opcional `@shopify-live`: contract test contra la tienda de desarrollo.
@@ -450,7 +465,7 @@ Objetivo: validar con llamadas reales antes de construir.
 #### Paso 4.3 — Outbox de sincronización
 - [ ] Tabla `shopify_sync_jobs` + función SQL para encolar (la usan triggers y RPCs).
 - [ ] Procesador idempotente con bloqueo (`FOR UPDATE SKIP LOCKED`), reintentos con backoff y máximo de intentos.
-- [ ] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada pocos minutos por `pg_cron` + `pg_net` de Supabase (el cron de Vercel Hobby corre solo 1 vez al día; D09).
+- [ ] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada 5 minutos por Vercel Cron en producción (requiere Pro; se activa en 16.2) y con el script `pnpm shopify:sync` en local.
 - [ ] Componente `SyncStatus` (Sincronizado / Pendiente / Error + botón "Reintentar").
 - **Unit:**
   - [ ] Cálculo del backoff.
@@ -465,8 +480,8 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(shopify): agrega outbox de sincronización con reintentos`
 
 #### Paso 4.4 — Endpoint de webhooks
-- [ ] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
-- [ ] Router por topic (los handlers de pagos se implementan en 11.2).
+- [ ] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC con el client secret (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
+- [ ] Router por topic (los handlers de pagos se implementan en 11.3).
 - [ ] Script `pnpm shopify:webhook <topic> <fixture>` que firma y envía un webhook al entorno local.
 - [ ] Script `pnpm shopify:register-webhooks` (por entorno).
 - **Unit:**
@@ -482,9 +497,9 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 5 — Configuración y catálogos
 
 #### Paso 5.1 — Configuración de la empresa
-- [ ] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % mínimo de adelanto.
+- [ ] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % de adelanto por defecto (50 %).
 - **Unit:**
-  - [ ] Esquema zod (RUC válido, días > 0, % entre 0 y 100).
+  - [ ] Esquema zod (RUC válido, días > 0, % entre 1 y 100).
 - **BD:**
   - [ ] Solo admin edita; todos los usuarios autenticados leen.
 - **E2E:**
@@ -506,10 +521,10 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] `@mobile` crear taller.
 - Commit: `feat(talleres): agrega gestión de talleres`
 
-#### Paso 5.3 — Catálogos de materiales y servicios
-- [ ] Si se confirman listas: CRUD simple (nombre, activo; precio sugerido opcional para servicios).
+#### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago
+- [ ] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
 - **Unit / BD / E2E:** análogos a 5.2.
-- Commit: `feat(catalogos): agrega catálogos de materiales y servicios`
+- Commit: `feat(catalogos): agrega catálogos de materiales, servicios y métodos de pago`
 
 ### Fase 6 — Clientes y contactos
 
@@ -529,7 +544,7 @@ Objetivo: validar con llamadas reales antes de construir.
 #### Paso 6.2 — Alta de cliente sincronizada con Shopify ⛔ P14
 - [ ] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
 - [ ] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
-- [ ] Empresa: RUC y razón social en los campos/metacampos definidos en el spike.
+- [ ] Empresa: RUC y razón social según P14 (cliente + metacampo o perfil de empresa), definido en el spike.
 - **Unit:**
   - [ ] Mapeo cliente → input de Shopify (persona y empresa).
   - [ ] Manejo de "ya existe" → vinculación.
@@ -586,12 +601,13 @@ Objetivo: validar con llamadas reales antes de construir.
 
 #### Paso 7.1 — Esquema de restauraciones y piezas ⛔ P24
 - [ ] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-000001`, pieza `RES-000001-1`); RLS; auditoría; índices.
-- [ ] Restricciones: precio ≥ 0, peso ≥ 0; total = suma de precios de piezas no anuladas (trigger).
+- [ ] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
+- [ ] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
 - **Unit:** No aplica (SQL).
 - **BD:**
   - [ ] Códigos correlativos únicos.
   - [ ] Total recalculado al insertar, editar y anular piezas.
-  - [ ] RLS por rol (incluida la visibilidad de precios para logística según P30).
+  - [ ] RLS por rol; logística no puede leer precios ni montos (P42).
 - **E2E:** No aplica (sin interfaz).
 - Commit: `feat(restauraciones): agrega esquema de restauraciones y piezas`
 
@@ -602,7 +618,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Sumas sin errores de punto flotante (0.1 + 0.2).
   - [ ] Redondeo a 2 decimales.
   - [ ] Validaciones de pieza (precio requerido, peso según P22, longitudes máximas).
-  - [ ] Adelanto: requerido en "A cuenta" (≥ % mínimo), 0 en "Crédito", igual al total en "Contado".
+  - [ ] Adelanto esperado: % × total en "A cuenta" (50 % por defecto, editable), 0 en "Crédito", total en "Contado"; redondeo a céntimos.
 - **E2E:** No aplica (lógica pura).
 - Commit: `feat(restauraciones): agrega reglas de dinero y validaciones`
 
@@ -619,8 +635,8 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega creación transaccional de restauraciones`
 
 #### Paso 7.4 — Formulario de registro ⛔ P20
-- [ ] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y adelanto, notas.
-- [ ] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional según P22), descripción, medida, material, peso, servicio, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
+- [ ] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
+- [ ] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
 - [ ] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
 - **Unit:**
   - [ ] Total en vivo al agregar/quitar/editar piezas.
@@ -649,26 +665,27 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): genera mensaje de cotización para WhatsApp`
 
 #### Paso 7.6 — Detalle de restauración
-- [ ] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial.
+- [ ] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial (logística no ve montos ni las pestañas Pagos e Historial, P42).
 - **Unit:**
   - [ ] Badges por estado y ubicación.
   - [ ] Resumen de montos.
 - **E2E:**
   - [ ] El detalle muestra los datos registrados.
-  - [ ] Logística ve el detalle sin precios (según P30).
+  - [ ] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
   - [ ] `@mobile` legible sin scroll horizontal.
 - Commit: `feat(restauraciones): agrega vista de detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas ⛔ P12
 - [ ] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
-- [ ] Reglas de qué campos se pueden editar según estado y rol (p. ej., precio bloqueado tras crear la orden, según P12).
+- [ ] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio si el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza, cliente) siguen la decisión de P12 (Paso 9.2).
+- [ ] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
 - **Unit:**
-  - [ ] `editableFields(piece, role)` para cada estado.
+  - [ ] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
 - **BD:**
-  - [ ] El trigger/RPC impide editar campos bloqueados.
+  - [ ] El trigger/RPC impide editar campos bloqueados; logística no edita nada salvo fotos.
 - **E2E:**
   - [ ] Editar descripción y precio antes de aprobar.
-  - [ ] Campo bloqueado después de crear la orden.
+  - [ ] Con la orden creada: el material se puede editar y el precio sigue el flujo de P12.
   - [ ] El cambio aparece en el historial.
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
@@ -682,6 +699,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Nota obligatoria donde corresponde.
   - [ ] Taller obligatorio al enviar al taller.
   - [ ] Anulada es estado final.
+  - [ ] No hay rechazo: desde "En consulta" solo se aprueba o se anula (o pasa a "En espera", según P41).
 - **E2E:** No aplica (lógica pura).
 - Commit: `feat(piezas): agrega máquina de estados de piezas`
 
@@ -727,16 +745,16 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] El diálogo exige nota/taller cuando corresponde.
 - **E2E:**
   - [ ] Flujo feliz: Registrada → Aprobada → (llegada) Recibida → Enviada al taller → Devuelta → Entregada, verificando estado general y ubicación en cada paso.
-  - [ ] Flujo de consulta: En consulta → En espera de respuesta → Aprobada.
+  - [ ] Flujo de consulta: En consulta → Aprobada por el asesor (con o sin "En espera de respuesta", según P41).
   - [ ] Pieza que llegó antes de aprobarse pasa a Recibida al aprobarla.
   - [ ] Observada y reenvío al taller.
   - [ ] Anular todas las piezas → restauración Anulada.
-  - [ ] Cada rol solo ve las acciones que le corresponden.
+  - [ ] Cada rol solo ve las acciones que le corresponden (logística no consulta, aprueba ni anula).
   - [ ] `@mobile` cambio de estado desde el celular.
 - Commit: `feat(piezas): agrega acciones de cambio de estado en la interfaz`
 
 #### Paso 8.5 — Línea de tiempo
-- [ ] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento.
+- [ ] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento. Logística no la ve: solo el estado actual y la nota de la última observación (⛔ P42).
 - **Unit:**
   - [ ] Render de eventos y de días "en curso".
 - **E2E:**
@@ -746,7 +764,7 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 9 — Orden automática en Shopify
 
 #### Paso 9.1 — Creación de la orden al aprobar ⛔ P13
-- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea por pieza no anulada, precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`.
+- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título según P12), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
 - [ ] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
   - [ ] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
@@ -761,7 +779,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(shopify): crea orden de venta al aprobar la restauración`
 
 #### Paso 9.2 — Cambios posteriores a la orden ⛔ P12
-- [ ] Según la respuesta: anular una pieza, cambiar un precio o agregar una pieza después de crear la orden → edición de la orden vía Order Editing (encolado), o bloqueo + aviso para ajuste manual.
+- [ ] Según P12 (en discusión): anular una pieza, cambiar un precio, agregar una pieza o cambiar el cliente después de crear la orden → edición de la orden vía Order Editing (encolado), o bloqueo + aviso para ajuste manual. Siempre con motivo y en la auditoría.
 - **Unit:**
   - [ ] Cálculo del cambio (líneas a quitar o ajustar).
 - **Integración:**
@@ -770,26 +788,37 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Anular una pieza de una restauración aprobada → total y orden actualizados (o aviso, según la decisión).
 - Commit: `feat(shopify): sincroniza cambios de piezas con la orden`
 
+#### Paso 9.3 — Entregas como "Preparado" en Shopify ⛔ P44
+- [ ] Solo si P44 = sí: al pasar una pieza a "Entregada" se encola `fulfill_lines`, que marca su línea como preparada en Shopify.
+- **Unit:**
+  - [ ] Mapeo pieza → línea de la orden de preparación.
+- **Integración:**
+  - [ ] Entregar una pieza → job → línea preparada en el fake.
+- **E2E:**
+  - [ ] Entregar todas las piezas → la orden del fake queda "Preparada".
+- Commit: `feat(shopify): marca como preparadas las piezas entregadas`
+
 ### Fase 10 — Fotos y archivos
 
 #### Paso 10.1 — Storage y datos ⛔ P32
-- [ ] Bucket privado `piece-files` con rutas `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol; tabla `piece_files`; URLs firmadas de corta duración.
+- [ ] Bucket privado `restoration-files` con rutas `restorations/{id}/general/...` (foto general de todas las piezas) y `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol (logística sube y edita fotos, P42); tabla `restoration_files`; URLs firmadas de corta duración.
 - **Unit:** No aplica (políticas en SQL).
 - **BD:**
   - [ ] Un usuario sin permiso no puede leer ni subir.
   - [ ] Borrar un archivo requiere el rol acordado y elimina el objeto.
 - **E2E:** se cubre en 10.2.
-- Commit: `feat(archivos): agrega almacenamiento de archivos por pieza`
+- Commit: `feat(archivos): agrega almacenamiento de fotos por restauración y por pieza`
 
 #### Paso 10.2 — Subida y galería
 - [ ] `FileUploader`: varios archivos, cámara del celular (`capture`), compresión de imágenes en el navegador, tipos y tamaño máximos (P32), progreso y reintento.
-- [ ] Clasificación Antes / Después / Documento; galería con visor y comparación antes/después; descarga; eliminar.
+- [ ] Foto general de la restauración + fotos por pieza; clasificación Antes / Después / Documento / Otro; galería con visor y comparación antes/después; descarga; eliminar.
 - **Unit:**
   - [ ] Validación de tipo y tamaño.
   - [ ] La compresión se aplica solo a imágenes.
   - [ ] Agrupación por clasificación.
 - **E2E:**
   - [ ] Subir 2 fotos "Antes" y 1 PDF → aparecen en la galería.
+  - [ ] Logística sube la foto general y una foto "Antes" de una pieza.
   - [ ] Archivo no permitido → mensaje de error.
   - [ ] Eliminar un archivo.
   - [ ] `@mobile` subir foto.
@@ -797,39 +826,58 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 11 — Pagos
 
-#### Paso 11.1 — Esquema y estado de pago ⛔ P29
-- [ ] Tabla `payments` (única por id de transacción de Shopify); función que recalcula pagado, saldo y estado de pago de la restauración.
-- [ ] Dominio `derivePaymentStatus(total, paid)`.
+#### Paso 11.1 — Registro de pagos y estado de pago ⛔ P29
+- [ ] Tabla `payments` (registro del sistema; id de transacción de Shopify único cuando existe); función que recalcula pagado, saldo y estado de pago de la restauración.
+- [ ] Dominio `derivePaymentStatus(total, paid)` y `suggestedPayment(restoration)` (adelanto pendiente o saldo).
 - **Unit:**
   - [ ] Pendiente, Parcial y Pagado; sobrepago; reembolso total y parcial; total 0.
+  - [ ] Monto sugerido: 50 % u otro % del total, y saldo restante.
 - **BD:**
-  - [ ] Recálculo al insertar o actualizar pagos.
-  - [ ] RLS (visibilidad de logística según P30).
+  - [ ] Recálculo al insertar pagos y reembolsos.
+  - [ ] RLS: logística no lee pagos (P42); solo admin registra reembolsos.
 - **E2E:** se cubre en 11.2.
 - Commit: `feat(pagos): agrega registro de pagos y estado de pago`
 
-#### Paso 11.2 — Webhooks de pagos ⛔ N1
-- [ ] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify el resumen financiero actual de la orden** (fuente de verdad, inmune a webhooks desordenados) y hacen upsert de las transacciones.
+#### Paso 11.2 — Registrar pagos desde el sistema ⛔ P43 ⛔ P45
+- [ ] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
+- [ ] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
+- [ ] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
+- [ ] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
+- [ ] Regla de entrega con saldo pendiente según P45.
+- **Unit:**
+  - [ ] Validaciones: monto > 0 y ≤ saldo.
+  - [ ] Decisión de envío: incluir al crear la orden / pago completo / pendiente.
+- **Integración:**
+  - [ ] Aprobar con adelanto → la orden del fake queda "Parcialmente pagada".
+  - [ ] Pagar el saldo → "Pagada".
+  - [ ] Pago intermedio → queda pendiente y se envía junto con el pago que completa el saldo.
+- **E2E:**
+  - [ ] Registrar el adelanto al aprobar y el saldo antes de entregar → estado "Pagado" en el sistema y en el fake.
+  - [ ] Logística no ve el botón "Registrar pago".
+  - [ ] Entregar con saldo pendiente según P45.
+- Commit: `feat(pagos): registra pagos desde el sistema y los envía a Shopify`
+
+#### Paso 11.3 — Pagos hechos en Shopify (webhooks)
+- [ ] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
 - [ ] Las órdenes que no son de restauraciones se ignoran.
 - **Unit:**
   - [ ] Parseo de los fixtures reales del spike.
   - [ ] Mapeo transacción → pago (tipos venta/captura/reembolso; estados éxito/fallo).
 - **Integración:**
-  - [ ] Webhook de pago parcial → estado Parcial.
-  - [ ] Segundo pago → Pagado.
+  - [ ] Pago parcial hecho en el POS → estado Parcial.
+  - [ ] Un pago enviado por el sistema no se duplica al llegar su webhook.
   - [ ] Webhooks duplicados o desordenados → resultado correcto.
   - [ ] Reembolso → recalcula saldo y estado.
 - **E2E:**
-  - [ ] Con una restauración aprobada, enviar un webhook firmado de adelanto → la interfaz muestra pagado, saldo y "Parcial".
-  - [ ] Pago del saldo → "Pagado".
-- Commit: `feat(pagos): recibe pagos de Shopify mediante webhooks`
+  - [ ] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
+- Commit: `feat(pagos): recibe pagos hechos en Shopify mediante webhooks`
 
-#### Paso 11.3 — Interfaz de pagos
-- [ ] Pestaña Pagos (historial, método, fecha); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
+#### Paso 11.4 — Interfaz de pagos
+- [ ] Pestaña Pagos (historial con método, fecha, quién lo registró y estado de envío a Shopify); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
 - **Unit:**
   - [ ] Componentes de resumen e historial.
 - **E2E:**
-  - [ ] El historial de pagos es visible.
+  - [ ] El historial de pagos es visible para ventas y admin.
   - [ ] "Resincronizar pagos" actualiza los montos desde el fake.
 - Commit: `feat(pagos): muestra pagos y saldos en la interfaz`
 
@@ -850,7 +898,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega listado con filtros y búsqueda`
 
 #### Paso 12.2 — Vista de piezas (logística)
-- [ ] `/piezas`: todas las piezas con filtros por ubicación, estado, taller y días en taller (> N); acciones masivas (enviar al taller, marcar devueltas); resaltado de piezas con muchos días en taller.
+- [ ] `/piezas` (página de inicio de logística): todas las piezas con filtros por ubicación, estado, taller y días en taller (> N, ⛔ P42); acciones masivas (enviar al taller, marcar devueltas); resaltado de piezas con muchos días en taller; sin precios.
 - **Unit:**
   - [ ] Filtros y regla de resaltado.
 - **E2E:**
@@ -869,15 +917,15 @@ Objetivo: validar con llamadas reales antes de construir.
 - **E2E:** se cubre en 13.2.
 - Commit: `feat(dashboard): agrega funciones de métricas`
 
-#### Paso 13.2 — Interfaz del dashboard ⛔ P30
-- [ ] KPIs en tarjetas; gráficos (barras por estado, línea de ventas, barras de días por taller); selector de rango de fechas; accesos rápidos (piezas con más de N días en taller, restauraciones listas para entregar); visibilidad por rol.
+#### Paso 13.2 — Interfaz del dashboard
+- [ ] KPIs en tarjetas; gráficos (barras por estado, línea de ventas, barras de días por taller); selector de rango de fechas; accesos rápidos (piezas con más de N días en taller, restauraciones listas para entregar); solo admin y ventas (logística no tiene dashboard, P42).
 - **Unit:**
   - [ ] Transformación de datos para los gráficos.
   - [ ] Tarjetas con formato de soles y días.
 - **E2E:**
   - [ ] Con datos semilla, los KPIs muestran los valores esperados.
   - [ ] Cambiar el rango de fechas actualiza las métricas.
-  - [ ] Cada rol ve solo las métricas permitidas.
+  - [ ] Logística no accede al dashboard.
   - [ ] `@mobile` dashboard legible.
 - Commit: `feat(dashboard): agrega dashboard con métricas`
 
@@ -978,21 +1026,21 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 16 — Producción
 
-#### Paso 16.1 — Supabase Cloud ⛔ P40 ⛔ P05
+#### Paso 16.1 — Supabase Cloud ⛔ P05
 - [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección); buckets; `supabase link`.
 - [ ] Workflow `deploy-db.yml`: en push a `main`, `supabase db push` con aprobación manual (environment protegido).
-- [ ] Backups según el plan contratado.
+- [ ] Pasar el proyecto a Pro (backups diarios, sin pausa por inactividad).
 - Tests: la migración se valida antes en CI con `supabase db reset` + `supabase test db`.
 - Commit: `ci: agrega despliegue de migraciones a producción`
 
 #### Paso 16.2 — Vercel ⛔ P03 ⛔ P04
-- [ ] Proyecto, variables de entorno de producción, dominio, Vercel Cron para `/api/cron/shopify-sync`, previews según P03.
+- [ ] Plan Pro; variables de entorno de producción, dominio, Vercel Cron cada 5 minutos para `/api/cron/shopify-sync` (en Hobby el deploy falla con un cron de más de una vez al día), previews según P03.
 - Tests: smoke tests de 16.5.
 - Commit: `chore(deploy): configura Vercel y cron`
 
 #### Paso 16.3 — Shopify en producción
-- [ ] App en la tienda real con los scopes mínimos; token en Vercel; `pnpm shopify:register-webhooks` apuntando a producción.
-- [ ] Verificación manual con checklist (cliente de prueba, orden, pago parcial, pago total, reembolso, anulación) y limpieza de los datos de prueba.
+- [ ] App de producción en la organización de la Platería (Dev Dashboard) con los permisos mínimos; Client ID y secret en Vercel; `pnpm shopify:register-webhooks` apuntando a producción.
+- [ ] Verificación manual con checklist (cliente de prueba, orden con adelanto, pago del saldo, reembolso, anulación) y limpieza de los datos de prueba.
 - Tests: checklist manual documentado.
 - Commit: `docs(shopify): agrega checklist de puesta en producción`
 
@@ -1029,7 +1077,7 @@ Objetivo: validar con llamadas reales antes de construir.
 | H1 | 1–3 | Login por rol, gestión de usuarios, auditoría |
 | H2 | 4–7 | Clientes sincronizados con Shopify, registro de restauraciones y mensaje de WhatsApp |
 | H3 | 8–10 | Estados, ubicación, tiempos, orden automática en Shopify, fotos |
-| H4 | 11–13 | Pagos por webhook, listados, dashboard |
+| H4 | 11–13 | Pagos registrados desde el sistema y desde Shopify, listados, dashboard |
 | H5 | 14 | Cotizador con PDF |
 | H6 | 15–17 | Producción, capacitación y entrega |
 
@@ -1039,8 +1087,9 @@ Objetivo: validar con llamadas reales antes de construir.
 
 | Riesgo | Mitigación |
 |---|---|
-| Registrar pagos parciales ("A cuenta") en Shopify puede no ser directo según el canal de cobro | Validar en el spike (4.1); alternativa: registrar el pago desde el sistema vía API (`orderCreateManualPayment`) ⛔ N1 |
-| El adelanto se cobra antes de que exista la orden (la orden se crea al aprobar) | Resuelto (P10): el adelanto se da después de aprobar; confirmar con el negocio (N2) |
+| En Grow, Shopify no acepta pagos parciales por API ni en el panel (solo Plus) | El sistema lleva el registro de pagos; el adelanto va al crear la orden y el saldo como pago completo; los pagos intermedios se envían con el pago final (P43); validar en el spike |
+| Desde 2026 las apps de Shopify se crean en el Dev Dashboard y su token dura 24 h | Renovación automática del token; validar en el spike cómo se instala en la tienda de la Platería (P07) |
+| Un mismo pago registrado en el sistema y también en el POS | Conciliación por id de transacción; alerta de sobrepago |
 | Webhooks duplicados, desordenados o perdidos | Idempotencia + consulta del resumen financiero de la orden + botón "Resincronizar" |
 | Fallos de red o límites de la API de Shopify | Outbox con reintentos y estado visible en la interfaz |
 | Reglas duplicadas entre TypeScript y la BD que divergen | Test de consistencia (8.3) y fixtures compartidos |
