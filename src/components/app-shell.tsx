@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import {
@@ -10,6 +11,15 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
@@ -26,6 +36,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { findNavItem, NAV_ITEMS } from "@/lib/navigation";
+import { ROLE_LABELS, type AppRole } from "@/lib/roles";
+import { logout } from "@/server/auth-actions";
+
+export type ShellUser = { fullName: string; email: string; role: AppRole };
 
 function AppNav() {
   const pathname = usePathname();
@@ -84,7 +98,41 @@ function AppNav() {
   );
 }
 
-function AppHeader() {
+function UserMenu({ user }: { user: ShellUser }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-auto flex-col items-end gap-0 px-2 py-1"
+        >
+          <span className="text-heading text-sm font-medium">
+            {user.fullName}
+          </span>
+          <span className="text-muted-foreground text-xs">
+            {ROLE_LABELS[user.role]}
+          </span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="truncate font-normal">
+          {user.email}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <form action={logout}>
+          <DropdownMenuItem asChild>
+            <button type="submit" className="w-full">
+              <LogOut />
+              Cerrar sesión
+            </button>
+          </DropdownMenuItem>
+        </form>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function AppHeader({ user }: { user: ShellUser }) {
   const current = findNavItem(usePathname());
 
   return (
@@ -101,22 +149,25 @@ function AppHeader() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div
-        className="text-muted-foreground ml-auto text-sm"
-        data-testid="usuario-actual"
-      >
-        Usuario
+      <div className="ml-auto">
+        <UserMenu user={user} />
       </div>
     </header>
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: ShellUser;
+}) {
   return (
     <SidebarProvider>
       <AppNav />
       <SidebarInset>
-        <AppHeader />
+        <AppHeader user={user} />
         <div className="flex-1 p-4 md:p-6">{children}</div>
       </SidebarInset>
     </SidebarProvider>

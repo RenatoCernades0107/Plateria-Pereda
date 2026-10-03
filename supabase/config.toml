@@ -249,6 +249,12 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# El enlace va a /auth/confirm de la app, que abre la sesión y lleva a /restablecer-contrasena.
+# En producción, la misma plantilla se configura en el panel de Supabase (Auth → Email Templates).
+[auth.email.template.recovery]
+subject = "Restablece tu contraseña · Platería Pereda"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

@@ -47,6 +47,7 @@ export default defineConfig({
         "src/**/*.int.test.ts",
         "src/app/**/{layout,page}.tsx",
         "src/components/ui/**",
+        "src/lib/supabase/database.types.ts",
       ],
       thresholds: {
         lines: 70,

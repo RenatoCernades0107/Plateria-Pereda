@@ -368,19 +368,20 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `feat(auth): agrega perfiles, roles y políticas RLS base`
 
 #### Paso 2.2 — Login y protección de rutas ⛔ P31
-- [ ] Página `/login` (email + contraseña), logout y recuperación de contraseña.
-- [ ] Middleware/proxy de Next.js que refresca la sesión y redirige a `/login`; usuarios inactivos bloqueados.
-- [ ] Fixture de Playwright `loginAs(role)` con `storageState` por rol.
+- [x] Página `/login` (email + contraseña, con el logo), logout (cierra solo la sesión del dispositivo) y recuperación de contraseña (`/recuperar-contrasena` → correo → `/auth/confirm` → `/restablecer-contrasena`; respuesta neutra para no revelar qué emails existen).
+- [x] `src/proxy.ts` (el middleware en Next 16) que refresca la sesión, redirige a `/login?next=...` y saca del login a quien ya inició sesión; usuarios inactivos bloqueados al ingresar y expulsados si los desactivan con la sesión abierta (`requireUser` → `/auth/salir`).
+- [x] Fixture de Playwright `loginAs(role)` con `storageState` por rol (proyecto `setup` que inicia sesión una vez por rol).
 - **Unit:**
-  - [ ] Esquema zod del login.
-  - [ ] El formulario muestra errores de validación y de credenciales.
+  - [x] Esquemas zod del login, recuperar y nueva contraseña; redirección segura (`safeNextPath`) y rutas públicas.
+  - [x] El formulario muestra errores de validación y de credenciales; acciones de servidor, rutas `/auth/*` y proxy con Supabase simulado.
 - **E2E:**
-  - [ ] Login correcto con cada rol → dashboard.
-  - [ ] Credenciales incorrectas → mensaje de error.
-  - [ ] Ruta protegida sin sesión → redirige a `/login`.
-  - [ ] Logout.
-  - [ ] Usuario desactivado no puede entrar.
-  - [ ] `@mobile` login.
+  - [x] Login correcto con cada rol → dashboard.
+  - [x] Credenciales incorrectas → mensaje de error.
+  - [x] Ruta protegida sin sesión → redirige a `/login` y vuelve a la ruta tras ingresar.
+  - [x] Logout.
+  - [x] Usuario desactivado no puede entrar (ni seguir dentro si lo desactivan).
+  - [x] `@mobile` login.
+  - [x] Recuperación de contraseña completa con el correo de Mailpit; enlace inválido.
 - Commit: `feat(auth): agrega login, logout y protección de rutas`
 
 #### Paso 2.3 — Matriz de permisos
@@ -1035,7 +1036,7 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 16 — Producción
 
 #### Paso 16.1 — Supabase Cloud ⛔ P05
-- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección); buckets; `supabase link`.
+- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección, plantilla de recuperación de `supabase/templates/recovery.html`); buckets; `supabase link`.
 - [ ] Workflow `deploy-db.yml`: en push a `main`, `supabase db push` con aprobación manual (environment protegido).
 - [ ] Pasar el proyecto a Pro (backups diarios, sin pausa por inactividad).
 - Tests: la migración se valida antes en CI con `supabase db reset` + `supabase test db`.

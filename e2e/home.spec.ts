@@ -1,10 +1,12 @@
 import { expect, test } from "./fixtures";
 
 test.describe("Página inicial", () => {
-  test("redirige al dashboard sin violaciones graves de accesibilidad @smoke @mobile", async ({
+  test("con sesión redirige al dashboard sin violaciones graves de accesibilidad @smoke @mobile", async ({
     page,
+    loginAs,
     makeAxeBuilder,
   }) => {
+    await loginAs("admin");
     await page.goto("/");
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(
