@@ -7,7 +7,9 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-6 space-y-1">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-heading text-2xl font-semibold tracking-tight">
+        {title}
+      </h1>
       {description ? (
         <p className="text-muted-foreground text-sm">{description}</p>
       ) : null}

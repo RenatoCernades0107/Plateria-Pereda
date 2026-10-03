@@ -278,7 +278,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - [ ] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
 - [ ] Pedir a la Platería que cree la app de producción en el Dev Dashboard de su organización (o que le dé acceso al desarrollador para crearla), con los permisos mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products`, `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders` (P44).
 - [ ] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
-- [ ] Logo en alta resolución (SVG/PNG) y colores de marca.
+- [x] Logo (PNG, en `public/`) y colores de marca. Pendiente: logo en SVG para el PDF de cotizaciones.
 - Tests: No aplica (configuración de cuentas).
 
 ### Fase 1 — Fundaciones
@@ -309,7 +309,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 
 #### Paso 1.4 — shadcn/ui, tema y layout base
 - [x] Tailwind + shadcn (estilo new-york para Tailwind 4, `components.json`); componentes base: button, input, form, card, badge, dialog, sheet, sidebar, table, dropdown-menu, command, popover, select, tabs, sonner, skeleton, calendar, chart (+ label, separator, tooltip, breadcrumb, avatar). Como ui.shadcn.com está bloqueado en el entorno de desarrollo, se copiaron desde el repositorio oficial de shadcn en GitHub. Código de terceros: fuera de la cobertura de tests.
-- [x] Tema (paleta neutra de shadcn; se cambia a los colores de la marca cuando llegue el logo, Paso 0.2), tipografía Geist, formato de soles y fechas `es-PE`.
+- [x] Tema con los colores de plateriapereda.com (beige #eae4e0, terracota #a47668, granate #530000, texto #444444/#222222; botones en #946557 para contraste AA), logo en el menú e ícono de la pestaña, tipografía Geist, formato de soles y fechas `es-PE`.
 - [x] `AppShell`: sidebar en desktop / menú en `Sheet` en celular, header con usuario (texto fijo hasta el Paso 2.2), breadcrumbs; páginas vacías de cada módulo; `/` redirige a `/dashboard`.
 - [x] Utilidades `formatMoney`, `formatDate` y `formatDateTime` en `src/lib/format.ts`.
 - **Unit:**

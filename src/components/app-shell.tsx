@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -34,9 +35,28 @@ function AppNav() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <span className="truncate px-2 py-1 text-base font-semibold">
-          Platería Pereda
-        </span>
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-3 rounded-md px-1 py-2"
+          onClick={() => setOpenMobile(false)}
+        >
+          <Image
+            src="/logo-simbolo.png"
+            alt=""
+            width={32}
+            height={31}
+            className="shrink-0"
+            priority
+          />
+          <span className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="text-heading text-base font-semibold tracking-[0.2em]">
+              PEREDA
+            </span>
+            <span className="text-muted-foreground text-xs">
+              Platería · Joyería
+            </span>
+          </span>
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
