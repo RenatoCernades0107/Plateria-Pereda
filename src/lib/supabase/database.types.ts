@@ -120,6 +120,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      workshops: {
+        Row: {
+          active: boolean;
+          address: string;
+          contact_name: string;
+          created_at: string;
+          id: string;
+          name: string;
+          notes: string;
+          phone: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          address?: string;
+          contact_name?: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          notes?: string;
+          phone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          address?: string;
+          contact_name?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

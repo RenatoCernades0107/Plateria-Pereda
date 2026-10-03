@@ -517,17 +517,18 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(configuracion): agrega configuración de la empresa`
 
 #### Paso 5.2 — Talleres
-- [ ] CRUD de talleres (nombre, contacto, teléfono, dirección, notas, activo). Los inactivos no se pueden asignar pero se conservan en el historial. Auditoría activa.
+- [x] CRUD de talleres (nombre, contacto, teléfono, dirección, notas, activo). Los inactivos no se pueden asignar pero se conservan en el historial. Auditoría activa.
 - **Unit:**
-  - [ ] Esquema zod y formulario.
+  - [x] Esquema zod y formulario.
 - **BD:**
-  - [ ] RLS según la matriz de permisos.
-  - [ ] Nombre único sin distinguir mayúsculas.
-  - [ ] No se puede borrar un taller con piezas (solo desactivar).
+  - [x] RLS según la matriz de permisos.
+  - [x] Nombre único sin distinguir mayúsculas.
+  - [x] No se puede borrar un taller con piezas (solo desactivar).
 - **E2E:**
-  - [ ] Crear, editar y desactivar un taller.
-  - [ ] Nombre duplicado muestra error.
-  - [ ] `@mobile` crear taller.
+  - [x] Crear, editar y desactivar un taller.
+  - [x] Nombre duplicado muestra error.
+  - [x] `@mobile` crear taller.
+- Hecho: tabla `workshops` (nombre único sin distinguir mayúsculas ni espacios, auditada). Todos los usuarios activos la leen (ventas asigna talleres); admin y logística crean y editan; nadie borra, solo se desactiva. La regla "no se borra un taller con piezas" queda cubierta porque no se borra ninguno; en 7.1 la FK de piezas usa `on delete restrict`. El historial ahora omite también los textos vacíos al crear (migración `auditoria_omite_vacios`).
 - Commit: `feat(talleres): agrega gestión de talleres`
 
 #### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago

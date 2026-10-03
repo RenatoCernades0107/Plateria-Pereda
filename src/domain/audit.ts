@@ -31,6 +31,20 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       },
     },
   },
+  workshops: {
+    label: "Taller",
+    fields: {
+      name: { label: "Nombre" },
+      contact_name: { label: "Contacto" },
+      phone: { label: "Teléfono" },
+      address: { label: "Dirección" },
+      notes: { label: "Notas" },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+    },
+  },
   settings: {
     label: "Configuración",
     fields: {
