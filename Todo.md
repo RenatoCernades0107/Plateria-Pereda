@@ -353,15 +353,17 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 2 — Autenticación, usuarios y roles
 
 #### Paso 2.1 — Perfiles y roles en BD
-- [ ] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users`.
-- [ ] Funciones `current_app_role()` y `has_role(roles[])` (`security definer`, `search_path` fijo).
-- [ ] RLS: cada usuario lee su perfil; admin lee y edita todos.
-- [ ] Seed: un usuario de prueba por rol.
+- [x] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users` (rol desde `app_metadata`, que solo escribe el servidor; sin rol válido queda como logística).
+- [x] Funciones `private.current_app_role()` y `private.has_role(roles[])` (`security definer`, `search_path` fijo; solo `authenticated` puede ejecutarlas).
+- [x] RLS: cada usuario lee su perfil; admin lee y edita todos.
+- [x] Seed: un usuario de prueba por rol (contraseña `Pereda-local-2026`).
 - **Unit:** No aplica (lógica en SQL).
 - **BD:**
-  - [ ] El trigger crea el perfil.
-  - [ ] `has_role` devuelve lo correcto por rol; un usuario inactivo no pasa `has_role`.
-  - [ ] Ventas/logística no leen ni editan perfiles ajenos ni cambian su propio rol; admin sí.
+  - [x] El trigger crea el perfil.
+  - [x] `has_role` devuelve lo correcto por rol; un usuario inactivo no pasa `has_role`.
+  - [x] Ventas/logística no leen ni editan perfiles ajenos ni cambian su propio rol; admin sí. Un anónimo no lee perfiles.
+- **Integración:**
+  - [x] Los usuarios semilla inician sesión y ven solo los perfiles permitidos (protege contra apagar el login por email en `config.toml`).
 - **E2E:** No aplica (sin interfaz).
 - Commit: `feat(auth): agrega perfiles, roles y políticas RLS base`
 

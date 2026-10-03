@@ -25,6 +25,14 @@ pnpm dev          # http://localhost:3000
 
 `.env.local` no se sube al repositorio. Las variables están documentadas en [`.env.example`](./.env.example); la app valida todas al arrancar y, si falta alguna, muestra cuáles en la consola.
 
+Usuarios de prueba (creados por `supabase/seed.sql`, solo en local), todos con la contraseña `Pereda-local-2026`:
+
+| Email                   | Rol           |
+| ----------------------- | ------------- |
+| `admin@pereda.test`     | Administrador |
+| `ventas@pereda.test`    | Ventas        |
+| `logistica@pereda.test` | Logística     |
+
 Servicios locales:
 
 | Servicio                         | URL                                                       |
