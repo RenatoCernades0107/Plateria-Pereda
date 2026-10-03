@@ -31,6 +31,21 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       },
     },
   },
+  settings: {
+    label: "Configuración",
+    fields: {
+      legal_name: { label: "Razón social" },
+      ruc: { label: "RUC" },
+      address: { label: "Dirección" },
+      phones: { label: "Teléfonos" },
+      email: { label: "Email" },
+      logo_path: { label: "Logo" },
+      quote_validity_days: { label: "Vigencia de cotizaciones (días)" },
+      deposit_percent: { label: "Adelanto por defecto (%)" },
+      whatsapp_template: { label: "Plantilla de WhatsApp" },
+      terms: { label: "Términos y condiciones" },
+    },
+  },
 };
 
 export const SYSTEM_ACTOR = "Sistema";

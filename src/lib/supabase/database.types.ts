@@ -72,6 +72,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      settings: {
+        Row: {
+          address: string;
+          created_at: string;
+          deposit_percent: number;
+          email: string;
+          id: boolean;
+          legal_name: string;
+          logo_path: string | null;
+          phones: string;
+          quote_validity_days: number;
+          ruc: string | null;
+          terms: string;
+          updated_at: string;
+          whatsapp_template: string | null;
+        };
+        Insert: {
+          address?: string;
+          created_at?: string;
+          deposit_percent?: number;
+          email?: string;
+          id?: boolean;
+          legal_name?: string;
+          logo_path?: string | null;
+          phones?: string;
+          quote_validity_days?: number;
+          ruc?: string | null;
+          terms?: string;
+          updated_at?: string;
+          whatsapp_template?: string | null;
+        };
+        Update: {
+          address?: string;
+          created_at?: string;
+          deposit_percent?: number;
+          email?: string;
+          id?: boolean;
+          legal_name?: string;
+          logo_path?: string | null;
+          phones?: string;
+          quote_validity_days?: number;
+          ruc?: string | null;
+          terms?: string;
+          updated_at?: string;
+          whatsapp_template?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

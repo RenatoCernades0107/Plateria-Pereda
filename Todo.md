@@ -505,14 +505,15 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 5 — Configuración y catálogos
 
 #### Paso 5.1 — Configuración de la empresa
-- [ ] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % de adelanto por defecto (50 %).
+- [x] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % de adelanto por defecto (50 %).
 - **Unit:**
-  - [ ] Esquema zod (RUC válido, días > 0, % entre 1 y 100).
+  - [x] Esquema zod (RUC válido, días > 0, % entre 1 y 100).
 - **BD:**
-  - [ ] Solo admin edita; todos los usuarios autenticados leen.
+  - [x] Solo admin edita; todos los usuarios autenticados leen.
 - **E2E:**
-  - [ ] Admin cambia la vigencia por defecto y sube el logo → persiste al recargar.
-  - [ ] Ventas no accede a `/configuracion`.
+  - [x] Admin cambia la vigencia por defecto y sube el logo → persiste al recargar.
+  - [x] Ventas no accede a `/configuracion`.
+- Hecho: tabla `settings` de una sola fila (auditada); RUC con dígito verificador (`src/domain/ruc.ts`); plantilla de WhatsApp con variables validadas (`src/domain/whatsapp-template.ts`, vacía = la de la aplicación, con botón "Restaurar mensaje original"); el logo se sube desde el navegador al bucket público `branding` (PNG/JPG/WebP, 2 MB, solo admin escribe) y una Server Action guarda la ruta y borra el anterior. `getSettings()` en `src/server/settings.ts` para los módulos siguientes.
 - Commit: `feat(configuracion): agrega configuración de la empresa`
 
 #### Paso 5.2 — Talleres
