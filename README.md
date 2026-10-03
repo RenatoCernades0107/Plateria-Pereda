@@ -45,25 +45,26 @@ Servicios locales:
 
 ## Comandos
 
-| Comando                                   | Qué hace                                                                  |
-| ----------------------------------------- | ------------------------------------------------------------------------- |
-| `pnpm dev`                                | Servidor de desarrollo                                                    |
-| `pnpm build` / `pnpm start`               | Compilación y servidor de producción                                      |
-| `pnpm lint`                               | ESLint                                                                    |
-| `pnpm typecheck`                          | Tipos de rutas de Next + TypeScript                                       |
-| `pnpm format` / `pnpm format:check`       | Prettier (escribe / solo revisa)                                          |
-| `pnpm test`                               | Tests unitarios (Vitest)                                                  |
-| `pnpm test:watch`                         | Tests unitarios en modo observación                                       |
-| `pnpm test:coverage`                      | Tests unitarios con cobertura (mínimo 70 % global y 90 % en `src/domain`) |
-| `pnpm test:int`                           | Tests de integración contra Supabase local                                |
-| `pnpm test:e2e`                           | Tests E2E (Playwright, escritorio y celular)                              |
-| `pnpm test:e2e:ui`                        | Tests E2E con la interfaz de Playwright                                   |
-| `pnpm db:start` / `db:stop` / `db:status` | Levantar, detener o ver Supabase local                                    |
-| `pnpm db:reset`                           | Recrea la BD local aplicando migraciones y `supabase/seed.sql`            |
-| `pnpm db:test`                            | Tests de BD (pgTAP, `supabase/tests`)                                     |
-| `pnpm db:lint`                            | Revisa las funciones SQL                                                  |
-| `pnpm db:types`                           | Regenera `src/lib/supabase/database.types.ts` desde la BD local           |
-| `pnpm env:local`                          | Crea o actualiza `.env.local` con los datos de Supabase local             |
+| Comando                                   | Qué hace                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `pnpm dev`                                | Servidor de desarrollo                                                                     |
+| `pnpm build` / `pnpm start`               | Compilación y servidor de producción                                                       |
+| `pnpm lint`                               | ESLint                                                                                     |
+| `pnpm typecheck`                          | Tipos de rutas de Next + TypeScript                                                        |
+| `pnpm format` / `pnpm format:check`       | Prettier (escribe / solo revisa)                                                           |
+| `pnpm test`                               | Tests unitarios (Vitest)                                                                   |
+| `pnpm test:watch`                         | Tests unitarios en modo observación                                                        |
+| `pnpm test:coverage`                      | Tests unitarios con cobertura (mínimo 70 % global y 90 % en `src/domain`)                  |
+| `pnpm test:int`                           | Tests de integración contra Supabase local                                                 |
+| `pnpm test:e2e`                           | Tests E2E (Playwright, escritorio y celular)                                               |
+| `pnpm test:e2e:ui`                        | Tests E2E con la interfaz de Playwright                                                    |
+| `pnpm db:start` / `db:stop` / `db:status` | Levantar, detener o ver Supabase local                                                     |
+| `pnpm db:reset`                           | Recrea la BD local aplicando migraciones y `supabase/seed.sql`                             |
+| `pnpm db:test`                            | Tests de BD (pgTAP, `supabase/tests`)                                                      |
+| `pnpm db:lint`                            | Revisa las funciones SQL                                                                   |
+| `pnpm db:types`                           | Regenera `src/lib/supabase/database.types.ts` desde la BD local                            |
+| `pnpm env:local`                          | Crea o actualiza `.env.local` con los datos de Supabase local y un `CRON_SECRET`           |
+| `pnpm shopify:sync`                       | Procesa el outbox de Shopify (con `pnpm dev` corriendo; en producción lo hace Vercel Cron) |
 
 ## Estructura
 

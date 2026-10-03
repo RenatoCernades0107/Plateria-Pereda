@@ -195,6 +195,66 @@ export type Database = {
         };
         Relationships: [];
       };
+      shopify_sync_jobs: {
+        Row: {
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          entity_id: string;
+          entity_table: string;
+          id: number;
+          idempotency_key: string | null;
+          kind: string;
+          last_error: string | null;
+          locked_at: string | null;
+          max_attempts: number;
+          next_attempt_at: string;
+          payload: NonNullable<Json>;
+          result: Json | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          entity_id: string;
+          entity_table: string;
+          id?: never;
+          idempotency_key?: string | null;
+          kind: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          payload?: NonNullable<Json>;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          entity_id?: string;
+          entity_table?: string;
+          id?: never;
+          idempotency_key?: string | null;
+          kind?: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          payload?: NonNullable<Json>;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       shopify_tokens: {
         Row: {
           access_token: string;
@@ -257,7 +317,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      claim_shopify_jobs: {
+        Args: { p_limit?: number; p_lock_timeout?: string };
+        Returns: {
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          entity_id: string;
+          entity_table: string;
+          id: number;
+          idempotency_key: string | null;
+          kind: string;
+          last_error: string | null;
+          locked_at: string | null;
+          max_attempts: number;
+          next_attempt_at: string;
+          payload: NonNullable<Json>;
+          result: Json | null;
+          status: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "shopify_sync_jobs";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
     };
     Enums: {
       app_role: "admin" | "ventas" | "logistica";

@@ -472,20 +472,21 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(shopify): agrega puerto ShopifyGateway con adaptadores live y fake`
 
 #### Paso 4.3 — Outbox de sincronización
-- [ ] Tabla `shopify_sync_jobs` + función SQL para encolar (la usan triggers y RPCs).
-- [ ] Procesador idempotente con bloqueo (`FOR UPDATE SKIP LOCKED`), reintentos con backoff y máximo de intentos.
-- [ ] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada 5 minutos por Vercel Cron en producción (requiere Pro; se activa en 16.2) y con el script `pnpm shopify:sync` en local.
-- [ ] Componente `SyncStatus` (Sincronizado / Pendiente / Error + botón "Reintentar").
+- [x] Tabla `shopify_sync_jobs` + función SQL para encolar (la usan triggers y RPCs).
+- [x] Procesador idempotente con bloqueo (`FOR UPDATE SKIP LOCKED`), reintentos con backoff y máximo de intentos.
+- [x] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada 5 minutos por Vercel Cron en producción (requiere Pro; se activa en 16.2) y con el script `pnpm shopify:sync` en local.
+- [x] Componente `SyncStatus` (Sincronizado / Pendiente / Error + botón "Reintentar").
 - **Unit:**
-  - [ ] Cálculo del backoff.
-  - [ ] El procesador marca `ok`/`error` y respeta el máximo de intentos (gateway simulado).
-  - [ ] El endpoint de cron rechaza peticiones sin el secreto.
+  - [x] Cálculo del backoff.
+  - [x] El procesador marca `ok`/`error` y respeta el máximo de intentos (gateway simulado).
+  - [x] El endpoint de cron rechaza peticiones sin el secreto.
 - **BD:**
-  - [ ] Dos procesadores concurrentes no toman el mismo job.
-  - [ ] Solo admin y el servidor ven los jobs.
+  - [x] Dos procesadores concurrentes no toman el mismo job.
+  - [x] Solo admin y el servidor ven los jobs.
 - **Integración:**
-  - [ ] Job pendiente → procesado con el fake → estado `ok`.
+  - [x] Job pendiente → procesado con el fake → estado `ok`.
 - **E2E:** se cubre en 6.2 (error forzado → "Reintentar" → sincronizado).
+- Hecho: tabla `shopify_sync_jobs` (solo admin la lee) con `private.enqueue_shopify_job()` (clave de idempotencia) y `claim_shopify_jobs()` (solo clave secreta, `FOR UPDATE SKIP LOCKED`, retoma jobs abandonados). Procesador en `src/server/shopify-sync/` con backoff de 30 s a 1 h y máximo de intentos; los errores de datos o credenciales quedan en error de inmediato. Cada módulo registra su handler en `shopifyJobHandlers`. `scheduleShopifySync()` procesa con `after()`; `/api/cron/shopify-sync` exige `Authorization: Bearer CRON_SECRET` (comparación en tiempo constante); `pnpm env:local` genera un `CRON_SECRET` local. `SyncStatus` muestra el estado con "Reintentar" (ventas y admin). El Vercel Cron se agrega en 16.2 (requiere Pro).
 - Commit: `feat(shopify): agrega outbox de sincronización con reintentos`
 
 #### Paso 4.4 — Endpoint de webhooks
