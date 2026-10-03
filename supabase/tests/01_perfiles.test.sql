@@ -1,6 +1,6 @@
 begin;
 
-select plan(19);
+select plan(21);
 
 -- Usuarios de prueba (el trigger de auth.users crea sus perfiles).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
@@ -37,6 +37,18 @@ select is(
 select ok(
   (select active from public.profiles where id = '00000000-0000-0000-0000-0000000000a1'),
   'el perfil se crea activo'
+);
+
+select is(
+  (select email from public.profiles where id = '00000000-0000-0000-0000-0000000000a1'),
+  'admin@prueba.test',
+  'el perfil guarda el email del usuario'
+);
+update auth.users set email = 'nuevo-admin@prueba.test' where id = '00000000-0000-0000-0000-0000000000a1';
+select is(
+  (select email from public.profiles where id = '00000000-0000-0000-0000-0000000000a1'),
+  'nuevo-admin@prueba.test',
+  'si cambia el email del usuario, cambia en el perfil'
 );
 
 -- Rol guardado después de crear el usuario (como hace la API de administración)

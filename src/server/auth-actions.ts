@@ -88,5 +88,5 @@ export async function resetPassword(
           : "No se pudo cambiar la contraseña. Pide un nuevo enlace.",
     };
   }
-  redirect("/dashboard");
+  redirect("/");
 }

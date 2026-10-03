@@ -396,16 +396,16 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `feat(auth): agrega matriz de permisos por rol`
 
 #### Paso 2.4 — Gestión de usuarios (admin)
-- [ ] Listado de usuarios; invitar/crear (API de admin con clave secreta, solo servidor); cambiar rol; activar/desactivar; reenviar acceso.
+- [x] Listado de usuarios (tabla en escritorio, tarjetas en celular); invitar/crear (API de admin con clave secreta, solo servidor; correo de invitación con plantilla propia → crea su contraseña); cambiar rol; activar/desactivar (un admin no puede cambiarse el rol ni desactivarse); reenviar acceso. El email se copia a `profiles` para listar sin consultar Auth.
 - **Unit:**
-  - [ ] Esquema zod del usuario.
-  - [ ] La acción rechaza a quien no es admin (dependencias simuladas).
+  - [x] Esquema zod del usuario.
+  - [x] Las acciones rechazan a quien no es admin y al propio admin sobre sí mismo (dependencias simuladas).
 - **Integración:**
-  - [ ] Crear usuario crea su perfil con el rol correcto.
+  - [x] Crear usuario crea su perfil con el rol y el email correctos.
 - **E2E:**
-  - [ ] Admin crea un usuario de logística → ese usuario inicia sesión (vía Mailpit o contraseña temporal).
-  - [ ] Admin desactiva un usuario → ya no puede entrar.
-  - [ ] Ventas no accede a `/usuarios`.
+  - [x] Admin crea un usuario de logística → recibe la invitación en Mailpit, crea su contraseña y entra a `/piezas`.
+  - [x] Admin cambia el rol y desactiva un usuario → ya no puede entrar. Reenviar acceso envía el correo.
+  - [x] Ventas no accede a `/usuarios` (en permisos). `@mobile` vista de tarjetas.
 - Commit: `feat(usuarios): agrega gestión de usuarios para administradores`
 
 ### Fase 3 — Auditoría
@@ -1036,7 +1036,7 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 16 — Producción
 
 #### Paso 16.1 — Supabase Cloud ⛔ P05
-- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección, plantilla de recuperación de `supabase/templates/recovery.html`); buckets; `supabase link`.
+- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección, plantillas de `supabase/templates/` para recuperación e invitación); buckets; `supabase link`.
 - [ ] Workflow `deploy-db.yml`: en push a `main`, `supabase db push` con aprobación manual (environment protegido).
 - [ ] Pasar el proyecto a Pro (backups diarios, sin pausa por inactividad).
 - Tests: la migración se valida antes en CI con `supabase db reset` + `supabase test db`.

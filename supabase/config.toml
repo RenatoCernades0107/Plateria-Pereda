@@ -255,10 +255,10 @@ otp_expiry = 3600
 subject = "Restablece tu contraseña · Platería Pereda"
 content_path = "./supabase/templates/recovery.html"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.invite]
+subject = "Tu acceso al sistema de Platería Pereda"
+content_path = "./supabase/templates/invite.html"
+
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

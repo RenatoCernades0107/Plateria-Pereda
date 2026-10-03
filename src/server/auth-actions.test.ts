@@ -138,7 +138,7 @@ describe("acciones de autenticación", () => {
     };
 
     it("guarda la contraseña y entra al sistema", async () => {
-      await expect(resetPassword(datos)).rejects.toThrow("REDIRECT:/dashboard");
+      await expect(resetPassword(datos)).rejects.toThrow("REDIRECT:/");
       expect(mocks.supabase.auth.updateUser).toHaveBeenCalledWith({
         password: "Clave-nueva-1",
       });
