@@ -16,13 +16,16 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => mocks.redirect(url),
+  forbidden: () => {
+    throw new Error("FORBIDDEN");
+  },
 }));
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
   cache: <T>(fn: T) => fn,
 }));
 
-const { getAuthState, requireUser } = await import("./auth");
+const { getAuthState, requirePermission, requireUser } = await import("./auth");
 
 describe("sesión del usuario", () => {
   beforeEach(() => {
@@ -61,6 +64,21 @@ describe("sesión del usuario", () => {
       email: "ventas@pereda.test",
       fullName: "Vera Ventas",
       role: "ventas",
+    });
+  });
+
+  it("requirePermission responde 403 si el rol no tiene el permiso", async () => {
+    mocks.supabase = fakeSupabase({
+      user: { id: "u1", email: "logistica@pereda.test" },
+      profile: { full_name: "Lola", role: "logistica", active: true },
+    });
+    await expect(requirePermission("dashboard.ver")).rejects.toThrow(
+      "FORBIDDEN",
+    );
+    await expect(
+      requirePermission("restauraciones.ver"),
+    ).resolves.toMatchObject({
+      role: "logistica",
     });
   });
 });

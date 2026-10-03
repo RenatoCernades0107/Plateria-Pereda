@@ -353,7 +353,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 2 — Autenticación, usuarios y roles
 
 #### Paso 2.1 — Perfiles y roles en BD
-- [x] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users` (rol desde `app_metadata`, que solo escribe el servidor; sin rol válido queda como logística).
+- [x] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users` (rol desde `app_metadata`, que solo escribe el servidor; sin rol válido queda como logística). Un segundo trigger aplica el rol cuando `app_metadata` cambia después, que es como lo guarda la API de administración de Supabase.
 - [x] Funciones `private.current_app_role()` y `private.has_role(roles[])` (`security definer`, `search_path` fijo; solo `authenticated` puede ejecutarlas).
 - [x] RLS: cada usuario lee su perfil; admin lee y edita todos.
 - [x] Seed: un usuario de prueba por rol (contraseña `Pereda-local-2026`).
@@ -385,14 +385,14 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `feat(auth): agrega login, logout y protección de rutas`
 
 #### Paso 2.3 — Matriz de permisos
-- [ ] `src/domain/permissions.ts`: `can(role, action)` según la matriz acordada.
-- [ ] Helpers de servidor `requireUser()` / `requirePermission()` para Server Actions y páginas; el menú filtra módulos por rol.
+- [x] `src/domain/permissions.ts`: `can(role, permiso)` según la matriz acordada (P42) y `homePathFor(role)` (logística entra a `/piezas`).
+- [x] Helpers de servidor `requireUser()` / `requirePermission()` para Server Actions y páginas (sin permiso responde 403 con `forbidden()`, que requiere `experimental.authInterrupts`); el menú filtra módulos por rol; la raíz redirige a la pantalla de inicio de cada rol.
 - **Unit:**
-  - [ ] Test de tabla que recorre **toda** la matriz rol × acción.
-  - [ ] `requirePermission` lanza error de acceso denegado.
+  - [x] Test de tabla que recorre **toda** la matriz rol × acción contra una copia independiente de la matriz.
+  - [x] `requirePermission` responde 403 sin el permiso.
 - **E2E:**
-  - [ ] Logística no ve "Dashboard", "Usuarios", "Configuración", "Cotizaciones" ni "Auditoría" en el menú, recibe 403 al entrar por URL y al iniciar sesión entra directo a `/piezas`.
-  - [ ] Admin ve todos los módulos.
+  - [x] Logística no ve "Dashboard", "Usuarios", "Configuración", "Cotizaciones" ni "Auditoría" en el menú, recibe 403 al entrar por URL y al iniciar sesión entra directo a `/piezas`. Ventas tampoco entra a la administración.
+  - [x] Admin ve todos los módulos.
 - Commit: `feat(auth): agrega matriz de permisos por rol`
 
 #### Paso 2.4 — Gestión de usuarios (admin)

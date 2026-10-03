@@ -9,7 +9,7 @@ for (const role of Object.keys(SEED_USERS) as AppRole[]) {
     await page.getByLabel("Email").fill(SEED_USERS[role].email);
     await page.getByLabel("Contraseña").fill(SEED_PASSWORD);
     await page.getByRole("button", { name: "Ingresar" }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(new RegExp(`${SEED_USERS[role].home}$`));
     await page.context().storageState({ path: storageStatePath(role) });
   });
 }

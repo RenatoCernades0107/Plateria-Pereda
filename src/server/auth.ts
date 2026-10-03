@@ -1,8 +1,9 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
+import { forbidden, redirect } from "next/navigation";
 import { cache } from "react";
 
+import { can, type Permission } from "@/domain/permissions";
 import type { AppRole } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,4 +50,13 @@ export async function requireUser(): Promise<CurrentUser> {
   if (state.status === "anonimo") redirect("/login");
   if (state.status === "inactivo") redirect("/auth/salir?motivo=inactivo");
   return state.user;
+}
+
+/** Usuario con el permiso indicado; si no lo tiene, responde 403. */
+export async function requirePermission(
+  permission: Permission,
+): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (!can(user.role, permission)) forbidden();
+  return user;
 }

@@ -45,10 +45,10 @@ describe("proxy", () => {
     expect(res.headers.get("location")).toBe("http://localhost:3000/login");
   });
 
-  it("con sesión, el login lleva al dashboard", async () => {
+  it("con sesión, el login lleva a la raíz", async () => {
     session.isAuthenticated = true;
     const res = await proxy(request("/login"));
-    expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
+    expect(res.headers.get("location")).toBe("http://localhost:3000/");
   });
 
   it("con sesión deja pasar las rutas protegidas", async () => {

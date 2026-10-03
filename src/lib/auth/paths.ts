@@ -12,7 +12,8 @@ export function isPublicPath(pathname: string): boolean {
   );
 }
 
-export const DEFAULT_PATH = "/dashboard";
+/** La raíz redirige a la pantalla de inicio de cada rol (ver `homePathFor`). */
+export const DEFAULT_PATH = "/";
 
 /** Solo permite volver a rutas internas: evita redirigir a otros sitios (open redirect). */
 export function safeNextPath(next: string | null | undefined): string {

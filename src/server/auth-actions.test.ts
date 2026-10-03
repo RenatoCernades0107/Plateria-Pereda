@@ -48,7 +48,7 @@ describe("acciones de autenticación", () => {
       );
       await expect(
         login(credenciales, "https://malicioso.com"),
-      ).rejects.toThrow("REDIRECT:/dashboard");
+      ).rejects.toThrow("REDIRECT:/");
     });
 
     it("traduce las credenciales incorrectas", async () => {

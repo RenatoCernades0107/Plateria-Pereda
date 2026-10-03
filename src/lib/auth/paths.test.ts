@@ -24,11 +24,11 @@ describe("safeNextPath", () => {
     );
   });
 
-  it("usa el dashboard si no hay destino o no es interno", () => {
-    expect(safeNextPath(null)).toBe("/dashboard");
-    expect(safeNextPath("")).toBe("/dashboard");
-    expect(safeNextPath("https://otro-sitio.com")).toBe("/dashboard");
-    expect(safeNextPath("//otro-sitio.com")).toBe("/dashboard");
-    expect(safeNextPath("/\\otro-sitio.com")).toBe("/dashboard");
+  it("usa la raíz si no hay destino o no es interno", () => {
+    expect(safeNextPath(null)).toBe("/");
+    expect(safeNextPath("")).toBe("/");
+    expect(safeNextPath("https://otro-sitio.com")).toBe("/");
+    expect(safeNextPath("//otro-sitio.com")).toBe("/");
+    expect(safeNextPath("/\\otro-sitio.com")).toBe("/");
   });
 });

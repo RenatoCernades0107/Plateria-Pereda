@@ -18,10 +18,12 @@ async function login(
 
 test.describe("Inicio de sesión", () => {
   for (const [role, user] of Object.entries(SEED_USERS)) {
-    test(`${role} inicia sesión y llega al dashboard`, async ({ page }) => {
+    test(`${role} inicia sesión y llega a su pantalla de inicio`, async ({
+      page,
+    }) => {
       await page.goto("/login");
       await login(page, user.email, SEED_PASSWORD);
-      await expect(page).toHaveURL(/\/dashboard$/);
+      await expect(page).toHaveURL(new RegExp(`${user.home}$`));
       await expect(
         page.getByRole("button", { name: new RegExp(user.fullName) }),
       ).toBeVisible();
@@ -64,7 +66,7 @@ test.describe("Inicio de sesión", () => {
   }) => {
     await page.goto("/login");
     await login(page, SEED_USERS.logistica.email, SEED_PASSWORD);
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/piezas$/);
 
     await page.getByRole("button", { name: /Logística de prueba/ }).click();
     await page.getByRole("menuitem", { name: "Cerrar sesión" }).click();

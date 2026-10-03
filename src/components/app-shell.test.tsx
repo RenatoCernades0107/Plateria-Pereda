@@ -17,13 +17,21 @@ const user = {
 };
 
 describe("AppShell", () => {
-  it("renderiza un enlace por cada módulo", () => {
-    render(<AppShell user={user}>contenido</AppShell>);
+  it.each([
+    ["admin", NAV_ITEMS.map((i) => i.title)],
+    [
+      "ventas",
+      ["Dashboard", "Restauraciones", "Piezas", "Clientes", "Cotizaciones"],
+    ],
+    ["logistica", ["Restauraciones", "Piezas", "Clientes", "Talleres"]],
+  ] as const)("muestra a %s solo los módulos permitidos", (role, visibles) => {
+    render(<AppShell user={{ ...user, role }}>contenido</AppShell>);
     const nav = screen.getByRole("list", { name: "Navegación principal" });
-    for (const item of NAV_ITEMS) {
-      expect(
-        within(nav).getByRole("link", { name: item.title }),
-      ).toHaveAttribute("href", item.href);
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual(visibles);
+    for (const link of links) {
+      const item = NAV_ITEMS.find((i) => i.title === link.textContent);
+      expect(link).toHaveAttribute("href", item?.href);
     }
   });
 

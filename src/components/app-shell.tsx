@@ -35,22 +35,24 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { can } from "@/domain/permissions";
 import { findNavItem, NAV_ITEMS } from "@/lib/navigation";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { logout } from "@/server/auth-actions";
 
 export type ShellUser = { fullName: string; email: string; role: AppRole };
 
-function AppNav() {
+function AppNav({ role }: { role: AppRole }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const current = findNavItem(pathname);
+  const items = NAV_ITEMS.filter((item) => can(role, item.permission));
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <Link
-          href="/dashboard"
+          href="/"
           className="flex items-center gap-3 rounded-md px-1 py-2"
           onClick={() => setOpenMobile(false)}
         >
@@ -76,7 +78,7 @@ function AppNav() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu aria-label="Navegación principal">
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
@@ -165,7 +167,7 @@ export function AppShell({
 }) {
   return (
     <SidebarProvider>
-      <AppNav />
+      <AppNav role={user.role} />
       <SidebarInset>
         <AppHeader user={user} />
         <div className="flex-1 p-4 md:p-6">{children}</div>

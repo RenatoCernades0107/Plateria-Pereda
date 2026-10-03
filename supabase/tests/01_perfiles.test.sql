@@ -1,6 +1,6 @@
 begin;
 
-select plan(17);
+select plan(19);
 
 -- Usuarios de prueba (el trigger de auth.users crea sus perfiles).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
@@ -37,6 +37,22 @@ select is(
 select ok(
   (select active from public.profiles where id = '00000000-0000-0000-0000-0000000000a1'),
   'el perfil se crea activo'
+);
+
+-- Rol guardado después de crear el usuario (como hace la API de administración)
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"ventas"}'
+  where id = '00000000-0000-0000-0000-0000000000a4';
+select is(
+  (select role from public.profiles where id = '00000000-0000-0000-0000-0000000000a4'),
+  'ventas'::public.app_role,
+  'un rol agregado después a app_metadata se aplica al perfil'
+);
+update auth.users set raw_app_meta_data = raw_app_meta_data || '{"role":"jefe"}'
+  where id = '00000000-0000-0000-0000-0000000000a4';
+select is(
+  (select role from public.profiles where id = '00000000-0000-0000-0000-0000000000a4'),
+  'ventas'::public.app_role,
+  'un rol desconocido en app_metadata no cambia el perfil'
 );
 
 -- Como ventas
