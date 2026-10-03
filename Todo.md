@@ -338,10 +338,10 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `chore(db): configura Supabase local con Docker, clientes SSR y validación de entorno`
 
 #### Paso 1.6 — Integración continua
-- [ ] Workflow `ci.yml` (tras `supabase start`, `pnpm env:local` genera el `.env.local` para build y E2E):
-  - Job `checks`: instalación con caché, lint, typecheck, unit, build.
-  - Job `db-e2e`: Supabase CLI, `supabase start`, `supabase db lint`, `supabase test db`, verificación de que los tipos generados no tienen diferencias, tests de integración, Playwright (sube el reporte si falla).
-- [ ] Protección de la rama `main` exigiendo CI en verde.
+- [x] Workflow `ci.yml` en cada push (todas las ramas) y manual; cancela corridas anteriores de la misma rama. Tras `supabase start`, `pnpm env:local` genera el `.env.local` para la integración y E2E:
+  - Job `checks`: instalación con caché, lint, typecheck, formato, unit con cobertura, build.
+  - Job `db-e2e`: Supabase CLI, `supabase start` (sin Studio, Realtime, imgproxy ni edge functions), `supabase db lint`, `supabase test db`, verificación de que los tipos generados no tienen diferencias, tests de integración, Playwright (sube el reporte si falla).
+- [ ] Protección de la rama `main` exigiendo CI en verde. **Manual** (Settings → Branches en GitHub), cuando exista `main`.
 - **Unit / E2E:** No aplica (el pipeline ejecuta las suites existentes).
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
