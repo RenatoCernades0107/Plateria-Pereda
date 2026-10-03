@@ -346,7 +346,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
 #### Paso 1.7 — Guía de desarrollo
-- [ ] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local (`pnpm db:start` + `pnpm env:local`), comandos, convenciones de commits y de tests (incluida `PLAYWRIGHT_CHROMIUM_EXECUTABLE`; en entornos sin acceso a AWS ECR, `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io`).
+- [x] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local (`pnpm db:start` + `pnpm env:local`), comandos, convenciones de commits y de tests (incluida `PLAYWRIGHT_CHROMIUM_EXECUTABLE`; en entornos sin acceso a AWS ECR, `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io`).
 - Tests: No aplica (documentación).
 - Commit: `docs: agrega guía de desarrollo local`
 
