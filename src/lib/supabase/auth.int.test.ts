@@ -19,13 +19,31 @@ function anonClient() {
 }
 
 describe("inicio de sesión y perfiles", () => {
+  it("admin inicia sesión y ve el perfil de todos los usuarios", async () => {
+    const supabase = anonClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email: "admin@pereda.test",
+      password: PASSWORD,
+    });
+    expect(error).toBeNull();
+
+    // Otros tests crean usuarios temporales en paralelo: se verifica que estén los semilla.
+    const { data } = await supabase.from("profiles").select("email");
+    expect(data?.map((p) => p.email)).toEqual(
+      expect.arrayContaining([
+        "admin@pereda.test",
+        "ventas@pereda.test",
+        "logistica@pereda.test",
+      ]),
+    );
+  });
+
   it.each([
-    ["admin@pereda.test", "admin", 3],
-    ["ventas@pereda.test", "ventas", 1],
-    ["logistica@pereda.test", "logistica", 1],
+    ["ventas@pereda.test", "ventas"],
+    ["logistica@pereda.test", "logistica"],
   ] as const)(
-    "%s inicia sesión y ve los perfiles que le corresponden",
-    async (email, role, visibles) => {
+    "%s inicia sesión y solo ve su propio perfil",
+    async (email, role) => {
       const supabase = anonClient();
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -33,9 +51,8 @@ describe("inicio de sesión y perfiles", () => {
       });
       expect(error).toBeNull();
 
-      const { data } = await supabase.from("profiles").select("role");
-      expect(data).toHaveLength(visibles);
-      expect(data?.map((p) => p.role)).toContain(role);
+      const { data } = await supabase.from("profiles").select("email, role");
+      expect(data).toEqual([{ email, role }]);
     },
   );
 
