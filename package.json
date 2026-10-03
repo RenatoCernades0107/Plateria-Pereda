@@ -21,7 +21,7 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:lint": "supabase db lint --fail-on error",
+    "db:lint": "supabase db lint -s public,private,audit --fail-on error",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "env:local": "node scripts/env-local.mjs"
   },

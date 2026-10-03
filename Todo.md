@@ -411,16 +411,17 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 3 — Auditoría
 
 #### Paso 3.1 — Registro de auditoría en BD
-- [ ] Tabla `audit_log` de solo inserción (sin update/delete por RLS).
-- [ ] Trigger genérico `audit.log_change()` que guarda solo las columnas cambiadas y el actor (`auth.uid()`; vacío = "Sistema/Shopify").
-- [ ] Helper SQL para activar la auditoría en cada tabla nueva (se aplica desde `profiles` en adelante).
+- [x] Tabla `audit_log` de solo inserción (sin update/delete por RLS).
+- [x] Trigger genérico `audit.log_change()` que guarda solo las columnas cambiadas y el actor (`auth.uid()`; vacío = "Sistema/Shopify").
+- [x] Helper SQL para activar la auditoría en cada tabla nueva (se aplica desde `profiles` en adelante).
 - **Unit:**
-  - [ ] Función que convierte un diff en texto legible (p. ej., "Taller: Taller A → Taller B").
+  - [x] Función que convierte un diff en texto legible (p. ej., "Taller: Taller A → Taller B").
 - **BD:**
-  - [ ] Insert, update y delete generan una fila con el diff correcto.
-  - [ ] El actor es el usuario autenticado.
-  - [ ] Nadie puede modificar ni borrar `audit_log`; solo admin puede leerlo.
+  - [x] Insert, update y delete generan una fila con el diff correcto.
+  - [x] El actor es el usuario autenticado.
+  - [x] Nadie puede modificar ni borrar `audit_log`; solo admin puede leerlo.
 - **E2E:** No aplica (la interfaz llega en 3.2).
+- Hecho: tabla `public.audit_log` (actor, nombre del actor, tabla, id, acción y diff `{columna: {old, new}}`); trigger `audit.log_change()` (ignora `id`, `created_at`, `updated_at` y las columnas indicadas; un update sin cambios no deja registro); `audit.enable(tabla, columnas_ignoradas)`; un trigger impide modificar, borrar o vaciar el historial incluso con la clave secreta; `profiles` auditada. Los usuarios creados por la API de administración quedan como "Sistema" (no hay usuario autenticado en esa llamada). `describeChanges()` en `src/domain/audit.ts`.
 - Commit: `feat(auditoria): agrega registro automático de cambios en BD`
 
 #### Paso 3.2 — Interfaz de auditoría
