@@ -81,3 +81,15 @@ export function describeChanges(
     return `${label}: ${format(change.old)} → ${format(change.new)}`;
   });
 }
+
+/** Un registro del historial, listo para mostrar. */
+export type AuditEntry = {
+  id: number;
+  occurredAt: string;
+  /** Vacío cuando el cambio lo hizo el sistema (Shopify, tareas, semillas). */
+  actorName: string | null;
+  table: string;
+  recordId: string;
+  action: AuditAction;
+  changes: AuditChanges;
+};

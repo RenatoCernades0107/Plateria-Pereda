@@ -1,6 +1,6 @@
 begin;
 
-select plan(19);
+select plan(21);
 
 select has_table('public', 'audit_log', 'existe la tabla audit_log');
 select has_function('audit', 'log_change', 'existe audit.log_change()');
@@ -19,7 +19,9 @@ select audit.enable('public.prueba_auditoria', '{clave}');
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000b1', 'admin@auditoria.test', '{"role":"admin"}', '{"full_name":"Ana Admin"}'),
-  ('00000000-0000-0000-0000-0000000000b2', 'ventas@auditoria.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}');
+  ('00000000-0000-0000-0000-0000000000b2', 'ventas@auditoria.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
+  ('00000000-0000-0000-0000-0000000000b3', 'logistica@auditoria.test', '{"role":"logistica"}', '{"full_name":"Lola Logística"}'),
+  ('00000000-0000-0000-0000-0000000000b4', 'otro@auditoria.test', '{"role":"ventas"}', '{"full_name":"Otro Usuario"}');
 
 -- Insert
 insert into public.prueba_auditoria (id, nombre, nota, clave) values (1, 'Taller A', null, 'x');
@@ -73,11 +75,11 @@ select is(
 -- Cambios de perfiles hechos por el admin
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b1","role":"authenticated"}', true);
 set local role authenticated;
-update public.profiles set role = 'logistica' where id = '00000000-0000-0000-0000-0000000000b2';
+update public.profiles set role = 'logistica' where id = '00000000-0000-0000-0000-0000000000b4';
 reset role;
 select results_eq(
   $$ select actor_name, action, changes from public.audit_log
-     where table_name = 'profiles' and record_id = '00000000-0000-0000-0000-0000000000b2'
+     where table_name = 'profiles' and record_id = '00000000-0000-0000-0000-0000000000b4'
        and action = 'update' $$,
   $$ values ('Ana Admin', 'update', '{"role": {"old": "ventas", "new": "logistica"}}'::jsonb) $$,
   'el cambio de rol queda registrado con el admin que lo hizo'
@@ -91,7 +93,18 @@ select ok(
 );
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
-select is((select count(*)::int from public.audit_log), 0, 'un usuario que no es admin no lee la auditoría');
+select ok(
+  (select count(*) from public.audit_log where table_name = 'prueba_auditoria') = 3,
+  'ventas lee el historial de las entidades del negocio'
+);
+select is(
+  (select count(*)::int from public.audit_log where table_name = 'profiles'),
+  0,
+  'ventas no lee los cambios de usuarios'
+);
+
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b3","role":"authenticated"}', true);
+select is((select count(*)::int from public.audit_log), 0, 'logística no lee el historial');
 
 select throws_ok(
   $$ insert into public.audit_log (table_name, record_id, action) values ('x', '1', 'insert') $$,

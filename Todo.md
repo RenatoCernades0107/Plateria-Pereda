@@ -425,14 +425,16 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `feat(auditoria): agrega registro automático de cambios en BD`
 
 #### Paso 3.2 — Interfaz de auditoría
-- [ ] Página `/auditoria` (admin): filtros por usuario, entidad, acción y fechas; paginación.
-- [ ] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller); logística no la ve (P42).
+- [x] Página `/auditoria` (admin): filtros por usuario, entidad, acción y fechas; paginación.
+- [x] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller); logística no la ve (P42).
 - **Unit:**
-  - [ ] `EntityHistory` renderiza cambios legibles.
-  - [ ] Los filtros se serializan y leen desde la URL.
+  - [x] `EntityHistory` renderiza cambios legibles.
+  - [x] Los filtros se serializan y leen desde la URL.
 - **E2E:**
-  - [ ] Admin cambia el rol de un usuario → el cambio aparece en `/auditoria` con su nombre y fecha.
-  - [ ] Un usuario que no es admin no accede a `/auditoria`.
+  - [x] Admin cambia el rol de un usuario → el cambio aparece en `/auditoria` con su nombre y fecha.
+  - [x] Un usuario que no es admin no accede a `/auditoria`.
+- Hecho: `/auditoria` con filtros en la URL (`usuario`, `entidad`, `accion`, `desde`, `hasta`, `pagina`; fechas en hora de Lima), 25 registros por página, tabla en escritorio y tarjetas en el celular. `EntityHistory` + `EntityHistorySection` (no muestra nada a logística) listos para las pestañas "Historial" de los pasos de restauración, pieza, cliente y taller. Ventas lee el historial de las entidades del negocio, pero no los cambios de usuarios (migración `historial_para_ventas`). Se corrigió el hover del botón primario, que bajaba el contraste del texto blanco a 4.06:1.
+- Nota: al crear un usuario, Supabase guarda el rol en un segundo paso, así que la auditoría muestra la creación seguida de un cambio de rol hecho por "Sistema".
 - Commit: `feat(auditoria): agrega vista de auditoría e historial por entidad`
 
 ### Fase 4 — Integración con Shopify (base)
