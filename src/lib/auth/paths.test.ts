@@ -9,6 +9,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/auth/confirm")).toBe(true);
   });
 
+  it("deja pasar los endpoints que se autentican solos", () => {
+    expect(isPublicPath("/api/test/shopify")).toBe(true);
+    expect(isPublicPath("/api/cron/shopify-sync")).toBe(true);
+    expect(isPublicPath("/api/webhooks/shopify")).toBe(true);
+    expect(isPublicPath("/api/otra-cosa")).toBe(false);
+  });
+
   it("protege el resto, incluso rutas con prefijo parecido", () => {
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/dashboard")).toBe(false);

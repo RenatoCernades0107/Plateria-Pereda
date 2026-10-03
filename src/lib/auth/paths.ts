@@ -4,6 +4,10 @@ const PUBLIC_PATHS = [
   "/recuperar-contrasena",
   "/auth/confirm",
   "/auth/salir",
+  // Endpoints entre máquinas: cada uno se autentica solo (modo fake, CRON_SECRET o HMAC).
+  "/api/test",
+  "/api/cron",
+  "/api/webhooks",
 ];
 
 export function isPublicPath(pathname: string): boolean {

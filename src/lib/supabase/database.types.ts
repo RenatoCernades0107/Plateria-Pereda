@@ -195,6 +195,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      shopify_tokens: {
+        Row: {
+          access_token: string;
+          expires_at: string;
+          shop_domain: string;
+          updated_at: string;
+        };
+        Insert: {
+          access_token: string;
+          expires_at: string;
+          shop_domain: string;
+          updated_at?: string;
+        };
+        Update: {
+          access_token?: string;
+          expires_at?: string;
+          shop_domain?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       workshops: {
         Row: {
           active: boolean;

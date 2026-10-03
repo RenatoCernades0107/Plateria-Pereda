@@ -455,19 +455,20 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `docs(shopify): documenta resultados del spike y agrega fixtures`
 
 #### Paso 4.2 — Puerto `ShopifyGateway` y adaptadores
-- [ ] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder` (con pagos iniciales), `findOrderByTag`, `getOrderFinancials`, `editOrder`, `recordFullPayment`, `refundPayment`, `searchProducts`, `getProduct`, `fulfillLines`.
-- [ ] Autenticación: pide el token con *client credentials*, lo guarda en `shopify_tokens` y lo renueva antes de que venza (o ante un 401).
-- [ ] Adaptador `live`: cliente GraphQL (fetch, versión de API fijada, timeout, reintentos con backoff ante throttling y 5xx, `userErrors` → errores de dominio tipados).
-- [ ] Adaptador `fake` en memoria + ruta `/api/test/shopify` (inspeccionar, resetear, forzar errores; 404 fuera del modo fake).
-- [ ] Factory que elige el adaptador según `SHOPIFY_MODE`.
+- [x] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder` (con pagos iniciales), `findOrderByTag`, `getOrderFinancials`, `editOrder`, `recordFullPayment`, `refundPayment`, `searchProducts`, `getProduct`, `fulfillLines`.
+- [x] Autenticación: pide el token con *client credentials*, lo guarda en `shopify_tokens` y lo renueva antes de que venza (o ante un 401).
+- [~] Adaptador `live`: cliente GraphQL (fetch, versión de API fijada, timeout, reintentos con backoff ante throttling y 5xx, `userErrors` → errores de dominio tipados).
+- [x] Adaptador `fake` en memoria + ruta `/api/test/shopify` (inspeccionar, resetear, forzar errores; 404 fuera del modo fake).
+- [x] Factory que elige el adaptador según `SHOPIFY_MODE`.
 - **Unit (MSW + fixtures del spike):**
-  - [ ] Mapeo de respuestas a tipos del dominio.
-  - [ ] `userErrors` → error tipado.
-  - [ ] Reintenta ante `THROTTLED` y 5xx; no reintenta ante 4xx.
-  - [ ] Renueva el token vencido o rechazado (401) y reintenta una sola vez.
-  - [ ] Paginación de búsquedas.
-  - [ ] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
+  - [x] Mapeo de respuestas a tipos del dominio.
+  - [x] `userErrors` → error tipado.
+  - [x] Reintenta ante `THROTTLED` y 5xx; no reintenta ante 4xx.
+  - [x] Renueva el token vencido o rechazado (401) y reintenta una sola vez.
+  - [x] Paginación de búsquedas.
+  - [x] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
 - **E2E:** No aplica (sin interfaz). Opcional `@shopify-live`: contract test contra la tienda de desarrollo.
+- Hecho (2026-10-03, antes del spike): código en `src/server/shopify/`. El adaptador `live` ya implementa clientes, productos y la lectura de órdenes (`findOrderByTag`, `getOrderFinancials`) con su cliente GraphQL (versión fijada, timeout, reintentos ante THROTTLED/429/5xx/red, una renovación del token ante 401) y el token *client credentials* en `shopify_tokens` (solo clave secreta). **Pendiente tras el spike 4.1:** las escrituras de órdenes en `live` (`createOrder`, `editOrder`, `recordFullPayment`, `refundPayment`, `fulfillLines`) lanzan `ShopifyNotImplementedError`; las queries se validan con la tienda real y los fixtures reemplazan al emulador. El contract test corre contra el `fake` y contra el `live` con un emulador de la API en MSW (`tests/msw/shopify-emulator.ts`). `/api/test/shopify` (GET estado, POST `reset`/`fail`) responde 404 fuera del modo fake. `/api/test`, `/api/cron` y `/api/webhooks` no pasan por el login del proxy: cada uno se autentica solo.
 - Commit: `feat(shopify): agrega puerto ShopifyGateway con adaptadores live y fake`
 
 #### Paso 4.3 — Outbox de sincronización
