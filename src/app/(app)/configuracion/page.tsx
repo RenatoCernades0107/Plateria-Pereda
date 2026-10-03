@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/page-header";
 import { LogoUploader } from "@/components/settings/logo-uploader";
 import { SettingsForm } from "@/components/settings/settings-form";
 import {
@@ -20,11 +19,7 @@ export default async function ConfiguracionPage() {
   const settings = await getSettings();
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <PageHeader
-        title="Configuración"
-        description="Datos de la empresa y valores por defecto del sistema."
-      />
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Logo</CardTitle>

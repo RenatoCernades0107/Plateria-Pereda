@@ -1,3 +1,4 @@
+import { formatMoney } from "@/lib/format";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 
 export type AuditAction = "insert" | "update" | "delete";
@@ -39,6 +40,40 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       phone: { label: "Teléfono" },
       address: { label: "Dirección" },
       notes: { label: "Notas" },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+    },
+  },
+  materials: {
+    label: "Material",
+    fields: {
+      name: { label: "Nombre" },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+    },
+  },
+  services: {
+    label: "Servicio",
+    fields: {
+      name: { label: "Nombre" },
+      suggested_price: {
+        label: "Precio sugerido",
+        format: (value) => formatMoney(Number(value)),
+      },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+    },
+  },
+  payment_methods: {
+    label: "Método de pago",
+    fields: {
+      name: { label: "Nombre" },
       active: {
         label: "Estado",
         format: (value) => (value ? "Activo" : "Inactivo"),

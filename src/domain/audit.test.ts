@@ -58,6 +58,35 @@ describe("describeChanges", () => {
   });
 });
 
+describe("formatos por entidad", () => {
+  it.each([
+    ["workshops", "Estado: Activo → Inactivo"],
+    ["materials", "Estado: Activo → Inactivo"],
+    ["services", "Estado: Activo → Inactivo"],
+    ["payment_methods", "Estado: Activo → Inactivo"],
+  ])("%s muestra el estado como Activo/Inactivo", (table, line) => {
+    expect(
+      describeChanges(table, "update", { active: { old: true, new: false } }),
+    ).toEqual([line]);
+  });
+
+  it("el precio sugerido se muestra en soles", () => {
+    expect(
+      describeChanges("services", "update", {
+        suggested_price: { old: null, new: 35.5 },
+      }),
+    ).toEqual(["Precio sugerido: — → S/ 35.50"]);
+  });
+
+  it("la configuración usa sus etiquetas", () => {
+    expect(
+      describeChanges("settings", "update", {
+        quote_validity_days: { old: 15, new: 30 },
+      }),
+    ).toEqual(["Vigencia de cotizaciones (días): 15 → 30"]);
+  });
+});
+
 describe("formatValue", () => {
   it.each([
     [null, "—"],

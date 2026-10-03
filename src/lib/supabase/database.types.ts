@@ -42,6 +42,54 @@ export type Database = {
         };
         Relationships: [];
       };
+      materials: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_methods: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           active: boolean;
@@ -68,6 +116,33 @@ export type Database = {
           full_name?: string;
           id?: string;
           role?: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      services: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          suggested_price: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          suggested_price?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          suggested_price?: number | null;
           updated_at?: string;
         };
         Relationships: [];

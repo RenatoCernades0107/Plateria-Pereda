@@ -532,8 +532,9 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(talleres): agrega gestión de talleres`
 
 #### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago
-- [ ] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
+- [x] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
 - **Unit / BD / E2E:** análogos a 5.2.
+- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado. Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
 - Commit: `feat(catalogos): agrega catálogos de materiales, servicios y métodos de pago`
 
 ### Fase 6 — Clientes y contactos
