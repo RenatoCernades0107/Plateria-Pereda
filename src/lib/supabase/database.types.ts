@@ -276,6 +276,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      shopify_webhook_events: {
+        Row: {
+          api_version: string | null;
+          error: string | null;
+          id: number;
+          payload: NonNullable<Json>;
+          processed_at: string | null;
+          received_at: string;
+          shop_domain: string;
+          status: string;
+          topic: string;
+          webhook_id: string;
+        };
+        Insert: {
+          api_version?: string | null;
+          error?: string | null;
+          id?: never;
+          payload: NonNullable<Json>;
+          processed_at?: string | null;
+          received_at?: string;
+          shop_domain: string;
+          status?: string;
+          topic: string;
+          webhook_id: string;
+        };
+        Update: {
+          api_version?: string | null;
+          error?: string | null;
+          id?: never;
+          payload?: NonNullable<Json>;
+          processed_at?: string | null;
+          received_at?: string;
+          shop_domain?: string;
+          status?: string;
+          topic?: string;
+          webhook_id?: string;
+        };
+        Relationships: [];
+      };
       workshops: {
         Row: {
           active: boolean;

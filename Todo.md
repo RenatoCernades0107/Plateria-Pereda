@@ -490,18 +490,19 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(shopify): agrega outbox de sincronización con reintentos`
 
 #### Paso 4.4 — Endpoint de webhooks
-- [ ] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC con el client secret (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
-- [ ] Router por topic (los handlers de pagos se implementan en 11.3).
-- [ ] Script `pnpm shopify:webhook <topic> <fixture>` que firma y envía un webhook al entorno local.
-- [ ] Script `pnpm shopify:register-webhooks` (por entorno).
+- [x] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC con el client secret (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
+- [x] Router por topic (los handlers de pagos se implementan en 11.3).
+- [x] Script `pnpm shopify:webhook <topic> <fixture>` que firma y envía un webhook al entorno local.
+- [x] Script `pnpm shopify:register-webhooks` (por entorno).
 - **Unit:**
-  - [ ] HMAC válido, inválido y con body alterado.
-  - [ ] Topic desconocido → se registra y se ignora.
+  - [x] HMAC válido, inválido y con body alterado.
+  - [x] Topic desconocido → se registra y se ignora.
 - **Integración:**
-  - [ ] El mismo webhook enviado dos veces se procesa una sola vez.
+  - [x] El mismo webhook enviado dos veces se procesa una sola vez.
 - **E2E (API con `request` de Playwright):**
-  - [ ] Firma inválida → 401.
-  - [ ] Firma válida → 200 y evento guardado.
+  - [x] Firma inválida → 401.
+  - [x] Firma válida → 200 y evento guardado.
+- Hecho: `/api/webhooks/shopify` verifica el HMAC del body crudo (tiempo constante) y el dominio de la tienda, guarda en `shopify_webhook_events` (único por `webhook_id`, solo admin lo lee), responde 200 y procesa con `after()`. `processWebhookEvent()` toma el evento de forma atómica (dos procesadores → un solo handler) y lo enruta por topic con `webhookHandlers`; sin handler queda `ignored`. En modo fake sin `SHOPIFY_CLIENT_SECRET` se firma con un secreto de desarrollo (`FAKE_WEBHOOK_SECRET`). Scripts `pnpm shopify:webhook` y `pnpm shopify:register-webhooks` (este último usa `webhookSubscriptionCreate` con `uri`: **validar en el spike 4.1**, junto con la lista de topics). El fixture `customers-update.json` es provisional hasta tener payloads reales.
 - Commit: `feat(shopify): agrega endpoint de webhooks con verificación HMAC e idempotencia`
 
 ### Fase 5 — Configuración y catálogos
