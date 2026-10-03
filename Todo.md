@@ -95,7 +95,7 @@ El resto (Data Table, Date Range Picker, Combobox, Sidebar, Charts) son recetas 
 - `SUPABASE_SECRET_KEY` (clave secreta / service role — **solo servidor**)
 - `SHOPIFY_MODE` (`fake` o `live`), `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET` (con ellos el sistema pide el token de 24 h y verifica la firma de los webhooks), `SHOPIFY_API_VERSION`
 - `CRON_SECRET`, `APP_URL`, `APP_TIMEZONE=America/Lima`
-- Regla de seguridad: la app **no arranca** si `SHOPIFY_MODE=fake` en producción.
+- Regla de seguridad: la app **no arranca** si `SHOPIFY_MODE=fake` en producción (`VERCEL_ENV=production`).
 
 ---
 
@@ -322,23 +322,23 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `feat(ui): agrega shadcn/ui, tema de la marca y layout responsive`
 
 #### Paso 1.5 — Supabase local con Docker
-- [ ] `supabase init`; `config.toml` (registro público deshabilitado, puertos, Mailpit).
-- [ ] Clientes `@supabase/ssr`: `server.ts`, `browser.ts`, `admin.ts` (clave secreta, `import 'server-only'`).
-- [ ] `src/lib/env.ts` con validación zod.
-- [ ] Scripts `db:types` (`supabase gen types typescript --local`), `db:reset`, `db:test`.
-- [ ] pgTAP habilitado; primera migración: extensiones (`pgtap` en local, `pg_trgm`) y función `set_updated_at`.
+- [x] `supabase init` (CLI como dependencia de desarrollo); `config.toml` (registro público deshabilitado, contraseña mínima de 8, URLs de redirección locales, puertos por defecto, Mailpit en 54324; sin analytics ni edge functions).
+- [x] Clientes `@supabase/ssr`: `server.ts`, `browser.ts`, `admin.ts` (clave secreta, `import 'server-only'`), tipados con `database.types.ts`.
+- [x] `src/lib/env.ts` con validación zod (`env.server.ts` para las variables secretas). Se valida al arrancar (`src/instrumentation.ts`: con variables inválidas el servidor responde 500 y lista lo que falta) y, en Vercel, también al compilar (`next.config.ts`), para que un despliegue mal configurado no reemplace al que está en línea. Producción se detecta con `VERCEL_ENV=production`.
+- [x] Scripts `db:start`, `db:stop`, `db:status`, `db:reset`, `db:test`, `db:lint`, `db:types` (`supabase gen types typescript --local` + Prettier) y `env:local` (crea o actualiza `.env.local` con la URL y las claves del Supabase local; ninguna clave se versiona).
+- [x] pgTAP (lo activa `supabase test db`, no va en las migraciones); primera migración: `pg_trgm`, esquema `private` (funciones internas, no expuesto por la API) y `private.set_updated_at()`.
 - **Unit:**
-  - [ ] `env.ts` falla con variables faltantes o con formato inválido.
-  - [ ] `env.ts` falla con `SHOPIFY_MODE=fake` en producción.
+  - [x] `env.ts` falla con variables faltantes o con formato inválido.
+  - [x] `env.ts` falla con `SHOPIFY_MODE=fake` en producción (y exige `CRON_SECRET`).
 - **BD:**
-  - [ ] Test de humo: extensiones presentes y `set_updated_at` actualiza la columna.
+  - [x] Test de humo: extensiones presentes y `set_updated_at` actualiza la columna.
 - **Integración:**
-  - [ ] Conexión a Supabase local desde Vitest.
+  - [x] Conexión a Supabase local desde Vitest (la URL y las claves se leen de `supabase status`, así que nunca apunta a otra base) y registro público desactivado.
 - **E2E:** No aplica (sin interfaz nueva).
 - Commit: `chore(db): configura Supabase local con Docker, clientes SSR y validación de entorno`
 
 #### Paso 1.6 — Integración continua
-- [ ] Workflow `ci.yml`:
+- [ ] Workflow `ci.yml` (tras `supabase start`, `pnpm env:local` genera el `.env.local` para build y E2E):
   - Job `checks`: instalación con caché, lint, typecheck, unit, build.
   - Job `db-e2e`: Supabase CLI, `supabase start`, `supabase db lint`, `supabase test db`, verificación de que los tipos generados no tienen diferencias, tests de integración, Playwright (sube el reporte si falla).
 - [ ] Protección de la rama `main` exigiendo CI en verde.
@@ -346,7 +346,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
 #### Paso 1.7 — Guía de desarrollo
-- [ ] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local, comandos, convenciones de commits y de tests (incluida `PLAYWRIGHT_CHROMIUM_EXECUTABLE`).
+- [ ] `README.md`: requisitos (Node, pnpm, Docker), cómo levantar el entorno local (`pnpm db:start` + `pnpm env:local`), comandos, convenciones de commits y de tests (incluida `PLAYWRIGHT_CHROMIUM_EXECUTABLE`; en entornos sin acceso a AWS ECR, `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io`).
 - Tests: No aplica (documentación).
 - Commit: `docs: agrega guía de desarrollo local`
 

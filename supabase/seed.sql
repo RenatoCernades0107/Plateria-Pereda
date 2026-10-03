@@ -1,0 +1,2 @@
+-- Datos de prueba para el entorno local (se cargan con `pnpm db:reset`).
+-- Los usuarios semilla por rol se agregan en el Paso 2.1.
