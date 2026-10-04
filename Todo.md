@@ -858,6 +858,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - [ ] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
 - [ ] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
 - [ ] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
+- [ ] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
 - [ ] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
 - [ ] Regla de entrega con saldo pendiente (§7.5, P45).
 - **Unit:**

@@ -184,6 +184,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
 - ✅ **Pago del saldo** sin nombre de método: la orden queda **"Pagada"** y la transacción con gateway `manual`. Con `paymentMethodName: "Efectivo"` sigue fallando si el método manual no existe en la tienda → el adaptador intenta con el nombre y, si no está configurado, registra sin nombre; el sistema guarda el método real.
 - ✅ **Preparar** una línea con `fulfillmentCreate` (por fulfillment order). ✅ **Reembolso** parcial con `@idempotent` → "Parcialmente reembolsada".
 - ⚠️ **`@idempotent` no evita duplicar `orderCreate`:** la misma clave dos veces creó dos órdenes (#1003 y #1004). **Decisión:** antes de crear la orden, el handler del outbox la busca por la etiqueta del código; el índice tarda ~5 s (clientes) y ~7,5 s (órdenes), y el outbox reintenta recién a los 30 s.
+- **Decisión (2026-10-04):** en la tienda no se pueden crear métodos manuales llamados Efectivo, Tarjeta, Yape o Plin (el buscador de formas de pago solo ofrece proveedores, p. ej. "yappy"); sí se pudieron agregar Visa, Mastercard, transferencia bancaria y PagoEfectivo. Es aceptable que el saldo quede como "manual" en Shopify; con esos cuatro métodos va con su nombre (D34).
 - Pendiente (ronda 3): confirmar que el id de la línea calculada de una edición termina en el mismo número que la línea (el adaptador los relaciona así) y el pago del saldo con los métodos manuales creados en la tienda.
 
 ## C. Restauraciones y piezas
@@ -491,6 +492,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
 | D31 | Si cambian el cliente de la orden en Shopify, la restauración se actualiza por webhook | P12 |
 | D32 | Códigos `RES-00001` y pieza `RES-00001-1` | P24 |
 | D33 | Las empresas son Companies de Shopify; sus contactos son contactos de la Company y las órdenes van a nombre de la empresa | P14 |
+| D34 | El pago del saldo se registra en Shopify como "manual", salvo que el método exista en la tienda (Visa, Mastercard, transferencia bancaria, PagoEfectivo): entonces va con ese nombre. El adelanto (incluido al crear la orden) sí lleva el nombre real (Yape, Plin, etc.). El sistema siempre guarda el método real | Spike 4.1 |
 
 ---
 
