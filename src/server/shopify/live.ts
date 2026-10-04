@@ -3,6 +3,7 @@ import type { ShopifyGateway } from "./gateway";
 import { assertNoUserErrors, type GraphqlClient } from "./graphql-client";
 import type {
   CompanyInput,
+  CompanyRef,
   CustomerInput,
   CustomLine,
   FinancialStatus,
@@ -145,6 +146,21 @@ export const COMPANY_CONTACT_CREATE = `mutation CompanyContactCreate($companyId:
 export const COMPANY_ASSIGN_CUSTOMER = `mutation CompanyAssignCustomerAsContact($companyId: ID!, $customerId: ID!) {
   companyAssignCustomerAsContact(companyId: $companyId, customerId: $customerId) {
     companyContact { id customer { id } }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_CONTACT_ROLES = `query CompanyContactRoles($companyId: ID!) {
+  company(id: $companyId) { contactRoles(first: 10) { nodes { id name } } }
+}`;
+
+export const COMPANY_CONTACT_ASSIGN_ROLE = `mutation CompanyContactAssignRole($companyContactId: ID!, $companyContactRoleId: ID!, $companyLocationId: ID!) {
+  companyContactAssignRole(
+    companyContactId: $companyContactId
+    companyContactRoleId: $companyContactRoleId
+    companyLocationId: $companyLocationId
+  ) {
+    companyContactRoleAssignment { id }
     userErrors { field message }
   }
 }`;
@@ -401,8 +417,41 @@ export class LiveShopifyGateway implements ShopifyGateway {
     };
   }
 
+  /**
+   * Sin rol en la ubicación, Shopify no deja crear órdenes a nombre del contacto
+   * (spike 4.1): se le asigna el rol de compra ("Ordering only" si existe).
+   */
+  private async assignOrderingRole(
+    company: CompanyRef,
+    companyContactId: string,
+  ) {
+    const roles = await this.client.request<{
+      company: {
+        contactRoles: { nodes: { id: string; name: string }[] };
+      } | null;
+    }>(COMPANY_CONTACT_ROLES, { companyId: company.companyId });
+    const nodes = roles.company?.contactRoles.nodes ?? [];
+    const role = nodes.find((r) => /order/i.test(r.name)) ?? nodes[0];
+    if (!role) {
+      throw new ShopifyUserError([
+        {
+          field: ["companyContactRoleId"],
+          message: "La empresa no tiene roles de contacto",
+        },
+      ]);
+    }
+    const data = await this.client.request<{
+      companyContactAssignRole: { userErrors: UserErrors };
+    }>(COMPANY_CONTACT_ASSIGN_ROLE, {
+      companyContactId,
+      companyContactRoleId: role.id,
+      companyLocationId: company.locationId,
+    });
+    assertNoUserErrors(data.companyContactAssignRole.userErrors);
+  }
+
   async createCompanyContact(
-    companyId: string,
+    company: CompanyRef,
     input: CustomerInput,
   ): Promise<ShopifyCompanyContact> {
     const data = await this.client.request<{
@@ -411,15 +460,17 @@ export class LiveShopifyGateway implements ShopifyGateway {
         userErrors: UserErrors;
       };
     }>(COMPANY_CONTACT_CREATE, {
-      companyId,
+      companyId: company.companyId,
       input: companyContactInput(input),
     });
     assertNoUserErrors(data.companyContactCreate.userErrors);
-    return toContact(data.companyContactCreate.companyContact!);
+    const contact = toContact(data.companyContactCreate.companyContact!);
+    await this.assignOrderingRole(company, contact.id);
+    return contact;
   }
 
   async assignCustomerAsContact(
-    companyId: string,
+    company: CompanyRef,
     customerId: string,
   ): Promise<ShopifyCompanyContact> {
     const data = await this.client.request<{
@@ -427,9 +478,13 @@ export class LiveShopifyGateway implements ShopifyGateway {
         companyContact: ContactNode | null;
         userErrors: UserErrors;
       };
-    }>(COMPANY_ASSIGN_CUSTOMER, { companyId, customerId });
+    }>(COMPANY_ASSIGN_CUSTOMER, { companyId: company.companyId, customerId });
     assertNoUserErrors(data.companyAssignCustomerAsContact.userErrors);
-    return toContact(data.companyAssignCustomerAsContact.companyContact!);
+    const contact = toContact(
+      data.companyAssignCustomerAsContact.companyContact!,
+    );
+    await this.assignOrderingRole(company, contact.id);
+    return contact;
   }
 
   async findOrderByTag(tag: string) {

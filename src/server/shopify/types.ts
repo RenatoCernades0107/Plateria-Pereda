@@ -51,6 +51,9 @@ export type CompanyInput = {
   contact?: CustomerInput;
 };
 
+/** Empresa y la ubicación donde sus contactos hacen pedidos. */
+export type CompanyRef = { companyId: string; locationId: string };
+
 export type ShopifyCompanyContact = {
   /** Id del CompanyContact. */
   id: string;

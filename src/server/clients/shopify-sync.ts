@@ -164,15 +164,19 @@ export function clientJobHandlers(
         return { shopifyCompanyContactId: contact.shopifyCompanyContactId };
       }
       const company = await repo.getClient(contact.clientId);
-      if (!company?.shopifyCompanyId) {
+      if (!company?.shopifyCompanyId || !company.shopifyCompanyLocationId) {
         // Se reintenta: la empresa se sincroniza primero.
         throw new ShopifyUnavailableError("La empresa aún no está en Shopify");
       }
 
+      const ref = {
+        companyId: company.shopifyCompanyId,
+        locationId: company.shopifyCompanyLocationId,
+      };
       let result;
       let linked = false;
       try {
-        result = await gateway.createCompanyContact(company.shopifyCompanyId, {
+        result = await gateway.createCompanyContact(ref, {
           firstName: contact.firstName,
           lastName: contact.lastName,
           email: contact.email,
@@ -183,10 +187,7 @@ export function clientJobHandlers(
         const existing =
           field && (await findExistingCustomer(gateway, field, contact[field]));
         if (!existing) throw error;
-        result = await gateway.assignCustomerAsContact(
-          company.shopifyCompanyId,
-          existing.id,
-        );
+        result = await gateway.assignCustomerAsContact(ref, existing.id);
         linked = true;
       }
       await repo.setContactShopifyIds(contact.id, {

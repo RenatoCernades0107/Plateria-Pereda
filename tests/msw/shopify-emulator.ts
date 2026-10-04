@@ -71,6 +71,14 @@ const edits = new Map<
   }
 >();
 
+/** La Company y su ubicación; el emulador da el rol de compra al crear el contacto. */
+const companyRef = (companyId: string) => ({
+  companyId,
+  locationId:
+    fakeShopify.snapshot().companies.find((c) => c.id === companyId)
+      ?.locationId ?? "",
+});
+
 const userErrorsOf = (error: unknown) => {
   if (error instanceof ShopifyUserError) return error.fields;
   throw error;
@@ -140,7 +148,7 @@ const operations: Record<
       phone?: string;
     };
     const { result, userErrors } = await withUserErrors(() =>
-      store.createCompanyContact(variables.companyId as string, {
+      store.createCompanyContact(companyRef(variables.companyId as string), {
         firstName: input.firstName ?? "",
         lastName: input.lastName ?? "",
         email: input.email,
@@ -162,7 +170,7 @@ const operations: Record<
   CompanyAssignCustomerAsContact: async (variables: Vars) => {
     const { result, userErrors } = await withUserErrors(() =>
       store.assignCustomerAsContact(
-        variables.companyId as string,
+        companyRef(variables.companyId as string),
         variables.customerId as string,
       ),
     );
@@ -178,10 +186,36 @@ const operations: Record<
       },
     };
   },
+  CompanyContactRoles: async () => ({
+    data: {
+      company: {
+        contactRoles: {
+          nodes: [
+            {
+              id: "gid://shopify/CompanyContactRole/1",
+              name: "Location admin",
+            },
+            { id: "gid://shopify/CompanyContactRole/2", name: "Ordering only" },
+          ],
+        },
+      },
+    },
+  }),
+  CompanyContactAssignRole: async () => ({
+    data: {
+      companyContactAssignRole: {
+        companyContactRoleAssignment: {
+          id: "gid://shopify/CompanyContactRoleAssignment/1",
+        },
+        userErrors: [],
+      },
+    },
+  }),
   ShopCurrency: async () => ({ data: { shop: { currencyCode: "PEN" } } }),
   OrderCreate: async (variables: Vars) => {
     const order = variables.order as {
       customerId: string;
+      companyLocationId?: string;
       tags: string[];
       note?: string;
       lineItems: {
@@ -197,6 +231,7 @@ const operations: Record<
     const { result, userErrors } = await withUserErrors(() =>
       store.createOrder({
         customerId: order.customerId,
+        companyLocationId: order.companyLocationId,
         tags: order.tags,
         note: order.note,
         lines: order.lineItems.map((l) => ({

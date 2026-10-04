@@ -11,8 +11,8 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13, P15, P16, P19–P21, P23, P25–P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13, P19–P21, P23, P25, P26, P28, P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
@@ -156,11 +156,11 @@
 
 ### P15 · ¿Hay clientes existentes en Shopify? ¿Los importamos?
 - **Propuesta:** importación inicial de todos los clientes de Shopify a nuestra base + búsqueda en vivo en Shopify para los que se creen después desde otros canales.
-- **Respuesta:** _pendiente_ (indicar número aproximado de clientes)
+- **Respuesta (2026-10-04):** ✅ Son alrededor de **1000** clientes. No hace falta importarlos ahora: la importación se construye y se prueba con clientes de prueba de la tienda de desarrollo, y se ejecuta con la tienda real al pasar a producción (16.4).
 
 ### P16 · Si se edita un cliente, ¿se actualiza en ambos lados?
 - **Propuesta:** sí. Editar en nuestro sistema actualiza Shopify, y los cambios hechos en Shopify llegan por webhook (nombre, email, teléfono, dirección).
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-04):** ✅ Sí, se actualiza en ambos lados.
 
 ---
 
@@ -186,6 +186,14 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
 - ⚠️ **`@idempotent` no evita duplicar `orderCreate`:** la misma clave dos veces creó dos órdenes (#1003 y #1004). **Decisión:** antes de crear la orden, el handler del outbox la busca por la etiqueta del código; el índice tarda ~5 s (clientes) y ~7,5 s (órdenes), y el outbox reintenta recién a los 30 s.
 - **Decisión (2026-10-04):** en la tienda no se pueden crear métodos manuales llamados Efectivo, Tarjeta, Yape o Plin (el buscador de formas de pago solo ofrece proveedores, p. ej. "yappy"); sí se pudieron agregar Visa, Mastercard, transferencia bancaria y PagoEfectivo. Es aceptable que el saldo quede como "manual" en Shopify; con esos cuatro métodos va con su nombre (D34).
 - Pendiente (ronda 3): confirmar que el id de la línea calculada de una edición termina en el mismo número que la línea (el adaptador los relaciona así) y el pago del saldo con los métodos manuales creados en la tienda.
+
+### Spike 4.1 — Ronda 3 (2026-10-04)
+Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
+- ✅ `companyContactCreate` y `companyAssignCustomerAsContact` funcionan.
+- ❌ **Un contacto agregado después no puede hacer pedidos:** "Order could not be created, because the customer has no role in this company". Solo el contacto creado junto con la empresa recibe rol automáticamente. **Decisión:** al crear o vincular un contacto, el sistema le asigna el rol de compra en la ubicación (`companyContactAssignRole`, rol "Ordering only" si existe). Se valida en la ronda 4.
+- ✅ Región distinta de Lima: `zoneCode: "ARE"` se acepta (Shopify lo guarda como `PE-ARE`).
+- ✅ El id de la línea calculada de una edición termina en el mismo número que la línea: el adaptador puede relacionarlas así.
+- Se repiten los hallazgos: `@idempotent` no evita duplicar `orderCreate`; el pago con nombre requiere el método manual en la tienda; el índice de búsqueda tarda ~5 s.
 
 ## C. Restauraciones y piezas
 
@@ -275,7 +283,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
   - **Persona:** nombres, apellidos y teléfono obligatorios; tipo y número de documento (DNI/CE/pasaporte), email y dirección opcionales.
   - **Empresa:** razón social, RUC y teléfono obligatorios; email y dirección opcionales.
   - **Contacto:** nombre y teléfono obligatorios; documento, email y cargo opcionales.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-04):** ✅ De acuerdo con la propuesta.
 
 ---
 
@@ -505,3 +513,4 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
 | 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
 | 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |
 | 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |
+| 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |

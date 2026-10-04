@@ -337,6 +337,53 @@ await step("agregar contacto nuevo a la company", async () => {
   return ctx.newContact;
 });
 
+// Ronda 4: sin rol en la ubicación el contacto no puede hacer pedidos (ronda 3).
+await step("asignar rol de compra al contacto nuevo", async () => {
+  const location = ctx.company?.locations.nodes[0];
+  if (!ctx.newContact || !location) throw new Error("No hay contacto nuevo");
+  const roles = await graphql(
+    `
+      query ($id: ID!) {
+        company(id: $id) {
+          contactRoles(first: 10) {
+            nodes {
+              id
+              name
+            }
+          }
+        }
+      }
+    `,
+    { id: ctx.company.id },
+  );
+  const nodes = roles.company.contactRoles.nodes;
+  const role = nodes.find((r) => /order/i.test(r.name)) ?? nodes[0];
+  const data = await graphql(
+    `
+      mutation ($contact: ID!, $role: ID!, $location: ID!) {
+        companyContactAssignRole(
+          companyContactId: $contact
+          companyContactRoleId: $role
+          companyLocationId: $location
+        ) {
+          companyContactRoleAssignment {
+            id
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    { contact: ctx.newContact.id, role: role.id, location: location.id },
+  );
+  return {
+    roles: nodes,
+    asignado: check(data.companyContactAssignRole).companyContactRoleAssignment,
+  };
+});
+
 await step("vincular un cliente existente como contacto", async () => {
   if (!ctx.company || !ctx.customer)
     throw new Error("No hay company o cliente");

@@ -1,5 +1,6 @@
 import type {
   CompanyInput,
+  CompanyRef,
   CustomerInput,
   OrderEdit,
   OrderFinancials,
@@ -34,14 +35,18 @@ export interface ShopifyGateway {
 
   /** Empresa como Company con su ubicación y, opcionalmente, su primer contacto (P14). */
   createCompany(input: CompanyInput): Promise<ShopifyCompany>;
-  /** Crea un cliente nuevo y lo asocia a la empresa como contacto. */
+  /**
+   * Crea un cliente nuevo, lo asocia a la empresa como contacto y le da el rol de
+   * compra en la ubicación: sin rol, Shopify no deja crear órdenes a su nombre
+   * (spike 4.1, ronda 3).
+   */
   createCompanyContact(
-    companyId: string,
+    company: CompanyRef,
     input: CustomerInput,
   ): Promise<ShopifyCompanyContact>;
-  /** Asocia como contacto a un cliente que ya existe en Shopify. */
+  /** Asocia como contacto (con rol de compra) a un cliente que ya existe en Shopify. */
   assignCustomerAsContact(
-    companyId: string,
+    company: CompanyRef,
     customerId: string,
   ): Promise<ShopifyCompanyContact>;
 

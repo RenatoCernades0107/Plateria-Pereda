@@ -9,6 +9,7 @@ import { fromCents, toCents } from "./money";
 import type {
   CompanyAddress,
   CompanyInput,
+  CompanyRef,
   CustomerInput,
   CustomLine,
   FinancialStatus,
@@ -36,6 +37,8 @@ export type GatewayMethod = keyof ShopifyGateway;
 type FakeCompany = ShopifyCompany & {
   phone: string | null;
   address: CompanyAddress;
+  /** Clientes con rol de compra en la ubicación (pueden hacer pedidos a su nombre). */
+  orderers: string[];
 };
 
 type FakeState = {
@@ -417,6 +420,8 @@ export class FakeShopifyGateway implements ShopifyGateway {
       contacts: contact
         ? [{ id: nextId("CompanyContact"), customerId: contact.id }]
         : [],
+      // Como en Shopify: el contacto creado con la empresa recibe rol automáticamente.
+      orderers: contact ? [contact.id] : [],
     };
     state().companies.set(company.id, company);
     return structuredClone(company);
@@ -428,21 +433,29 @@ export class FakeShopifyGateway implements ShopifyGateway {
     return company;
   }
 
-  async createCompanyContact(companyId: string, input: CustomerInput) {
-    this.track("createCompanyContact", [companyId, input]);
+  private getCompanyAt({ companyId, locationId }: CompanyRef) {
     const company = this.getCompany(companyId);
+    if (company.locationId !== locationId)
+      throw new ShopifyNotFoundError(locationId);
+    return company;
+  }
+
+  async createCompanyContact(ref: CompanyRef, input: CustomerInput) {
+    this.track("createCompanyContact", [ref, input]);
+    const company = this.getCompanyAt(ref);
     const customer = this.insertCustomer(input);
     const contact: ShopifyCompanyContact = {
       id: nextId("CompanyContact"),
       customerId: customer.id,
     };
     company.contacts.push(contact);
+    company.orderers.push(customer.id);
     return { ...contact };
   }
 
-  async assignCustomerAsContact(companyId: string, customerId: string) {
-    this.track("assignCustomerAsContact", [companyId, customerId]);
-    const company = this.getCompany(companyId);
+  async assignCustomerAsContact(ref: CompanyRef, customerId: string) {
+    this.track("assignCustomerAsContact", [ref, customerId]);
+    const company = this.getCompanyAt(ref);
     if (!state().customers.has(customerId))
       throw new ShopifyNotFoundError(customerId);
     if (company.contacts.some((c) => c.customerId === customerId)) {
@@ -458,6 +471,7 @@ export class FakeShopifyGateway implements ShopifyGateway {
       customerId,
     };
     company.contacts.push(contact);
+    company.orderers.push(customerId);
     return { ...contact };
   }
 
@@ -467,6 +481,21 @@ export class FakeShopifyGateway implements ShopifyGateway {
       throw new ShopifyUserError([
         { field: ["customerId"], message: "Customer does not exist" },
       ]);
+    }
+    if (input.companyLocationId) {
+      const company = [...state().companies.values()].find(
+        (c) => c.locationId === input.companyLocationId,
+      );
+      if (!company) throw new ShopifyNotFoundError(input.companyLocationId);
+      if (!company.orderers.includes(input.customerId)) {
+        throw new ShopifyUserError([
+          {
+            field: ["order"],
+            message:
+              "Order could not be created, because the customer has no role in this company.",
+          },
+        ]);
+      }
     }
     if (input.lines.length === 0) {
       throw new ShopifyUserError([

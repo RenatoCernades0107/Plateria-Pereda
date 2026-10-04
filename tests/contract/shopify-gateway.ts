@@ -185,7 +185,8 @@ export function shopifyGatewayContract(
           externalId: "20100047218",
           address,
         });
-        const nuevo = await gateway.createCompanyContact(company.id, {
+        const ref = { companyId: company.id, locationId: company.locationId };
+        const nuevo = await gateway.createCompanyContact(ref, {
           firstName: "Rosa",
           lastName: "Díaz",
           phone: "+51988777666",
@@ -199,13 +200,50 @@ export function shopifyGatewayContract(
           lastName: "Soto",
         });
         const vinculado = await gateway.assignCustomerAsContact(
-          company.id,
+          ref,
           existente.id,
         );
         expect(vinculado.customerId).toBe(existente.id);
         await expect(
-          gateway.assignCustomerAsContact(company.id, existente.id),
+          gateway.assignCustomerAsContact(ref, existente.id),
         ).rejects.toBeInstanceOf(ShopifyUserError);
+      });
+
+      it("un contacto agregado después puede hacer pedidos a nombre de la empresa", async () => {
+        const company = await gateway.createCompany({
+          name: "Joyería Andina S.A.C.",
+          externalId: "20100047218",
+          address,
+        });
+        const ref = { companyId: company.id, locationId: company.locationId };
+        const contacto = await gateway.createCompanyContact(ref, {
+          firstName: "Rosa",
+          lastName: "Díaz",
+        });
+        const order = (customerId: string) =>
+          gateway.createOrder({
+            customerId,
+            companyLocationId: company.locationId,
+            lines: [
+              {
+                title: "Restauración RES-00002-1",
+                price: "80.00",
+                quantity: 1,
+              },
+            ],
+            tags: ["RES-00002"],
+          });
+        await expect(order(contacto.customerId)).resolves.toMatchObject({
+          name: expect.any(String),
+        });
+
+        const ajeno = await gateway.createCustomer({
+          firstName: "Ajeno",
+          lastName: "",
+        });
+        await expect(order(ajeno.id)).rejects.toThrow(
+          "has no role in this company",
+        );
       });
     });
 

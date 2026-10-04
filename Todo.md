@@ -570,7 +570,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] Error forzado en el fake → "Error de sincronización" → "Reintentar" → sincronizado.
   - [x] `@mobile` crear cliente.
 - Hecho (2026-10-04): el gateway suma `createCompany`, `createCompanyContact` y `assignCustomerAsContact` (fake, live y emulador; contract test). Un trigger encola `customer.create` / `company.create` / `contact.create` al registrar (salvo importados con id de Shopify). Handlers idempotentes en `src/server/clients/shopify-sync.ts`: si el email o teléfono ya existe en Shopify vinculan ese cliente; el contacto espera a que su empresa esté sincronizada. `public.shopify_sync_status()` expone el estado a todos los roles (el outbox sigue siendo solo de admin). `clients` suma ciudad y región (código de Shopify, `src/domain/regions.ts`). Diálogo `NewClientDialog` (persona / empresa) reutilizable con `onCreated`; `/clientes` muestra los últimos clientes con su estado y se refresca solo mientras hay pendientes. El fake guarda la descripción de los fallos forzados y crea el error al lanzarlo (en desarrollo las rutas y las acciones pueden cargar copias distintas de las clases de error).
-- Pendiente de validar en la ronda 3 del spike: `companyContactCreate`, `companyAssignCustomerAsContact`, orden pedida por un contacto agregado después y códigos de región distintos de LIM. Si la empresa ya existe en Shopify con ese RUC, por ahora queda en error con el mensaje de Shopify (se resuelve con la importación de 6.6).
+- Ronda 3 del spike: contactos nuevos y existentes ✅, región ARE ✅; un contacto agregado después necesita **rol de compra** en la ubicación para hacer pedidos → el gateway lo asigna al crear o vincular el contacto (validar en la ronda 4). Si la empresa ya existe en Shopify con ese RUC, por ahora queda en error con el mensaje de Shopify (se resuelve con la importación de 6.6).
 - Commit: `feat(clientes): registra clientes y los sincroniza con Shopify`
 
 #### Paso 6.3 — Buscador unificado `ClientPicker`
@@ -595,7 +595,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Agregar un contacto a una empresa y luego seleccionarlo en el buscador.
 - Commit: `feat(clientes): agrega gestión de contactos`
 
-#### Paso 6.5 — Listado y detalle de clientes ⛔ P16
+#### Paso 6.5 — Listado y detalle de clientes
 - [ ] `/clientes`: tabla con búsqueda y filtros (tipo, estado de sincronización).
 - [ ] `/clientes/[id]`: datos, contactos, restauraciones, cotizaciones, historial; edición (sincroniza con Shopify según P16). Logística solo ve los datos de contacto (sin restauraciones pasadas ni historial, P42).
 - **Unit:**
@@ -605,7 +605,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Editar datos → se encola la actualización en Shopify.
 - Commit: `feat(clientes): agrega listado y detalle de clientes`
 
-#### Paso 6.6 — Importación inicial de clientes de Shopify ⛔ P15
+#### Paso 6.6 — Importación inicial de clientes de Shopify
 - [ ] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).
 - **Unit:**
   - [ ] Mapeo y upsert idempotente.

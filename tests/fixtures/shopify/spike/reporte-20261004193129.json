@@ -159,9 +159,7 @@
       "error": {
         "userErrors": [
           {
-            "field": [
-              "order"
-            ],
+            "field": ["order"],
             "message": "Order could not be created, because the customer has no role in this company."
           }
         ]
@@ -298,9 +296,7 @@
       "result": {
         "id": "gid://shopify/Order/7544774426815",
         "name": "#1006",
-        "tags": [
-          "SPIKE-20261004193129"
-        ],
+        "tags": ["SPIKE-20261004193129"],
         "displayFinancialStatus": "PARTIALLY_PAID",
         "displayFulfillmentStatus": "UNFULFILLED",
         "totalPriceSet": {
@@ -376,9 +372,7 @@
           {
             "id": "gid://shopify/Order/7544774426815",
             "name": "#1006",
-            "tags": [
-              "SPIKE-20261004193129"
-            ]
+            "tags": ["SPIKE-20261004193129"]
           }
         ]
       }
@@ -429,9 +423,7 @@
       "result": {
         "id": "gid://shopify/Order/7544774426815",
         "name": "#1006",
-        "tags": [
-          "SPIKE-20261004193129"
-        ],
+        "tags": ["SPIKE-20261004193129"],
         "displayFinancialStatus": "PARTIALLY_PAID",
         "displayFulfillmentStatus": "UNFULFILLED",
         "totalPriceSet": {
@@ -533,9 +525,7 @@
       "result": {
         "conNombre": [
           {
-            "field": [
-              "paymentMethodName"
-            ],
+            "field": ["paymentMethodName"],
             "message": "Payment provider is not configured on shop."
           }
         ],
@@ -543,9 +533,7 @@
         "order": {
           "id": "gid://shopify/Order/7544774426815",
           "name": "#1006",
-          "tags": [
-            "SPIKE-20261004193129"
-          ],
+          "tags": ["SPIKE-20261004193129"],
           "displayFinancialStatus": "PAID",
           "displayFulfillmentStatus": "UNFULFILLED",
           "totalPriceSet": {
