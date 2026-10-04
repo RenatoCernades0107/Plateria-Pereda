@@ -1,0 +1,22 @@
+{
+  "run": "SPIKE-20261004182733",
+  "shop": "plateriadevstore.myshopify.com",
+  "version": "2026-10",
+  "steps": [
+    {
+      "name": "token client credentials",
+      "ok": false,
+      "ms": 405,
+      "error": {
+        "status": 400,
+        "body": "{\"error\":\"app_not_installed\",\"error_description\":\"The application is not installed on this shop.\"}",
+        "requestId": "11bb1205-4f85-4682-be53-715a91ac0504-1791138453",
+        "clientIdLength": 32,
+        "clientIdHasSpacesOrQuotes": false,
+        "clientSecretPrefix": "shpss_",
+        "clientSecretHasSpacesOrQuotes": false,
+        "hint": "400 suele indicar que la app no está instalada en la tienda o que la tienda no pertenece a la misma organización que la app; 401, credenciales incorrectas."
+      }
+    }
+  ]
+}
