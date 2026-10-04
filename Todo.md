@@ -725,15 +725,16 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 8 — Estados, ubicación, fechas y tiempos
 
 #### Paso 8.1 — Máquina de estados de la pieza (dominio)
-- [ ] `src/domain/piece-state-machine.ts`: estados, transiciones de §7.1, requisitos (nota, taller), roles permitidos, `availableTransitions(piece, role)` y `applyTransition()` (devuelve el nuevo estado, las fechas y efectos como "Aprobada → Recibida si ya llegó").
+- [x] `src/domain/piece-state-machine.ts`: estados, transiciones de §7.1, requisitos (nota, taller), roles permitidos, `availableTransitions(piece, role)` y `applyTransition()` (devuelve el nuevo estado, las fechas y efectos como "Aprobada → Recibida si ya llegó").
 - **Unit:**
-  - [ ] Test de tabla que recorre **todas** las combinaciones estado origen × destino × rol (válidas e inválidas).
-  - [ ] Llegada anticipada: aprobar una pieza que ya llegó la deja en Recibida.
-  - [ ] Nota obligatoria donde corresponde.
-  - [ ] Taller obligatorio al enviar al taller.
-  - [ ] Anulada es estado final.
-  - [ ] Desde "En consulta" solo se pasa a "En espera de respuesta" (o se anula); desde "En espera" solo se aprueba o se anula.
+  - [x] Test de tabla que recorre **todas** las combinaciones estado origen × destino × rol (válidas e inválidas).
+  - [x] Llegada anticipada: aprobar una pieza que ya llegó la deja en Recibida.
+  - [x] Nota obligatoria donde corresponde.
+  - [x] Taller obligatorio al enviar al taller.
+  - [x] Anulada es estado final.
+  - [x] Desde "En consulta" solo se pasa a "En espera de respuesta" (o se anula); desde "En espera" solo se aprueba o se anula.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): estados `registrada`, `en_consulta`, `en_espera`, `aprobada`, `recibida`, `enviada_taller`, `devuelta_taller`, `observada`, `entregada` y `anulada` (el enum de la BD del Paso 7.1 debe usar estos mismos valores). `PIECE_TRANSITIONS` es la tabla que siembra `piece_status_transitions` en 8.3; los roles salen de la matriz de `permissions.ts` (P42) y anular una pieza que está en el taller es solo de admin (P41 d). Nota obligatoria al consultar, anular y observar (también el reclamo después de la entrega); taller obligatorio al enviar (usa el ya asignado o el elegido). `applyTransition()` devuelve los cambios (estado, fechas de §7.4, taller), la nota recortada y los pasos para el historial: aprobar una pieza que ya llegó deja dos pasos (→ Aprobada → Recibida); el reenvío tras una observación conserva `first_sent_at`. Aprobada → Recibida no se ofrece como transición: se hace con `markArrived()` ("Marcar llegada a tienda", todos los roles; en los estados previos a Aprobada solo guarda `arrived_at`). Errores tipados con mensaje (`transicion_invalida`, `rol_no_permitido`, `nota_requerida`, `taller_requerido`). La regla de entrega con saldo pendiente (P45) se agrega en 11.2.
 - Commit: `feat(piezas): agrega máquina de estados de piezas`
 
 #### Paso 8.2 — Derivaciones (dominio) ⛔ P19 ⛔ P23
