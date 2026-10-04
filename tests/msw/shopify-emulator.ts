@@ -5,7 +5,7 @@ import { FakeShopifyGateway } from "@/server/shopify/fake";
 import type { ShopifyCustomer, ShopifyOrder } from "@/server/shopify/types";
 
 export const TEST_SHOP = "pereda-test.myshopify.com";
-export const TEST_API_VERSION = "2026-07";
+export const TEST_API_VERSION = "2026-10";
 
 /**
  * Emula la Admin API de GraphQL de Shopify para probar el adaptador live: responde

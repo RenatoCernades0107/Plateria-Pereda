@@ -22,7 +22,7 @@ describe("getShopifyGateway", () => {
       SHOPIFY_STORE_DOMAIN: "pereda.myshopify.com",
       SHOPIFY_CLIENT_ID: "id",
       SHOPIFY_CLIENT_SECRET: "secreto",
-      SHOPIFY_API_VERSION: "2026-07",
+      SHOPIFY_API_VERSION: "2026-10",
     };
     const { getShopifyGateway } = await import("./index");
     const { LiveShopifyGateway } = await import("./live");

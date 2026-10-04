@@ -21,7 +21,7 @@ function shopifyHeaders(overrides: Record<string, string | null> = {}) {
     "x-shopify-shop-domain": SHOP,
     "x-shopify-webhook-id": "wh-1",
     "x-shopify-topic": "customers/update",
-    "x-shopify-api-version": "2026-07",
+    "x-shopify-api-version": "2026-10",
     ...overrides,
   };
   const headers = new Headers();
@@ -94,7 +94,7 @@ describe("recepción de webhooks", () => {
       webhookId: "wh-1",
       topic: "customers/update",
       shopDomain: SHOP,
-      apiVersion: "2026-07",
+      apiVersion: "2026-10",
       payload: { id: 1, email: "ana@correo.pe" },
     });
   });

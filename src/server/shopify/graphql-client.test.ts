@@ -15,7 +15,7 @@ import {
 } from "./graphql-client";
 
 const SHOP = "pereda-test.myshopify.com";
-const URL = `https://${SHOP}/admin/api/2026-07/graphql.json`;
+const URL = `https://${SHOP}/admin/api/2026-10/graphql.json`;
 const ok = () => HttpResponse.json({ data: { shop: { name: "Pereda" } } });
 
 describe("cliente GraphQL de Shopify", () => {
@@ -41,7 +41,7 @@ describe("cliente GraphQL de Shopify", () => {
   const client = () =>
     createGraphqlClient({
       shop: SHOP,
-      apiVersion: "2026-07",
+      apiVersion: "2026-10",
       tokens,
       sleep: async (ms) => {
         delays.push(ms);

@@ -38,7 +38,7 @@ const response = await fetch(url, {
     "X-Shopify-Topic": topic,
     "X-Shopify-Shop-Domain": shop,
     "X-Shopify-Webhook-Id": randomUUID(),
-    "X-Shopify-API-Version": process.env.SHOPIFY_API_VERSION || "2026-07",
+    "X-Shopify-API-Version": process.env.SHOPIFY_API_VERSION || "2026-10",
     "X-Shopify-Hmac-Sha256": createHmac("sha256", secret)
       .update(body, "utf8")
       .digest("base64"),
