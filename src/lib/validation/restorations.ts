@@ -1,0 +1,138 @@
+import { z } from "zod";
+
+import { parseMoney, PAYMENT_TYPES } from "@/domain/money";
+
+/**
+ * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
+ * P22: medida libre; material y servicio del catálogo o escritos libremente; peso
+ * en gramos opcional; precio obligatorio; taller opcional al registrar.
+ * Lo obligatorio se define aquí (no en la BD) para cambiarlo sin migraciones.
+ */
+
+export const MAX_PIECES = 100;
+
+/** Recorta y colapsa espacios repetidos. */
+const line = (max: number) =>
+  z
+    .string()
+    .transform((v) => v.trim().replace(/\s+/g, " "))
+    .pipe(z.string().max(max, `Máximo ${max} caracteres`));
+
+/** Texto largo: conserva los saltos de línea. */
+const notes = (max: number) =>
+  z.string().trim().max(max, `Máximo ${max} caracteres`);
+
+/** Id opcional: los selectores usan "" para "ninguno". */
+const optionalId = z
+  .string()
+  .nullable()
+  .transform((v) => v || null)
+  .pipe(z.guid().nullable());
+
+/** Material o servicio: elegido del catálogo (id y nombre) o escrito libremente (solo nombre). */
+const catalogChoice = z
+  .object({ id: optionalId, name: line(100) })
+  .transform(({ id, name }, ctx) => {
+    if (name) return { id, name };
+    if (id) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["name"],
+        message: "Escribe el nombre",
+      });
+      return z.NEVER;
+    }
+    return null;
+  });
+
+const price = z
+  .string()
+  .trim()
+  .min(1, "Ingresa el precio")
+  .transform((value, ctx) => {
+    const cents = parseMoney(value);
+    if (cents === null) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Ingresa un monto válido (hasta 2 decimales)",
+      });
+      return z.NEVER;
+    }
+    return cents;
+  });
+
+/** Peso en gramos (opcional, hasta 2 decimales). */
+const weight = z
+  .string()
+  .trim()
+  .refine(
+    (v) => v === "" || /^\d{1,6}([.,]\d{1,2})?$/.test(v),
+    "Ingresa el peso en gramos (hasta 2 decimales)",
+  )
+  .transform((v) => (v === "" ? null : Number(v.replace(",", "."))))
+  .refine((v) => v === null || v > 0, "El peso debe ser mayor que 0");
+
+export const pieceSchema = z
+  .object({
+    workshopId: optionalId,
+    description: line(300).pipe(
+      z.string().min(1, "Describe la pieza (qué es y cómo está)"),
+    ),
+    measure: line(100),
+    material: catalogChoice,
+    service: catalogChoice,
+    weight,
+    price,
+    /** "La pieza ya está en tienda": marca su llegada al registrarla. */
+    arrived: z.boolean(),
+    notes: notes(1000),
+  })
+  .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
+    ...rest,
+    weightGrams,
+    priceCents,
+  }));
+
+export type PieceFormInput = z.input<typeof pieceSchema>;
+export type PieceInput = z.output<typeof pieceSchema>;
+
+const PERCENT_ERROR = "El adelanto debe estar entre 1 y 100 %";
+
+const depositPercent = z.coerce
+  .number<string | number>({ error: PERCENT_ERROR })
+  .min(1, PERCENT_ERROR)
+  .max(100, PERCENT_ERROR)
+  .refine(
+    (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-9,
+    "Máximo dos decimales",
+  );
+
+const restorationFields = {
+  clientId: z.guid({ error: "Elige un cliente" }),
+  contactId: optionalId,
+  notes: notes(2000),
+  pieces: z
+    .array(pieceSchema)
+    .min(1, "Agrega al menos una pieza")
+    .max(MAX_PIECES, `Máximo ${MAX_PIECES} piezas por restauración`),
+};
+
+/**
+ * El % de adelanto solo se valida y se guarda si el pago es "A cuenta"; en los
+ * demás tipos el campo se oculta y queda en null.
+ */
+export const restorationSchema = z.discriminatedUnion("paymentType", [
+  z.object({
+    ...restorationFields,
+    paymentType: z.literal("a_cuenta"),
+    depositPercent,
+  }),
+  z.object({
+    ...restorationFields,
+    paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
+    depositPercent: z.unknown().transform(() => null),
+  }),
+]);
+
+export type RestorationFormInput = z.input<typeof restorationSchema>;
+export type RestorationInput = z.output<typeof restorationSchema>;

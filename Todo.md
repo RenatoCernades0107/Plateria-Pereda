@@ -643,14 +643,15 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega esquema de restauraciones y piezas`
 
 #### Paso 7.2 — Dominio: dinero y validaciones ⛔ P28
-- [ ] `src/domain/money.ts` (céntimos enteros, suma, redondeo, formato).
-- [ ] Esquemas zod de restauración y pieza (campos según P22).
+- [x] `src/domain/money.ts` (céntimos enteros, suma, redondeo, formato).
+- [x] Esquemas zod de restauración y pieza (campos según P22).
 - **Unit:**
-  - [ ] Sumas sin errores de punto flotante (0.1 + 0.2).
-  - [ ] Redondeo a 2 decimales.
-  - [ ] Validaciones de pieza (precio requerido, peso según P22, longitudes máximas).
-  - [ ] Adelanto esperado: % × total en "A cuenta" (50 % por defecto, editable), 0 en "Crédito", total en "Contado"; redondeo a céntimos.
+  - [x] Sumas sin errores de punto flotante (0.1 + 0.2).
+  - [x] Redondeo a 2 decimales.
+  - [x] Validaciones de pieza (precio requerido, peso según P22, longitudes máximas).
+  - [x] Adelanto esperado: % × total en "A cuenta" (50 % por defecto, editable), 0 en "Crédito", total en "Contado"; redondeo a céntimos.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): `money.ts` trabaja en céntimos enteros (`toCents`, `toSoles`, `toDecimalString` para la BD y Shopify, `formatCents`, `sumCents`, `percentOf`; empates redondeados lejos del cero, 1.005 → 1.01), `parseMoney()` lee lo que escribe el usuario ("1,234.50", "1234,5", "S/ 12"; tope S/ 99,999,999.99) y `expectedDeposit()` da el adelanto esperado; tipos de pago `contado`, `a_cuenta` y `credito` (el enum de la BD del Paso 7.1 debe usar estos valores). Esquemas en `src/lib/validation/restorations.ts`: la pieza exige solo descripción y precio (≥ 0); medida, material y servicio (del catálogo con id y nombre, o texto libre), peso (> 0, gramos, hasta 2 decimales) y taller son opcionales; "La pieza ya está en tienda" es `arrived`. La restauración exige cliente y entre 1 y 100 piezas; el % de adelanto (1–100, hasta 2 decimales) solo se valida y se guarda en "A cuenta" (unión discriminada, así los errores de las piezas y del % salen juntos). **P28 sigue pendiente** (¿contado = paga todo al aprobar?, ¿crédito para quién?, ¿cambiar el tipo de pago después?): no afecta estos cálculos.
 - Commit: `feat(restauraciones): agrega reglas de dinero y validaciones`
 
 #### Paso 7.3 — RPC `create_restoration`
