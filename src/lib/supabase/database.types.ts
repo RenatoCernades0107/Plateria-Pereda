@@ -892,6 +892,20 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      create_restoration: {
+        Args: {
+          p_client_id: string;
+          p_contact_id: string;
+          p_deposit_percent: number;
+          p_notes: string;
+          p_payment_type: Database["public"]["Enums"]["payment_type"];
+          p_pieces: Json;
+        };
+        Returns: {
+          code: string;
+          id: string;
+        }[];
+      };
       import_shopify_customer: {
         Args: {
           p_customer_id: string;

@@ -656,15 +656,16 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega reglas de dinero y validaciones`
 
 #### Paso 7.3 — RPC `create_restoration`
-- [ ] Función SQL transaccional que crea la restauración + piezas + historial inicial y devuelve el código; valida permisos y datos.
+- [x] Función SQL transaccional que crea la restauración + piezas + historial inicial y devuelve el código; valida permisos y datos.
 - **Unit:** No aplica (SQL); el server action se prueba en integración.
 - **BD:**
-  - [ ] Crea todo o nada.
-  - [ ] Rechaza restauraciones sin piezas o con datos inválidos.
-  - [ ] Rechaza al rol logística.
+  - [x] Crea todo o nada.
+  - [x] Rechaza restauraciones sin piezas o con datos inválidos.
+  - [x] Rechaza al rol logística.
 - **Integración:**
-  - [ ] Server action → RPC → datos correctos y auditados.
+  - [x] Server action → RPC → datos correctos y auditados.
 - **E2E:** se cubre en 7.4.
+- Hecho (2026-10-04): `create_restoration()` corre como quien llama (RLS y privilegios por columna de 7.1 deciden: admin y ventas), exige 1–100 piezas y un cliente/contacto activos, y devuelve `id` y `code`. El historial inicial es por ahora el registro de auditoría de cada alta; la tabla `piece_status_history` llega en 8.3 (ahí se agrega el paso inicial). Acción `createRestoration()` (valida con `restorationSchema`, traduce errores) y `createRestorationRecord()` (`src/server/restorations/`), que convierte céntimos a soles para la BD.
 - Commit: `feat(restauraciones): agrega creación transaccional de restauraciones`
 
 #### Paso 7.4 — Formulario de registro ⛔ P20
