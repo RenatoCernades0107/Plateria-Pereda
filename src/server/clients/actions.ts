@@ -8,7 +8,8 @@ import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type CreateClientResult =
-  { ok: true; id: string; displayName: string } | { error: string };
+  | { ok: true; id: string; displayName: string; kind: "persona" | "empresa" }
+  | { error: string };
 
 /**
  * Registra una persona o empresa. La misma transacción encola su alta en Shopify
@@ -63,5 +64,10 @@ export async function createClient(
 
   scheduleShopifySync();
   revalidatePath("/clientes");
-  return { ok: true, id: data.id, displayName: data.display_name ?? "" };
+  return {
+    ok: true,
+    id: data.id,
+    displayName: data.display_name ?? "",
+    kind: v.kind,
+  };
 }

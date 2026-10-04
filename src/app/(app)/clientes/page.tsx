@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ClientsList } from "@/components/clients/clients-list";
+import { ClientsSearch } from "@/components/clients/clients-search";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { PageHeader } from "@/components/page-header";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
@@ -24,6 +25,7 @@ export default async function ClientesPage() {
         />
         {canEdit ? <NewClientDialog /> : null}
       </div>
+      <ClientsSearch canCreate={canEdit} />
       <ClientsList clients={clients} canRetry={canEdit} />
       <RefreshWhilePending
         pending={clients.some(

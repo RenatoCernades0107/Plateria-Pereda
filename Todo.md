@@ -574,15 +574,16 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(clientes): registra clientes y los sincroniza con Shopify`
 
 #### Paso 6.3 — Buscador unificado `ClientPicker`
-- [ ] Busca en la BD local (clientes y contactos) y en Shopify (clientes aún no importados); al elegir uno de Shopify se guarda/actualiza localmente.
-- [ ] Muestra tipo, documento, teléfono y, si es un contacto, la empresa a la que pertenece.
-- [ ] Debounce, estados de carga y vacío, opción "Crear nuevo".
+- [x] Busca en la BD local (clientes y contactos) y en Shopify (clientes aún no importados); al elegir uno de Shopify se guarda/actualiza localmente.
+- [x] Muestra tipo, documento, teléfono y, si es un contacto, la empresa a la que pertenece.
+- [x] Debounce, estados de carga y vacío, opción "Crear nuevo".
 - **Unit:**
-  - [ ] Fusión y deduplicación de resultados locales y de Shopify.
-  - [ ] Componente: navegación con teclado, selección, "Crear nuevo".
+  - [x] Fusión y deduplicación de resultados locales y de Shopify.
+  - [x] Componente: navegación con teclado, selección, "Crear nuevo".
 - **E2E:**
-  - [ ] Buscar por nombre, documento y teléfono.
-  - [ ] Elegir un cliente que solo existe en Shopify (fake) → queda guardado localmente.
+  - [x] Buscar por nombre, documento y teléfono.
+  - [x] Elegir un cliente que solo existe en Shopify (fake) → queda guardado localmente.
+- Hecho (2026-10-04): `searchClients()` busca en clientes y contactos activos (nombre, documento, email y dígitos del teléfono) y en Shopify; `mergeClientOptions()` (`src/domain/client-search.ts`) no repite clientes de Shopify que ya están en el sistema (por id, email o teléfono). Si Shopify falla se muestran solo los locales con aviso. Al elegir uno de Shopify, `importShopifyCustomer()` lo guarda como persona ya sincronizada (idempotente; no encola trabajo). `ClientPicker` (cmdk): espera de 300 ms, descarta respuestas viejas, estados de carga y vacío, grupos "En el sistema" / "En Shopify", "Crear nuevo cliente" (abre `NewClientDialog`) y limpia la búsqueda al elegir. En `/clientes` funciona como buscador hasta que llegue el detalle (6.5).
 - Commit: `feat(clientes): agrega buscador unificado de clientes y contactos`
 
 #### Paso 6.4 — Contactos

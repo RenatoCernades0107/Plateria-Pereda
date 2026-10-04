@@ -46,7 +46,11 @@ import {
 } from "@/lib/validation/clients";
 import { createClient } from "@/server/clients/actions";
 
-export type CreatedClient = { id: string; displayName: string };
+export type CreatedClient = {
+  id: string;
+  displayName: string;
+  kind: "persona" | "empresa";
+};
 
 const NO_DOCUMENT = "ninguno";
 
@@ -137,7 +141,11 @@ function useClientForm<T extends ClientFormInput>(
         return;
       }
       form.reset(defaults as never);
-      onCreated({ id: result.id, displayName: result.displayName });
+      onCreated({
+        id: result.id,
+        displayName: result.displayName,
+        kind: result.kind,
+      });
     });
   });
   return { form, error, pending, onSubmit };
@@ -292,11 +300,21 @@ function CompanyForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
 export function NewClientDialog({
   trigger,
   onCreated,
+  open: controlledOpen,
+  onOpenChange,
 }: {
-  trigger?: React.ReactNode;
+  /** Botón que abre el diálogo; `null` para abrirlo solo desde afuera (`open`). */
+  trigger?: React.ReactNode | null;
   onCreated?: (client: CreatedClient) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (value: boolean) => {
+    setInternalOpen(value);
+    onOpenChange?.(value);
+  };
   const handleCreated = (client: CreatedClient) => {
     toast.success(
       `${client.displayName} registrado. Se está enviando a Shopify.`,
@@ -307,14 +325,16 @@ export function NewClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button>
-            <UserPlus />
-            Nuevo cliente
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger === null ? null : (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button>
+              <UserPlus />
+              Nuevo cliente
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Nuevo cliente</DialogTitle>

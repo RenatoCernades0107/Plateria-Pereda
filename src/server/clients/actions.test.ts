@@ -60,6 +60,7 @@ describe("createClient", () => {
       ok: true,
       id: "c1",
       displayName: "Ana Pérez",
+      kind: "persona",
     });
     expect(mocks.insert).toHaveBeenCalledWith({
       kind: "persona",
