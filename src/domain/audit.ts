@@ -1,5 +1,6 @@
 import { DOCUMENT_LABELS, type DocumentType } from "@/domain/documents";
 import { formatPhone } from "@/domain/phone";
+import { PERU_REGIONS } from "@/domain/regions";
 import { formatMoney } from "@/lib/format";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 
@@ -104,6 +105,13 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       },
       email: { label: "Email" },
       address: { label: "Dirección" },
+      city: { label: "Ciudad" },
+      region: {
+        label: "Región",
+        format: (value) =>
+          PERU_REGIONS.find((r) => r.code === value)?.name ??
+          formatValue(value),
+      },
       notes: { label: "Notas" },
       active: {
         label: "Estado",

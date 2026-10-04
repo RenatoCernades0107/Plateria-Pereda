@@ -504,8 +504,135 @@ await step("company en otra región (Arequipa, ARE)", async () => {
       },
     },
   );
-  return check(data.companyCreate).company;
+  ctx.aqp = check(data.companyCreate).company;
+  return ctx.aqp;
 });
+
+// Ronda 5: edición de clientes sincronizada (P16, Paso 6.5).
+await step("actualizar cliente persona (customerUpdate)", async () => {
+  if (!ctx.customer) throw new Error("No se creó el cliente persona");
+  const data = await graphql(
+    `
+      mutation ($input: CustomerInput!) {
+        customerUpdate(input: $input) {
+          customer {
+            id
+            firstName
+            defaultPhoneNumber {
+              phoneNumber
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      input: {
+        id: ctx.customer.id,
+        firstName: "Ana María",
+        phone: `+5198${String(Date.now()).slice(-7)}`,
+      },
+    },
+  );
+  return check(data.customerUpdate).customer;
+});
+
+await step(
+  "actualizar company, teléfono y dirección de la ubicación",
+  async () => {
+    if (!ctx.aqp) throw new Error("No se creó la company de Arequipa");
+    const location = ctx.aqp.locations.nodes[0].id;
+    const company = await graphql(
+      `
+        mutation ($companyId: ID!, $input: CompanyInput!) {
+          companyUpdate(companyId: $companyId, input: $input) {
+            company {
+              id
+              name
+              externalId
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `,
+      {
+        companyId: ctx.aqp.id,
+        input: { name: `Empresa AQP editada ${RUN}`, externalId: randomRuc() },
+      },
+    );
+    check(company.companyUpdate);
+    const phone = await graphql(
+      `
+        mutation (
+          $companyLocationId: ID!
+          $input: CompanyLocationUpdateInput!
+        ) {
+          companyLocationUpdate(
+            companyLocationId: $companyLocationId
+            input: $input
+          ) {
+            companyLocation {
+              id
+              phone
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `,
+      { companyLocationId: location, input: { phone: "+5154234567" } },
+    );
+    check(phone.companyLocationUpdate);
+    const address = await graphql(
+      `
+        mutation (
+          $locationId: ID!
+          $address: CompanyAddressInput!
+          $addressTypes: [CompanyAddressType!]!
+        ) {
+          companyLocationAssignAddress(
+            locationId: $locationId
+            address: $address
+            addressTypes: $addressTypes
+          ) {
+            addresses {
+              id
+              city
+              zoneCode
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `,
+      {
+        locationId: location,
+        address: {
+          address1: "Av. Ejército 500",
+          city: "Cayma",
+          zoneCode: "ARE",
+          countryCode: "PE",
+        },
+        addressTypes: ["SHIPPING", "BILLING"],
+      },
+    );
+    return {
+      company: company.companyUpdate.company,
+      location: phone.companyLocationUpdate.companyLocation,
+      addresses: check(address.companyLocationAssignAddress).addresses,
+    };
+  },
+);
 
 // 5. Productos
 await step("buscar productos", async () => {

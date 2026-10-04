@@ -78,7 +78,7 @@ function memoryRepo(clients: ClientRecord[], contacts: ContactRecord[] = []) {
 const job = (kind: string, entityId: string): SyncJob => ({
   id: 1,
   kind,
-  entityTable: kind === "contact.create" ? "contacts" : "clients",
+  entityTable: kind.startsWith("contact.") ? "contacts" : "clients",
   entityId,
   payload: {},
   attempts: 1,
@@ -270,6 +270,109 @@ describe("handlers de clientes", () => {
       "company.create",
       "contact.create",
     ]) {
+      await expect(
+        handlers[kind]!(job(kind, "nada"), gateway),
+      ).rejects.toBeInstanceOf(ShopifyUserError);
+    }
+  });
+});
+
+describe("handlers de actualización (P16)", () => {
+  let gateway: FakeShopifyGateway;
+
+  beforeEach(() => {
+    fakeShopify.reset();
+    gateway = new FakeShopifyGateway();
+  });
+
+  it("envía a Shopify los datos vigentes de la persona", async () => {
+    const customer = await gateway.createCustomer({
+      firstName: "Ana",
+      lastName: "Pérez",
+      email: "ana@correo.pe",
+    });
+    const { repo } = memoryRepo([
+      {
+        ...person,
+        firstName: "Ana María",
+        email: null,
+        phone: "+51911222333",
+        shopifyCustomerId: customer.id,
+      },
+    ]);
+    await clientJobHandlers(repo)["customer.update"]!(
+      job("customer.update", "c1"),
+      gateway,
+    );
+    expect(await gateway.getCustomer(customer.id)).toMatchObject({
+      firstName: "Ana María",
+      phone: "+51911222333",
+      // Un email quitado en el sistema no se borra en Shopify.
+      email: "ana@correo.pe",
+    });
+  });
+
+  it("actualiza la Company y la dirección de su ubicación", async () => {
+    const created = await gateway.createCompany({
+      name: "Joyería Andina S.A.C.",
+      externalId: "20100047218",
+      address: { address1: "Av. Larco 1", city: "Lima", zoneCode: "LIM" },
+    });
+    const { repo } = memoryRepo([
+      {
+        ...company,
+        legalName: "Joyería Andina del Sur S.A.C.",
+        address: "Calle Mercaderes 200",
+        shopifyCompanyId: created.id,
+        shopifyCompanyLocationId: created.locationId,
+      },
+    ]);
+    await clientJobHandlers(repo)["company.update"]!(
+      job("company.update", "c2"),
+      gateway,
+    );
+    expect(fakeShopify.snapshot().companies[0]).toMatchObject({
+      name: "Joyería Andina del Sur S.A.C.",
+      phone: "+5112345678",
+      address: {
+        address1: "Calle Mercaderes 200",
+        city: "Arequipa",
+        zoneCode: "ARE",
+      },
+    });
+  });
+
+  it("actualiza el cliente de Shopify del contacto", async () => {
+    const customer = await gateway.createCustomer({
+      firstName: "Luis",
+      lastName: "",
+    });
+    const { repo } = memoryRepo(
+      [company],
+      [{ ...contact, shopifyCustomerId: customer.id }],
+    );
+    await clientJobHandlers(repo)["contact.update"]!(
+      job("contact.update", "k1"),
+      gateway,
+    );
+    expect(await gateway.getCustomer(customer.id)).toMatchObject({
+      lastName: "Rojas",
+      email: "luis@andina.pe",
+    });
+  });
+
+  it("espera al alta si aún no tiene id y no reintenta si ya no existe", async () => {
+    const { repo } = memoryRepo([person, company], [contact]);
+    const handlers = clientJobHandlers(repo);
+    const cases = [
+      ["customer.update", "c1"],
+      ["company.update", "c2"],
+      ["contact.update", "k1"],
+    ] as const;
+    for (const [kind, id] of cases) {
+      await expect(
+        handlers[kind]!(job(kind, id), gateway),
+      ).rejects.toBeInstanceOf(ShopifyUnavailableError);
       await expect(
         handlers[kind]!(job(kind, "nada"), gateway),
       ).rejects.toBeInstanceOf(ShopifyUserError);

@@ -5,7 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
 
-import { supabaseClientSyncRepository } from "./repository";
+import {
+  applyShopifyCustomerChange,
+  supabaseClientSyncRepository,
+} from "./repository";
 import { clientJobHandlers } from "./shopify-sync";
 
 const RUN = `${Date.now()}`.slice(-8);
@@ -23,6 +26,36 @@ async function ventasClient() {
   });
   if (error) throw error;
   return client;
+}
+
+/** Procesa el job pendiente de ese tipo para el registro, como lo haría el outbox. */
+async function processPending(entityId: string, kind: string) {
+  const admin = createAdminClient();
+  const { data: job, error } = await admin
+    .from("shopify_sync_jobs")
+    .select("id, kind, entity_table, entity_id, payload, max_attempts")
+    .eq("entity_id", entityId)
+    .eq("kind", kind)
+    .eq("status", "pending")
+    .single();
+  if (error) throw error;
+  const result = await clientJobHandlers(supabaseClientSyncRepository)[kind]!(
+    {
+      id: job.id,
+      kind: job.kind,
+      entityTable: job.entity_table,
+      entityId: job.entity_id,
+      payload: job.payload,
+      attempts: 1,
+      maxAttempts: job.max_attempts,
+    },
+    new FakeShopifyGateway(),
+  );
+  await admin
+    .from("shopify_sync_jobs")
+    .update({ status: "ok", completed_at: new Date().toISOString() })
+    .eq("id", job.id);
+  return result;
 }
 
 describe("alta de clientes sincronizada con Shopify", () => {
@@ -88,5 +121,61 @@ describe("alta de clientes sincronizada con Shopify", () => {
       email: `int-${RUN}@correo.pe`,
       phone: `+519${RUN}`,
     });
+  });
+
+  it("la edición viaja a Shopify y los cambios de Shopify vuelven sin eco (P16)", async () => {
+    // Sin reiniciar el Shopify falso: los ids siguen la secuencia del test anterior.
+    const ventas = await ventasClient();
+    const RUN2 = `${Number(RUN) + 1}`.padStart(8, "0");
+    const { data: client } = await ventas
+      .from("clients")
+      .insert({
+        kind: "persona",
+        first_name: "Edición",
+        last_name: RUN2,
+        phone: `+519${RUN2}`,
+      })
+      .select("id")
+      .single();
+    created.push(client!.id);
+    const { shopifyCustomerId } = (await processPending(
+      client!.id,
+      "customer.create",
+    )) as { shopifyCustomerId: string };
+
+    await ventas
+      .from("clients")
+      .update({ first_name: "Editada", email: `edit-${RUN2}@correo.pe` })
+      .eq("id", client!.id);
+    await processPending(client!.id, "customer.update");
+    expect(
+      await new FakeShopifyGateway().getCustomer(shopifyCustomerId),
+    ).toMatchObject({
+      firstName: "Editada",
+      email: `edit-${RUN2}@correo.pe`,
+    });
+
+    expect(
+      await applyShopifyCustomerChange({
+        customerId: shopifyCustomerId,
+        firstName: "Desde Shopify",
+        lastName: RUN2,
+        email: `edit-${RUN2}@correo.pe`,
+        phone: `+519${RUN2}`,
+      }),
+    ).toBe(1);
+    const admin = createAdminClient();
+    const { data: saved } = await admin
+      .from("clients")
+      .select("first_name")
+      .eq("id", client!.id)
+      .single();
+    expect(saved!.first_name).toBe("Desde Shopify");
+    const { count } = await admin
+      .from("shopify_sync_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("entity_id", client!.id)
+      .eq("status", "pending");
+    expect(count).toBe(0);
   });
 });

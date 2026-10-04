@@ -94,15 +94,15 @@ test.describe("Buscador de clientes", () => {
     await expect(
       page.getByText(`Solo${run} Shopify se guardó en el sistema.`),
     ).toBeVisible();
-    await expect(page.getByTestId(`cliente-Solo${run} Shopify`)).toContainText(
-      "Persona",
-    );
+    // Al elegirlo se abre su detalle.
+    await expect(page).toHaveURL(/\/clientes\/[0-9a-f-]{36}$/);
+    await expect(
+      page.getByRole("heading", { name: `Solo${run} Shopify` }),
+    ).toBeVisible();
 
     // Al volver a buscarlo aparece como cliente del sistema, sin duplicarse.
-    await page
-      .getByRole("combobox", { name: "Buscar cliente" })
-      .first()
-      .click();
+    await page.goto("/clientes");
+    await page.getByRole("combobox", { name: "Buscar cliente" }).click();
     await page
       .getByRole("combobox", { name: "Buscar cliente" })
       .last()

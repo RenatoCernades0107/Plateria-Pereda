@@ -51,6 +51,9 @@ export type CompanyInput = {
   contact?: CustomerInput;
 };
 
+/** Datos de la empresa que se actualizan en Shopify (se envían todos). */
+export type CompanyUpdate = Omit<CompanyInput, "contact">;
+
 /** Empresa y la ubicación donde sus contactos hacen pedidos. */
 export type CompanyRef = { companyId: string; locationId: string };
 

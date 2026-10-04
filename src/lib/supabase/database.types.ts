@@ -508,6 +508,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      apply_shopify_customer_update: {
+        Args: {
+          p_customer_id: string;
+          p_email: string;
+          p_first_name: string;
+          p_last_name: string;
+          p_phone: string;
+        };
+        Returns: number;
+      };
       claim_shopify_jobs: {
         Args: { p_limit?: number; p_lock_timeout?: string };
         Returns: {
@@ -535,6 +545,30 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      list_clients: {
+        Args: {
+          p_active?: boolean;
+          p_kind?: Database["public"]["Enums"]["client_kind"];
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_sync?: string;
+        };
+        Returns: {
+          active: boolean;
+          display_name: string;
+          document_number: string;
+          document_type: Database["public"]["Enums"]["document_type"];
+          email: string;
+          id: string;
+          job_id: number;
+          kind: Database["public"]["Enums"]["client_kind"];
+          last_error: string;
+          phone: string;
+          sync_status: string;
+          total_count: number;
+        }[];
       };
       shopify_sync_status: {
         Args: { p_entity_ids: string[]; p_entity_table: string };

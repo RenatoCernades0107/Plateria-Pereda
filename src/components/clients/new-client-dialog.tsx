@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserPlus } from "lucide-react";
 import { useState, useTransition } from "react";
-import { useForm, type FieldPath, type UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
@@ -25,7 +25,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -34,8 +33,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { DOCUMENT_LABELS, PERSON_DOCUMENT_TYPES } from "@/domain/documents";
 import { DEFAULT_REGION, PERU_REGIONS } from "@/domain/regions";
 import {
   companySchema,
@@ -46,13 +43,13 @@ import {
 } from "@/lib/validation/clients";
 import { createClient } from "@/server/clients/actions";
 
+import { DocumentTypeField, TextField } from "./form-fields";
+
 export type CreatedClient = {
   id: string;
   displayName: string;
   kind: "persona" | "empresa";
 };
-
-const NO_DOCUMENT = "ninguno";
 
 const PERSON_DEFAULTS: PersonFormInput = {
   kind: "persona",
@@ -77,52 +74,14 @@ const COMPANY_DEFAULTS: CompanyFormInput = {
   notes: "",
 };
 
-function TextField<T extends ClientFormInput>({
-  form,
-  name,
-  label,
-  type = "text",
-  inputMode,
-  multiline = false,
-}: {
-  form: UseFormReturn<T>;
-  name: FieldPath<T>;
-  label: string;
-  type?: string;
-  inputMode?: "numeric" | "tel" | "email";
-  multiline?: boolean;
-}) {
-  return (
-    <FormField
-      control={form.control}
-      name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <FormControl>
-            {multiline ? (
-              <Textarea rows={2} {...field} value={String(field.value ?? "")} />
-            ) : (
-              <Input
-                type={type}
-                inputMode={inputMode}
-                autoComplete="off"
-                {...field}
-                value={String(field.value ?? "")}
-              />
-            )}
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
-}
+/** Guarda los datos validados; devuelve un mensaje de error o null si salió bien. */
+export type SaveClient = (input: ClientFormInput) => Promise<string | null>;
 
 function useClientForm<T extends ClientFormInput>(
   schema: typeof personSchema | typeof companySchema,
   defaults: T,
-  onCreated: (client: CreatedClient) => void,
+  save: SaveClient,
+  resetAfterSave: boolean,
 ) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -135,27 +94,35 @@ function useClientForm<T extends ClientFormInput>(
     setError(null);
     const input = form.getValues() as ClientFormInput;
     startTransition(async () => {
-      const result = await createClient(input);
-      if ("error" in result) {
-        setError(result.error);
+      const message = await save(input);
+      if (message) {
+        setError(message);
         return;
       }
-      form.reset(defaults as never);
-      onCreated({
-        id: result.id,
-        displayName: result.displayName,
-        kind: result.kind,
-      });
+      if (resetAfterSave) form.reset(defaults as never);
     });
   });
   return { form, error, pending, onSubmit };
 }
 
-function PersonForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
+type FormProps<T> = {
+  save: SaveClient;
+  defaults?: T;
+  submitLabel?: string;
+  resetAfterSave?: boolean;
+};
+
+export function PersonForm({
+  save,
+  defaults = PERSON_DEFAULTS,
+  submitLabel = "Registrar persona",
+  resetAfterSave = true,
+}: FormProps<PersonFormInput>) {
   const { form, error, pending, onSubmit } = useClientForm(
     personSchema,
-    PERSON_DEFAULTS,
-    onCreated,
+    defaults,
+    save,
+    resetAfterSave,
   );
   return (
     <Form {...form}>
@@ -164,36 +131,7 @@ function PersonForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField form={form} name="firstName" label="Nombres" />
           <TextField form={form} name="lastName" label="Apellidos" />
-          <FormField
-            control={form.control}
-            name="document.documentType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tipo de documento</FormLabel>
-                <Select
-                  value={field.value ?? NO_DOCUMENT}
-                  onValueChange={(v) =>
-                    field.onChange(v === NO_DOCUMENT ? null : v)
-                  }
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NO_DOCUMENT}>Sin documento</SelectItem>
-                    {PERSON_DOCUMENT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {DOCUMENT_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <DocumentTypeField form={form} name="document.documentType" />
           <TextField
             form={form}
             name="document.documentNumber"
@@ -218,7 +156,7 @@ function PersonForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
         <TextField form={form} name="notes" label="Notas" multiline />
         <DialogFooter>
           <Button type="submit" disabled={pending}>
-            {pending ? "Guardando…" : "Registrar persona"}
+            {pending ? "Guardando…" : submitLabel}
           </Button>
         </DialogFooter>
       </form>
@@ -226,11 +164,17 @@ function PersonForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
   );
 }
 
-function CompanyForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
+export function CompanyForm({
+  save,
+  defaults = COMPANY_DEFAULTS,
+  submitLabel = "Registrar empresa",
+  resetAfterSave = true,
+}: FormProps<CompanyFormInput>) {
   const { form, error, pending, onSubmit } = useClientForm(
     companySchema,
-    COMPANY_DEFAULTS,
-    onCreated,
+    defaults,
+    save,
+    resetAfterSave,
   );
   return (
     <Form {...form}>
@@ -285,7 +229,7 @@ function CompanyForm({ onCreated }: { onCreated: (c: CreatedClient) => void }) {
         <TextField form={form} name="notes" label="Notas" multiline />
         <DialogFooter>
           <Button type="submit" disabled={pending}>
-            {pending ? "Guardando…" : "Registrar empresa"}
+            {pending ? "Guardando…" : submitLabel}
           </Button>
         </DialogFooter>
       </form>
@@ -315,12 +259,19 @@ export function NewClientDialog({
     setInternalOpen(value);
     onOpenChange?.(value);
   };
-  const handleCreated = (client: CreatedClient) => {
+  const save: SaveClient = async (input) => {
+    const result = await createClient(input);
+    if ("error" in result) return result.error;
     toast.success(
-      `${client.displayName} registrado. Se está enviando a Shopify.`,
+      `${result.displayName} registrado. Se está enviando a Shopify.`,
     );
     setOpen(false);
-    onCreated?.(client);
+    onCreated?.({
+      id: result.id,
+      displayName: result.displayName,
+      kind: result.kind,
+    });
+    return null;
   };
 
   return (
@@ -348,10 +299,10 @@ export function NewClientDialog({
             <TabsTrigger value="empresa">Empresa</TabsTrigger>
           </TabsList>
           <TabsContent value="persona">
-            <PersonForm onCreated={handleCreated} />
+            <PersonForm save={save} />
           </TabsContent>
           <TabsContent value="empresa">
-            <CompanyForm onCreated={handleCreated} />
+            <CompanyForm save={save} />
           </TabsContent>
         </Tabs>
       </DialogContent>

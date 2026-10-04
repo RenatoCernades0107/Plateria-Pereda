@@ -4,7 +4,7 @@ import {
   ShopifyUserError,
 } from "@/server/shopify/errors";
 import type { ShopifyGateway } from "@/server/shopify/gateway";
-import type { CustomerInput } from "@/server/shopify/types";
+import type { CompanyUpdate, CustomerInput } from "@/server/shopify/types";
 import type { ShopifyJobHandler } from "@/server/shopify-sync/handlers";
 
 export type ClientRecord = {
@@ -89,8 +89,46 @@ function personInput(client: ClientRecord): CustomerInput {
   };
 }
 
+function companyData(client: ClientRecord): CompanyUpdate {
+  return {
+    name: client.legalName,
+    externalId: client.documentNumber ?? "",
+    phone: client.phone,
+    address: {
+      address1: client.address || client.legalName,
+      city: client.city || "Lima",
+      zoneCode: client.region || "LIM",
+    },
+  };
+}
+
 /**
- * Handlers del outbox para clientes (Paso 6.2). Son idempotentes: si el registro ya
+ * Datos que se actualizan en el Customer. Un email o teléfono que se quitó en el
+ * sistema no se borra en Shopify (se omite): ahí puede seguir sirviendo al cliente.
+ */
+function customerChanges(record: {
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+}): Partial<CustomerInput> {
+  return {
+    firstName: record.firstName,
+    lastName: record.lastName,
+    ...(record.email && { email: record.email }),
+    ...(record.phone && { phone: record.phone }),
+  };
+}
+
+const gone = (what: string) =>
+  new ShopifyUserError([{ field: null, message: `${what} ya no existe` }]);
+
+/** El registro aún no tiene su id de Shopify: se reintenta cuando termine el alta. */
+const notSyncedYet = (what: string) =>
+  new ShopifyUnavailableError(`${what} aún no está en Shopify`);
+
+/**
+ * Handlers del outbox para clientes (Pasos 6.2 y 6.5). Son idempotentes: si el registro ya
  * tiene su id de Shopify no lo vuelven a crear, y si Shopify dice que el email o el
  * teléfono ya existe, vinculan el cliente existente en vez de duplicarlo.
  */
@@ -134,16 +172,7 @@ export function clientJobHandlers(
       if (client.shopifyCompanyId)
         return { shopifyCompanyId: client.shopifyCompanyId };
 
-      const company = await gateway.createCompany({
-        name: client.legalName,
-        externalId: client.documentNumber ?? "",
-        phone: client.phone,
-        address: {
-          address1: client.address || client.legalName,
-          city: client.city || "Lima",
-          zoneCode: client.region || "LIM",
-        },
-      });
+      const company = await gateway.createCompany(companyData(client));
       await repo.setClientShopifyIds(client.id, {
         shopifyCompanyId: company.id,
         shopifyCompanyLocationId: company.locationId,
@@ -199,6 +228,45 @@ export function clientJobHandlers(
         shopifyCompanyContactId: result.id,
         linked,
       };
+    },
+
+    // Actualizaciones (P16): se envían los datos vigentes al procesar el job.
+    "customer.update": async (job, gateway) => {
+      const client = await repo.getClient(job.entityId);
+      if (!client) throw gone("El cliente");
+      if (!client.shopifyCustomerId) throw notSyncedYet("El cliente");
+      await gateway.updateCustomer(
+        client.shopifyCustomerId,
+        customerChanges(client),
+      );
+      return { shopifyCustomerId: client.shopifyCustomerId };
+    },
+
+    "company.update": async (job, gateway) => {
+      const client = await repo.getClient(job.entityId);
+      if (!client) throw gone("El cliente");
+      if (!client.shopifyCompanyId || !client.shopifyCompanyLocationId) {
+        throw notSyncedYet("La empresa");
+      }
+      await gateway.updateCompany(
+        {
+          companyId: client.shopifyCompanyId,
+          locationId: client.shopifyCompanyLocationId,
+        },
+        companyData(client),
+      );
+      return { shopifyCompanyId: client.shopifyCompanyId };
+    },
+
+    "contact.update": async (job, gateway) => {
+      const contact = await repo.getContact(job.entityId);
+      if (!contact) throw gone("El contacto");
+      if (!contact.shopifyCustomerId) throw notSyncedYet("El contacto");
+      await gateway.updateCustomer(
+        contact.shopifyCustomerId,
+        customerChanges(contact),
+      );
+      return { shopifyCustomerId: contact.shopifyCustomerId };
     },
   };
 }

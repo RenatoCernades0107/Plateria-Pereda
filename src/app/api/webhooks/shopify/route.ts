@@ -6,6 +6,7 @@ import {
   webhookSecret,
 } from "@/server/shopify-webhooks/config";
 import { receiveWebhook } from "@/server/shopify-webhooks/receive";
+import { shopifyWebhookHandlers } from "@/server/shopify-webhooks/registry";
 import { processWebhookEvent } from "@/server/shopify-webhooks/router";
 import { supabaseWebhookStore } from "@/server/shopify-webhooks/store";
 
@@ -34,7 +35,11 @@ export async function POST(request: NextRequest) {
     const eventId = result.eventId;
     after(async () => {
       try {
-        await processWebhookEvent(supabaseWebhookStore, eventId);
+        await processWebhookEvent(
+          supabaseWebhookStore,
+          eventId,
+          shopifyWebhookHandlers,
+        );
       } catch (error) {
         console.error("No se pudo procesar el webhook de Shopify", error);
       }

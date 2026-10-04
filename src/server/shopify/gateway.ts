@@ -1,6 +1,7 @@
 import type {
   CompanyInput,
   CompanyRef,
+  CompanyUpdate,
   CustomerInput,
   OrderEdit,
   OrderFinancials,
@@ -35,6 +36,8 @@ export interface ShopifyGateway {
 
   /** Empresa como Company con su ubicación y, opcionalmente, su primer contacto (P14). */
   createCompany(input: CompanyInput): Promise<ShopifyCompany>;
+  /** Actualiza la razón social, el RUC, el teléfono y la dirección de la ubicación. */
+  updateCompany(company: CompanyRef, input: CompanyUpdate): Promise<void>;
   /**
    * Crea un cliente nuevo, lo asocia a la empresa como contacto y le da el rol de
    * compra en la ubicación: sin rol, Shopify no deja crear órdenes a su nombre

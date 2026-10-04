@@ -8,7 +8,9 @@ import { signWebhook } from "../src/server/shopify-webhooks/hmac";
 import { expect, test } from "./fixtures";
 import { adminClient } from "./support/supabase";
 
-const body = JSON.stringify({ id: 9001, email: "ana.perez@correo.pe" });
+// Un topic que el sistema no usa: el evento se guarda y queda "ignored".
+const TOPIC = "shop/update";
+const body = JSON.stringify({ id: 9001, name: "Platería Pereda" });
 
 function headers(
   webhookId: string,
@@ -16,7 +18,7 @@ function headers(
 ) {
   return {
     "Content-Type": "application/json",
-    "X-Shopify-Topic": "customers/update",
+    "X-Shopify-Topic": TOPIC,
     "X-Shopify-Shop-Domain": FAKE_SHOP_DOMAIN,
     "X-Shopify-Webhook-Id": webhookId,
     "X-Shopify-Hmac-Sha256": hmac,
@@ -63,10 +65,9 @@ test.describe("Webhooks de Shopify", () => {
         })
         .toEqual([
           {
-            topic: "customers/update",
-            // Aún no hay handler para este topic (llega en la Fase 6).
+            topic: TOPIC,
             status: "ignored",
-            payload: { id: 9001, email: "ana.perez@correo.pe" },
+            payload: { id: 9001, name: "Platería Pereda" },
           },
         ]);
     } finally {

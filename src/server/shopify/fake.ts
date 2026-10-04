@@ -10,6 +10,7 @@ import type {
   CompanyAddress,
   CompanyInput,
   CompanyRef,
+  CompanyUpdate,
   CustomerInput,
   CustomLine,
   FinancialStatus,
@@ -438,6 +439,37 @@ export class FakeShopifyGateway implements ShopifyGateway {
     if (company.locationId !== locationId)
       throw new ShopifyNotFoundError(locationId);
     return company;
+  }
+
+  async updateCompany(ref: CompanyRef, input: CompanyUpdate) {
+    this.track("updateCompany", [ref, input]);
+    const company = this.getCompanyAt(ref);
+    if (!input.name.trim()) {
+      throw new ShopifyUserError([
+        { field: ["input", "name"], message: "Name can't be blank" },
+      ]);
+    }
+    if (!input.address.zoneCode) {
+      throw new ShopifyUserError([
+        { field: ["address"], message: "Invalid input." },
+      ]);
+    }
+    if (
+      [...state().companies.values()].some(
+        (c) => c.id !== company.id && c.externalId === input.externalId,
+      )
+    ) {
+      throw new ShopifyUserError([
+        {
+          field: ["input", "externalId"],
+          message: "External Id has already been taken",
+        },
+      ]);
+    }
+    company.name = input.name;
+    company.externalId = input.externalId;
+    company.phone = input.phone ?? null;
+    company.address = { ...input.address };
   }
 
   async createCompanyContact(ref: CompanyRef, input: CustomerInput) {

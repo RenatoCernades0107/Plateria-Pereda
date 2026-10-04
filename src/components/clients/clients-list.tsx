@@ -1,6 +1,8 @@
 import { Building2, User } from "lucide-react";
+import Link from "next/link";
 
 import { SyncStatus } from "@/components/shopify/sync-status";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -52,17 +54,34 @@ function Sync({
   );
 }
 
+/** Nombre con enlace al detalle del cliente. */
+function Name({ client }: { client: ClientListItem }) {
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <Link
+        href={`/clientes/${client.id}`}
+        className="text-heading font-medium underline-offset-4 hover:underline"
+      >
+        {client.displayName}
+      </Link>
+      {client.active ? null : <Badge variant="outline">Inactivo</Badge>}
+    </span>
+  );
+}
+
 export function ClientsList({
   clients,
   canRetry,
+  emptyMessage = "Aún no hay clientes registrados.",
 }: {
   clients: ClientListItem[];
   canRetry: boolean;
+  emptyMessage?: string;
 }) {
   if (clients.length === 0) {
     return (
       <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        Aún no hay clientes registrados.
+        {emptyMessage}
       </p>
     );
   }
@@ -84,9 +103,7 @@ export function ClientsList({
             <TableRow key={c.id} data-testid={`cliente-${c.displayName}`}>
               <TableCell>
                 <div className="flex flex-col">
-                  <span className="text-heading font-medium">
-                    {c.displayName}
-                  </span>
+                  <Name client={c} />
                   <Kind kind={c.kind} />
                 </div>
               </TableCell>
@@ -114,7 +131,7 @@ export function ClientsList({
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-heading font-medium">{c.displayName}</p>
+                <Name client={c} />
                 <Kind kind={c.kind} />
               </div>
             </div>

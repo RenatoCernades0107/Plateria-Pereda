@@ -79,6 +79,15 @@ const companyRef = (companyId: string) => ({
       ?.locationId ?? "",
 });
 
+/** La Company dueña de una ubicación. */
+const companyAt = (locationId: string) => {
+  const company = fakeShopify
+    .snapshot()
+    .companies.find((c) => c.locationId === locationId);
+  if (!company) throw new Error(`Ubicación desconocida: ${locationId}`);
+  return company;
+};
+
 const userErrorsOf = (error: unknown) => {
   if (error instanceof ShopifyUserError) return error.fields;
   throw error;
@@ -135,6 +144,81 @@ const operations: Record<
             },
             locations: { nodes: [{ id: result.locationId }] },
           },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyUpdate: async (variables: Vars) => {
+    const companyId = variables.companyId as string;
+    const current = fakeShopify
+      .snapshot()
+      .companies.find((c) => c.id === companyId);
+    if (!current) {
+      return { data: { companyUpdate: { company: null, userErrors: [] } } };
+    }
+    const input = variables.input as { name: string; externalId: string };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(companyRef(companyId), {
+        name: input.name,
+        externalId: input.externalId,
+        phone: current.phone,
+        address: current.address,
+      }),
+    );
+    return {
+      data: { companyUpdate: { company: { id: companyId }, userErrors } },
+    };
+  },
+  CompanyLocationUpdate: async (variables: Vars) => {
+    const current = companyAt(variables.companyLocationId as string);
+    const input = variables.input as { phone?: string };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(
+        { companyId: current.id, locationId: current.locationId },
+        {
+          ...current,
+          externalId: current.externalId ?? "",
+          phone: input.phone ?? current.phone,
+        },
+      ),
+    );
+    return {
+      data: {
+        companyLocationUpdate: {
+          companyLocation: { id: current.locationId },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyLocationAssignAddress: async (variables: Vars) => {
+    const current = companyAt(variables.locationId as string);
+    const address = variables.address as {
+      address1: string;
+      city: string;
+      zoneCode?: string;
+    };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(
+        { companyId: current.id, locationId: current.locationId },
+        {
+          ...current,
+          externalId: current.externalId ?? "",
+          address: {
+            address1: address.address1,
+            city: address.city,
+            zoneCode: address.zoneCode ?? "",
+          },
+        },
+      ),
+    );
+    return {
+      data: {
+        companyLocationAssignAddress: {
+          addresses: userErrors.length
+            ? null
+            : [{ id: "gid://shopify/CompanyAddress/1" }],
           userErrors,
         },
       },

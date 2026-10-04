@@ -1,16 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
 import type { ClientOption } from "@/domain/client-search";
 
 import { ClientPicker } from "./client-picker";
 
-/** Buscador de la página de clientes (al elegir, el detalle llega en el Paso 6.5). */
+/** Buscador de la página de clientes: al elegir uno abre su detalle. */
 export function ClientsSearch({ canCreate }: { canCreate: boolean }) {
   const router = useRouter();
-  const [selected, setSelected] = useState<ClientOption | null>(null);
   return (
     <div className="max-w-xl space-y-1.5">
       <label htmlFor="buscar-cliente" className="text-sm font-medium">
@@ -18,11 +16,13 @@ export function ClientsSearch({ canCreate }: { canCreate: boolean }) {
       </label>
       <ClientPicker
         id="buscar-cliente"
-        value={selected}
         canCreate={canCreate}
-        onSelect={(option) => {
-          setSelected(option);
-          router.refresh();
+        onSelect={(option: ClientOption) => {
+          // Del buscador siempre llega un cliente del sistema (los de Shopify se
+          // guardan antes); un contacto abre su empresa.
+          if (option.source === "local") {
+            router.push(`/clientes/${option.clientId}`);
+          }
         }}
       />
     </div>

@@ -587,24 +587,31 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(clientes): agrega buscador unificado de clientes y contactos`
 
 #### Paso 6.4 — Contactos
-- [ ] Alta, edición y desactivación de contactos dentro del cliente y desde el formulario de restauración.
+- [x] Alta, edición y desactivación de contactos dentro del cliente y desde el formulario de restauración (`ContactDialog` reutilizable; se conecta al formulario en la Fase 7).
 - **Unit:**
-  - [ ] Esquema y formulario.
+  - [x] Esquema y formulario.
 - **BD:**
-  - [ ] RLS por rol.
+  - [x] RLS por rol.
 - **E2E:**
-  - [ ] Agregar un contacto a una empresa y luego seleccionarlo en el buscador.
-- Commit: `feat(clientes): agrega gestión de contactos`
+  - [x] Agregar un contacto a una empresa y luego seleccionarlo en el buscador.
+- Hecho (2026-10-04): acciones `createContact`, `updateContact` y `setContactActive` (solo admin y ventas, RLS de 6.1); sección "Contactos" en el detalle de la empresa con su estado en Shopify, edición y desactivación (un contacto inactivo deja de salir en el buscador). Al editar un contacto ya sincronizado se encola `contact.update`, que actualiza su Customer en Shopify.
+- Commit: junto con 6.5 en `feat(clientes): agrega listado, detalle y contactos de clientes` (comparten acciones y página).
 
 #### Paso 6.5 — Listado y detalle de clientes
-- [ ] `/clientes`: tabla con búsqueda y filtros (tipo, estado de sincronización).
-- [ ] `/clientes/[id]`: datos, contactos, restauraciones, cotizaciones, historial; edición (sincroniza con Shopify según P16). Logística solo ve los datos de contacto (sin restauraciones pasadas ni historial, P42).
+- [x] `/clientes`: tabla con búsqueda y filtros (tipo, estado de sincronización).
+- [x] `/clientes/[id]`: datos, contactos, restauraciones, cotizaciones, historial; edición (sincroniza con Shopify según P16). Logística solo ve los datos de contacto (sin restauraciones pasadas ni historial, P42).
 - **Unit:**
-  - [ ] Columnas de la tabla y vista de tarjetas en móvil.
+  - [x] Columnas de la tabla y vista de tarjetas en móvil.
 - **E2E:**
-  - [ ] Buscar un cliente y abrir su detalle.
-  - [ ] Editar datos → se encola la actualización en Shopify.
-- Commit: `feat(clientes): agrega listado y detalle de clientes`
+  - [x] Buscar un cliente y abrir su detalle.
+  - [x] Editar datos → se encola la actualización en Shopify.
+- Hecho (2026-10-04):
+  - Listado con `list_clients()` (BD, security definer con chequeo de rol): texto (nombre, documento, email o dígitos del teléfono), tipo, estado de Shopify (sincronizado / pendiente / con error; importado sin jobs = sincronizado), activos/inactivos/todos y paginación de 25; los filtros viven en la URL. El buscador de `/clientes` abre el detalle (un contacto abre su empresa).
+  - Detalle: datos, contactos (empresas), estado de Shopify, "Editar" (reutiliza los formularios del alta; el tipo no cambia), desactivar/activar, sección de restauraciones y cotizaciones (se llena en las Fases 7–8) e historial. Logística no ve notas, restauraciones ni historial, ni puede editar.
+  - P16 hacia Shopify: triggers encolan `customer.update`, `company.update` o `contact.update` solo si cambian datos que viven en Shopify y el registro ya tiene su id (si aún no, el alta pendiente lee los datos vigentes). No se repite si ya hay una pendiente; sí si la anterior se está procesando. `updateCompany` del gateway: `companyUpdate` (razón social y RUC), `companyLocationUpdate` (teléfono) y `companyLocationAssignAddress` (dirección de envío y facturación). Un email o teléfono quitado en el sistema no se borra en Shopify.
+  - P16 desde Shopify: webhook `customers/update` → `apply_shopify_customer_update()` (solo service role) actualiza la persona o el contacto vinculado sin volver a encolarlo (`app.sync_origin = 'shopify'` en la transacción); ignora valores vacíos o inválidos. Los cambios de Companies hechos en Shopify no llegan por webhook (no hay topic de companies en uso): se editan en el sistema.
+  - Ronda 5 del spike (pendiente de ejecutar): `customerUpdate`, `companyUpdate`, `companyLocationUpdate` y `companyLocationAssignAddress`.
+- Commit: `feat(clientes): agrega listado, detalle y contactos de clientes`
 
 #### Paso 6.6 — Importación inicial de clientes de Shopify
 - [ ] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).

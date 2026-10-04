@@ -3,6 +3,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { ClientSyncRepository } from "./shopify-sync";
+import type { ShopifyCustomerChange } from "./webhooks";
 
 /** Clientes en Supabase con la clave secreta (lo usa el outbox, sin sesión de usuario). */
 export const supabaseClientSyncRepository: ClientSyncRepository = {
@@ -80,3 +81,21 @@ export const supabaseClientSyncRepository: ClientSyncRepository = {
     if (error) throw error;
   },
 };
+
+/** Aplica un cambio hecho en Shopify sin volver a encolarlo (ver la migración). */
+export async function applyShopifyCustomerChange(
+  change: ShopifyCustomerChange,
+): Promise<number> {
+  const { data, error } = await createAdminClient().rpc(
+    "apply_shopify_customer_update",
+    {
+      p_customer_id: change.customerId,
+      p_first_name: change.firstName ?? "",
+      p_last_name: change.lastName ?? "",
+      p_email: change.email ?? "",
+      p_phone: change.phone ?? "",
+    },
+  );
+  if (error) throw error;
+  return data;
+}

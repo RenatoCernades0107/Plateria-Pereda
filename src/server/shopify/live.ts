@@ -4,6 +4,7 @@ import { assertNoUserErrors, type GraphqlClient } from "./graphql-client";
 import type {
   CompanyInput,
   CompanyRef,
+  CompanyUpdate,
   CustomerInput,
   CustomLine,
   FinancialStatus,
@@ -132,6 +133,27 @@ const COMPANY_FIELDS = `
 export const COMPANY_CREATE = `mutation CompanyCreate($input: CompanyCreateInput!) {
   companyCreate(input: $input) {
     company { ${COMPANY_FIELDS} }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_UPDATE = `mutation CompanyUpdate($companyId: ID!, $input: CompanyInput!) {
+  companyUpdate(companyId: $companyId, input: $input) {
+    company { id }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_LOCATION_UPDATE = `mutation CompanyLocationUpdate($companyLocationId: ID!, $input: CompanyLocationUpdateInput!) {
+  companyLocationUpdate(companyLocationId: $companyLocationId, input: $input) {
+    companyLocation { id }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_LOCATION_ASSIGN_ADDRESS = `mutation CompanyLocationAssignAddress($locationId: ID!, $address: CompanyAddressInput!, $addressTypes: [CompanyAddressType!]!) {
+  companyLocationAssignAddress(locationId: $locationId, address: $address, addressTypes: $addressTypes) {
+    addresses { id }
     userErrors { field message }
   }
 }`;
@@ -415,6 +437,41 @@ export class LiveShopifyGateway implements ShopifyGateway {
       locationId: company.locations.nodes[0]!.id,
       contacts: company.contacts.nodes.map(toContact),
     };
+  }
+
+  async updateCompany(company: CompanyRef, input: CompanyUpdate) {
+    const updated = await this.client.request<{
+      companyUpdate: { company: { id: string } | null; userErrors: UserErrors };
+    }>(COMPANY_UPDATE, {
+      companyId: company.companyId,
+      input: { name: input.name, externalId: input.externalId },
+    });
+    assertNoUserErrors(updated.companyUpdate.userErrors);
+    if (!updated.companyUpdate.company) {
+      throw new ShopifyNotFoundError(company.companyId);
+    }
+    if (input.phone) {
+      const location = await this.client.request<{
+        companyLocationUpdate: { userErrors: UserErrors };
+      }>(COMPANY_LOCATION_UPDATE, {
+        companyLocationId: company.locationId,
+        input: { phone: input.phone },
+      });
+      assertNoUserErrors(location.companyLocationUpdate.userErrors);
+    }
+    const address = await this.client.request<{
+      companyLocationAssignAddress: { userErrors: UserErrors };
+    }>(COMPANY_LOCATION_ASSIGN_ADDRESS, {
+      locationId: company.locationId,
+      address: {
+        address1: input.address.address1,
+        city: input.address.city,
+        zoneCode: input.address.zoneCode,
+        countryCode: "PE",
+      },
+      addressTypes: ["SHIPPING", "BILLING"],
+    });
+    assertNoUserErrors(address.companyLocationAssignAddress.userErrors);
   }
 
   /**

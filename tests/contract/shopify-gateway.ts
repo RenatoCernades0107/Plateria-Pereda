@@ -179,6 +179,51 @@ export function shopifyGatewayContract(
         ).rejects.toBeInstanceOf(ShopifyUserError);
       });
 
+      it("actualiza la razón social, el RUC, el teléfono y la dirección", async () => {
+        const company = await gateway.createCompany({
+          name: "Joyería Andina S.A.C.",
+          externalId: "20100047218",
+          address,
+        });
+        const ref = { companyId: company.id, locationId: company.locationId };
+        await gateway.updateCompany(ref, {
+          name: "Joyería Andina del Sur S.A.C.",
+          externalId: "20131312955",
+          phone: "+5154234567",
+          address: {
+            address1: "Calle Mercaderes 200",
+            city: "Arequipa",
+            zoneCode: "ARE",
+          },
+        });
+        expect(fakeShopify.snapshot().companies).toContainEqual(
+          expect.objectContaining({
+            id: company.id,
+            name: "Joyería Andina del Sur S.A.C.",
+            externalId: "20131312955",
+            phone: "+5154234567",
+            address: {
+              address1: "Calle Mercaderes 200",
+              city: "Arequipa",
+              zoneCode: "ARE",
+            },
+          }),
+        );
+
+        await gateway.createCompany({
+          name: "Otra S.A.C.",
+          externalId: "20100047218",
+          address,
+        });
+        await expect(
+          gateway.updateCompany(ref, {
+            name: "Joyería Andina del Sur S.A.C.",
+            externalId: "20100047218",
+            address,
+          }),
+        ).rejects.toBeInstanceOf(ShopifyUserError);
+      });
+
       it("agrega contactos nuevos y vincula clientes existentes", async () => {
         const company = await gateway.createCompany({
           name: "Joyería Andina S.A.C.",
