@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   canChangeQuoteStatus,
+  formatQuoteDate,
   igvBreakdown,
   isQuoteExpired,
   limaDateOf,
@@ -175,5 +176,12 @@ describe("cambios de estado", () => {
       "rechazada→emitida",
     ]);
     expect(nextQuoteStatuses("borrador")).toEqual(["emitida"]);
+  });
+});
+
+describe("formatQuoteDate", () => {
+  it("muestra la fecha calendario sin correrla por la zona horaria", () => {
+    expect(formatQuoteDate("2026-10-04")).toBe("04/10/2026");
+    expect(formatQuoteDate("2028-02-29")).toBe("29/02/2028");
   });
 });

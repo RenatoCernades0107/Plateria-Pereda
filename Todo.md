@@ -1002,16 +1002,17 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(cotizador): agrega selector de productos de Shopify`
 
 #### Paso 14.4 — Editor y listado de cotizaciones ⛔ P38
-- [ ] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
-- [ ] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
+- [x] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
+- [x] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
 - **Unit:**
-  - [ ] Totales en vivo en el formulario.
-  - [ ] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
+  - [x] Totales en vivo en el formulario.
+  - [x] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
 - **E2E:**
-  - [ ] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
-  - [ ] Crear cotización para un contacto interno.
-  - [ ] Duplicar una cotización.
-  - [ ] `@mobile` crear cotización.
+  - [x] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
+  - [x] Crear cotización para un contacto interno.
+  - [x] Duplicar una cotización.
+  - [x] `@mobile` crear cotización.
+- Hecho (2026-10-04): migración `cotizaciones_edicion` con `save_quote(id, cotización, líneas)` (crea o edita el borrador y deja exactamente las líneas enviadas, en orden, conservando el id de las existentes y rechazando líneas de otra cotización) y `duplicate_quote(id)` (copia cualquier estado como borrador nuevo con `duplicated_from`), ambas security invoker y en una transacción. `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (persona/empresa del sistema o de Shopify, que se guarda al elegirla, o contacto de una empresa → "Atención:"), líneas del Paso 14.3, subtotal, descuentos, total e IGV incluido en vivo, vigencia (por defecto de la configuración, con la fecha de vencimiento), notas y condiciones (por defecto las de la configuración); "Guardar borrador", "Emitir" (guarda y emite), y en las guardadas "Duplicar cotización" y los cambios de estado (aceptar, rechazar, volver a emitida). Una emitida se muestra sin edición con los datos copiados del cliente. Validación con zod compartida por el formulario y la acción (al menos una línea, cantidad entera 1–100 000, precio ≥ 0, descuento ≤ subtotal o ≤ 100 %, vigencia 1–365). `/cotizaciones`: tabla (tarjetas en el celular) con búsqueda por código o cliente y filtros por estado (incluida "vencida"), cliente (`ClientPicker`) y fechas de creación en Lima; paginado. **P38 sigue pendiente:** se usó su propuesta (lo usan ventas y admin; a un contacto se le cotiza a nombre de su empresa con "Atención: contacto"). **P34/P35/P13** como en 14.1/14.2.
 - Commit: `feat(cotizador): agrega editor y listado de cotizaciones`
 
 #### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38

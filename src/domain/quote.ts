@@ -160,3 +160,11 @@ export function quoteDisplayStatus(
     ? "vencida"
     : status;
 }
+
+/** Fecha calendario "AAAA-MM-DD" → "DD/MM/AAAA" (sin pasar por zonas horarias). */
+export function formatQuoteDate(date: string): string {
+  const match = ISO_DATE.exec(date);
+  if (!match) return date;
+  const [, y, m, d] = match;
+  return `${d}/${m}/${y}`;
+}

@@ -18,16 +18,12 @@ import { lineGross, lineTotal } from "@/domain/quote";
 import {
   copyLine,
   draftAmounts,
+  type LineErrors,
+  type LineField,
   type QuoteLineDraft,
 } from "@/domain/quote-line";
 
 import { ProductPicker } from "./product-picker";
-
-export type LineField =
-  "title" | "customization" | "quantity" | "unitPrice" | "discountValue";
-
-/** Errores de validación por línea (clave de la línea → campo → mensaje). */
-export type LineErrors = Record<string, Partial<Record<LineField, string>>>;
 
 const NO_DISCOUNT = "ninguno";
 

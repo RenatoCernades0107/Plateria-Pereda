@@ -749,6 +749,7 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      duplicate_quote: { Args: { p_id: string }; Returns: string };
       effective_status: {
         Args: { q: Database["public"]["Tables"]["quotes"]["Row"] };
         Returns: string;
@@ -788,6 +789,10 @@ export type Database = {
           sync_status: string;
           total_count: number;
         }[];
+      };
+      save_quote: {
+        Args: { p_id: string; p_items: Json; p_quote: Json };
+        Returns: string;
       };
       shopify_sync_status: {
         Args: { p_entity_ids: string[]; p_entity_table: string };

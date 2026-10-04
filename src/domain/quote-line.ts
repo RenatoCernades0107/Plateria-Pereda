@@ -30,6 +30,12 @@ export type QuoteLineDraft = {
   discountValue: string;
 };
 
+export type LineField =
+  "title" | "customization" | "quantity" | "unitPrice" | "discountValue";
+
+/** Errores de validación por línea (clave de la línea → campo → mensaje). */
+export type LineErrors = Record<string, Partial<Record<LineField, string>>>;
+
 /** Producto del catálogo con sus variantes (forma de `ShopifyProduct`). */
 export type CatalogProduct = {
   id: string;
