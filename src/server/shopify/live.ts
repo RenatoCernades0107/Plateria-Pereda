@@ -110,6 +110,12 @@ export const PRODUCTS_SEARCH = `query ProductsSearch($query: String, $first: Int
   }
 }`;
 
+/** Búsqueda de productos por título o por el SKU de una variante (Paso 14.3). */
+export function productQuery(text: string): string {
+  const q = text.replace(/[*'"\\():]/g, "").trim();
+  return `title:*${q}* OR sku:${q}*`;
+}
+
 export const PRODUCT_GET = `query ProductGet($id: ID!) {
   product(id: $id) {
     id
@@ -594,7 +600,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
         pageInfo: PageInfo;
       };
     }>(PRODUCTS_SEARCH, {
-      query: q ? `title:*${q.replace(/[*'\\]/g, "")}*` : null,
+      query: q ? productQuery(q) : null,
       first,
       after,
     });

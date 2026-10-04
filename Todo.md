@@ -980,44 +980,48 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 14 — Cotizador de productos personalizados
 
 #### Paso 14.1 — Esquema de cotizaciones ⛔ P34
-- [ ] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
+- [x] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Correlativo único.
-  - [ ] Totales recalculados por trigger.
-  - [ ] RLS por rol.
+  - [x] Correlativo único.
+  - [x] Totales recalculados por trigger.
+  - [x] RLS por rol.
 - **E2E:** No aplica (sin interfaz).
+- Hecho (2026-10-04): `quotes` (código generado desde un identity que no se escribe a mano; cliente obligatorio y contacto opcional de esa empresa; vigencia por defecto de `settings.quote_validity_days`; `valid_until` = emisión + días) y `quote_items` (producto/variante de Shopify con título, variante, SKU, imagen y precio de catálogo copiados al cotizar, o línea libre; personalización, cantidad entera 1–100 000, precio ≥ 0 y descuento opcional por línea en monto o %; subtotal, descuento y total de la línea como columnas generadas). Un trigger suma las líneas en la cotización y los usuarios no pueden escribir totales, código, snapshot ni fechas de emisión (privilegios por columna). Solo se edita en borrador; estados: borrador → emitida (necesita una línea; fija la fecha de emisión en Lima y refresca los datos del cliente, que desde ahí quedan fijos) → aceptada / rechazada, y de aceptada o rechazada se puede volver a emitida (corrección). "Vencida" = emitida con `valid_until` anterior a hoy en Lima (`effective_status(quotes)`, columna calculada de PostgREST). Solo admin y ventas (cotizador.usar) leen y escriben; nadie borra cotizaciones; auditadas. **P34, P35 y P13 siguen pendientes:** se usó su propuesta (estados con vencida automática; solo soles, descuento por línea y sin descuento global; precios con IGV). Si P34 cambia (p. ej., sin historial de estados) basta con no usar los estados en la interfaz.
 - Commit: `feat(cotizador): agrega esquema de cotizaciones`
 
 #### Paso 14.2 — Dominio de la cotización ⛔ P13 ⛔ P35
-- [ ] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
+- [x] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
 - **Unit:**
-  - [ ] Cálculos con decimales, cantidades grandes y 0.
-  - [ ] Vigencia en zona Lima (fin de mes, año bisiesto).
-  - [ ] Detección de cotización vencida.
+  - [x] Cálculos con decimales, cantidades grandes y 0.
+  - [x] Vigencia en zona Lima (fin de mes, año bisiesto).
+  - [x] Detección de cotización vencida.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): en céntimos con `money.ts`. `lineGross`, `lineDiscount` (monto o %, redondeado a céntimos igual que la BD y nunca mayor que el subtotal de la línea), `lineTotal` y `quoteTotals()` (subtotal, descuento, total y desglose `igvBreakdown`: operación gravada = total / 1.18 redondeada e IGV = el resto, para el PDF). Vigencia con fechas calendario de Lima (`limaDateOf`, `addDays`, `quoteValidUntil`; vigente hasta el último día inclusive), `isQuoteExpired`, `quoteDisplayStatus` ("vencida" solo para emitidas) y la tabla de cambios de estado de la BD (`nextQuoteStatuses`, `canChangeQuoteStatus`). **P13 y P35 siguen pendientes:** se usó su propuesta (precios con IGV incluido; solo soles; descuento opcional por línea, sin descuento global).
 - Commit: `feat(cotizador): agrega cálculos de cotización`
 
 #### Paso 14.3 — Selector de productos de Shopify ⛔ P37
-- [ ] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
+- [x] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
 - **Unit:**
-  - [ ] Mapeo producto/variante → línea de cotización.
-  - [ ] Componente: búsqueda y selección de variante.
+  - [x] Mapeo producto/variante → línea de cotización.
+  - [x] Componente: búsqueda y selección de variante.
 - **E2E:**
-  - [ ] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+  - [x] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+- Hecho (2026-10-04): `ProductPicker` (popover con `cmdk`) busca con espera de 300 ms en Shopify por título o SKU (el fake y el adaptador live ahora también buscan por SKU: `title:*x* OR sku:x*`; se agregó al catálogo semilla del fake un "Anillo de plata personalizable" con tallas 6 y 8), muestra imagen y rango de precios, y al elegir el producto carga sus variantes (si tiene una sola se agrega directo). `lineFromCatalog` copia producto, variante, SKU, imagen y precio del catálogo en una línea editable (`QuoteLinesEditor`: personalización, cantidad, precio con aviso del precio de catálogo si se cambia, descuento por línea, total de la línea, duplicar y quitar). Server actions `searchCatalog`/`getCatalogProduct` con permiso `cotizador.usar`. `/cotizaciones/nueva` muestra por ahora solo las líneas y el total (el resto llega en 14.4). **P37 sigue pendiente:** se usó su propuesta (se permite una línea libre sin producto del catálogo y se guarda la imagen para el PDF).
 - Commit: `feat(cotizador): agrega selector de productos de Shopify`
 
 #### Paso 14.4 — Editor y listado de cotizaciones ⛔ P38
-- [ ] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
-- [ ] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
+- [x] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
+- [x] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
 - **Unit:**
-  - [ ] Totales en vivo en el formulario.
-  - [ ] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
+  - [x] Totales en vivo en el formulario.
+  - [x] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
 - **E2E:**
-  - [ ] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
-  - [ ] Crear cotización para un contacto interno.
-  - [ ] Duplicar una cotización.
-  - [ ] `@mobile` crear cotización.
+  - [x] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
+  - [x] Crear cotización para un contacto interno.
+  - [x] Duplicar una cotización.
+  - [x] `@mobile` crear cotización.
+- Hecho (2026-10-04): migración `cotizaciones_edicion` con `save_quote(id, cotización, líneas)` (crea o edita el borrador y deja exactamente las líneas enviadas, en orden, conservando el id de las existentes y rechazando líneas de otra cotización) y `duplicate_quote(id)` (copia cualquier estado como borrador nuevo con `duplicated_from`), ambas security invoker y en una transacción. `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (persona/empresa del sistema o de Shopify, que se guarda al elegirla, o contacto de una empresa → "Atención:"), líneas del Paso 14.3, subtotal, descuentos, total e IGV incluido en vivo, vigencia (por defecto de la configuración, con la fecha de vencimiento), notas y condiciones (por defecto las de la configuración); "Guardar borrador", "Emitir" (guarda y emite), y en las guardadas "Duplicar cotización" y los cambios de estado (aceptar, rechazar, volver a emitida). Una emitida se muestra sin edición con los datos copiados del cliente. Validación con zod compartida por el formulario y la acción (al menos una línea, cantidad entera 1–100 000, precio ≥ 0, descuento ≤ subtotal o ≤ 100 %, vigencia 1–365). `/cotizaciones`: tabla (tarjetas en el celular) con búsqueda por código o cliente y filtros por estado (incluida "vencida"), cliente (`ClientPicker`) y fechas de creación en Lima; paginado. **P38 sigue pendiente:** se usó su propuesta (lo usan ventas y admin; a un contacto se le cotiza a nombre de su empresa con "Atención: contacto"). **P34/P35/P13** como en 14.1/14.2.
 - Commit: `feat(cotizador): agrega editor y listado de cotizaciones`
 
 #### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38

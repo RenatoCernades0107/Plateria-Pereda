@@ -652,8 +652,10 @@ const operations: Record<
       first: number;
       after: string | null;
     };
-    // title:*fuente* → fuente
-    const text = query ? query.replace(/^title:\*(.*)\*$/, "$1") : "";
+    // title:*fuente* OR sku:fuente* → fuente
+    const text = query
+      ? query.replace(/^title:\*(.*?)\*(?: OR sku:.*\*)?$/, "$1")
+      : "";
     const page = await store.searchProducts(text, { first, after });
     return {
       data: {

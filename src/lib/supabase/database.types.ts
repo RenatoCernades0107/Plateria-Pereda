@@ -405,6 +405,209 @@ export type Database = {
         };
         Relationships: [];
       };
+      quote_items: {
+        Row: {
+          catalog_price: number | null;
+          created_at: string;
+          customization: string;
+          discount_amount: number | null;
+          discount_type: string | null;
+          discount_value: number;
+          gross: number | null;
+          id: string;
+          image_url: string | null;
+          position: number;
+          quantity: number;
+          quote_id: string;
+          shopify_product_id: string | null;
+          shopify_variant_id: string | null;
+          sku: string | null;
+          title: string;
+          total: number | null;
+          unit_price: number;
+          updated_at: string;
+          variant_title: string;
+        };
+        Insert: {
+          catalog_price?: number | null;
+          created_at?: string;
+          customization?: string;
+          discount_amount?: never;
+          discount_type?: string | null;
+          discount_value?: number;
+          gross?: never;
+          id?: string;
+          image_url?: string | null;
+          position?: number;
+          quantity: number;
+          quote_id: string;
+          shopify_product_id?: string | null;
+          shopify_variant_id?: string | null;
+          sku?: string | null;
+          title: string;
+          total?: never;
+          unit_price: number;
+          updated_at?: string;
+          variant_title?: string;
+        };
+        Update: {
+          catalog_price?: number | null;
+          created_at?: string;
+          customization?: string;
+          discount_amount?: never;
+          discount_type?: string | null;
+          discount_value?: number;
+          gross?: never;
+          id?: string;
+          image_url?: string | null;
+          position?: number;
+          quantity?: number;
+          quote_id?: string;
+          shopify_product_id?: string | null;
+          shopify_variant_id?: string | null;
+          sku?: string | null;
+          title?: string;
+          total?: never;
+          unit_price?: number;
+          updated_at?: string;
+          variant_title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      quotes: {
+        Row: {
+          client_address: string;
+          client_document_number: string | null;
+          client_document_type:
+            Database["public"]["Enums"]["document_type"] | null;
+          client_email: string | null;
+          client_id: string;
+          client_name: string;
+          client_phone: string | null;
+          code: string | null;
+          contact_email: string | null;
+          contact_id: string | null;
+          contact_name: string | null;
+          contact_phone: string | null;
+          created_at: string;
+          created_by: string | null;
+          discount_total: number;
+          duplicated_from: string | null;
+          id: string;
+          issue_date: string | null;
+          issued_at: string | null;
+          notes: string;
+          number: number;
+          status: Database["public"]["Enums"]["quote_status"];
+          subtotal: number;
+          terms: string;
+          total: number;
+          updated_at: string;
+          valid_until: string | null;
+          validity_days: number;
+          effective_status: string | null;
+        };
+        Insert: {
+          client_address?: string;
+          client_document_number?: string | null;
+          client_document_type?:
+            Database["public"]["Enums"]["document_type"] | null;
+          client_email?: string | null;
+          client_id: string;
+          client_name?: string;
+          client_phone?: string | null;
+          code?: never;
+          contact_email?: string | null;
+          contact_id?: string | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          discount_total?: number;
+          duplicated_from?: string | null;
+          id?: string;
+          issue_date?: string | null;
+          issued_at?: string | null;
+          notes?: string;
+          number?: never;
+          status?: Database["public"]["Enums"]["quote_status"];
+          subtotal?: number;
+          terms?: string;
+          total?: number;
+          updated_at?: string;
+          valid_until?: never;
+          validity_days?: number;
+        };
+        Update: {
+          client_address?: string;
+          client_document_number?: string | null;
+          client_document_type?:
+            Database["public"]["Enums"]["document_type"] | null;
+          client_email?: string | null;
+          client_id?: string;
+          client_name?: string;
+          client_phone?: string | null;
+          code?: never;
+          contact_email?: string | null;
+          contact_id?: string | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          discount_total?: number;
+          duplicated_from?: string | null;
+          id?: string;
+          issue_date?: string | null;
+          issued_at?: string | null;
+          notes?: string;
+          number?: never;
+          status?: Database["public"]["Enums"]["quote_status"];
+          subtotal?: number;
+          terms?: string;
+          total?: number;
+          updated_at?: string;
+          valid_until?: never;
+          validity_days?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quotes_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_duplicated_from_fkey";
+            columns: ["duplicated_from"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       restorations: {
         Row: {
           balance: number | null;
@@ -906,6 +1109,11 @@ export type Database = {
           id: string;
         }[];
       };
+      duplicate_quote: { Args: { p_id: string }; Returns: string };
+      effective_status: {
+        Args: { q: Database["public"]["Tables"]["quotes"]["Row"] };
+        Returns: string;
+      };
       import_shopify_customer: {
         Args: {
           p_customer_id: string;
@@ -942,6 +1150,10 @@ export type Database = {
           total_count: number;
         }[];
       };
+      save_quote: {
+        Args: { p_id: string; p_items: Json; p_quote: Json };
+        Returns: string;
+      };
       shopify_sync_status: {
         Args: { p_entity_ids: string[]; p_entity_table: string };
         Returns: {
@@ -971,6 +1183,7 @@ export type Database = {
         | "observada"
         | "entregada"
         | "anulada";
+      quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
       restoration_status:
         | "registrada"
         | "aprobada"
@@ -1130,6 +1343,7 @@ export const Constants = {
         "entregada",
         "anulada",
       ],
+      quote_status: ["borrador", "emitida", "aceptada", "rechazada"],
       restoration_status: [
         "registrada",
         "aprobada",
