@@ -71,6 +71,23 @@ const edits = new Map<
   }
 >();
 
+/** La Company y su ubicación; el emulador da el rol de compra al crear el contacto. */
+const companyRef = (companyId: string) => ({
+  companyId,
+  locationId:
+    fakeShopify.snapshot().companies.find((c) => c.id === companyId)
+      ?.locationId ?? "",
+});
+
+/** La Company dueña de una ubicación. */
+const companyAt = (locationId: string) => {
+  const company = fakeShopify
+    .snapshot()
+    .companies.find((c) => c.locationId === locationId);
+  if (!company) throw new Error(`Ubicación desconocida: ${locationId}`);
+  return company;
+};
+
 const userErrorsOf = (error: unknown) => {
   if (error instanceof ShopifyUserError) return error.fields;
   throw error;
@@ -80,10 +97,209 @@ const operations: Record<
   string,
   (variables: Vars, query: string) => Promise<JsonBodyType>
 > = {
+  CompanyCreate: async (variables: Vars) => {
+    const input = variables.input as {
+      company: { name: string; externalId: string };
+      companyContact?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+      };
+      companyLocation: {
+        phone?: string;
+        shippingAddress: { address1: string; city: string; zoneCode?: string };
+      };
+    };
+    const { result, userErrors } = await withUserErrors(() =>
+      store.createCompany({
+        name: input.company.name,
+        externalId: input.company.externalId,
+        phone: input.companyLocation.phone ?? null,
+        address: {
+          address1: input.companyLocation.shippingAddress.address1,
+          city: input.companyLocation.shippingAddress.city,
+          zoneCode: input.companyLocation.shippingAddress.zoneCode ?? "",
+        },
+        contact: input.companyContact && {
+          firstName: input.companyContact.firstName ?? "",
+          lastName: input.companyContact.lastName ?? "",
+          email: input.companyContact.email,
+          phone: input.companyContact.phone,
+        },
+      }),
+    );
+    return {
+      data: {
+        companyCreate: {
+          company: result && {
+            id: result.id,
+            name: result.name,
+            externalId: result.externalId,
+            contacts: {
+              nodes: result.contacts.map((c) => ({
+                id: c.id,
+                customer: { id: c.customerId },
+              })),
+            },
+            locations: { nodes: [{ id: result.locationId }] },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyUpdate: async (variables: Vars) => {
+    const companyId = variables.companyId as string;
+    const current = fakeShopify
+      .snapshot()
+      .companies.find((c) => c.id === companyId);
+    if (!current) {
+      return { data: { companyUpdate: { company: null, userErrors: [] } } };
+    }
+    const input = variables.input as { name: string; externalId: string };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(companyRef(companyId), {
+        name: input.name,
+        externalId: input.externalId,
+        phone: current.phone,
+        address: current.address,
+      }),
+    );
+    return {
+      data: { companyUpdate: { company: { id: companyId }, userErrors } },
+    };
+  },
+  CompanyLocationUpdate: async (variables: Vars) => {
+    const current = companyAt(variables.companyLocationId as string);
+    const input = variables.input as { phone?: string };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(
+        { companyId: current.id, locationId: current.locationId },
+        {
+          ...current,
+          externalId: current.externalId ?? "",
+          phone: input.phone ?? current.phone,
+        },
+      ),
+    );
+    return {
+      data: {
+        companyLocationUpdate: {
+          companyLocation: { id: current.locationId },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyLocationAssignAddress: async (variables: Vars) => {
+    const current = companyAt(variables.locationId as string);
+    const address = variables.address as {
+      address1: string;
+      city: string;
+      zoneCode?: string;
+    };
+    const { userErrors } = await withUserErrors(() =>
+      store.updateCompany(
+        { companyId: current.id, locationId: current.locationId },
+        {
+          ...current,
+          externalId: current.externalId ?? "",
+          address: {
+            address1: address.address1,
+            city: address.city,
+            zoneCode: address.zoneCode ?? "",
+          },
+        },
+      ),
+    );
+    return {
+      data: {
+        companyLocationAssignAddress: {
+          addresses: userErrors.length
+            ? null
+            : [{ id: "gid://shopify/CompanyAddress/1" }],
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyContactCreate: async (variables: Vars) => {
+    const input = variables.input as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    };
+    const { result, userErrors } = await withUserErrors(() =>
+      store.createCompanyContact(companyRef(variables.companyId as string), {
+        firstName: input.firstName ?? "",
+        lastName: input.lastName ?? "",
+        email: input.email,
+        phone: input.phone,
+      }),
+    );
+    return {
+      data: {
+        companyContactCreate: {
+          companyContact: result && {
+            id: result.id,
+            customer: { id: result.customerId },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyAssignCustomerAsContact: async (variables: Vars) => {
+    const { result, userErrors } = await withUserErrors(() =>
+      store.assignCustomerAsContact(
+        companyRef(variables.companyId as string),
+        variables.customerId as string,
+      ),
+    );
+    return {
+      data: {
+        companyAssignCustomerAsContact: {
+          companyContact: result && {
+            id: result.id,
+            customer: { id: result.customerId },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyContactRoles: async () => ({
+    data: {
+      company: {
+        contactRoles: {
+          nodes: [
+            {
+              id: "gid://shopify/CompanyContactRole/1",
+              name: "Location admin",
+            },
+            { id: "gid://shopify/CompanyContactRole/2", name: "Ordering only" },
+          ],
+        },
+      },
+    },
+  }),
+  CompanyContactAssignRole: async () => ({
+    data: {
+      companyContactAssignRole: {
+        companyContactRoleAssignment: {
+          id: "gid://shopify/CompanyContactRoleAssignment/1",
+        },
+        userErrors: [],
+      },
+    },
+  }),
   ShopCurrency: async () => ({ data: { shop: { currencyCode: "PEN" } } }),
   OrderCreate: async (variables: Vars) => {
     const order = variables.order as {
       customerId: string;
+      companyLocationId?: string;
       tags: string[];
       note?: string;
       lineItems: {
@@ -99,6 +315,7 @@ const operations: Record<
     const { result, userErrors } = await withUserErrors(() =>
       store.createOrder({
         customerId: order.customerId,
+        companyLocationId: order.companyLocationId,
         tags: order.tags,
         note: order.note,
         lines: order.lineItems.map((l) => ({

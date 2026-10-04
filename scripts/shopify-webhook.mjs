@@ -24,8 +24,9 @@ if (!existsSync(path)) {
 }
 
 const body = readFileSync(path, "utf8");
-const secret = process.env.SHOPIFY_CLIENT_SECRET || FAKE_WEBHOOK_SECRET;
-const shop = process.env.SHOPIFY_STORE_DOMAIN || FAKE_SHOP_DOMAIN;
+const live = process.env.SHOPIFY_MODE === "live";
+const secret = live ? process.env.SHOPIFY_CLIENT_SECRET : FAKE_WEBHOOK_SECRET;
+const shop = (live && process.env.SHOPIFY_STORE_DOMAIN) || FAKE_SHOP_DOMAIN;
 const url = new URL(
   "/api/webhooks/shopify",
   process.env.APP_URL ?? "http://localhost:3000",

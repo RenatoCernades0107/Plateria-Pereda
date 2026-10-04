@@ -61,10 +61,13 @@ describe("configuración de webhooks", () => {
 
   it("en modo fake usa valores de desarrollo si no hay otros", () => {
     expect(webhookSecret({ SHOPIFY_MODE: "fake" })).toBe(FAKE_WEBHOOK_SECRET);
+    expect(
+      webhookSecret({ SHOPIFY_MODE: "fake", SHOPIFY_CLIENT_SECRET: "real" }),
+    ).toBe(FAKE_WEBHOOK_SECRET);
     expect(expectedShopDomain({ SHOPIFY_MODE: "fake" })).toBe(FAKE_SHOP_DOMAIN);
     expect(
       expectedShopDomain({ SHOPIFY_MODE: "fake", SHOPIFY_STORE_DOMAIN: SHOP }),
-    ).toBe(SHOP);
+    ).toBe(FAKE_SHOP_DOMAIN);
   });
 });
 

@@ -26,6 +26,9 @@ vi.mock("@/server/shopify-webhooks/store", () => ({
 vi.mock("@/server/shopify-webhooks/router", () => ({
   processWebhookEvent: mocks.process,
 }));
+vi.mock("@/server/shopify-webhooks/registry", () => ({
+  shopifyWebhookHandlers: { "customers/update": vi.fn() },
+}));
 
 const { POST } = await import("./route");
 
@@ -55,7 +58,11 @@ describe("/api/webhooks/shopify", () => {
     expect(mocks.process).not.toHaveBeenCalled();
 
     await mocks.after.mock.calls[0]![0]();
-    expect(mocks.process).toHaveBeenCalledWith(expect.anything(), 42);
+    expect(mocks.process).toHaveBeenCalledWith(
+      expect.anything(),
+      42,
+      expect.objectContaining({ "customers/update": expect.any(Function) }),
+    );
   });
 
   it("un error al procesar no rompe la respuesta", async () => {

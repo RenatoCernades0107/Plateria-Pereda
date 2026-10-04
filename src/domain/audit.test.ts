@@ -78,6 +78,34 @@ describe("formatos por entidad", () => {
     ).toEqual(["Precio sugerido: — → S/ 35.50"]);
   });
 
+  it("los clientes muestran tipo, documento y teléfono legibles", () => {
+    expect(
+      describeChanges("clients", "insert", {
+        kind: { new: "empresa" },
+        document_type: { new: "ruc" },
+        phone: { new: "+51999888777" },
+      }),
+    ).toEqual([
+      "Tipo: Empresa",
+      "Tipo de documento: RUC",
+      "Teléfono: +51 999 888 777",
+    ]);
+    expect(
+      describeChanges("contacts", "update", {
+        document_type: { old: null, new: "dni" },
+        phone: { old: "+51999888777", new: "+51988777666" },
+      }),
+    ).toEqual([
+      "Tipo de documento: — → DNI",
+      "Teléfono: +51 999 888 777 → +51 988 777 666",
+    ]);
+    expect(
+      describeChanges("clients", "update", {
+        kind: { old: "empresa", new: "persona" },
+      }),
+    ).toEqual(["Tipo: Empresa → Persona"]);
+  });
+
   it("la configuración usa sus etiquetas", () => {
     expect(
       describeChanges("settings", "update", {

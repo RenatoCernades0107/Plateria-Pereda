@@ -37,7 +37,8 @@ export function SyncStatus({
   lastError,
   canRetry = true,
 }: {
-  jobId: number;
+  /** null: sin job (importado de Shopify); no se puede reintentar. */
+  jobId: number | null;
   status: SyncJobStatus;
   lastError?: string | null;
   canRetry?: boolean;
@@ -64,14 +65,14 @@ export function SyncStatus({
       ) : (
         badge
       )}
-      {status === "error" && canRetry ? (
+      {status === "error" && canRetry && jobId !== null ? (
         <Button
           variant="outline"
           size="sm"
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const result = await retryShopifyJob(jobId, pathname);
+              const result = await retryShopifyJob(jobId!, pathname);
               if ("error" in result) toast.error(result.error);
               else toast.success("Reintentando la sincronización con Shopify.");
             })

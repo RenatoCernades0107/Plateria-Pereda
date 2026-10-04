@@ -1,4 +1,7 @@
 import type {
+  CompanyInput,
+  CompanyRef,
+  CompanyUpdate,
   CustomerInput,
   OrderEdit,
   OrderFinancials,
@@ -6,6 +9,8 @@ import type {
   Page,
   PageOptions,
   RefundInput,
+  ShopifyCompany,
+  ShopifyCompanyContact,
   ShopifyCustomer,
   ShopifyOrder,
   ShopifyProduct,
@@ -28,6 +33,25 @@ export interface ShopifyGateway {
     options?: PageOptions,
   ): Promise<Page<ShopifyCustomer>>;
   getCustomer(id: string): Promise<ShopifyCustomer | null>;
+
+  /** Empresa como Company con su ubicación y, opcionalmente, su primer contacto (P14). */
+  createCompany(input: CompanyInput): Promise<ShopifyCompany>;
+  /** Actualiza la razón social, el RUC, el teléfono y la dirección de la ubicación. */
+  updateCompany(company: CompanyRef, input: CompanyUpdate): Promise<void>;
+  /**
+   * Crea un cliente nuevo, lo asocia a la empresa como contacto y le da el rol de
+   * compra en la ubicación: sin rol, Shopify no deja crear órdenes a su nombre
+   * (spike 4.1, ronda 3).
+   */
+  createCompanyContact(
+    company: CompanyRef,
+    input: CustomerInput,
+  ): Promise<ShopifyCompanyContact>;
+  /** Asocia como contacto (con rol de compra) a un cliente que ya existe en Shopify. */
+  assignCustomerAsContact(
+    company: CompanyRef,
+    customerId: string,
+  ): Promise<ShopifyCompanyContact>;
 
   createOrder(input: OrderInput): Promise<ShopifyOrder>;
   /**

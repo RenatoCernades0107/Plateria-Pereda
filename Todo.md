@@ -542,73 +542,90 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 6 — Clientes y contactos
 
-#### Paso 6.1 — Esquema y validaciones ⛔ P27
-- [ ] Tablas `clients` y `contacts` + RLS + auditoría + índices de búsqueda (`pg_trgm` sobre nombre, documento, teléfono, email).
-- [ ] Esquemas zod: persona (nombres, apellidos, DNI / CE / pasaporte) y empresa (razón social, RUC); teléfono peruano; email.
+#### Paso 6.1 — Esquema y validaciones
+- [x] Tablas `clients` y `contacts` + RLS + auditoría + índices de búsqueda (`pg_trgm` sobre nombre, documento, teléfono, email).
+- [x] Esquemas zod: persona (nombres, apellidos, DNI / CE / pasaporte) y empresa (razón social, RUC); teléfono peruano; email.
 - **Unit:**
-  - [ ] DNI (8 dígitos), RUC (11 dígitos, prefijo válido y dígito verificador), teléfono, email.
-  - [ ] Normalización (espacios, mayúsculas, teléfono en formato E.164 `+51...`).
+  - [x] DNI (8 dígitos), RUC (11 dígitos, prefijo válido y dígito verificador), teléfono, email.
+  - [x] Normalización (espacios, mayúsculas, teléfono en formato E.164 `+51...`).
 - **BD:**
-  - [ ] Documento único por tipo.
-  - [ ] Un contacto siempre pertenece a un cliente.
-  - [ ] RLS por rol.
+  - [x] Documento único por tipo.
+  - [x] Un contacto siempre pertenece a un cliente.
+  - [x] RLS por rol.
 - **E2E:** No aplica (la interfaz llega en 6.2).
+- Hecho (2026-10-04): tablas `clients` (persona o empresa, `display_name` generado, ids de Shopify: Customer para persona; Company + ubicación para empresa) y `contacts` (siempre de una empresa; Customer + CompanyContact). Documento único por tipo, teléfono en E.164, email en minúsculas, el tipo de cliente no cambia, no se borran. Todos leen; admin y ventas crean y editan; auditados. Validaciones en `src/domain/documents.ts`, `src/domain/phone.ts` y `src/lib/validation/clients.ts`. **P27 sigue pendiente:** se usó su propuesta (persona: nombres, apellidos y teléfono; empresa: razón social, RUC y teléfono; contacto: nombre y teléfono), definida solo en zod para cambiarla sin migraciones.
 - Commit: `feat(clientes): agrega esquema de clientes y contactos`
 
 #### Paso 6.2 — Alta de cliente sincronizada con Shopify
-- [ ] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
-- [ ] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
-- [ ] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
+- [x] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
+- [x] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
+- [x] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
 - **Unit:**
-  - [ ] Mapeo cliente → input de Shopify (persona y empresa).
-  - [ ] Manejo de "ya existe" → vinculación.
+  - [x] Mapeo cliente → input de Shopify (persona y empresa).
+  - [x] Manejo de "ya existe" → vinculación.
 - **Integración:**
-  - [ ] Crear cliente → job `ok` → `shopify_customer_id` guardado (fake).
+  - [x] Crear cliente → job `ok` → `shopify_customer_id` guardado (fake).
 - **E2E:**
-  - [ ] Crear persona y empresa → aparecen como "Sincronizado" y el fake recibió los datos correctos.
-  - [ ] Error forzado en el fake → "Error de sincronización" → "Reintentar" → sincronizado.
-  - [ ] `@mobile` crear cliente.
+  - [x] Crear persona y empresa → aparecen como "Sincronizado" y el fake recibió los datos correctos.
+  - [x] Error forzado en el fake → "Error de sincronización" → "Reintentar" → sincronizado.
+  - [x] `@mobile` crear cliente.
+- Hecho (2026-10-04): el gateway suma `createCompany`, `createCompanyContact` y `assignCustomerAsContact` (fake, live y emulador; contract test). Un trigger encola `customer.create` / `company.create` / `contact.create` al registrar (salvo importados con id de Shopify). Handlers idempotentes en `src/server/clients/shopify-sync.ts`: si el email o teléfono ya existe en Shopify vinculan ese cliente; el contacto espera a que su empresa esté sincronizada. `public.shopify_sync_status()` expone el estado a todos los roles (el outbox sigue siendo solo de admin). `clients` suma ciudad y región (código de Shopify, `src/domain/regions.ts`). Diálogo `NewClientDialog` (persona / empresa) reutilizable con `onCreated`; `/clientes` muestra los últimos clientes con su estado y se refresca solo mientras hay pendientes. El fake guarda la descripción de los fallos forzados y crea el error al lanzarlo (en desarrollo las rutas y las acciones pueden cargar copias distintas de las clases de error).
+- Ronda 3 del spike: contactos nuevos y existentes ✅, región ARE ✅; un contacto agregado después necesita **rol de compra** en la ubicación para hacer pedidos → el gateway lo asigna al crear o vincular el contacto (validado en las rondas 4 y 5 ✅). Si la empresa ya existe en Shopify con ese RUC, por ahora queda en error con el mensaje de Shopify (se resuelve con la importación de 6.6).
 - Commit: `feat(clientes): registra clientes y los sincroniza con Shopify`
 
 #### Paso 6.3 — Buscador unificado `ClientPicker`
-- [ ] Busca en la BD local (clientes y contactos) y en Shopify (clientes aún no importados); al elegir uno de Shopify se guarda/actualiza localmente.
-- [ ] Muestra tipo, documento, teléfono y, si es un contacto, la empresa a la que pertenece.
-- [ ] Debounce, estados de carga y vacío, opción "Crear nuevo".
+- [x] Busca en la BD local (clientes y contactos) y en Shopify (clientes aún no importados); al elegir uno de Shopify se guarda/actualiza localmente.
+- [x] Muestra tipo, documento, teléfono y, si es un contacto, la empresa a la que pertenece.
+- [x] Debounce, estados de carga y vacío, opción "Crear nuevo".
 - **Unit:**
-  - [ ] Fusión y deduplicación de resultados locales y de Shopify.
-  - [ ] Componente: navegación con teclado, selección, "Crear nuevo".
+  - [x] Fusión y deduplicación de resultados locales y de Shopify.
+  - [x] Componente: navegación con teclado, selección, "Crear nuevo".
 - **E2E:**
-  - [ ] Buscar por nombre, documento y teléfono.
-  - [ ] Elegir un cliente que solo existe en Shopify (fake) → queda guardado localmente.
+  - [x] Buscar por nombre, documento y teléfono.
+  - [x] Elegir un cliente que solo existe en Shopify (fake) → queda guardado localmente.
+- Hecho (2026-10-04): `searchClients()` busca en clientes y contactos activos (nombre, documento, email y dígitos del teléfono) y en Shopify; `mergeClientOptions()` (`src/domain/client-search.ts`) no repite clientes de Shopify que ya están en el sistema (por id, email o teléfono). Si Shopify falla se muestran solo los locales con aviso. Al elegir uno de Shopify, `importShopifyCustomer()` lo guarda como persona ya sincronizada (idempotente; no encola trabajo). `ClientPicker` (cmdk): espera de 300 ms, descarta respuestas viejas, estados de carga y vacío, grupos "En el sistema" / "En Shopify", "Crear nuevo cliente" (abre `NewClientDialog`) y limpia la búsqueda al elegir. En `/clientes` funciona como buscador hasta que llegue el detalle (6.5).
 - Commit: `feat(clientes): agrega buscador unificado de clientes y contactos`
 
 #### Paso 6.4 — Contactos
-- [ ] Alta, edición y desactivación de contactos dentro del cliente y desde el formulario de restauración.
+- [x] Alta, edición y desactivación de contactos dentro del cliente y desde el formulario de restauración (`ContactDialog` reutilizable; se conecta al formulario en la Fase 7).
 - **Unit:**
-  - [ ] Esquema y formulario.
+  - [x] Esquema y formulario.
 - **BD:**
-  - [ ] RLS por rol.
+  - [x] RLS por rol.
 - **E2E:**
-  - [ ] Agregar un contacto a una empresa y luego seleccionarlo en el buscador.
-- Commit: `feat(clientes): agrega gestión de contactos`
+  - [x] Agregar un contacto a una empresa y luego seleccionarlo en el buscador.
+- Hecho (2026-10-04): acciones `createContact`, `updateContact` y `setContactActive` (solo admin y ventas, RLS de 6.1); sección "Contactos" en el detalle de la empresa con su estado en Shopify, edición y desactivación (un contacto inactivo deja de salir en el buscador). Al editar un contacto ya sincronizado se encola `contact.update`, que actualiza su Customer en Shopify.
+- Commit: junto con 6.5 en `feat(clientes): agrega listado, detalle y contactos de clientes` (comparten acciones y página).
 
-#### Paso 6.5 — Listado y detalle de clientes ⛔ P16
-- [ ] `/clientes`: tabla con búsqueda y filtros (tipo, estado de sincronización).
-- [ ] `/clientes/[id]`: datos, contactos, restauraciones, cotizaciones, historial; edición (sincroniza con Shopify según P16). Logística solo ve los datos de contacto (sin restauraciones pasadas ni historial, P42).
+#### Paso 6.5 — Listado y detalle de clientes
+- [x] `/clientes`: tabla con búsqueda y filtros (tipo, estado de sincronización).
+- [x] `/clientes/[id]`: datos, contactos, restauraciones, cotizaciones, historial; edición (sincroniza con Shopify según P16). Logística solo ve los datos de contacto (sin restauraciones pasadas ni historial, P42).
 - **Unit:**
-  - [ ] Columnas de la tabla y vista de tarjetas en móvil.
+  - [x] Columnas de la tabla y vista de tarjetas en móvil.
 - **E2E:**
-  - [ ] Buscar un cliente y abrir su detalle.
-  - [ ] Editar datos → se encola la actualización en Shopify.
-- Commit: `feat(clientes): agrega listado y detalle de clientes`
+  - [x] Buscar un cliente y abrir su detalle.
+  - [x] Editar datos → se encola la actualización en Shopify.
+- Hecho (2026-10-04):
+  - Listado con `list_clients()` (BD, security definer con chequeo de rol): texto (nombre, documento, email o dígitos del teléfono), tipo, estado de Shopify (sincronizado / pendiente / con error; importado sin jobs = sincronizado), activos/inactivos/todos y paginación de 25; los filtros viven en la URL. El buscador de `/clientes` abre el detalle (un contacto abre su empresa).
+  - Detalle: datos, contactos (empresas), estado de Shopify, "Editar" (reutiliza los formularios del alta; el tipo no cambia), desactivar/activar, sección de restauraciones y cotizaciones (se llena en las Fases 7–8) e historial. Logística no ve notas, restauraciones ni historial, ni puede editar.
+  - P16 hacia Shopify: triggers encolan `customer.update`, `company.update` o `contact.update` solo si cambian datos que viven en Shopify y el registro ya tiene su id (si aún no, el alta pendiente lee los datos vigentes). No se repite si ya hay una pendiente; sí si la anterior se está procesando. `updateCompany` del gateway: `companyUpdate` (razón social y RUC), `companyLocationUpdate` (teléfono) y `companyLocationAssignAddress` (dirección de envío y facturación). Un email o teléfono quitado en el sistema no se borra en Shopify.
+  - P16 desde Shopify: webhook `customers/update` → `apply_shopify_customer_update()` (solo service role) actualiza la persona o el contacto vinculado sin volver a encolarlo (`app.sync_origin = 'shopify'` en la transacción); ignora valores vacíos o inválidos. Los cambios de Companies hechos en Shopify no llegan por webhook (no hay topic de companies en uso): se editan en el sistema.
+  - Ronda 5 del spike ✅ (reporte 20261004214531): `customerUpdate`, `companyUpdate`, `companyLocationUpdate` y `companyLocationAssignAddress` funcionan contra la tienda.
+- Commit: `feat(clientes): agrega listado, detalle y contactos de clientes`
 
-#### Paso 6.6 — Importación inicial de clientes de Shopify ⛔ P15
-- [ ] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).
+#### Paso 6.6 — Importación inicial de clientes de Shopify
+- [x] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).
 - **Unit:**
-  - [ ] Mapeo y upsert idempotente.
+  - [x] Mapeo y upsert idempotente.
 - **Integración:**
-  - [ ] Ejecutar dos veces no duplica clientes.
+  - [x] Ejecutar dos veces no duplica clientes.
 - **E2E:** No aplica (tarea administrativa puntual).
+- Hecho (2026-10-04):
+  - `pnpm shopify:import-customers` llama a `POST /api/cron/shopify-import-customers` (protegido con `CRON_SECRET`), que pagina los clientes de Shopify de 100 en 100. Si se acerca al límite de tiempo (4 min) devuelve un cursor y el script sigue desde ahí; un cliente que falla no detiene el resto y se lista al final.
+  - `personFromShopify()` normaliza: sin nombres usa apellidos, email o teléfono; descarta emails inválidos y teléfonos que no son E.164.
+  - `import_shopify_customer()` (BD, solo service role) decide: nuevo → persona ya sincronizada; ya importado → actualiza nombres, email y teléfono (sin pisar notas ni borrar datos que Shopify no tiene); persona del sistema sin vincular con el mismo email o teléfono → se vincula; Customer de un contacto de empresa → actualiza el contacto. Nada se devuelve a Shopify.
+  - Las Companies de Shopify no se importan (las empresas se registran en el sistema y se crean allá).
+  - Para probar con la tienda de desarrollo: `pnpm shopify:seed-customers --tienda-de-desarrollo 20` crea clientes de prueba (etiqueta `prueba-sistema`, con casos sin nombres, sin email o sin teléfono) y `--borrar` los elimina. La importación real (~1000 clientes, P15) se hace en el Paso 16.4.
 - Commit: `feat(clientes): agrega importación inicial de clientes desde Shopify`
 
 ### Fase 7 — Restauraciones: registro y cotización por WhatsApp
@@ -626,14 +643,15 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega esquema de restauraciones y piezas`
 
 #### Paso 7.2 — Dominio: dinero y validaciones ⛔ P28
-- [ ] `src/domain/money.ts` (céntimos enteros, suma, redondeo, formato).
-- [ ] Esquemas zod de restauración y pieza (campos según P22).
+- [x] `src/domain/money.ts` (céntimos enteros, suma, redondeo, formato).
+- [x] Esquemas zod de restauración y pieza (campos según P22).
 - **Unit:**
-  - [ ] Sumas sin errores de punto flotante (0.1 + 0.2).
-  - [ ] Redondeo a 2 decimales.
-  - [ ] Validaciones de pieza (precio requerido, peso según P22, longitudes máximas).
-  - [ ] Adelanto esperado: % × total en "A cuenta" (50 % por defecto, editable), 0 en "Crédito", total en "Contado"; redondeo a céntimos.
+  - [x] Sumas sin errores de punto flotante (0.1 + 0.2).
+  - [x] Redondeo a 2 decimales.
+  - [x] Validaciones de pieza (precio requerido, peso según P22, longitudes máximas).
+  - [x] Adelanto esperado: % × total en "A cuenta" (50 % por defecto, editable), 0 en "Crédito", total en "Contado"; redondeo a céntimos.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): `money.ts` trabaja en céntimos enteros (`toCents`, `toSoles`, `toDecimalString` para la BD y Shopify, `formatCents`, `sumCents`, `percentOf`; empates redondeados lejos del cero, 1.005 → 1.01), `parseMoney()` lee lo que escribe el usuario ("1,234.50", "1234,5", "S/ 12"; tope S/ 99,999,999.99) y `expectedDeposit()` da el adelanto esperado; tipos de pago `contado`, `a_cuenta` y `credito` (el enum de la BD del Paso 7.1 debe usar estos valores). Esquemas en `src/lib/validation/restorations.ts`: la pieza exige solo descripción y precio (≥ 0); medida, material y servicio (del catálogo con id y nombre, o texto libre), peso (> 0, gramos, hasta 2 decimales) y taller son opcionales; "La pieza ya está en tienda" es `arrived`. La restauración exige cliente y entre 1 y 100 piezas; el % de adelanto (1–100, hasta 2 decimales) solo se valida y se guarda en "A cuenta" (unión discriminada, así los errores de las piezas y del % salen juntos). **P28 sigue pendiente** (¿contado = paga todo al aprobar?, ¿crédito para quién?, ¿cambiar el tipo de pago después?): no afecta estos cálculos.
 - Commit: `feat(restauraciones): agrega reglas de dinero y validaciones`
 
 #### Paso 7.3 — RPC `create_restoration`
@@ -708,27 +726,29 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 8 — Estados, ubicación, fechas y tiempos
 
 #### Paso 8.1 — Máquina de estados de la pieza (dominio)
-- [ ] `src/domain/piece-state-machine.ts`: estados, transiciones de §7.1, requisitos (nota, taller), roles permitidos, `availableTransitions(piece, role)` y `applyTransition()` (devuelve el nuevo estado, las fechas y efectos como "Aprobada → Recibida si ya llegó").
+- [x] `src/domain/piece-state-machine.ts`: estados, transiciones de §7.1, requisitos (nota, taller), roles permitidos, `availableTransitions(piece, role)` y `applyTransition()` (devuelve el nuevo estado, las fechas y efectos como "Aprobada → Recibida si ya llegó").
 - **Unit:**
-  - [ ] Test de tabla que recorre **todas** las combinaciones estado origen × destino × rol (válidas e inválidas).
-  - [ ] Llegada anticipada: aprobar una pieza que ya llegó la deja en Recibida.
-  - [ ] Nota obligatoria donde corresponde.
-  - [ ] Taller obligatorio al enviar al taller.
-  - [ ] Anulada es estado final.
-  - [ ] Desde "En consulta" solo se pasa a "En espera de respuesta" (o se anula); desde "En espera" solo se aprueba o se anula.
+  - [x] Test de tabla que recorre **todas** las combinaciones estado origen × destino × rol (válidas e inválidas).
+  - [x] Llegada anticipada: aprobar una pieza que ya llegó la deja en Recibida.
+  - [x] Nota obligatoria donde corresponde.
+  - [x] Taller obligatorio al enviar al taller.
+  - [x] Anulada es estado final.
+  - [x] Desde "En consulta" solo se pasa a "En espera de respuesta" (o se anula); desde "En espera" solo se aprueba o se anula.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): estados `registrada`, `en_consulta`, `en_espera`, `aprobada`, `recibida`, `enviada_taller`, `devuelta_taller`, `observada`, `entregada` y `anulada` (el enum de la BD del Paso 7.1 debe usar estos mismos valores). `PIECE_TRANSITIONS` es la tabla que siembra `piece_status_transitions` en 8.3; los roles salen de la matriz de `permissions.ts` (P42) y anular una pieza que está en el taller es solo de admin (P41 d). Nota obligatoria al consultar, anular y observar (también el reclamo después de la entrega); taller obligatorio al enviar (usa el ya asignado o el elegido). `applyTransition()` devuelve los cambios (estado, fechas de §7.4, taller), la nota recortada y los pasos para el historial: aprobar una pieza que ya llegó deja dos pasos (→ Aprobada → Recibida); el reenvío tras una observación conserva `first_sent_at`. Aprobada → Recibida no se ofrece como transición: se hace con `markArrived()` ("Marcar llegada a tienda", todos los roles; en los estados previos a Aprobada solo guarda `arrived_at`). Errores tipados con mensaje (`transicion_invalida`, `rol_no_permitido`, `nota_requerida`, `taller_requerido`). La regla de entrega con saldo pendiente (P45) se agrega en 11.2.
 - Commit: `feat(piezas): agrega máquina de estados de piezas`
 
 #### Paso 8.2 — Derivaciones (dominio) ⛔ P19 ⛔ P23
-- [ ] `deriveRestorationStatus(pieces)` (§7.3), `deriveLocation(piece)` (§7.2), `daysInWorkshop(history, now)`, `fulfillmentDays(piece, now)`, `isReadyForShopifyOrder(pieces)`.
-- [ ] Escenarios en un fixture JSON compartido (se reutiliza en 8.3 contra la BD).
+- [x] `deriveRestorationStatus(pieces)` (§7.3), `deriveLocation(piece)` (§7.2), `daysInWorkshop(history, now)`, `fulfillmentDays(piece, now)`, `isReadyForShopifyOrder(pieces)`.
+- [x] Escenarios en un fixture JSON compartido (se reutiliza en 8.3 contra la BD).
 - **Unit:**
-  - [ ] Cada regla de §7.3 y su precedencia (con piezas anuladas, mezcla de estados, todas anuladas, retroceso por observación).
-  - [ ] Ubicación para cada estado con y sin `arrived_at`.
-  - [ ] Días en taller con varios viajes, en curso, cruzando medianoche en Lima vs. UTC, cambio de mes.
-  - [ ] Días de cumplimiento.
-  - [ ] `isReadyForShopifyOrder` con piezas en consulta, aprobadas y anuladas.
+  - [x] Cada regla de §7.3 y su precedencia (con piezas anuladas, mezcla de estados, todas anuladas, retroceso por observación).
+  - [x] Ubicación para cada estado con y sin `arrived_at`.
+  - [x] Días en taller con varios viajes, en curso, cruzando medianoche en Lima vs. UTC, cambio de mes.
+  - [x] Días de cumplimiento.
+  - [x] `isReadyForShopifyOrder` con piezas en consulta, aprobadas y anuladas.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): `src/domain/restoration-status.ts` (estado general, ubicación, `isReadyForShopifyOrder` y sus etiquetas) y `src/domain/piece-days.ts` (días calendario en Lima con `Intl`, sin dependencias nuevas). Escenarios en `tests/fixtures/restorations/derivations.json` (estado general y orden lista, ubicación, días en taller y de cumplimiento) para reutilizarlos en 8.3. **P19 y P23 siguen pendientes:** se usó su propuesta (el estado puede retroceder; días calendario; cumplimiento = del registro de la pieza a su entrega). Sin piezas la restauración queda Registrada; una pieza observada por un reclamo después de la entrega vuelve a contar días de cumplimiento "en curso"; una anulada no tiene días de cumplimiento. Que la orden aún no exista lo revisa el trigger que encola `order_create` (8.3).
 - Commit: `feat(piezas): agrega cálculo de estado general, ubicación y tiempos`
 
 #### Paso 8.3 — Implementación en BD
@@ -858,6 +878,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - [ ] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
 - [ ] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
 - [ ] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
+- [ ] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
 - [ ] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
 - [ ] Regla de entrega con saldo pendiente (§7.5, P45).
 - **Unit:**

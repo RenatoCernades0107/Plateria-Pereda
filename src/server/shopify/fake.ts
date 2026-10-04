@@ -1,6 +1,5 @@
 import {
   ShopifyAuthError,
-  ShopifyError,
   ShopifyNotFoundError,
   ShopifyUnavailableError,
   ShopifyUserError,
@@ -8,12 +7,18 @@ import {
 import type { ShopifyGateway } from "./gateway";
 import { fromCents, toCents } from "./money";
 import type {
+  CompanyAddress,
+  CompanyInput,
+  CompanyRef,
+  CompanyUpdate,
   CustomerInput,
   CustomLine,
   FinancialStatus,
   OrderFinancials,
   Page,
   PageOptions,
+  ShopifyCompany,
+  ShopifyCompanyContact,
   ShopifyCustomer,
   ShopifyOrder,
   ShopifyOrderLine,
@@ -30,12 +35,25 @@ type FakeOrder = ShopifyOrder & {
 export type FailureKind = "unavailable" | "user" | "auth";
 export type GatewayMethod = keyof ShopifyGateway;
 
+type FakeCompany = ShopifyCompany & {
+  phone: string | null;
+  address: CompanyAddress;
+  /** Clientes con rol de compra en la ubicación (pueden hacer pedidos a su nombre). */
+  orderers: string[];
+};
+
 type FakeState = {
   seq: number;
   customers: Map<string, ShopifyCustomer>;
+  companies: Map<string, FakeCompany>;
   orders: Map<string, FakeOrder>;
   products: ShopifyProduct[];
-  failures: Map<GatewayMethod, ShopifyError[]>;
+  /**
+   * Fallos forzados por método. Se guarda la descripción y el error se crea al lanzarlo:
+   * en desarrollo la ruta de control y las acciones del servidor pueden cargar copias
+   * distintas de las clases de error, y `instanceof` dejaría de funcionar.
+   */
+  failures: Map<GatewayMethod, { kind: FailureKind; message?: string }[]>;
   /** Claves de idempotencia de reembolsos ya usadas. */
   idempotency: Map<string, unknown>;
   calls: { method: GatewayMethod; args: unknown[] }[];
@@ -100,6 +118,7 @@ function createState(): FakeState {
   return {
     seq: 0,
     customers: new Map(),
+    companies: new Map(),
     orders: new Map(),
     products: structuredClone(SEED_PRODUCTS),
     failures: new Map(),
@@ -125,21 +144,14 @@ export const fakeShopify = {
   },
   /** La próxima llamada a `method` falla con ese tipo de error. */
   failNext(method: GatewayMethod, kind: FailureKind, message?: string) {
-    const error =
-      kind === "unavailable"
-        ? new ShopifyUnavailableError(message ?? "Shopify no responde")
-        : kind === "auth"
-          ? new ShopifyAuthError(message ?? "Credenciales inválidas")
-          : new ShopifyUserError([
-              { field: null, message: message ?? "Datos rechazados" },
-            ]);
     const queue = state().failures.get(method) ?? [];
-    state().failures.set(method, [...queue, error]);
+    state().failures.set(method, [...queue, { kind, message }]);
   },
   snapshot() {
     const s = state();
     return {
       customers: [...s.customers.values()],
+      companies: [...s.companies.values()],
       orders: [...s.orders.values()].map((o) => ({
         ...o,
         financials: financials(o),
@@ -148,6 +160,17 @@ export const fakeShopify = {
     };
   },
 };
+
+function toError({ kind, message }: { kind: FailureKind; message?: string }) {
+  if (kind === "unavailable") {
+    return new ShopifyUnavailableError(message ?? "Shopify no responde");
+  }
+  if (kind === "auth")
+    return new ShopifyAuthError(message ?? "Credenciales inválidas");
+  return new ShopifyUserError([
+    { field: null, message: message ?? "Datos rechazados" },
+  ]);
+}
 
 function nextId(kind: string) {
   const s = state();
@@ -263,11 +286,15 @@ export class FakeShopifyGateway implements ShopifyGateway {
     s.calls.push({ method, args: structuredClone(args) });
     const queue = s.failures.get(method);
     const failure = queue?.shift();
-    if (failure) throw failure;
+    if (failure) throw toError(failure);
   }
 
   async createCustomer(input: CustomerInput) {
     this.track("createCustomer", [input]);
+    return this.insertCustomer(input);
+  }
+
+  private insertCustomer(input: CustomerInput) {
     if (!input.firstName && !input.lastName && !input.email && !input.phone) {
       throw new ShopifyUserError([
         {
@@ -323,6 +350,18 @@ export class FakeShopifyGateway implements ShopifyGateway {
   async searchCustomers(query: string, options?: PageOptions) {
     this.track("searchCustomers", [query, options]);
     const q = query.trim().toLowerCase();
+    // Sintaxis de búsqueda de Shopify por campo exacto: email:… o phone:…
+    const field = /^(email|phone):(.+)$/.exec(q);
+    if (field) {
+      const [, name, value] = field;
+      const matches = [...state().customers.values()].filter((c) =>
+        name === "email" ? c.email === value : c.phone === value,
+      );
+      return paginate(
+        matches.map((c) => ({ ...c })),
+        options,
+      );
+    }
     const digits = q.replace(/\D/g, "");
     const matches = [...state().customers.values()].filter(
       (c) =>
@@ -343,12 +382,152 @@ export class FakeShopifyGateway implements ShopifyGateway {
     return customer ? { ...customer } : null;
   }
 
+  async createCompany(input: CompanyInput): Promise<ShopifyCompany> {
+    this.track("createCompany", [input]);
+    if (!input.name.trim()) {
+      throw new ShopifyUserError([
+        { field: ["input", "company", "name"], message: "Name can't be blank" },
+      ]);
+    }
+    if (!input.address.zoneCode) {
+      // Así respondió Shopify en el spike cuando faltaba la región.
+      throw new ShopifyUserError([
+        {
+          field: ["input", "companyLocation", "shippingAddress"],
+          message: "Invalid input.",
+        },
+      ]);
+    }
+    if (
+      [...state().companies.values()].some(
+        (c) => c.externalId === input.externalId,
+      )
+    ) {
+      throw new ShopifyUserError([
+        {
+          field: ["input", "company", "externalId"],
+          message: "External Id has already been taken",
+        },
+      ]);
+    }
+    const contact = input.contact ? this.insertCustomer(input.contact) : null;
+    const company: FakeCompany = {
+      id: nextId("Company"),
+      name: input.name,
+      externalId: input.externalId,
+      phone: input.phone ?? null,
+      address: { ...input.address },
+      locationId: nextId("CompanyLocation"),
+      contacts: contact
+        ? [{ id: nextId("CompanyContact"), customerId: contact.id }]
+        : [],
+      // Como en Shopify: el contacto creado con la empresa recibe rol automáticamente.
+      orderers: contact ? [contact.id] : [],
+    };
+    state().companies.set(company.id, company);
+    return structuredClone(company);
+  }
+
+  private getCompany(id: string) {
+    const company = state().companies.get(id);
+    if (!company) throw new ShopifyNotFoundError(id);
+    return company;
+  }
+
+  private getCompanyAt({ companyId, locationId }: CompanyRef) {
+    const company = this.getCompany(companyId);
+    if (company.locationId !== locationId)
+      throw new ShopifyNotFoundError(locationId);
+    return company;
+  }
+
+  async updateCompany(ref: CompanyRef, input: CompanyUpdate) {
+    this.track("updateCompany", [ref, input]);
+    const company = this.getCompanyAt(ref);
+    if (!input.name.trim()) {
+      throw new ShopifyUserError([
+        { field: ["input", "name"], message: "Name can't be blank" },
+      ]);
+    }
+    if (!input.address.zoneCode) {
+      throw new ShopifyUserError([
+        { field: ["address"], message: "Invalid input." },
+      ]);
+    }
+    if (
+      [...state().companies.values()].some(
+        (c) => c.id !== company.id && c.externalId === input.externalId,
+      )
+    ) {
+      throw new ShopifyUserError([
+        {
+          field: ["input", "externalId"],
+          message: "External Id has already been taken",
+        },
+      ]);
+    }
+    company.name = input.name;
+    company.externalId = input.externalId;
+    company.phone = input.phone ?? null;
+    company.address = { ...input.address };
+  }
+
+  async createCompanyContact(ref: CompanyRef, input: CustomerInput) {
+    this.track("createCompanyContact", [ref, input]);
+    const company = this.getCompanyAt(ref);
+    const customer = this.insertCustomer(input);
+    const contact: ShopifyCompanyContact = {
+      id: nextId("CompanyContact"),
+      customerId: customer.id,
+    };
+    company.contacts.push(contact);
+    company.orderers.push(customer.id);
+    return { ...contact };
+  }
+
+  async assignCustomerAsContact(ref: CompanyRef, customerId: string) {
+    this.track("assignCustomerAsContact", [ref, customerId]);
+    const company = this.getCompanyAt(ref);
+    if (!state().customers.has(customerId))
+      throw new ShopifyNotFoundError(customerId);
+    if (company.contacts.some((c) => c.customerId === customerId)) {
+      throw new ShopifyUserError([
+        {
+          field: ["customerId"],
+          message: "Customer is already a contact of this company",
+        },
+      ]);
+    }
+    const contact: ShopifyCompanyContact = {
+      id: nextId("CompanyContact"),
+      customerId,
+    };
+    company.contacts.push(contact);
+    company.orderers.push(customerId);
+    return { ...contact };
+  }
+
   async createOrder(input: Parameters<ShopifyGateway["createOrder"]>[0]) {
     this.track("createOrder", [input]);
     if (!state().customers.has(input.customerId)) {
       throw new ShopifyUserError([
         { field: ["customerId"], message: "Customer does not exist" },
       ]);
+    }
+    if (input.companyLocationId) {
+      const company = [...state().companies.values()].find(
+        (c) => c.locationId === input.companyLocationId,
+      );
+      if (!company) throw new ShopifyNotFoundError(input.companyLocationId);
+      if (!company.orderers.includes(input.customerId)) {
+        throw new ShopifyUserError([
+          {
+            field: ["order"],
+            message:
+              "Order could not be created, because the customer has no role in this company.",
+          },
+        ]);
+      }
     }
     if (input.lines.length === 0) {
       throw new ShopifyUserError([

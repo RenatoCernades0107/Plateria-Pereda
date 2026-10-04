@@ -35,6 +35,9 @@ export default defineConfig({
           globalSetup: ["tests/setup/integration.global.ts"],
           setupFiles: ["tests/setup/integration.ts"],
           testTimeout: 20_000,
+          // Comparten la BD local: el test del outbox toma y borra los jobs pendientes
+          // de todos, así que un archivo a la vez.
+          fileParallelism: false,
         },
       },
     ],

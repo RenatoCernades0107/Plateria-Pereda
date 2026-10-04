@@ -4,8 +4,8 @@ import { after } from "next/server";
 
 import { getShopifyGateway } from "@/server/shopify";
 
-import { shopifyJobHandlers } from "./handlers";
 import { processShopifyJobs } from "./processor";
+import { shopifyJobHandlers } from "./registry";
 import { supabaseJobRepository } from "./repository";
 
 /** Procesa una tanda de jobs del outbox con las dependencias reales. */
