@@ -5,6 +5,7 @@ import {
   parseClientQuery,
   type ClientOption,
 } from "@/domain/client-search";
+import { personFromShopify } from "@/domain/shopify-customer";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { getShopifyGateway } from "@/server/shopify";
@@ -16,7 +17,6 @@ export type ClientSearchResult = {
 };
 
 const LIMIT = 10;
-const E164 = /^\+[1-9]\d{6,14}$/;
 
 /**
  * Busca en el sistema (clientes y contactos activos) y en Shopify (clientes que aún no
@@ -130,22 +130,16 @@ export async function importShopifyCustomer(
   if (!row) {
     const customer = await getShopifyGateway().getCustomer(shopifyCustomerId);
     if (!customer) return { error: "El cliente ya no existe en Shopify." };
-    const firstName =
-      customer.firstName ||
-      customer.lastName ||
-      customer.email?.split("@")[0] ||
-      customer.phone ||
-      "Cliente de Shopify";
+    const person = personFromShopify(customer);
     const inserted = await supabase
       .from("clients")
       .insert({
         kind: "persona",
-        first_name: firstName,
-        last_name: customer.firstName ? customer.lastName : "",
-        phone:
-          customer.phone && E164.test(customer.phone) ? customer.phone : null,
-        email: customer.email?.toLowerCase() ?? null,
-        notes: customer.note,
+        first_name: person.firstName,
+        last_name: person.lastName,
+        phone: person.phone,
+        email: person.email,
+        notes: person.notes,
         shopify_customer_id: customer.id,
       })
       .select(select)

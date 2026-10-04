@@ -614,12 +614,18 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(clientes): agrega listado, detalle y contactos de clientes`
 
 #### Paso 6.6 — Importación inicial de clientes de Shopify
-- [ ] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).
+- [x] Script / acción de admin que pagina los clientes de Shopify y los inserta o actualiza (idempotente por `shopify_customer_id`).
 - **Unit:**
-  - [ ] Mapeo y upsert idempotente.
+  - [x] Mapeo y upsert idempotente.
 - **Integración:**
-  - [ ] Ejecutar dos veces no duplica clientes.
+  - [x] Ejecutar dos veces no duplica clientes.
 - **E2E:** No aplica (tarea administrativa puntual).
+- Hecho (2026-10-04):
+  - `pnpm shopify:import-customers` llama a `POST /api/cron/shopify-import-customers` (protegido con `CRON_SECRET`), que pagina los clientes de Shopify de 100 en 100. Si se acerca al límite de tiempo (4 min) devuelve un cursor y el script sigue desde ahí; un cliente que falla no detiene el resto y se lista al final.
+  - `personFromShopify()` normaliza: sin nombres usa apellidos, email o teléfono; descarta emails inválidos y teléfonos que no son E.164.
+  - `import_shopify_customer()` (BD, solo service role) decide: nuevo → persona ya sincronizada; ya importado → actualiza nombres, email y teléfono (sin pisar notas ni borrar datos que Shopify no tiene); persona del sistema sin vincular con el mismo email o teléfono → se vincula; Customer de un contacto de empresa → actualiza el contacto. Nada se devuelve a Shopify.
+  - Las Companies de Shopify no se importan (las empresas se registran en el sistema y se crean allá).
+  - Para probar con la tienda de desarrollo: `pnpm shopify:seed-customers --tienda-de-desarrollo 20` crea clientes de prueba (etiqueta `prueba-sistema`, con casos sin nombres, sin email o sin teléfono) y `--borrar` los elimina. La importación real (~1000 clientes, P15) se hace en el Paso 16.4.
 - Commit: `feat(clientes): agrega importación inicial de clientes desde Shopify`
 
 ### Fase 7 — Restauraciones: registro y cotización por WhatsApp

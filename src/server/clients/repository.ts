@@ -3,6 +3,11 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { ClientSyncRepository } from "./shopify-sync";
+import {
+  IMPORT_OUTCOMES,
+  type ImportCustomer,
+  type ImportOutcome,
+} from "./shopify-import";
 import type { ShopifyCustomerChange } from "./webhooks";
 
 /** Clientes en Supabase con la clave secreta (lo usa el outbox, sin sesión de usuario). */
@@ -99,3 +104,24 @@ export async function applyShopifyCustomerChange(
   if (error) throw error;
   return data;
 }
+
+/** Guarda un cliente importado de Shopify (idempotente, ver la migración). */
+export const importCustomerWithAdmin: ImportCustomer = async (input) => {
+  const { data, error } = await createAdminClient().rpc(
+    "import_shopify_customer",
+    {
+      p_customer_id: input.customerId,
+      p_first_name: input.firstName,
+      p_last_name: input.lastName,
+      p_email: input.email ?? "",
+      p_phone: input.phone ?? "",
+      p_note: input.note,
+      p_fallback_name: input.fallbackName,
+    },
+  );
+  if (error) throw new Error(error.message);
+  if (!(IMPORT_OUTCOMES as readonly string[]).includes(data)) {
+    throw new Error(`Resultado inesperado de la importación: ${data}`);
+  }
+  return data as ImportOutcome;
+};

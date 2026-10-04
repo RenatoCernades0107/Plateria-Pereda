@@ -27,6 +27,8 @@
     "shopify:sync": "node --env-file-if-exists=.env.local scripts/shopify-sync.mjs",
     "shopify:webhook": "node --env-file-if-exists=.env.local scripts/shopify-webhook.mjs",
     "shopify:register-webhooks": "node --env-file-if-exists=.env.local scripts/shopify-register-webhooks.mjs",
+    "shopify:import-customers": "node --env-file-if-exists=.env.local scripts/shopify-import-customers.mjs",
+    "shopify:seed-customers": "node --env-file-if-exists=.env.local scripts/shopify-seed-customers.mjs",
     "shopify:spike": "node --env-file-if-exists=.env.local scripts/shopify-spike.mjs"
   },
   "dependencies": {

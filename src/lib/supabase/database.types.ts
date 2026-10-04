@@ -546,6 +546,18 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      import_shopify_customer: {
+        Args: {
+          p_customer_id: string;
+          p_email: string;
+          p_fallback_name: string;
+          p_first_name: string;
+          p_last_name: string;
+          p_note: string;
+          p_phone: string;
+        };
+        Returns: string;
+      };
       list_clients: {
         Args: {
           p_active?: boolean;
