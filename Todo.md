@@ -971,13 +971,14 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 14 — Cotizador de productos personalizados
 
 #### Paso 14.1 — Esquema de cotizaciones ⛔ P34
-- [ ] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
+- [x] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Correlativo único.
-  - [ ] Totales recalculados por trigger.
-  - [ ] RLS por rol.
+  - [x] Correlativo único.
+  - [x] Totales recalculados por trigger.
+  - [x] RLS por rol.
 - **E2E:** No aplica (sin interfaz).
+- Hecho (2026-10-04): `quotes` (código generado desde un identity que no se escribe a mano; cliente obligatorio y contacto opcional de esa empresa; vigencia por defecto de `settings.quote_validity_days`; `valid_until` = emisión + días) y `quote_items` (producto/variante de Shopify con título, variante, SKU, imagen y precio de catálogo copiados al cotizar, o línea libre; personalización, cantidad entera 1–100 000, precio ≥ 0 y descuento opcional por línea en monto o %; subtotal, descuento y total de la línea como columnas generadas). Un trigger suma las líneas en la cotización y los usuarios no pueden escribir totales, código, snapshot ni fechas de emisión (privilegios por columna). Solo se edita en borrador; estados: borrador → emitida (necesita una línea; fija la fecha de emisión en Lima y refresca los datos del cliente, que desde ahí quedan fijos) → aceptada / rechazada, y de aceptada o rechazada se puede volver a emitida (corrección). "Vencida" = emitida con `valid_until` anterior a hoy en Lima (`effective_status(quotes)`, columna calculada de PostgREST). Solo admin y ventas (cotizador.usar) leen y escriben; nadie borra cotizaciones; auditadas. **P34, P35 y P13 siguen pendientes:** se usó su propuesta (estados con vencida automática; solo soles, descuento por línea y sin descuento global; precios con IGV). Si P34 cambia (p. ej., sin historial de estados) basta con no usar los estados en la interfaz.
 - Commit: `feat(cotizador): agrega esquema de cotizaciones`
 
 #### Paso 14.2 — Dominio de la cotización ⛔ P13 ⛔ P35
