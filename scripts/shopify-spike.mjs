@@ -77,6 +77,17 @@ function check(payload) {
   return payload;
 }
 
+/** Repite una búsqueda hasta que devuelva resultados (el índice de Shopify tarda). */
+async function poll(search, { tries = 10, delayMs = 2000 } = {}) {
+  const started = Date.now();
+  for (let i = 0; i < tries; i++) {
+    const nodes = await search();
+    if (nodes.length) return { foundAfterMs: Date.now() - started, nodes };
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return { foundAfterMs: null, nodes: [] };
+}
+
 const money = (amount) => ({
   shopMoney: { amount, currencyCode: ctx.currency ?? "PEN" },
 });
@@ -194,25 +205,34 @@ await step("crear cliente persona", async () => {
   return ctx.customer;
 });
 
-await step("buscar clientes", async () => {
-  const data = await graphql(
-    `
-      query ($q: String) {
-        customers(first: 5, query: $q) {
-          nodes {
-            id
-            displayName
+await step("buscar clientes (espera al índice)", async () => {
+  const search = async (q) =>
+    (
+      await graphql(
+        `
+          query ($q: String) {
+            customers(first: 5, query: $q) {
+              nodes {
+                id
+                displayName
+              }
+            }
           }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-      }
-    `,
-    { q: RUN },
-  );
-  return data.customers;
+        `,
+        { q },
+      )
+    ).customers.nodes;
+  return {
+    porEmail: await poll(() =>
+      search(`email:${RUN.toLowerCase()}@example.com`),
+    ),
+    porTexto: await poll(() => search("Spike"), { tries: 3 }),
+    porTelefono: await poll(
+      () =>
+        search(`phone:${ctx.customer?.defaultPhoneNumber?.phoneNumber ?? ""}`),
+      { tries: 3 },
+    ),
+  };
 });
 
 // 4. Empresa como Company (P14 = b)
@@ -259,9 +279,11 @@ await step("crear company con contacto y ubicación", async () => {
         },
         companyLocation: {
           name: "Sede principal",
-          billingAddress: {
+          // Perú exige la región (zoneCode); con billingSameAsShipping se envía la de envío.
+          shippingAddress: {
             address1: "Av. Prueba 123",
             city: "Lima",
+            zoneCode: "LIM",
             countryCode: "PE",
           },
           billingSameAsShipping: true,
@@ -317,9 +339,10 @@ await step("buscar productos", async () => {
 const ORDER_FIELDS = `
   id name tags displayFinancialStatus displayFulfillmentStatus
   totalPriceSet { shopMoney { amount } }
+  currentTotalPriceSet { shopMoney { amount } }
   totalReceivedSet { shopMoney { amount } }
   totalOutstandingSet { shopMoney { amount } }
-  lineItems(first: 10) { nodes { id title quantity unfulfilledQuantity originalUnitPriceSet { shopMoney { amount } } } }
+  lineItems(first: 10) { nodes { id title quantity currentQuantity unfulfilledQuantity originalUnitPriceSet { shopMoney { amount } } } }
   transactions { id kind status gateway amountSet { shopMoney { amount } } }
 `;
 
@@ -371,22 +394,62 @@ await step("crear orden con adelanto (orderCreate)", async () => {
   return ctx.order;
 });
 
-await step("buscar orden por etiqueta", async () => {
-  const data = await graphql(
-    `
-      query ($q: String!) {
-        orders(first: 1, query: $q) {
-          nodes {
-            id
-            name
-            tags
-          }
-        }
-      }
-    `,
-    { q: `tag:'${RUN}'` },
-  );
-  return data.orders.nodes;
+await step("buscar orden por etiqueta (espera al índice)", async () =>
+  poll(
+    async () =>
+      (
+        await graphql(
+          `
+            query ($q: String!) {
+              orders(first: 1, query: $q) {
+                nodes {
+                  id
+                  name
+                  tags
+                }
+              }
+            }
+          `,
+          { q: `tag:'${RUN}'` },
+        )
+      ).orders.nodes,
+  ),
+);
+
+// Idempotencia: la misma clave dos veces debería devolver la misma orden, sin duplicar.
+await step("orderCreate idempotente (@idempotent)", async () => {
+  if (!ctx.customer) throw new Error("No hay cliente");
+  const key = `${RUN}-idem`;
+  const create = async () =>
+    check(
+      (
+        await graphql(
+          `mutation ($order: OrderCreateOrderInput!) {
+            orderCreate(order: $order, options: { inventoryBehaviour: BYPASS, sendReceipt: false }) @idempotent(key: "${key}") {
+              order { id name } userErrors { field message }
+            }
+          }`,
+          {
+            order: {
+              customerId: ctx.customer.id,
+              currency: ctx.currency,
+              tags: [RUN, "idempotente"],
+              lineItems: [
+                {
+                  title: `Restauración ${RUN}-I1`,
+                  quantity: 1,
+                  priceSet: money("10.00"),
+                  requiresShipping: false,
+                },
+              ],
+            },
+          },
+        )
+      ).orderCreate,
+    ).order;
+  const first = await create();
+  const second = await create();
+  return { first, second, mismaOrden: first.id === second.id };
 });
 
 // 7. Orden a nombre de la empresa
@@ -551,16 +614,47 @@ await step("editar orden (agregar y quitar línea)", async () => {
 // 9. Pago del saldo (orderCreateManualPayment sin monto)
 await step("registrar pago del saldo", async () => {
   if (!ctx.order) throw new Error("No hay orden");
-  const data = await graphql(
+  // Con nombre falla si el método manual no existe en Ajustes → Pagos de la tienda.
+  const conNombre = await graphql(
+    `
+      mutation ($id: ID!) {
+        orderCreateManualPayment(id: $id, paymentMethodName: "Efectivo") {
+          order {
+            id
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    { id: ctx.order.id },
+  );
+  if (!conNombre.orderCreateManualPayment.userErrors.length) {
+    const data = await graphql(
+      `query ($id: ID!) { order(id: $id) { ${ORDER_FIELDS} } }`,
+      {
+        id: ctx.order.id,
+      },
+    );
+    ctx.order = data.order;
+    return { conNombre: "ok", order: ctx.order };
+  }
+  const sinNombre = await graphql(
     `mutation ($id: ID!) {
-      orderCreateManualPayment(id: $id, paymentMethodName: "Efectivo") {
+      orderCreateManualPayment(id: $id) {
         order { ${ORDER_FIELDS} } userErrors { field message }
       }
     }`,
     { id: ctx.order.id },
   );
-  ctx.order = check(data.orderCreateManualPayment).order;
-  return ctx.order;
+  ctx.order = check(sinNombre.orderCreateManualPayment).order;
+  return {
+    conNombre: conNombre.orderCreateManualPayment.userErrors,
+    sinNombre: "ok",
+    order: ctx.order,
+  };
 });
 
 // 10. Preparar (fulfill) una línea (P44)
@@ -591,15 +685,15 @@ await step("marcar una línea como preparada", async () => {
     `,
     { id: ctx.order.id },
   );
-  const fo = data.order.fulfillmentOrders.nodes.find(
-    (n) => n.lineItems.nodes.length,
+  const fo = data.order.fulfillmentOrders.nodes.find((n) =>
+    n.lineItems.nodes.some((i) => i.remainingQuantity > 0),
   );
   if (!fo)
     return {
       fulfillmentOrders: data.order.fulfillmentOrders.nodes,
       note: "Sin fulfillment orders",
     };
-  const item = fo.lineItems.nodes[0];
+  const item = fo.lineItems.nodes.find((i) => i.remainingQuantity > 0);
   const created = await graphql(
     `
       mutation ($f: FulfillmentInput!) {
@@ -644,8 +738,8 @@ await step("reembolsar parte de un pago", async () => {
   if (!sale) throw new Error("No hay pago para reembolsar");
   const data = await graphql(
     `
-      mutation ($input: RefundInput!) {
-        refundCreate(input: $input) {
+      mutation ($input: RefundInput!, $key: String!) {
+        refundCreate(input: $input) @idempotent(key: $key) {
           refund {
             id
             totalRefundedSet {
@@ -670,6 +764,7 @@ await step("reembolsar parte de un pago", async () => {
       }
     `,
     {
+      key: `${RUN}-refund`,
       input: {
         orderId: ctx.order.id,
         note: "Spike: reembolso de prueba",

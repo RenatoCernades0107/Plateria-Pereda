@@ -164,6 +164,18 @@
 
 ---
 
+### Spike 4.1 — Ronda 1 (2026-10-04, tienda `peredadev.myshopify.com`, API 2026-10)
+Reporte: `tests/fixtures/shopify/spike/reporte-20261004183003.json`.
+- ✅ **Token client credentials** funciona con la app instalada en una tienda de la misma organización. El pedido va como formulario (`application/x-www-form-urlencoded`); en JSON responde 400. Si la app no está instalada: `400 app_not_installed`. Los permisos `write_*` incluyen sus `read_*`.
+- ✅ **Orden con adelanto (P43):** `orderCreate` con líneas personalizadas y una transacción `SALE` de S/ 200 sobre S/ 400 queda **"Parcialmente pagada"**. El gateway de esa transacción (`Yape`) es texto libre: no hace falta configurarlo.
+- ✅ **Edición de orden:** se agregan y quitan líneas (`orderEditBegin` → `orderEditAddCustomItem` / `orderEditSetQuantity 0` → `orderEditCommit`). La línea quitada sigue en la orden con `quantity` original: hay que leer `currentQuantity` y `currentTotalPriceSet` (`totalPriceSet` queda en el total original).
+- ✅ Clientes: `defaultEmailAddress` y `defaultPhoneNumber` funcionan. Productos: búsqueda con imágenes y variantes funciona.
+- ⚠️ **Búsquedas inmediatas vacías** (cliente recién creado y orden por etiqueta): el índice de búsqueda de Shopify tarda. Consecuencia: para no duplicar órdenes en un reintento no basta con buscar por etiqueta → probar `@idempotent` en `orderCreate` (ronda 2) y guardar siempre el id de la orden en nuestra BD.
+- ⚠️ **Pago del saldo:** `orderCreateManualPayment` con `paymentMethodName: "Efectivo"` falla con "Payment provider is not configured on shop": el nombre debe existir como **método de pago manual** en Ajustes → Pagos de la tienda (Efectivo, Tarjeta, Yape, Plin). Ronda 2 prueba también sin nombre.
+- ⚠️ **Reembolso:** en 2026-10 `refundCreate` exige la directiva `@idempotent(key: …)`. Conviene usarla en todas las mutaciones que la acepten.
+- ❌ **Company:** `companyCreate` rechazó la dirección de la ubicación (INVALID_INPUT); probablemente falta la región (`zoneCode` "LIM"). Ronda 2 la envía como dirección de envío con región.
+- ℹ️ La tienda de desarrollo está en USD; la de la Platería estará en PEN (el código toma la moneda de la tienda).
+
 ## C. Restauraciones y piezas
 
 ### P17 · ¿Validan las transiciones de estado de las piezas? — Bloqueante (Fase 8)
