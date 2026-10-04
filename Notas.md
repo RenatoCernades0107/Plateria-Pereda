@@ -11,8 +11,8 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23, P25–P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13, P15, P16, P19–P21, P23, P25–P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
@@ -152,7 +152,7 @@
   - (a) La empresa es un cliente de Shopify, con la razón social como nombre y el RUC en un metacampo; sus contactos solo están en nuestro sistema. Simple.
   - (b) La empresa es una "Company" de Shopify y sus contactos son contactos de la empresa; las órdenes quedan a nombre de la empresa. Más fiel a la realidad, pero más compleja.
 - **Propuesta:** (a); revisamos (b) en el spike (4.1).
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-04):** ✅ **(b) Company de Shopify.** La empresa (razón social y RUC) es una Company; sus contactos son clientes de Shopify asociados a ella como contactos, y las órdenes se crean a nombre de la empresa (su ubicación) con el contacto que la pidió. En el spike (4.1) se valida: alta de Company con contacto y ubicación por API, dónde guardar el RUC (identificador externo o metacampo), crear órdenes con la empresa como comprador y qué webhooks llegan al cambiarla.
 
 ### P15 · ¿Hay clientes existentes en Shopify? ¿Los importamos?
 - **Propuesta:** importación inicial de todos los clientes de Shopify a nuestra base + búsqueda en vivo en Shopify para los que se creen después desde otros canales.
@@ -468,6 +468,7 @@
 | D30 | Título de la línea en Shopify: solo el código (`Restauración RES-00001-1`) | P11, P12 |
 | D31 | Si cambian el cliente de la orden en Shopify, la restauración se actualiza por webhook | P12 |
 | D32 | Códigos `RES-00001` y pieza `RES-00001-1` | P24 |
+| D33 | Las empresas son Companies de Shopify; sus contactos son contactos de la Company y las órdenes van a nombre de la empresa | P14 |
 
 ---
 
@@ -479,3 +480,4 @@
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
 | 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
 | 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |
+| 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |

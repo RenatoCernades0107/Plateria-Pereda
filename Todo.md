@@ -439,10 +439,10 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 
 ### Fase 4 — Integración con Shopify (base)
 
-#### Paso 4.1 — Spike técnico en la tienda de desarrollo ⛔ P14
+#### Paso 4.1 — Spike técnico en la tienda de desarrollo
 Objetivo: validar con llamadas reales antes de construir.
 - [ ] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
-- [ ] Crear cliente persona y empresa (cliente + metacampo vs. perfil de empresa, P14).
+- [ ] Crear cliente persona y empresa como Company (P14 = b): alta de Company con contacto y ubicación, dónde va el RUC, orden con la empresa como comprador.
 - [ ] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
 - [ ] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
 - [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan.
@@ -555,10 +555,10 @@ Objetivo: validar con llamadas reales antes de construir.
 - **E2E:** No aplica (la interfaz llega en 6.2).
 - Commit: `feat(clientes): agrega esquema de clientes y contactos`
 
-#### Paso 6.2 — Alta de cliente sincronizada con Shopify ⛔ P14
+#### Paso 6.2 — Alta de cliente sincronizada con Shopify
 - [ ] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
 - [ ] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
-- [ ] Empresa: RUC y razón social según P14 (cliente + metacampo o perfil de empresa), definido en el spike.
+- [ ] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
 - **Unit:**
   - [ ] Mapeo cliente → input de Shopify (persona y empresa).
   - [ ] Manejo de "ya existe" → vinculación.
