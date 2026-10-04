@@ -707,6 +707,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
   - [ ] Logística no puede abrir restauraciones entregadas o anuladas (P42).
   - [ ] `@mobile` legible sin scroll horizontal.
+- Avance (2026-10-04): componentes presentacionales en `src/components/restorations/`: `PieceStatusBadge`, `RestorationStatusBadge` y `LocationBadge` (`status-badges.tsx`) y `MoneySummary` (total / pagado / saldo; si se pagó de más, "A favor del cliente"; no se renderiza para logística, P42), con sus unit. Falta la página.
 - Commit: `feat(restauraciones): agrega vista de detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas
@@ -796,6 +797,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Render de eventos y de días "en curso".
 - **E2E:**
   - [ ] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
+- Avance (2026-10-04): `Timeline` (`src/components/restorations/timeline.tsx`) ordena los eventos de una pieza (estado, fecha, usuario o "Sistema", nota) y muestra los días en taller y de cumplimiento con `piece-days.ts` ("en curso" si siguen abiertos); unit de eventos y días en curso hechos. Faltan el resumen por restauración, la vista reducida de logística y el E2E.
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
 
 ### Fase 9 — Orden automática en Shopify
