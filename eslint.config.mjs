@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
     "playwright-report/**",
     "test-results/**",
     "blob-report/**",
+    // Worktrees de agentes en paralelo (copias completas del repo).
+    ".claude/**",
   ]),
 ]);
 

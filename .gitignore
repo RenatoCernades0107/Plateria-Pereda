@@ -49,3 +49,6 @@ next-env.d.ts
 /e2e/.auth/
 
 Design.md
+
+# Worktrees de agentes en paralelo
+/.claude/worktrees/
