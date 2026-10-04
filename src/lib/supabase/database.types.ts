@@ -9,16 +9,384 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never;
+      audit_log: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          changes: NonNullable<Json>;
+          id: number;
+          occurred_at: string;
+          record_id: string;
+          table_name: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          changes?: NonNullable<Json>;
+          id?: never;
+          occurred_at?: string;
+          record_id: string;
+          table_name: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          changes?: NonNullable<Json>;
+          id?: never;
+          occurred_at?: string;
+          record_id?: string;
+          table_name?: string;
+        };
+        Relationships: [];
+      };
+      materials: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_methods: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          email: string | null;
+          full_name: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          email?: string | null;
+          full_name: string;
+          id: string;
+          role: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          email?: string | null;
+          full_name?: string;
+          id?: string;
+          role?: Database["public"]["Enums"]["app_role"];
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      services: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          suggested_price: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          suggested_price?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          suggested_price?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      settings: {
+        Row: {
+          address: string;
+          created_at: string;
+          deposit_percent: number;
+          email: string;
+          id: boolean;
+          legal_name: string;
+          logo_path: string | null;
+          phones: string;
+          quote_validity_days: number;
+          ruc: string | null;
+          terms: string;
+          updated_at: string;
+          whatsapp_template: string | null;
+        };
+        Insert: {
+          address?: string;
+          created_at?: string;
+          deposit_percent?: number;
+          email?: string;
+          id?: boolean;
+          legal_name?: string;
+          logo_path?: string | null;
+          phones?: string;
+          quote_validity_days?: number;
+          ruc?: string | null;
+          terms?: string;
+          updated_at?: string;
+          whatsapp_template?: string | null;
+        };
+        Update: {
+          address?: string;
+          created_at?: string;
+          deposit_percent?: number;
+          email?: string;
+          id?: boolean;
+          legal_name?: string;
+          logo_path?: string | null;
+          phones?: string;
+          quote_validity_days?: number;
+          ruc?: string | null;
+          terms?: string;
+          updated_at?: string;
+          whatsapp_template?: string | null;
+        };
+        Relationships: [];
+      };
+      shopify_sync_jobs: {
+        Row: {
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          entity_id: string;
+          entity_table: string;
+          id: number;
+          idempotency_key: string | null;
+          kind: string;
+          last_error: string | null;
+          locked_at: string | null;
+          max_attempts: number;
+          next_attempt_at: string;
+          payload: NonNullable<Json>;
+          result: Json | null;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          entity_id: string;
+          entity_table: string;
+          id?: never;
+          idempotency_key?: string | null;
+          kind: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          payload?: NonNullable<Json>;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          attempts?: number;
+          completed_at?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          entity_id?: string;
+          entity_table?: string;
+          id?: never;
+          idempotency_key?: string | null;
+          kind?: string;
+          last_error?: string | null;
+          locked_at?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          payload?: NonNullable<Json>;
+          result?: Json | null;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shopify_tokens: {
+        Row: {
+          access_token: string;
+          expires_at: string;
+          shop_domain: string;
+          updated_at: string;
+        };
+        Insert: {
+          access_token: string;
+          expires_at: string;
+          shop_domain: string;
+          updated_at?: string;
+        };
+        Update: {
+          access_token?: string;
+          expires_at?: string;
+          shop_domain?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shopify_webhook_events: {
+        Row: {
+          api_version: string | null;
+          error: string | null;
+          id: number;
+          payload: NonNullable<Json>;
+          processed_at: string | null;
+          received_at: string;
+          shop_domain: string;
+          status: string;
+          topic: string;
+          webhook_id: string;
+        };
+        Insert: {
+          api_version?: string | null;
+          error?: string | null;
+          id?: never;
+          payload: NonNullable<Json>;
+          processed_at?: string | null;
+          received_at?: string;
+          shop_domain: string;
+          status?: string;
+          topic: string;
+          webhook_id: string;
+        };
+        Update: {
+          api_version?: string | null;
+          error?: string | null;
+          id?: never;
+          payload?: NonNullable<Json>;
+          processed_at?: string | null;
+          received_at?: string;
+          shop_domain?: string;
+          status?: string;
+          topic?: string;
+          webhook_id?: string;
+        };
+        Relationships: [];
+      };
+      workshops: {
+        Row: {
+          active: boolean;
+          address: string;
+          contact_name: string;
+          created_at: string;
+          id: string;
+          name: string;
+          notes: string;
+          phone: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          address?: string;
+          contact_name?: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          notes?: string;
+          phone?: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          address?: string;
+          contact_name?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          notes?: string;
+          phone?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      claim_shopify_jobs: {
+        Args: { p_limit?: number; p_lock_timeout?: string };
+        Returns: {
+          attempts: number;
+          completed_at: string | null;
+          created_at: string;
+          created_by: string | null;
+          entity_id: string;
+          entity_table: string;
+          id: number;
+          idempotency_key: string | null;
+          kind: string;
+          last_error: string | null;
+          locked_at: string | null;
+          max_attempts: number;
+          next_attempt_at: string;
+          payload: NonNullable<Json>;
+          result: Json | null;
+          status: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "shopify_sync_jobs";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
     };
     Enums: {
-      [_ in never]: never;
+      app_role: "admin" | "ventas" | "logistica";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -145,6 +513,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "ventas", "logistica"],
+    },
   },
 } as const;

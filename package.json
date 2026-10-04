@@ -21,9 +21,13 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:lint": "supabase db lint --fail-on error",
+    "db:lint": "supabase db lint -s public,private,audit --fail-on error",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
-    "env:local": "node scripts/env-local.mjs"
+    "env:local": "node scripts/env-local.mjs",
+    "shopify:sync": "node --env-file-if-exists=.env.local scripts/shopify-sync.mjs",
+    "shopify:webhook": "node --env-file-if-exists=.env.local scripts/shopify-webhook.mjs",
+    "shopify:register-webhooks": "node --env-file-if-exists=.env.local scripts/shopify-register-webhooks.mjs",
+    "shopify:spike": "node --env-file-if-exists=.env.local scripts/shopify-spike.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

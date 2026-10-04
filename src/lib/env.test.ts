@@ -14,7 +14,7 @@ const shopifyLive = {
   SHOPIFY_STORE_DOMAIN: "plateria-pereda.myshopify.com",
   SHOPIFY_CLIENT_ID: "client-id",
   SHOPIFY_CLIENT_SECRET: "client-secret",
-  SHOPIFY_API_VERSION: "2026-07",
+  SHOPIFY_API_VERSION: "2026-10",
 };
 
 describe("parseServerEnv", () => {

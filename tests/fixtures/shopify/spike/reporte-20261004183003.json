@@ -1,0 +1,203 @@
+{
+  "run": "SPIKE-20261004183003",
+  "shop": "peredadev.myshopify.com",
+  "version": "2026-10",
+  "nota": "Ronda 1 del spike (resumen del reporte que se corrió en local; datos de prueba de la tienda de desarrollo).",
+  "steps": [
+    {
+      "name": "token client credentials",
+      "ok": true,
+      "result": {
+        "expires_in": 86399,
+        "scope": "write_customers,write_merchant_managed_fulfillment_orders,write_order_edits,write_orders,read_products"
+      }
+    },
+    {
+      "name": "tienda y permisos",
+      "ok": true,
+      "result": {
+        "currencyCode": "USD",
+        "plan": {
+          "publicDisplayName": "Grow",
+          "partnerDevelopment": true,
+          "shopifyPlus": false
+        },
+        "scopes": [
+          "read_customers",
+          "write_customers",
+          "read_merchant_managed_fulfillment_orders",
+          "write_merchant_managed_fulfillment_orders",
+          "write_order_edits",
+          "read_orders",
+          "write_orders",
+          "read_products",
+          "read_order_edits"
+        ]
+      }
+    },
+    {
+      "name": "crear cliente persona",
+      "ok": true,
+      "result": {
+        "id": "gid://shopify/Customer/31267874963647",
+        "displayName": "Spike SPIKE-20261004183003",
+        "note": "Cliente de prueba del spike",
+        "defaultEmailAddress": {
+          "emailAddress": "spike-20261004183003@example.com"
+        },
+        "defaultPhoneNumber": { "phoneNumber": "+51938604121" }
+      }
+    },
+    {
+      "name": "buscar clientes",
+      "ok": true,
+      "result": {
+        "nodes": [],
+        "pageInfo": { "hasNextPage": false, "endCursor": null }
+      }
+    },
+    {
+      "name": "crear company con contacto y ubicación",
+      "ok": false,
+      "error": {
+        "userErrors": [
+          {
+            "field": ["input", "companyLocation", "billingAddress"],
+            "message": "Invalid input.",
+            "code": "INVALID_INPUT"
+          }
+        ]
+      }
+    },
+    {
+      "name": "buscar productos",
+      "ok": true,
+      "result": [
+        {
+          "id": "gid://shopify/Product/15379575374015",
+          "title": "The Inventory Not Tracked Snowboard",
+          "featuredMedia": {
+            "preview": {
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0790/7599/9935/files/snowboard_purple_hydrogen.jpg?v=1791133167"
+              }
+            }
+          },
+          "priceRangeV2": {
+            "minVariantPrice": { "amount": "949.95" },
+            "maxVariantPrice": { "amount": "949.95" }
+          },
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/67545360007359",
+                "title": "Default Title",
+                "price": "949.95",
+                "sku": "sku-untracked-1",
+                "image": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "crear orden con adelanto (orderCreate)",
+      "ok": true,
+      "result": {
+        "id": "gid://shopify/Order/7544662393023",
+        "name": "#1001",
+        "displayFinancialStatus": "PARTIALLY_PAID",
+        "displayFulfillmentStatus": "UNFULFILLED",
+        "totalPriceSet": { "shopMoney": { "amount": "400.0" } },
+        "totalReceivedSet": { "shopMoney": { "amount": "200.0" } },
+        "totalOutstandingSet": { "shopMoney": { "amount": "200.0" } },
+        "transactions": [
+          {
+            "id": "gid://shopify/OrderTransaction/20804862771391",
+            "kind": "SALE",
+            "status": "SUCCESS",
+            "gateway": "Yape",
+            "amountSet": { "shopMoney": { "amount": "200.0" } }
+          }
+        ]
+      }
+    },
+    { "name": "buscar orden por etiqueta", "ok": true, "result": [] },
+    {
+      "name": "editar orden (agregar y quitar línea)",
+      "ok": true,
+      "result": {
+        "displayFinancialStatus": "PARTIALLY_PAID",
+        "totalPriceSet": { "shopMoney": { "amount": "450.0" } },
+        "totalReceivedSet": { "shopMoney": { "amount": "200.0" } },
+        "totalOutstandingSet": { "shopMoney": { "amount": "100.0" } },
+        "lineItems": {
+          "nodes": [
+            {
+              "title": "Restauración SPIKE-20261004183003-1",
+              "quantity": 1,
+              "unfulfilledQuantity": 0
+            },
+            {
+              "title": "Restauración SPIKE-20261004183003-2",
+              "quantity": 1,
+              "unfulfilledQuantity": 1
+            },
+            {
+              "title": "Restauración SPIKE-20261004183003-3",
+              "quantity": 1,
+              "unfulfilledQuantity": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "registrar pago del saldo",
+      "ok": false,
+      "error": {
+        "userErrors": [
+          {
+            "field": ["paymentMethodName"],
+            "message": "Payment provider is not configured on shop."
+          }
+        ]
+      }
+    },
+    {
+      "name": "marcar una línea como preparada",
+      "ok": false,
+      "error": {
+        "userErrors": [
+          {
+            "field": [
+              "fulfillment",
+              "lineItemsByFulfillmentOrder",
+              "0",
+              "fulfillmentOrderLineItems",
+              "0",
+              "quantity"
+            ],
+            "message": "Quantity must be greater than 0"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reembolsar parte de un pago",
+      "ok": false,
+      "error": {
+        "status": 200,
+        "errors": [
+          {
+            "message": "The @idempotent directive is required for this mutation but was not provided.",
+            "extensions": { "code": "BAD_REQUEST" },
+            "path": ["refundCreate"]
+          }
+        ]
+      }
+    },
+    { "name": "webhooks suscritos", "ok": true, "result": [] }
+  ]
+}

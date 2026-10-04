@@ -11,8 +11,8 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13–P16, P19–P21, P23, P25–P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13, P15, P16, P19–P21, P23, P25–P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P18, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
@@ -152,7 +152,7 @@
   - (a) La empresa es un cliente de Shopify, con la razón social como nombre y el RUC en un metacampo; sus contactos solo están en nuestro sistema. Simple.
   - (b) La empresa es una "Company" de Shopify y sus contactos son contactos de la empresa; las órdenes quedan a nombre de la empresa. Más fiel a la realidad, pero más compleja.
 - **Propuesta:** (a); revisamos (b) en el spike (4.1).
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-04):** ✅ **(b) Company de Shopify.** La empresa (razón social y RUC) es una Company; sus contactos son clientes de Shopify asociados a ella como contactos, y las órdenes se crean a nombre de la empresa (su ubicación) con el contacto que la pidió. En el spike (4.1) se valida: alta de Company con contacto y ubicación por API, dónde guardar el RUC (identificador externo o metacampo), crear órdenes con la empresa como comprador y qué webhooks llegan al cambiarla.
 
 ### P15 · ¿Hay clientes existentes en Shopify? ¿Los importamos?
 - **Propuesta:** importación inicial de todos los clientes de Shopify a nuestra base + búsqueda en vivo en Shopify para los que se creen después desde otros canales.
@@ -163,6 +163,28 @@
 - **Respuesta:** _pendiente_
 
 ---
+
+### Spike 4.1 — Ronda 1 (2026-10-04, tienda `peredadev.myshopify.com`, API 2026-10)
+Reporte: `tests/fixtures/shopify/spike/reporte-20261004183003.json`.
+- ✅ **Token client credentials** funciona con la app instalada en una tienda de la misma organización. El pedido va como formulario (`application/x-www-form-urlencoded`); en JSON responde 400. Si la app no está instalada: `400 app_not_installed`. Los permisos `write_*` incluyen sus `read_*`.
+- ✅ **Orden con adelanto (P43):** `orderCreate` con líneas personalizadas y una transacción `SALE` de S/ 200 sobre S/ 400 queda **"Parcialmente pagada"**. El gateway de esa transacción (`Yape`) es texto libre: no hace falta configurarlo.
+- ✅ **Edición de orden:** se agregan y quitan líneas (`orderEditBegin` → `orderEditAddCustomItem` / `orderEditSetQuantity 0` → `orderEditCommit`). La línea quitada sigue en la orden con `quantity` original: hay que leer `currentQuantity` y `currentTotalPriceSet` (`totalPriceSet` queda en el total original).
+- ✅ Clientes: `defaultEmailAddress` y `defaultPhoneNumber` funcionan. Productos: búsqueda con imágenes y variantes funciona.
+- ⚠️ **Búsquedas inmediatas vacías** (cliente recién creado y orden por etiqueta): el índice de búsqueda de Shopify tarda. Consecuencia: para no duplicar órdenes en un reintento no basta con buscar por etiqueta → probar `@idempotent` en `orderCreate` (ronda 2) y guardar siempre el id de la orden en nuestra BD.
+- ⚠️ **Pago del saldo:** `orderCreateManualPayment` con `paymentMethodName: "Efectivo"` falla con "Payment provider is not configured on shop": el nombre debe existir como **método de pago manual** en Ajustes → Pagos de la tienda (Efectivo, Tarjeta, Yape, Plin). Ronda 2 prueba también sin nombre.
+- ⚠️ **Reembolso:** en 2026-10 `refundCreate` exige la directiva `@idempotent(key: …)`. Conviene usarla en todas las mutaciones que la acepten.
+- ❌ **Company:** `companyCreate` rechazó la dirección de la ubicación (INVALID_INPUT); probablemente falta la región (`zoneCode` "LIM"). Ronda 2 la envía como dirección de envío con región.
+- ℹ️ La tienda de desarrollo está en USD; la de la Platería estará en PEN (el código toma la moneda de la tienda).
+
+### Spike 4.1 — Ronda 2 (2026-10-04) — 15/15 pasos
+Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
+- ✅ **Company:** `companyCreate` funciona con la ubicación como dirección de **envío con región** (`zoneCode: "LIM"`) y `billingSameAsShipping: true`; el RUC va en `externalId`. Crea la Company, su contacto (un cliente) y la ubicación.
+- ✅ **Orden a nombre de la empresa:** `orderCreate` con `customerId` del contacto + `companyLocationId` → `purchasingEntity` = la Company, su ubicación y el contacto.
+- ✅ **Edición:** la línea quitada queda con `currentQuantity` 0; `currentTotalPriceSet` da el total vigente (300) y `totalPriceSet` el original (450).
+- ✅ **Pago del saldo** sin nombre de método: la orden queda **"Pagada"** y la transacción con gateway `manual`. Con `paymentMethodName: "Efectivo"` sigue fallando si el método manual no existe en la tienda → el adaptador intenta con el nombre y, si no está configurado, registra sin nombre; el sistema guarda el método real.
+- ✅ **Preparar** una línea con `fulfillmentCreate` (por fulfillment order). ✅ **Reembolso** parcial con `@idempotent` → "Parcialmente reembolsada".
+- ⚠️ **`@idempotent` no evita duplicar `orderCreate`:** la misma clave dos veces creó dos órdenes (#1003 y #1004). **Decisión:** antes de crear la orden, el handler del outbox la busca por la etiqueta del código; el índice tarda ~5 s (clientes) y ~7,5 s (órdenes), y el outbox reintenta recién a los 30 s.
+- Pendiente (ronda 3): confirmar que el id de la línea calculada de una edición termina en el mismo número que la línea (el adaptador los relaciona así) y el pago del saldo con los métodos manuales creados en la tienda.
 
 ## C. Restauraciones y piezas
 
@@ -468,6 +490,7 @@
 | D30 | Título de la línea en Shopify: solo el código (`Restauración RES-00001-1`) | P11, P12 |
 | D31 | Si cambian el cliente de la orden en Shopify, la restauración se actualiza por webhook | P12 |
 | D32 | Códigos `RES-00001` y pieza `RES-00001-1` | P24 |
+| D33 | Las empresas son Companies de Shopify; sus contactos son contactos de la Company y las órdenes van a nombre de la empresa | P14 |
 
 ---
 
@@ -479,3 +502,4 @@
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
 | 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
 | 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |
+| 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |

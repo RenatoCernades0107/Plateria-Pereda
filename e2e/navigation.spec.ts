@@ -2,6 +2,10 @@ import { NAV_ITEMS } from "../src/lib/navigation";
 import { expect, test } from "./fixtures";
 
 test.describe("Navegación", () => {
+  test.beforeEach(async ({ loginAs }) => {
+    await loginAs("admin");
+  });
+
   test("recorre todos los módulos desde el menú lateral", async ({ page }) => {
     await page.goto("/dashboard");
     const nav = page.getByRole("list", { name: "Navegación principal" });

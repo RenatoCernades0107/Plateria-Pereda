@@ -353,179 +353,191 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 ### Fase 2 — Autenticación, usuarios y roles
 
 #### Paso 2.1 — Perfiles y roles en BD
-- [ ] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users`.
-- [ ] Funciones `current_app_role()` y `has_role(roles[])` (`security definer`, `search_path` fijo).
-- [ ] RLS: cada usuario lee su perfil; admin lee y edita todos.
-- [ ] Seed: un usuario de prueba por rol.
+- [x] Enum `app_role`; tabla `profiles`; trigger que crea el perfil al crear un usuario en `auth.users` (rol desde `app_metadata`, que solo escribe el servidor; sin rol válido queda como logística). Un segundo trigger aplica el rol cuando `app_metadata` cambia después, que es como lo guarda la API de administración de Supabase.
+- [x] Funciones `private.current_app_role()` y `private.has_role(roles[])` (`security definer`, `search_path` fijo; solo `authenticated` puede ejecutarlas).
+- [x] RLS: cada usuario lee su perfil; admin lee y edita todos.
+- [x] Seed: un usuario de prueba por rol (contraseña `Pereda-local-2026`).
 - **Unit:** No aplica (lógica en SQL).
 - **BD:**
-  - [ ] El trigger crea el perfil.
-  - [ ] `has_role` devuelve lo correcto por rol; un usuario inactivo no pasa `has_role`.
-  - [ ] Ventas/logística no leen ni editan perfiles ajenos ni cambian su propio rol; admin sí.
+  - [x] El trigger crea el perfil.
+  - [x] `has_role` devuelve lo correcto por rol; un usuario inactivo no pasa `has_role`.
+  - [x] Ventas/logística no leen ni editan perfiles ajenos ni cambian su propio rol; admin sí. Un anónimo no lee perfiles.
+- **Integración:**
+  - [x] Los usuarios semilla inician sesión y ven solo los perfiles permitidos (protege contra apagar el login por email en `config.toml`).
 - **E2E:** No aplica (sin interfaz).
 - Commit: `feat(auth): agrega perfiles, roles y políticas RLS base`
 
 #### Paso 2.2 — Login y protección de rutas ⛔ P31
-- [ ] Página `/login` (email + contraseña), logout y recuperación de contraseña.
-- [ ] Middleware/proxy de Next.js que refresca la sesión y redirige a `/login`; usuarios inactivos bloqueados.
-- [ ] Fixture de Playwright `loginAs(role)` con `storageState` por rol.
+- [x] Página `/login` (email + contraseña, con el logo), logout (cierra solo la sesión del dispositivo) y recuperación de contraseña (`/recuperar-contrasena` → correo → `/auth/confirm` → `/restablecer-contrasena`; respuesta neutra para no revelar qué emails existen).
+- [x] `src/proxy.ts` (el middleware en Next 16) que refresca la sesión, redirige a `/login?next=...` y saca del login a quien ya inició sesión; usuarios inactivos bloqueados al ingresar y expulsados si los desactivan con la sesión abierta (`requireUser` → `/auth/salir`).
+- [x] Fixture de Playwright `loginAs(role)` con `storageState` por rol (proyecto `setup` que inicia sesión una vez por rol).
 - **Unit:**
-  - [ ] Esquema zod del login.
-  - [ ] El formulario muestra errores de validación y de credenciales.
+  - [x] Esquemas zod del login, recuperar y nueva contraseña; redirección segura (`safeNextPath`) y rutas públicas.
+  - [x] El formulario muestra errores de validación y de credenciales; acciones de servidor, rutas `/auth/*` y proxy con Supabase simulado.
 - **E2E:**
-  - [ ] Login correcto con cada rol → dashboard.
-  - [ ] Credenciales incorrectas → mensaje de error.
-  - [ ] Ruta protegida sin sesión → redirige a `/login`.
-  - [ ] Logout.
-  - [ ] Usuario desactivado no puede entrar.
-  - [ ] `@mobile` login.
+  - [x] Login correcto con cada rol → dashboard.
+  - [x] Credenciales incorrectas → mensaje de error.
+  - [x] Ruta protegida sin sesión → redirige a `/login` y vuelve a la ruta tras ingresar.
+  - [x] Logout.
+  - [x] Usuario desactivado no puede entrar (ni seguir dentro si lo desactivan).
+  - [x] `@mobile` login.
+  - [x] Recuperación de contraseña completa con el correo de Mailpit; enlace inválido.
 - Commit: `feat(auth): agrega login, logout y protección de rutas`
 
 #### Paso 2.3 — Matriz de permisos
-- [ ] `src/domain/permissions.ts`: `can(role, action)` según la matriz acordada.
-- [ ] Helpers de servidor `requireUser()` / `requirePermission()` para Server Actions y páginas; el menú filtra módulos por rol.
+- [x] `src/domain/permissions.ts`: `can(role, permiso)` según la matriz acordada (P42) y `homePathFor(role)` (logística entra a `/piezas`).
+- [x] Helpers de servidor `requireUser()` / `requirePermission()` para Server Actions y páginas (sin permiso responde 403 con `forbidden()`, que requiere `experimental.authInterrupts`); el menú filtra módulos por rol; la raíz redirige a la pantalla de inicio de cada rol.
 - **Unit:**
-  - [ ] Test de tabla que recorre **toda** la matriz rol × acción.
-  - [ ] `requirePermission` lanza error de acceso denegado.
+  - [x] Test de tabla que recorre **toda** la matriz rol × acción contra una copia independiente de la matriz.
+  - [x] `requirePermission` responde 403 sin el permiso.
 - **E2E:**
-  - [ ] Logística no ve "Dashboard", "Usuarios", "Configuración", "Cotizaciones" ni "Auditoría" en el menú, recibe 403 al entrar por URL y al iniciar sesión entra directo a `/piezas`.
-  - [ ] Admin ve todos los módulos.
+  - [x] Logística no ve "Dashboard", "Usuarios", "Configuración", "Cotizaciones" ni "Auditoría" en el menú, recibe 403 al entrar por URL y al iniciar sesión entra directo a `/piezas`. Ventas tampoco entra a la administración.
+  - [x] Admin ve todos los módulos.
 - Commit: `feat(auth): agrega matriz de permisos por rol`
 
 #### Paso 2.4 — Gestión de usuarios (admin)
-- [ ] Listado de usuarios; invitar/crear (API de admin con clave secreta, solo servidor); cambiar rol; activar/desactivar; reenviar acceso.
+- [x] Listado de usuarios (tabla en escritorio, tarjetas en celular); invitar/crear (API de admin con clave secreta, solo servidor; correo de invitación con plantilla propia → crea su contraseña); cambiar rol; activar/desactivar (un admin no puede cambiarse el rol ni desactivarse); reenviar acceso. El email se copia a `profiles` para listar sin consultar Auth.
 - **Unit:**
-  - [ ] Esquema zod del usuario.
-  - [ ] La acción rechaza a quien no es admin (dependencias simuladas).
+  - [x] Esquema zod del usuario.
+  - [x] Las acciones rechazan a quien no es admin y al propio admin sobre sí mismo (dependencias simuladas).
 - **Integración:**
-  - [ ] Crear usuario crea su perfil con el rol correcto.
+  - [x] Crear usuario crea su perfil con el rol y el email correctos.
 - **E2E:**
-  - [ ] Admin crea un usuario de logística → ese usuario inicia sesión (vía Mailpit o contraseña temporal).
-  - [ ] Admin desactiva un usuario → ya no puede entrar.
-  - [ ] Ventas no accede a `/usuarios`.
+  - [x] Admin crea un usuario de logística → recibe la invitación en Mailpit, crea su contraseña y entra a `/piezas`.
+  - [x] Admin cambia el rol y desactiva un usuario → ya no puede entrar. Reenviar acceso envía el correo.
+  - [x] Ventas no accede a `/usuarios` (en permisos). `@mobile` vista de tarjetas.
 - Commit: `feat(usuarios): agrega gestión de usuarios para administradores`
 
 ### Fase 3 — Auditoría
 
 #### Paso 3.1 — Registro de auditoría en BD
-- [ ] Tabla `audit_log` de solo inserción (sin update/delete por RLS).
-- [ ] Trigger genérico `audit.log_change()` que guarda solo las columnas cambiadas y el actor (`auth.uid()`; vacío = "Sistema/Shopify").
-- [ ] Helper SQL para activar la auditoría en cada tabla nueva (se aplica desde `profiles` en adelante).
+- [x] Tabla `audit_log` de solo inserción (sin update/delete por RLS).
+- [x] Trigger genérico `audit.log_change()` que guarda solo las columnas cambiadas y el actor (`auth.uid()`; vacío = "Sistema/Shopify").
+- [x] Helper SQL para activar la auditoría en cada tabla nueva (se aplica desde `profiles` en adelante).
 - **Unit:**
-  - [ ] Función que convierte un diff en texto legible (p. ej., "Taller: Taller A → Taller B").
+  - [x] Función que convierte un diff en texto legible (p. ej., "Taller: Taller A → Taller B").
 - **BD:**
-  - [ ] Insert, update y delete generan una fila con el diff correcto.
-  - [ ] El actor es el usuario autenticado.
-  - [ ] Nadie puede modificar ni borrar `audit_log`; solo admin puede leerlo.
+  - [x] Insert, update y delete generan una fila con el diff correcto.
+  - [x] El actor es el usuario autenticado.
+  - [x] Nadie puede modificar ni borrar `audit_log`; solo admin puede leerlo.
 - **E2E:** No aplica (la interfaz llega en 3.2).
+- Hecho: tabla `public.audit_log` (actor, nombre del actor, tabla, id, acción y diff `{columna: {old, new}}`); trigger `audit.log_change()` (ignora `id`, `created_at`, `updated_at` y las columnas indicadas; un update sin cambios no deja registro); `audit.enable(tabla, columnas_ignoradas)`; un trigger impide modificar, borrar o vaciar el historial incluso con la clave secreta; `profiles` auditada. Los usuarios creados por la API de administración quedan como "Sistema" (no hay usuario autenticado en esa llamada). `describeChanges()` en `src/domain/audit.ts`.
 - Commit: `feat(auditoria): agrega registro automático de cambios en BD`
 
 #### Paso 3.2 — Interfaz de auditoría
-- [ ] Página `/auditoria` (admin): filtros por usuario, entidad, acción y fechas; paginación.
-- [ ] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller); logística no la ve (P42).
+- [x] Página `/auditoria` (admin): filtros por usuario, entidad, acción y fechas; paginación.
+- [x] Componente `EntityHistory` reutilizable (pestaña "Historial" en restauración, pieza, cliente, taller); logística no la ve (P42).
 - **Unit:**
-  - [ ] `EntityHistory` renderiza cambios legibles.
-  - [ ] Los filtros se serializan y leen desde la URL.
+  - [x] `EntityHistory` renderiza cambios legibles.
+  - [x] Los filtros se serializan y leen desde la URL.
 - **E2E:**
-  - [ ] Admin cambia el rol de un usuario → el cambio aparece en `/auditoria` con su nombre y fecha.
-  - [ ] Un usuario que no es admin no accede a `/auditoria`.
+  - [x] Admin cambia el rol de un usuario → el cambio aparece en `/auditoria` con su nombre y fecha.
+  - [x] Un usuario que no es admin no accede a `/auditoria`.
+- Hecho: `/auditoria` con filtros en la URL (`usuario`, `entidad`, `accion`, `desde`, `hasta`, `pagina`; fechas en hora de Lima), 25 registros por página, tabla en escritorio y tarjetas en el celular. `EntityHistory` + `EntityHistorySection` (no muestra nada a logística) listos para las pestañas "Historial" de los pasos de restauración, pieza, cliente y taller. Ventas lee el historial de las entidades del negocio, pero no los cambios de usuarios (migración `historial_para_ventas`). Se corrigió el hover del botón primario, que bajaba el contraste del texto blanco a 4.06:1.
+- Nota: al crear un usuario, Supabase guarda el rol en un segundo paso, así que la auditoría muestra la creación seguida de un cambio de rol hecho por "Sistema".
 - Commit: `feat(auditoria): agrega vista de auditoría e historial por entidad`
 
 ### Fase 4 — Integración con Shopify (base)
 
-#### Paso 4.1 — Spike técnico en la tienda de desarrollo ⛔ P14
+#### Paso 4.1 — Spike técnico en la tienda de desarrollo
 Objetivo: validar con llamadas reales antes de construir.
-- [ ] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
-- [ ] Crear cliente persona y empresa (cliente + metacampo vs. perfil de empresa, P14).
-- [ ] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
-- [ ] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
-- [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan.
-- [ ] Editar una orden (quitar línea, cambiar precio, agregar línea) con Order Editing; reembolsar un pago manual.
-- [ ] Cambiar el cliente de una orden desde Shopify y ver qué webhook llega (P12).
-- [ ] Marcar líneas como preparadas (P44).
-- [ ] Buscar clientes y productos (paginación, variantes, imágenes).
-- [ ] Documentar resultados y decisiones en `Notas.md`; guardar payloads reales anonimizados como fixtures en `tests/fixtures/shopify/`.
+- [x] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
+- [x] Crear cliente persona y empresa como Company (P14 = b): alta de Company con contacto y ubicación, dónde va el RUC, orden con la empresa como comprador.
+- [x] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
+- [x] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
+- [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan. *(Requiere una URL pública: se hace con el primer despliegue en Vercel; los webhooks no llegan a localhost.)*
+- [x] Editar una orden (quitar línea, cambiar precio, agregar línea) con Order Editing; reembolsar un pago manual.
+- [ ] Cambiar el cliente de una orden desde Shopify y ver qué webhook llega (P12). *(Ídem: con el primer despliegue.)*
+- [x] Marcar líneas como preparadas (P44).
+- [x] Buscar clientes y productos (paginación, variantes, imágenes).
+- [x] Documentar resultados y decisiones en `Notas.md`; guardar payloads reales anonimizados como fixtures en `tests/fixtures/shopify/`.
 - Tests: No aplica (exploratorio); los fixtures alimentan los tests de los pasos siguientes.
 - Commit: `docs(shopify): documenta resultados del spike y agrega fixtures`
 
 #### Paso 4.2 — Puerto `ShopifyGateway` y adaptadores
-- [ ] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder` (con pagos iniciales), `findOrderByTag`, `getOrderFinancials`, `editOrder`, `recordFullPayment`, `refundPayment`, `searchProducts`, `getProduct`, `fulfillLines`.
-- [ ] Autenticación: pide el token con *client credentials*, lo guarda en `shopify_tokens` y lo renueva antes de que venza (o ante un 401).
-- [ ] Adaptador `live`: cliente GraphQL (fetch, versión de API fijada, timeout, reintentos con backoff ante throttling y 5xx, `userErrors` → errores de dominio tipados).
-- [ ] Adaptador `fake` en memoria + ruta `/api/test/shopify` (inspeccionar, resetear, forzar errores; 404 fuera del modo fake).
-- [ ] Factory que elige el adaptador según `SHOPIFY_MODE`.
+- [x] Interfaz: `createCustomer`, `updateCustomer`, `searchCustomers`, `getCustomer`, `createOrder` (con pagos iniciales), `findOrderByTag`, `getOrderFinancials`, `editOrder`, `recordFullPayment`, `refundPayment`, `searchProducts`, `getProduct`, `fulfillLines`.
+- [x] Autenticación: pide el token con *client credentials*, lo guarda en `shopify_tokens` y lo renueva antes de que venza (o ante un 401).
+- [~] Adaptador `live`: cliente GraphQL (fetch, versión de API fijada, timeout, reintentos con backoff ante throttling y 5xx, `userErrors` → errores de dominio tipados).
+- [x] Adaptador `fake` en memoria + ruta `/api/test/shopify` (inspeccionar, resetear, forzar errores; 404 fuera del modo fake).
+- [x] Factory que elige el adaptador según `SHOPIFY_MODE`.
 - **Unit (MSW + fixtures del spike):**
-  - [ ] Mapeo de respuestas a tipos del dominio.
-  - [ ] `userErrors` → error tipado.
-  - [ ] Reintenta ante `THROTTLED` y 5xx; no reintenta ante 4xx.
-  - [ ] Renueva el token vencido o rechazado (401) y reintenta una sola vez.
-  - [ ] Paginación de búsquedas.
-  - [ ] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
+  - [x] Mapeo de respuestas a tipos del dominio.
+  - [x] `userErrors` → error tipado.
+  - [x] Reintenta ante `THROTTLED` y 5xx; no reintenta ante 4xx.
+  - [x] Renueva el token vencido o rechazado (401) y reintenta una sola vez.
+  - [x] Paginación de búsquedas.
+  - [x] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
 - **E2E:** No aplica (sin interfaz). Opcional `@shopify-live`: contract test contra la tienda de desarrollo.
+- Hecho (2026-10-03, antes del spike): código en `src/server/shopify/`. El adaptador `live` ya implementa clientes, productos y la lectura de órdenes (`findOrderByTag`, `getOrderFinancials`) con su cliente GraphQL (versión fijada, timeout, reintentos ante THROTTLED/429/5xx/red, una renovación del token ante 401) y el token *client credentials* en `shopify_tokens` (solo clave secreta). **Completado tras el spike 4.1 (2026-10-04):** el adaptador `live` implementa también las escrituras de órdenes (`createOrder` con adelanto y Company, `editOrder` con quitar/cambiar precio/agregar, `recordFullPayment` con caída a pago "manual", `refundPayment` con `@idempotent`, `fulfillLines`), con las mutaciones validadas en la tienda de desarrollo; el emulador de MSW las cubre en el contract test. El contract test corre contra el `fake` y contra el `live` con un emulador de la API en MSW (`tests/msw/shopify-emulator.ts`). `/api/test/shopify` (GET estado, POST `reset`/`fail`) responde 404 fuera del modo fake. `/api/test`, `/api/cron` y `/api/webhooks` no pasan por el login del proxy: cada uno se autentica solo.
 - Commit: `feat(shopify): agrega puerto ShopifyGateway con adaptadores live y fake`
 
 #### Paso 4.3 — Outbox de sincronización
-- [ ] Tabla `shopify_sync_jobs` + función SQL para encolar (la usan triggers y RPCs).
-- [ ] Procesador idempotente con bloqueo (`FOR UPDATE SKIP LOCKED`), reintentos con backoff y máximo de intentos.
-- [ ] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada 5 minutos por Vercel Cron en producción (requiere Pro; se activa en 16.2) y con el script `pnpm shopify:sync` en local.
-- [ ] Componente `SyncStatus` (Sincronizado / Pendiente / Error + botón "Reintentar").
+- [x] Tabla `shopify_sync_jobs` + función SQL para encolar (la usan triggers y RPCs).
+- [x] Procesador idempotente con bloqueo (`FOR UPDATE SKIP LOCKED`), reintentos con backoff y máximo de intentos.
+- [x] Ejecución inmediata tras la acción del usuario (`after()`) + endpoint `/api/cron/shopify-sync` protegido con `CRON_SECRET`, invocado cada 5 minutos por Vercel Cron en producción (requiere Pro; se activa en 16.2) y con el script `pnpm shopify:sync` en local.
+- [x] Componente `SyncStatus` (Sincronizado / Pendiente / Error + botón "Reintentar").
 - **Unit:**
-  - [ ] Cálculo del backoff.
-  - [ ] El procesador marca `ok`/`error` y respeta el máximo de intentos (gateway simulado).
-  - [ ] El endpoint de cron rechaza peticiones sin el secreto.
+  - [x] Cálculo del backoff.
+  - [x] El procesador marca `ok`/`error` y respeta el máximo de intentos (gateway simulado).
+  - [x] El endpoint de cron rechaza peticiones sin el secreto.
 - **BD:**
-  - [ ] Dos procesadores concurrentes no toman el mismo job.
-  - [ ] Solo admin y el servidor ven los jobs.
+  - [x] Dos procesadores concurrentes no toman el mismo job.
+  - [x] Solo admin y el servidor ven los jobs.
 - **Integración:**
-  - [ ] Job pendiente → procesado con el fake → estado `ok`.
+  - [x] Job pendiente → procesado con el fake → estado `ok`.
 - **E2E:** se cubre en 6.2 (error forzado → "Reintentar" → sincronizado).
+- Hecho: tabla `shopify_sync_jobs` (solo admin la lee) con `private.enqueue_shopify_job()` (clave de idempotencia) y `claim_shopify_jobs()` (solo clave secreta, `FOR UPDATE SKIP LOCKED`, retoma jobs abandonados). Procesador en `src/server/shopify-sync/` con backoff de 30 s a 1 h y máximo de intentos; los errores de datos o credenciales quedan en error de inmediato. Cada módulo registra su handler en `shopifyJobHandlers`. `scheduleShopifySync()` procesa con `after()`; `/api/cron/shopify-sync` exige `Authorization: Bearer CRON_SECRET` (comparación en tiempo constante); `pnpm env:local` genera un `CRON_SECRET` local. `SyncStatus` muestra el estado con "Reintentar" (ventas y admin). El Vercel Cron se agrega en 16.2 (requiere Pro).
 - Commit: `feat(shopify): agrega outbox de sincronización con reintentos`
 
 #### Paso 4.4 — Endpoint de webhooks
-- [ ] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC con el client secret (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
-- [ ] Router por topic (los handlers de pagos se implementan en 11.3).
-- [ ] Script `pnpm shopify:webhook <topic> <fixture>` que firma y envía un webhook al entorno local.
-- [ ] Script `pnpm shopify:register-webhooks` (por entorno).
+- [x] Route Handler `/api/webhooks/shopify`: lee el body crudo, verifica HMAC con el client secret (comparación en tiempo constante), valida el dominio de la tienda, guarda el evento en `shopify_webhook_events` (único por `X-Shopify-Webhook-Id`), responde 200 rápido y procesa con `after()`.
+- [x] Router por topic (los handlers de pagos se implementan en 11.3).
+- [x] Script `pnpm shopify:webhook <topic> <fixture>` que firma y envía un webhook al entorno local.
+- [x] Script `pnpm shopify:register-webhooks` (por entorno).
 - **Unit:**
-  - [ ] HMAC válido, inválido y con body alterado.
-  - [ ] Topic desconocido → se registra y se ignora.
+  - [x] HMAC válido, inválido y con body alterado.
+  - [x] Topic desconocido → se registra y se ignora.
 - **Integración:**
-  - [ ] El mismo webhook enviado dos veces se procesa una sola vez.
+  - [x] El mismo webhook enviado dos veces se procesa una sola vez.
 - **E2E (API con `request` de Playwright):**
-  - [ ] Firma inválida → 401.
-  - [ ] Firma válida → 200 y evento guardado.
+  - [x] Firma inválida → 401.
+  - [x] Firma válida → 200 y evento guardado.
+- Hecho: `/api/webhooks/shopify` verifica el HMAC del body crudo (tiempo constante) y el dominio de la tienda, guarda en `shopify_webhook_events` (único por `webhook_id`, solo admin lo lee), responde 200 y procesa con `after()`. `processWebhookEvent()` toma el evento de forma atómica (dos procesadores → un solo handler) y lo enruta por topic con `webhookHandlers`; sin handler queda `ignored`. En modo fake sin `SHOPIFY_CLIENT_SECRET` se firma con un secreto de desarrollo (`FAKE_WEBHOOK_SECRET`). Scripts `pnpm shopify:webhook` y `pnpm shopify:register-webhooks` (este último usa `webhookSubscriptionCreate` con `uri`: **validar en el spike 4.1**, junto con la lista de topics). El fixture `customers-update.json` es provisional hasta tener payloads reales.
 - Commit: `feat(shopify): agrega endpoint de webhooks con verificación HMAC e idempotencia`
 
 ### Fase 5 — Configuración y catálogos
 
 #### Paso 5.1 — Configuración de la empresa
-- [ ] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % de adelanto por defecto (50 %).
+- [x] Tabla `settings` (fila única) + página `/configuracion` (admin): razón social, RUC, dirección, teléfonos, email, logo, vigencia de cotización por defecto, términos y condiciones, plantilla del mensaje de WhatsApp, % de adelanto por defecto (50 %).
 - **Unit:**
-  - [ ] Esquema zod (RUC válido, días > 0, % entre 1 y 100).
+  - [x] Esquema zod (RUC válido, días > 0, % entre 1 y 100).
 - **BD:**
-  - [ ] Solo admin edita; todos los usuarios autenticados leen.
+  - [x] Solo admin edita; todos los usuarios autenticados leen.
 - **E2E:**
-  - [ ] Admin cambia la vigencia por defecto y sube el logo → persiste al recargar.
-  - [ ] Ventas no accede a `/configuracion`.
+  - [x] Admin cambia la vigencia por defecto y sube el logo → persiste al recargar.
+  - [x] Ventas no accede a `/configuracion`.
+- Hecho: tabla `settings` de una sola fila (auditada); RUC con dígito verificador (`src/domain/ruc.ts`); plantilla de WhatsApp con variables validadas (`src/domain/whatsapp-template.ts`, vacía = la de la aplicación, con botón "Restaurar mensaje original"); el logo se sube desde el navegador al bucket público `branding` (PNG/JPG/WebP, 2 MB, solo admin escribe) y una Server Action guarda la ruta y borra el anterior. `getSettings()` en `src/server/settings.ts` para los módulos siguientes.
 - Commit: `feat(configuracion): agrega configuración de la empresa`
 
 #### Paso 5.2 — Talleres
-- [ ] CRUD de talleres (nombre, contacto, teléfono, dirección, notas, activo). Los inactivos no se pueden asignar pero se conservan en el historial. Auditoría activa.
+- [x] CRUD de talleres (nombre, contacto, teléfono, dirección, notas, activo). Los inactivos no se pueden asignar pero se conservan en el historial. Auditoría activa.
 - **Unit:**
-  - [ ] Esquema zod y formulario.
+  - [x] Esquema zod y formulario.
 - **BD:**
-  - [ ] RLS según la matriz de permisos.
-  - [ ] Nombre único sin distinguir mayúsculas.
-  - [ ] No se puede borrar un taller con piezas (solo desactivar).
+  - [x] RLS según la matriz de permisos.
+  - [x] Nombre único sin distinguir mayúsculas.
+  - [x] No se puede borrar un taller con piezas (solo desactivar).
 - **E2E:**
-  - [ ] Crear, editar y desactivar un taller.
-  - [ ] Nombre duplicado muestra error.
-  - [ ] `@mobile` crear taller.
+  - [x] Crear, editar y desactivar un taller.
+  - [x] Nombre duplicado muestra error.
+  - [x] `@mobile` crear taller.
+- Hecho: tabla `workshops` (nombre único sin distinguir mayúsculas ni espacios, auditada). Todos los usuarios activos la leen (ventas asigna talleres); admin y logística crean y editan; nadie borra, solo se desactiva. La regla "no se borra un taller con piezas" queda cubierta porque no se borra ninguno; en 7.1 la FK de piezas usa `on delete restrict`. El historial ahora omite también los textos vacíos al crear (migración `auditoria_omite_vacios`).
 - Commit: `feat(talleres): agrega gestión de talleres`
 
 #### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago
-- [ ] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
+- [x] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
 - **Unit / BD / E2E:** análogos a 5.2.
+- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado. Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
 - Commit: `feat(catalogos): agrega catálogos de materiales, servicios y métodos de pago`
 
 ### Fase 6 — Clientes y contactos
@@ -543,10 +555,10 @@ Objetivo: validar con llamadas reales antes de construir.
 - **E2E:** No aplica (la interfaz llega en 6.2).
 - Commit: `feat(clientes): agrega esquema de clientes y contactos`
 
-#### Paso 6.2 — Alta de cliente sincronizada con Shopify ⛔ P14
+#### Paso 6.2 — Alta de cliente sincronizada con Shopify
 - [ ] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
 - [ ] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
-- [ ] Empresa: RUC y razón social según P14 (cliente + metacampo o perfil de empresa), definido en el spike.
+- [ ] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
 - **Unit:**
   - [ ] Mapeo cliente → input de Shopify (persona y empresa).
   - [ ] Manejo de "ya existe" → vinculación.
@@ -1033,7 +1045,7 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 16 — Producción
 
 #### Paso 16.1 — Supabase Cloud ⛔ P05
-- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección); buckets; `supabase link`.
+- [ ] Proyecto en región cercana (`sa-east-1`); Auth (registro deshabilitado, SMTP propio, URLs de redirección, plantillas de `supabase/templates/` para recuperación e invitación); buckets; `supabase link`.
 - [ ] Workflow `deploy-db.yml`: en push a `main`, `supabase db push` con aprobación manual (environment protegido).
 - [ ] Pasar el proyecto a Pro (backups diarios, sin pausa por inactividad).
 - Tests: la migración se valida antes en CI con `supabase db reset` + `supabase test db`.
@@ -1046,6 +1058,8 @@ Objetivo: validar con llamadas reales antes de construir.
 
 #### Paso 16.3 — Shopify en producción
 - [ ] App de producción en la organización de la Platería (Dev Dashboard) con los permisos mínimos; Client ID y secret en Vercel; `pnpm shopify:register-webhooks` apuntando a producción.
+  - Permisos (2026-10-04): `read_customers`, `write_customers`, `read_orders`, `write_orders`, `write_order_edits`, `read_products`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders` + acceso a datos protegidos de clientes (nombre, email, teléfono, dirección). Si las Companies piden un permiso propio, agregarlo (se confirma en 4.1).
+  - [ ] `read_all_orders` no aparece en el Dev Dashboard: pedirlo (probar declararlo en `shopify.app.toml` con Shopify CLI) para que el sistema siga viendo órdenes de más de 60 días. Si no se concede: el sistema avisa qué órdenes de más de 60 días hay que actualizar a mano en Shopify.
 - [ ] Verificación manual con checklist (cliente de prueba, orden con adelanto, pago del saldo, reembolso, anulación) y limpieza de los datos de prueba.
 - Tests: checklist manual documentado.
 - Commit: `docs(shopify): agrega checklist de puesta en producción`

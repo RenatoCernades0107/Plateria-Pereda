@@ -1,0 +1,612 @@
+{
+  "run": "SPIKE-20261004183525",
+  "shop": "peredadev.myshopify.com",
+  "version": "2026-10",
+  "steps": [
+    {
+      "name": "token client credentials",
+      "ok": true,
+      "ms": 489,
+      "result": {
+        "expires_in": 86399,
+        "scope": "write_customers,write_merchant_managed_fulfillment_orders,write_order_edits,write_orders,read_products"
+      }
+    },
+    {
+      "name": "tienda y permisos",
+      "ok": true,
+      "ms": 403,
+      "result": {
+        "name": "PeredaDev",
+        "myshopifyDomain": "peredadev.myshopify.com",
+        "currencyCode": "USD",
+        "plan": {
+          "publicDisplayName": "Grow",
+          "partnerDevelopment": true,
+          "shopifyPlus": false
+        },
+        "scopes": [
+          "read_customers",
+          "write_customers",
+          "read_merchant_managed_fulfillment_orders",
+          "write_merchant_managed_fulfillment_orders",
+          "write_order_edits",
+          "read_orders",
+          "write_orders",
+          "read_products",
+          "read_order_edits"
+        ]
+      }
+    },
+    {
+      "name": "crear cliente persona",
+      "ok": true,
+      "ms": 479,
+      "result": {
+        "id": "gid://shopify/Customer/31267886170303",
+        "displayName": "Spike SPIKE-20261004183525",
+        "note": "Cliente de prueba del spike",
+        "defaultEmailAddress": {
+          "emailAddress": "spike-20261004183525@example.com"
+        },
+        "defaultPhoneNumber": {
+          "phoneNumber": "+51938926292"
+        }
+      }
+    },
+    {
+      "name": "buscar clientes (espera al índice)",
+      "ok": true,
+      "ms": 5879,
+      "result": {
+        "porEmail": {
+          "foundAfterMs": 5108,
+          "nodes": [
+            {
+              "id": "gid://shopify/Customer/31267886170303",
+              "displayName": "Spike SPIKE-20261004183525"
+            }
+          ]
+        },
+        "porTexto": {
+          "foundAfterMs": 398,
+          "nodes": [
+            {
+              "id": "gid://shopify/Customer/31267874963647",
+              "displayName": "Spike SPIKE-20261004183003"
+            },
+            {
+              "id": "gid://shopify/Customer/31267886170303",
+              "displayName": "Spike SPIKE-20261004183525"
+            }
+          ]
+        },
+        "porTelefono": {
+          "foundAfterMs": 373,
+          "nodes": [
+            {
+              "id": "gid://shopify/Customer/31267886170303",
+              "displayName": "Spike SPIKE-20261004183525"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "crear company con contacto y ubicación",
+      "ok": true,
+      "ms": 908,
+      "result": {
+        "id": "gid://shopify/Company/11694768319",
+        "name": "Empresa SPIKE-20261004183525 S.A.C.",
+        "externalId": "20100047218",
+        "contacts": {
+          "nodes": [
+            {
+              "id": "gid://shopify/CompanyContact/2831614143",
+              "customer": {
+                "id": "gid://shopify/Customer/31267886268607",
+                "displayName": "Contacto SPIKE-20261004183525"
+              }
+            }
+          ]
+        },
+        "locations": {
+          "nodes": [
+            {
+              "id": "gid://shopify/CompanyLocation/11731206335",
+              "name": "Sede principal"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "buscar productos",
+      "ok": true,
+      "ms": 382,
+      "result": [
+        {
+          "id": "gid://shopify/Product/15379575374015",
+          "title": "The Inventory Not Tracked Snowboard",
+          "featuredMedia": {
+            "preview": {
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0790/7599/9935/files/snowboard_purple_hydrogen.jpg?v=1791133167"
+              }
+            }
+          },
+          "priceRangeV2": {
+            "minVariantPrice": {
+              "amount": "949.95"
+            },
+            "maxVariantPrice": {
+              "amount": "949.95"
+            }
+          },
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/67545360007359",
+                "title": "Default Title",
+                "price": "949.95",
+                "sku": "sku-untracked-1",
+                "image": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/Product/15379575406783",
+          "title": "Gift Card",
+          "featuredMedia": {
+            "preview": {
+              "image": {
+                "url": "https://cdn.shopify.com/s/files/1/0790/7599/9935/files/gift_card.jpg?v=1791133167"
+              }
+            }
+          },
+          "priceRangeV2": {
+            "minVariantPrice": {
+              "amount": "10.0"
+            },
+            "maxVariantPrice": {
+              "amount": "100.0"
+            }
+          },
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/67545360171199",
+                "title": "$10",
+                "price": "10.00",
+                "sku": null,
+                "image": null
+              },
+              {
+                "id": "gid://shopify/ProductVariant/67545360203967",
+                "title": "$25",
+                "price": "25.00",
+                "sku": null,
+                "image": null
+              },
+              {
+                "id": "gid://shopify/ProductVariant/67545360236735",
+                "title": "$50",
+                "price": "50.00",
+                "sku": null,
+                "image": null
+              }
+            ]
+          }
+        },
+        {
+          "id": "gid://shopify/Product/15379575439551",
+          "title": "The Minimal Snowboard",
+          "featuredMedia": null,
+          "priceRangeV2": {
+            "minVariantPrice": {
+              "amount": "885.95"
+            },
+            "maxVariantPrice": {
+              "amount": "885.95"
+            }
+          },
+          "variants": {
+            "nodes": [
+              {
+                "id": "gid://shopify/ProductVariant/67545360761023",
+                "title": "Default Title",
+                "price": "885.95",
+                "sku": null,
+                "image": null
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "crear orden con adelanto (orderCreate)",
+      "ok": true,
+      "ms": 1053,
+      "result": {
+        "id": "gid://shopify/Order/7544672256191",
+        "name": "#1002",
+        "tags": ["SPIKE-20261004183525"],
+        "displayFinancialStatus": "PARTIALLY_PAID",
+        "displayFulfillmentStatus": "UNFULFILLED",
+        "totalPriceSet": {
+          "shopMoney": {
+            "amount": "400.0"
+          }
+        },
+        "currentTotalPriceSet": {
+          "shopMoney": {
+            "amount": "400.0"
+          }
+        },
+        "totalReceivedSet": {
+          "shopMoney": {
+            "amount": "200.0"
+          }
+        },
+        "totalOutstandingSet": {
+          "shopMoney": {
+            "amount": "200.0"
+          }
+        },
+        "lineItems": {
+          "nodes": [
+            {
+              "id": "gid://shopify/LineItem/50790011142335",
+              "title": "Restauración SPIKE-20261004183525-1",
+              "quantity": 1,
+              "currentQuantity": 1,
+              "unfulfilledQuantity": 1,
+              "originalUnitPriceSet": {
+                "shopMoney": {
+                  "amount": "150.0"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/LineItem/50790011175103",
+              "title": "Restauración SPIKE-20261004183525-2",
+              "quantity": 1,
+              "currentQuantity": 1,
+              "unfulfilledQuantity": 1,
+              "originalUnitPriceSet": {
+                "shopMoney": {
+                  "amount": "250.0"
+                }
+              }
+            }
+          ]
+        },
+        "transactions": [
+          {
+            "id": "gid://shopify/OrderTransaction/20804877320383",
+            "kind": "SALE",
+            "status": "SUCCESS",
+            "gateway": "Yape",
+            "amountSet": {
+              "shopMoney": {
+                "amount": "200.0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "buscar orden por etiqueta (espera al índice)",
+      "ok": true,
+      "ms": 7500,
+      "result": {
+        "foundAfterMs": 7500,
+        "nodes": [
+          {
+            "id": "gid://shopify/Order/7544672256191",
+            "name": "#1002",
+            "tags": ["SPIKE-20261004183525"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "orderCreate idempotente (@idempotent)",
+      "ok": true,
+      "ms": 1770,
+      "result": {
+        "first": {
+          "id": "gid://shopify/Order/7544672518335",
+          "name": "#1003"
+        },
+        "second": {
+          "id": "gid://shopify/Order/7544672616639",
+          "name": "#1004"
+        },
+        "mismaOrden": false
+      }
+    },
+    {
+      "name": "crear orden para la company",
+      "ok": true,
+      "ms": 1102,
+      "result": {
+        "id": "gid://shopify/Order/7544672682175",
+        "name": "#1005",
+        "purchasingEntity": {
+          "__typename": "PurchasingCompany",
+          "company": {
+            "name": "Empresa SPIKE-20261004183525 S.A.C."
+          },
+          "location": {
+            "name": "Sede principal"
+          },
+          "contact": {
+            "customer": {
+              "displayName": "Contacto SPIKE-20261004183525"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "editar orden (agregar y quitar línea)",
+      "ok": true,
+      "ms": 3241,
+      "result": {
+        "id": "gid://shopify/Order/7544672256191",
+        "name": "#1002",
+        "tags": ["SPIKE-20261004183525"],
+        "displayFinancialStatus": "PARTIALLY_PAID",
+        "displayFulfillmentStatus": "UNFULFILLED",
+        "totalPriceSet": {
+          "shopMoney": {
+            "amount": "450.0"
+          }
+        },
+        "currentTotalPriceSet": {
+          "shopMoney": {
+            "amount": "300.0"
+          }
+        },
+        "totalReceivedSet": {
+          "shopMoney": {
+            "amount": "200.0"
+          }
+        },
+        "totalOutstandingSet": {
+          "shopMoney": {
+            "amount": "100.0"
+          }
+        },
+        "lineItems": {
+          "nodes": [
+            {
+              "id": "gid://shopify/LineItem/50790011142335",
+              "title": "Restauración SPIKE-20261004183525-1",
+              "quantity": 1,
+              "currentQuantity": 0,
+              "unfulfilledQuantity": 0,
+              "originalUnitPriceSet": {
+                "shopMoney": {
+                  "amount": "150.0"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/LineItem/50790011175103",
+              "title": "Restauración SPIKE-20261004183525-2",
+              "quantity": 1,
+              "currentQuantity": 1,
+              "unfulfilledQuantity": 1,
+              "originalUnitPriceSet": {
+                "shopMoney": {
+                  "amount": "250.0"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/LineItem/50790012289215",
+              "title": "Restauración SPIKE-20261004183525-3",
+              "quantity": 1,
+              "currentQuantity": 1,
+              "unfulfilledQuantity": 1,
+              "originalUnitPriceSet": {
+                "shopMoney": {
+                  "amount": "50.0"
+                }
+              }
+            }
+          ]
+        },
+        "transactions": [
+          {
+            "id": "gid://shopify/OrderTransaction/20804877320383",
+            "kind": "SALE",
+            "status": "SUCCESS",
+            "gateway": "Yape",
+            "amountSet": {
+              "shopMoney": {
+                "amount": "200.0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "registrar pago del saldo",
+      "ok": true,
+      "ms": 995,
+      "result": {
+        "conNombre": [
+          {
+            "field": ["paymentMethodName"],
+            "message": "Payment provider is not configured on shop."
+          }
+        ],
+        "sinNombre": "ok",
+        "order": {
+          "id": "gid://shopify/Order/7544672256191",
+          "name": "#1002",
+          "tags": ["SPIKE-20261004183525"],
+          "displayFinancialStatus": "PAID",
+          "displayFulfillmentStatus": "UNFULFILLED",
+          "totalPriceSet": {
+            "shopMoney": {
+              "amount": "450.0"
+            }
+          },
+          "currentTotalPriceSet": {
+            "shopMoney": {
+              "amount": "300.0"
+            }
+          },
+          "totalReceivedSet": {
+            "shopMoney": {
+              "amount": "300.0"
+            }
+          },
+          "totalOutstandingSet": {
+            "shopMoney": {
+              "amount": "0.0"
+            }
+          },
+          "lineItems": {
+            "nodes": [
+              {
+                "id": "gid://shopify/LineItem/50790011142335",
+                "title": "Restauración SPIKE-20261004183525-1",
+                "quantity": 1,
+                "currentQuantity": 0,
+                "unfulfilledQuantity": 0,
+                "originalUnitPriceSet": {
+                  "shopMoney": {
+                    "amount": "150.0"
+                  }
+                }
+              },
+              {
+                "id": "gid://shopify/LineItem/50790011175103",
+                "title": "Restauración SPIKE-20261004183525-2",
+                "quantity": 1,
+                "currentQuantity": 1,
+                "unfulfilledQuantity": 1,
+                "originalUnitPriceSet": {
+                  "shopMoney": {
+                    "amount": "250.0"
+                  }
+                }
+              },
+              {
+                "id": "gid://shopify/LineItem/50790012289215",
+                "title": "Restauración SPIKE-20261004183525-3",
+                "quantity": 1,
+                "currentQuantity": 1,
+                "unfulfilledQuantity": 1,
+                "originalUnitPriceSet": {
+                  "shopMoney": {
+                    "amount": "50.0"
+                  }
+                }
+              }
+            ]
+          },
+          "transactions": [
+            {
+              "id": "gid://shopify/OrderTransaction/20804877320383",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "gateway": "Yape",
+              "amountSet": {
+                "shopMoney": {
+                  "amount": "200.0"
+                }
+              }
+            },
+            {
+              "id": "gid://shopify/OrderTransaction/20804878106815",
+              "kind": "SALE",
+              "status": "SUCCESS",
+              "gateway": "manual",
+              "amountSet": {
+                "shopMoney": {
+                  "amount": "100.0"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "marcar una línea como preparada",
+      "ok": true,
+      "ms": 1269,
+      "result": {
+        "fulfillmentOrder": {
+          "id": "gid://shopify/FulfillmentOrder/8708071489727",
+          "status": "OPEN",
+          "lineItems": {
+            "nodes": [
+              {
+                "id": "gid://shopify/FulfillmentOrderLineItem/17289473654975",
+                "remainingQuantity": 0,
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/50790011142335",
+                  "title": "Restauración SPIKE-20261004183525-1"
+                }
+              },
+              {
+                "id": "gid://shopify/FulfillmentOrderLineItem/17289473687743",
+                "remainingQuantity": 1,
+                "lineItem": {
+                  "id": "gid://shopify/LineItem/50790011175103",
+                  "title": "Restauración SPIKE-20261004183525-2"
+                }
+              }
+            ]
+          }
+        },
+        "fulfillment": {
+          "id": "gid://shopify/Fulfillment/6912225640639",
+          "status": "SUCCESS"
+        }
+      }
+    },
+    {
+      "name": "reembolsar parte de un pago",
+      "ok": true,
+      "ms": 1045,
+      "result": {
+        "refund": {
+          "id": "gid://shopify/Refund/1056850837695",
+          "totalRefundedSet": {
+            "shopMoney": {
+              "amount": "20.0"
+            }
+          }
+        },
+        "order": {
+          "displayFinancialStatus": "PARTIALLY_REFUNDED",
+          "totalReceivedSet": {
+            "shopMoney": {
+              "amount": "300.0"
+            }
+          }
+        },
+        "userErrors": []
+      }
+    },
+    {
+      "name": "webhooks suscritos",
+      "ok": true,
+      "ms": 368,
+      "result": []
+    }
+  ]
+}

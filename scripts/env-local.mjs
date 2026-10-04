@@ -1,5 +1,6 @@
 // Crea o actualiza .env.local con la URL y las claves del Supabase local (`supabase status`).
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 let status;
@@ -33,6 +34,13 @@ for (const [key, value] of Object.entries(values)) {
   const pattern = new RegExp(`^${key}=.*$`, "m");
   content = pattern.test(content)
     ? content.replace(pattern, () => line)
+    : `${content.trimEnd()}\n${line}\n`;
+}
+// Secreto local para `pnpm shopify:sync` y el endpoint de cron; se conserva si ya existe.
+if (!/^CRON_SECRET=.+$/m.test(content)) {
+  const line = `CRON_SECRET=${randomBytes(24).toString("hex")}`;
+  content = /^CRON_SECRET=.*$/m.test(content)
+    ? content.replace(/^CRON_SECRET=.*$/m, line)
     : `${content.trimEnd()}\n${line}\n`;
 }
 writeFileSync(target, content);

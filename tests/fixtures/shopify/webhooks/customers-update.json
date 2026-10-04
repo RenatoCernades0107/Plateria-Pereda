@@ -1,0 +1,10 @@
+{
+  "id": 9001,
+  "email": "ana.perez@correo.pe",
+  "first_name": "Ana",
+  "last_name": "Pérez",
+  "phone": "+51999888777",
+  "note": "",
+  "updated_at": "2026-10-03T10:00:00-05:00",
+  "admin_graphql_api_id": "gid://shopify/Customer/9001"
+}

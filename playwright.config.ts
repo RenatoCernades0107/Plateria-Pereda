@@ -20,8 +20,18 @@ export default defineConfig({
     launchOptions: { executablePath },
   },
   projects: [
-    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] }, grep: /@mobile/ },
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    {
+      name: "desktop-chromium",
+      use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
+    },
+    {
+      name: "mobile",
+      use: { ...devices["Pixel 7"] },
+      grep: /@mobile/,
+      dependencies: ["setup"],
+    },
   ],
   webServer: {
     command: isCI
@@ -29,6 +39,8 @@ export default defineConfig({
       : `pnpm dev -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !isCI,
+    // Los enlaces de los correos (recuperar contraseña) deben volver a este servidor.
+    env: { APP_URL: `http://localhost:${PORT}` },
     timeout: 180_000,
   },
 });

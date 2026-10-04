@@ -46,3 +46,6 @@ next-env.d.ts
 /test-results/
 /blob-report/
 /playwright/.cache/
+/e2e/.auth/
+
+Design.md

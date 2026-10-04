@@ -222,8 +222,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = false
+# Debe quedar en true: en false apaga también el inicio de sesión por email.
+# El registro público ya está bloqueado con [auth] enable_signup = false.
+enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -248,10 +249,16 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# El enlace va a /auth/confirm de la app, que abre la sesión y lleva a /restablecer-contrasena.
+# En producción, la misma plantilla se configura en el panel de Supabase (Auth → Email Templates).
+[auth.email.template.recovery]
+subject = "Restablece tu contraseña · Platería Pereda"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.invite]
+subject = "Tu acceso al sistema de Platería Pereda"
+content_path = "./supabase/templates/invite.html"
+
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]

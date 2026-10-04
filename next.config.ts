@@ -3,7 +3,10 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 import { parseServerEnv } from "./src/lib/env";
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  // Habilita forbidden() para responder 403 a quien no tiene permiso.
+  experimental: { authInterrupts: true },
+};
 
 export default function config(phase: string): NextConfig {
   // En Vercel, un despliegue mal configurado falla al compilar y no reemplaza al que está en línea.
