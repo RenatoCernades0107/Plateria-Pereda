@@ -982,12 +982,13 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(cotizador): agrega esquema de cotizaciones`
 
 #### Paso 14.2 — Dominio de la cotización ⛔ P13 ⛔ P35
-- [ ] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
+- [x] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
 - **Unit:**
-  - [ ] Cálculos con decimales, cantidades grandes y 0.
-  - [ ] Vigencia en zona Lima (fin de mes, año bisiesto).
-  - [ ] Detección de cotización vencida.
+  - [x] Cálculos con decimales, cantidades grandes y 0.
+  - [x] Vigencia en zona Lima (fin de mes, año bisiesto).
+  - [x] Detección de cotización vencida.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): en céntimos con `money.ts`. `lineGross`, `lineDiscount` (monto o %, redondeado a céntimos igual que la BD y nunca mayor que el subtotal de la línea), `lineTotal` y `quoteTotals()` (subtotal, descuento, total y desglose `igvBreakdown`: operación gravada = total / 1.18 redondeada e IGV = el resto, para el PDF). Vigencia con fechas calendario de Lima (`limaDateOf`, `addDays`, `quoteValidUntil`; vigente hasta el último día inclusive), `isQuoteExpired`, `quoteDisplayStatus` ("vencida" solo para emitidas) y la tabla de cambios de estado de la BD (`nextQuoteStatuses`, `canChangeQuoteStatus`). **P13 y P35 siguen pendientes:** se usó su propuesta (precios con IGV incluido; solo soles; descuento opcional por línea, sin descuento global).
 - Commit: `feat(cotizador): agrega cálculos de cotización`
 
 #### Paso 14.3 — Selector de productos de Shopify ⛔ P37
