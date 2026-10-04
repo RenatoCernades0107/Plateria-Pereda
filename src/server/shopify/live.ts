@@ -1,9 +1,13 @@
-import { ShopifyNotFoundError, ShopifyNotImplementedError } from "./errors";
+import { ShopifyNotFoundError, ShopifyUserError } from "./errors";
 import type { ShopifyGateway } from "./gateway";
 import { assertNoUserErrors, type GraphqlClient } from "./graphql-client";
 import type {
   CustomerInput,
+  CustomLine,
   FinancialStatus,
+  OrderEdit,
+  OrderInput,
+  RefundInput,
   OrderFinancials,
   Page,
   PageOptions,
@@ -62,7 +66,7 @@ const ORDER_FIELDS = `
     nodes {
       id
       title
-      quantity
+      currentQuantity
       unfulfilledQuantity
       originalUnitPriceSet { shopMoney { amount } }
     }
@@ -78,7 +82,7 @@ export const ORDER_FINANCIALS = `query OrderFinancials($id: ID!) {
     id
     name
     displayFinancialStatus
-    totalPriceSet { shopMoney { amount } }
+    currentTotalPriceSet { shopMoney { amount } }
     totalReceivedSet { shopMoney { amount } }
     totalOutstandingSet { shopMoney { amount } }
   }
@@ -113,6 +117,80 @@ export const PRODUCT_GET = `query ProductGet($id: ID!) {
   }
 }`;
 
+export const SHOP_CURRENCY = `query ShopCurrency { shop { currencyCode } }`;
+
+export const ORDER_CREATE = `mutation OrderCreate($order: OrderCreateOrderInput!) {
+  orderCreate(order: $order, options: { inventoryBehaviour: BYPASS, sendReceipt: false }) {
+    order { ${ORDER_FIELDS} }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_GET = `query OrderGet($id: ID!) { order(id: $id) { ${ORDER_FIELDS} } }`;
+
+export const ORDER_EDIT_BEGIN = `mutation OrderEditBegin($id: ID!) {
+  orderEditBegin(id: $id) {
+    calculatedOrder { id lineItems(first: 250) { nodes { id quantity } } }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_EDIT_ADD_ITEM = `mutation OrderEditAddCustomItem($id: ID!, $title: String!, $price: MoneyInput!, $quantity: Int!) {
+  orderEditAddCustomItem(id: $id, title: $title, price: $price, quantity: $quantity, requiresShipping: false) {
+    calculatedLineItem { id }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_EDIT_SET_QUANTITY = `mutation OrderEditSetQuantity($id: ID!, $lineItemId: ID!, $quantity: Int!) {
+  orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity) {
+    calculatedOrder { id }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_EDIT_COMMIT = `mutation OrderEditCommit($id: ID!) {
+  orderEditCommit(id: $id, notifyCustomer: false) {
+    order { ${ORDER_FIELDS} }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_MANUAL_PAYMENT = `mutation OrderCreateManualPayment($id: ID!, $paymentMethodName: String) {
+  orderCreateManualPayment(id: $id, paymentMethodName: $paymentMethodName) {
+    order { id }
+    userErrors { field message }
+  }
+}`;
+
+export const ORDER_TRANSACTIONS = `query OrderTransactions($id: ID!) {
+  order(id: $id) { transactions { id kind status gateway } }
+}`;
+
+export const REFUND_CREATE = (
+  key: string,
+) => `mutation RefundCreate($input: RefundInput!) {
+  refundCreate(input: $input) @idempotent(key: ${JSON.stringify(key)}) {
+    refund { id }
+    userErrors { field message }
+  }
+}`;
+
+export const FULFILLMENT_ORDERS = `query FulfillmentOrders($id: ID!) {
+  order(id: $id) {
+    fulfillmentOrders(first: 20) {
+      nodes { id lineItems(first: 250) { nodes { id remainingQuantity lineItem { id } } } }
+    }
+  }
+}`;
+
+export const FULFILLMENT_CREATE = `mutation FulfillmentCreate($fulfillment: FulfillmentInput!) {
+  fulfillmentCreate(fulfillment: $fulfillment) {
+    fulfillment { id }
+    userErrors { field message }
+  }
+}`;
+
 type CustomerNode = {
   id: string;
   firstName: string | null;
@@ -132,7 +210,7 @@ type OrderNode = {
     nodes: {
       id: string;
       title: string;
-      quantity: number;
+      currentQuantity: number;
       unfulfilledQuantity: number;
       originalUnitPriceSet: Amount;
     }[];
@@ -161,13 +239,16 @@ function toOrder(node: OrderNode): ShopifyOrder {
     id: node.id,
     name: node.name,
     tags: node.tags,
-    lines: node.lineItems.nodes.map((l) => ({
-      id: l.id,
-      title: l.title,
-      quantity: l.quantity,
-      price: l.originalUnitPriceSet.shopMoney.amount,
-      fulfilled: l.unfulfilledQuantity === 0,
-    })),
+    // Las líneas quitadas en una edición siguen en la orden con cantidad vigente 0.
+    lines: node.lineItems.nodes
+      .filter((l) => l.currentQuantity > 0)
+      .map((l) => ({
+        id: l.id,
+        title: l.title,
+        quantity: l.currentQuantity,
+        price: money(l.originalUnitPriceSet.shopMoney.amount),
+        fulfilled: l.unfulfilledQuantity === 0,
+      })),
   };
 }
 
@@ -249,7 +330,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
         id: string;
         name: string;
         displayFinancialStatus: FinancialStatus;
-        totalPriceSet: Amount;
+        currentTotalPriceSet: Amount;
         totalReceivedSet: Amount;
         totalOutstandingSet: Amount;
       } | null;
@@ -259,7 +340,8 @@ export class LiveShopifyGateway implements ShopifyGateway {
       id: data.order.id,
       name: data.order.name,
       financialStatus: data.order.displayFinancialStatus,
-      total: money(data.order.totalPriceSet.shopMoney.amount),
+      // currentTotal: el total vigente tras las ediciones (totalPrice queda en el original).
+      total: money(data.order.currentTotalPriceSet.shopMoney.amount),
       received: money(data.order.totalReceivedSet.shopMoney.amount),
       outstanding: money(data.order.totalOutstandingSet.shopMoney.amount),
     };
@@ -335,21 +417,266 @@ export class LiveShopifyGateway implements ShopifyGateway {
     };
   }
 
-  // Las escrituras de órdenes dependen de lo que confirme el spike 4.1 en la tienda de
-  // desarrollo (orderCreate con pagos, Order Editing, fulfillment orders).
-  async createOrder(): Promise<ShopifyOrder> {
-    throw new ShopifyNotImplementedError("createOrder");
+  private currency: Promise<string> | null = null;
+
+  /** Moneda de la tienda (PEN en la Platería, USD en la de desarrollo). */
+  private shopCurrency() {
+    this.currency ??= this.client
+      .request<{ shop: { currencyCode: string } }>(SHOP_CURRENCY)
+      .then((d) => d.shop.currencyCode)
+      .catch((error: unknown) => {
+        this.currency = null;
+        throw error;
+      });
+    return this.currency;
   }
-  async editOrder(): Promise<ShopifyOrder> {
-    throw new ShopifyNotImplementedError("editOrder");
+
+  private async moneyInput(amount: string) {
+    return { amount, currencyCode: await this.shopCurrency() };
   }
-  async recordFullPayment(): Promise<OrderFinancials> {
-    throw new ShopifyNotImplementedError("recordFullPayment");
+
+  private async getOrder(id: string) {
+    const data = await this.client.request<{ order: OrderNode | null }>(
+      ORDER_GET,
+      { id },
+    );
+    if (!data.order) throw new ShopifyNotFoundError(id);
+    return toOrder(data.order);
   }
-  async refundPayment(): Promise<OrderFinancials> {
-    throw new ShopifyNotImplementedError("refundPayment");
+
+  async createOrder(input: OrderInput): Promise<ShopifyOrder> {
+    const currencyCode = await this.shopCurrency();
+    const shopMoney = (amount: string) => ({
+      shopMoney: { amount, currencyCode },
+    });
+    const data = await this.client.request<{
+      orderCreate: { order: OrderNode | null; userErrors: UserErrors };
+    }>(ORDER_CREATE, {
+      order: {
+        customerId: input.customerId,
+        ...(input.companyLocationId && {
+          companyLocationId: input.companyLocationId,
+        }),
+        currency: currencyCode,
+        tags: input.tags,
+        note: input.note,
+        lineItems: input.lines.map((line) => ({
+          title: line.title,
+          quantity: line.quantity,
+          priceSet: shopMoney(line.price),
+          requiresShipping: false,
+          taxable: true,
+        })),
+        transactions: (input.payments ?? []).map((p) => ({
+          kind: "SALE",
+          status: "SUCCESS",
+          gateway: p.gateway,
+          amountSet: shopMoney(p.amount),
+        })),
+      },
+    });
+    assertNoUserErrors(data.orderCreate.userErrors);
+    return toOrder(data.orderCreate.order!);
   }
-  async fulfillLines(): Promise<ShopifyOrder> {
-    throw new ShopifyNotImplementedError("fulfillLines");
+
+  async editOrder(orderId: string, edit: OrderEdit): Promise<ShopifyOrder> {
+    const current = await this.getOrder(orderId);
+    const begin = await this.client.request<{
+      orderEditBegin: {
+        calculatedOrder: {
+          id: string;
+          lineItems: { nodes: { id: string }[] };
+        } | null;
+        userErrors: UserErrors;
+      };
+    }>(ORDER_EDIT_BEGIN, { id: orderId });
+    assertNoUserErrors(begin.orderEditBegin.userErrors);
+    const calc = begin.orderEditBegin.calculatedOrder!;
+
+    // La línea calculada tiene otro id pero el mismo número final que la línea original.
+    const calculatedId = (lineId: string) => {
+      const suffix = lineId.split("/").pop();
+      const found = calc.lineItems.nodes.find(
+        (n) => n.id.split("/").pop() === suffix,
+      );
+      if (!found) {
+        throw new ShopifyUserError([
+          { field: ["lineItemId"], message: `Line item ${lineId} not found` },
+        ]);
+      }
+      return found.id;
+    };
+
+    const repriced: CustomLine[] = [];
+    for (const { lineId, price } of edit.setPrices ?? []) {
+      const line = current.lines.find((l) => l.id === lineId);
+      if (!line) {
+        throw new ShopifyUserError([
+          { field: ["lineItemId"], message: `Line item ${lineId} not found` },
+        ]);
+      }
+      repriced.push({ title: line.title, price, quantity: line.quantity });
+    }
+    const removals = [
+      ...(edit.removeLineIds ?? []),
+      ...(edit.setPrices ?? []).map((p) => p.lineId),
+    ];
+    for (const lineId of removals) {
+      const result = await this.client.request<{
+        orderEditSetQuantity: { userErrors: UserErrors };
+      }>(ORDER_EDIT_SET_QUANTITY, {
+        id: calc.id,
+        lineItemId: calculatedId(lineId),
+        quantity: 0,
+      });
+      assertNoUserErrors(result.orderEditSetQuantity.userErrors);
+    }
+    for (const line of [...repriced, ...(edit.addLines ?? [])]) {
+      const result = await this.client.request<{
+        orderEditAddCustomItem: { userErrors: UserErrors };
+      }>(ORDER_EDIT_ADD_ITEM, {
+        id: calc.id,
+        title: line.title,
+        price: await this.moneyInput(line.price),
+        quantity: line.quantity,
+      });
+      assertNoUserErrors(result.orderEditAddCustomItem.userErrors);
+    }
+
+    const commit = await this.client.request<{
+      orderEditCommit: { order: OrderNode | null; userErrors: UserErrors };
+    }>(ORDER_EDIT_COMMIT, { id: calc.id });
+    assertNoUserErrors(commit.orderEditCommit.userErrors);
+    return toOrder(commit.orderEditCommit.order!);
+  }
+
+  async recordFullPayment(orderId: string, gateway: string) {
+    const pay = (paymentMethodName?: string) =>
+      this.client.request<{
+        orderCreateManualPayment: { userErrors: UserErrors };
+      }>(ORDER_MANUAL_PAYMENT, { id: orderId, paymentMethodName });
+
+    // El nombre debe existir como método de pago manual en la tienda; si no, Shopify
+    // responde "Payment provider is not configured" y se registra sin nombre ("manual").
+    // El sistema conserva el método real del pago (spike 4.1).
+    let data = await pay(gateway);
+    if (
+      data.orderCreateManualPayment.userErrors.some((e) =>
+        e.field?.includes("paymentMethodName"),
+      )
+    ) {
+      data = await pay(undefined);
+    }
+    assertNoUserErrors(data.orderCreateManualPayment.userErrors);
+    return this.getOrderFinancials(orderId);
+  }
+
+  async refundPayment(orderId: string, refund: RefundInput) {
+    const { order } = await this.client.request<{
+      order: {
+        transactions: {
+          id: string;
+          kind: string;
+          status: string;
+          gateway: string;
+        }[];
+      } | null;
+    }>(ORDER_TRANSACTIONS, { id: orderId });
+    if (!order) throw new ShopifyNotFoundError(orderId);
+    const parent = order.transactions.find(
+      (t) =>
+        t.status === "SUCCESS" &&
+        (t.kind === "SALE" || t.kind === "CAPTURE") &&
+        t.gateway === refund.gateway,
+    );
+    if (!parent) {
+      throw new ShopifyUserError([
+        {
+          field: ["gateway"],
+          message: `No hay un pago con ${refund.gateway} para reembolsar`,
+        },
+      ]);
+    }
+    const data = await this.client.request<{
+      refundCreate: { userErrors: UserErrors };
+    }>(REFUND_CREATE(refund.idempotencyKey), {
+      input: {
+        orderId,
+        note: refund.note,
+        notify: false,
+        transactions: [
+          {
+            orderId,
+            parentId: parent.id,
+            kind: "REFUND",
+            gateway: refund.gateway,
+            amount: refund.amount,
+          },
+        ],
+      },
+    });
+    assertNoUserErrors(data.refundCreate.userErrors);
+    return this.getOrderFinancials(orderId);
+  }
+
+  async fulfillLines(orderId: string, lineIds: string[]) {
+    const data = await this.client.request<{
+      order: {
+        fulfillmentOrders: {
+          nodes: {
+            id: string;
+            lineItems: {
+              nodes: {
+                id: string;
+                remainingQuantity: number;
+                lineItem: { id: string };
+              }[];
+            };
+          }[];
+        };
+      } | null;
+    }>(FULFILLMENT_ORDERS, { id: orderId });
+    if (!data.order) throw new ShopifyNotFoundError(orderId);
+
+    // Agrupa las líneas pendientes por fulfillment order (una por ubicación).
+    const groups = new Map<string, { id: string; quantity: number }[]>();
+    for (const lineId of lineIds) {
+      let found = false;
+      for (const fo of data.order.fulfillmentOrders.nodes) {
+        const item = fo.lineItems.nodes.find(
+          (i) => i.lineItem.id === lineId && i.remainingQuantity > 0,
+        );
+        if (item) {
+          groups.set(fo.id, [
+            ...(groups.get(fo.id) ?? []),
+            { id: item.id, quantity: item.remainingQuantity },
+          ]);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        throw new ShopifyUserError([
+          {
+            field: ["lineItemId"],
+            message: `Line item ${lineId} not found or already fulfilled`,
+          },
+        ]);
+      }
+    }
+    for (const [fulfillmentOrderId, items] of groups) {
+      const result = await this.client.request<{
+        fulfillmentCreate: { userErrors: UserErrors };
+      }>(FULFILLMENT_CREATE, {
+        fulfillment: {
+          notifyCustomer: false,
+          lineItemsByFulfillmentOrder: [
+            { fulfillmentOrderId, fulfillmentOrderLineItems: items },
+          ],
+        },
+      });
+      assertNoUserErrors(result.fulfillmentCreate.userErrors);
+    }
+    return this.getOrder(orderId);
   }
 }

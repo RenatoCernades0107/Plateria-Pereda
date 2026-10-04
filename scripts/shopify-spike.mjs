@@ -611,6 +611,44 @@ await step("editar orden (agregar y quitar línea)", async () => {
   return commit.order;
 });
 
+// El adaptador relaciona cada línea con su línea "calculada" de la edición por el número
+// final del id: se verifica sin confirmar la edición.
+await step("ids de líneas calculadas = ids de líneas", async () => {
+  if (!ctx.order) throw new Error("No hay orden");
+  const data = await graphql(
+    `
+      mutation ($id: ID!) {
+        orderEditBegin(id: $id) {
+          calculatedOrder {
+            lineItems(first: 20) {
+              nodes {
+                id
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    { id: ctx.order.id },
+  );
+  const calc = check(data.orderEditBegin).calculatedOrder.lineItems.nodes.map(
+    (n) => n.id,
+  );
+  const lines = ctx.order.lineItems.nodes
+    .filter((n) => n.currentQuantity > 0)
+    .map((n) => n.id);
+  const suffix = (id) => id.split("/").pop();
+  return {
+    lines,
+    calc,
+    coinciden: lines.every((id) => calc.some((c) => suffix(c) === suffix(id))),
+  };
+});
+
 // 9. Pago del saldo (orderCreateManualPayment sin monto)
 await step("registrar pago del saldo", async () => {
   if (!ctx.order) throw new Error("No hay orden");

@@ -124,5 +124,103 @@ export function shopifyGatewayContract(
       ]);
       expect(await gateway.getProduct("gid://shopify/Product/1")).toBeNull();
     });
+
+    describe("órdenes (validado en el spike 4.1)", () => {
+      let customerId: string;
+
+      beforeEach(async () => {
+        customerId = (
+          await gateway.createCustomer({ firstName: "Ana", lastName: "Pérez" })
+        ).id;
+      });
+
+      const createOrder = (
+        payments = [{ amount: "200.00", gateway: "Yape" }],
+      ) =>
+        gateway.createOrder({
+          customerId,
+          lines: [
+            { title: "Restauración RES-00001-1", price: "150.00", quantity: 1 },
+            { title: "Restauración RES-00001-2", price: "250.00", quantity: 1 },
+          ],
+          tags: ["RES-00001"],
+          payments,
+        });
+
+      it("la orden con adelanto queda parcialmente pagada y el saldo la completa (P43)", async () => {
+        const order = await createOrder();
+        expect(order.lines.map((l) => [l.title, l.price, l.fulfilled])).toEqual(
+          [
+            ["Restauración RES-00001-1", "150.00", false],
+            ["Restauración RES-00001-2", "250.00", false],
+          ],
+        );
+        expect(await gateway.getOrderFinancials(order.id)).toMatchObject({
+          financialStatus: "PARTIALLY_PAID",
+          total: "400.00",
+          received: "200.00",
+          outstanding: "200.00",
+        });
+        expect(
+          await gateway.recordFullPayment(order.id, "Efectivo"),
+        ).toMatchObject({
+          financialStatus: "PAID",
+          received: "400.00",
+          outstanding: "0.00",
+        });
+      });
+
+      it("encuentra la orden por la etiqueta de la restauración", async () => {
+        const order = await createOrder();
+        expect((await gateway.findOrderByTag("RES-00001"))?.id).toBe(order.id);
+        expect(await gateway.findOrderByTag("RES-99999")).toBeNull();
+      });
+
+      it("edita la orden: quita una pieza, cambia un precio y agrega otra", async () => {
+        const order = await createOrder([]);
+        const [first, second] = order.lines;
+        const edited = await gateway.editOrder(order.id, {
+          removeLineIds: [first!.id],
+          setPrices: [{ lineId: second!.id, price: "300.00" }],
+          addLines: [
+            { title: "Restauración RES-00001-3", price: "50.00", quantity: 1 },
+          ],
+        });
+        expect(edited.lines.map((l) => [l.title, l.price])).toEqual([
+          ["Restauración RES-00001-2", "300.00"],
+          ["Restauración RES-00001-3", "50.00"],
+        ]);
+        expect((await gateway.getOrderFinancials(order.id)).total).toBe(
+          "350.00",
+        );
+      });
+
+      it("marca piezas como preparadas (P44)", async () => {
+        const order = await createOrder();
+        const fulfilled = await gateway.fulfillLines(order.id, [
+          order.lines[0]!.id,
+        ]);
+        expect(fulfilled.lines.map((l) => l.fulfilled)).toEqual([true, false]);
+        await expect(
+          gateway.fulfillLines(order.id, [order.lines[0]!.id]),
+        ).rejects.toBeInstanceOf(ShopifyUserError);
+      });
+
+      it("reembolsa parte de un pago una sola vez por clave", async () => {
+        const order = await createOrder();
+        const refund = {
+          amount: "50.00",
+          gateway: "Yape",
+          idempotencyKey: "refund:RES-00001-1",
+        };
+        expect(await gateway.refundPayment(order.id, refund)).toMatchObject({
+          financialStatus: "PARTIALLY_REFUNDED",
+          received: "150.00",
+        });
+        expect((await gateway.refundPayment(order.id, refund)).received).toBe(
+          "150.00",
+        );
+      });
+    });
   });
 }

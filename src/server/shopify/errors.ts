@@ -35,10 +35,3 @@ export class ShopifyUnavailableError extends ShopifyError {
     super(message, true);
   }
 }
-
-/** Operación que el adaptador live aún no implementa (se completa tras el spike 4.1). */
-export class ShopifyNotImplementedError extends ShopifyError {
-  constructor(operation: string) {
-    super(`Pendiente de implementar en el adaptador live: ${operation}`);
-  }
-}

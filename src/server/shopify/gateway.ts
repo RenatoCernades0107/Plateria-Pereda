@@ -5,7 +5,7 @@ import type {
   OrderInput,
   Page,
   PageOptions,
-  PaymentInput,
+  RefundInput,
   ShopifyCustomer,
   ShopifyOrder,
   ShopifyProduct,
@@ -30,16 +30,23 @@ export interface ShopifyGateway {
   getCustomer(id: string): Promise<ShopifyCustomer | null>;
 
   createOrder(input: OrderInput): Promise<ShopifyOrder>;
-  /** Busca la orden por etiqueta: evita duplicarla si un reintento ya la creó. */
+  /**
+   * Busca la orden por etiqueta, para no duplicarla si un reintento ya la creó. El
+   * índice de búsqueda de Shopify tarda ~8 s (spike 4.1); el outbox reintenta recién
+   * a los 30 s, así que la orden ya aparece.
+   */
   findOrderByTag(tag: string): Promise<ShopifyOrder | null>;
   getOrderFinancials(orderId: string): Promise<OrderFinancials>;
+  /** Cambiar un precio quita la línea y agrega otra con el mismo título (Shopify no
+   * permite cambiar el precio de una línea personalizada existente). */
   editOrder(orderId: string, edit: OrderEdit): Promise<ShopifyOrder>;
-  /** Registra el pago que completa el saldo (en Grow no hay pagos parciales por API, P43). */
+  /**
+   * Registra el pago que completa el saldo (en Grow no hay pagos parciales por API,
+   * P43). Si el método no existe como pago manual en la tienda, queda como "manual".
+   */
   recordFullPayment(orderId: string, gateway: string): Promise<OrderFinancials>;
-  refundPayment(
-    orderId: string,
-    payment: PaymentInput,
-  ): Promise<OrderFinancials>;
+  /** Reembolsa parte de lo cobrado con el mismo medio de pago. */
+  refundPayment(orderId: string, refund: RefundInput): Promise<OrderFinancials>;
   /** Marca líneas como preparadas (P44). */
   fulfillLines(orderId: string, lineIds: string[]): Promise<ShopifyOrder>;
 

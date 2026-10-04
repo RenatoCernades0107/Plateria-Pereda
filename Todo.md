@@ -441,16 +441,16 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 
 #### Paso 4.1 — Spike técnico en la tienda de desarrollo
 Objetivo: validar con llamadas reales antes de construir.
-- [ ] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
-- [ ] Crear cliente persona y empresa como Company (P14 = b): alta de Company con contacto y ubicación, dónde va el RUC, orden con la empresa como comprador.
-- [ ] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
-- [ ] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
-- [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan.
-- [ ] Editar una orden (quitar línea, cambiar precio, agregar línea) con Order Editing; reembolsar un pago manual.
-- [ ] Cambiar el cliente de una orden desde Shopify y ver qué webhook llega (P12).
-- [ ] Marcar líneas como preparadas (P44).
-- [ ] Buscar clientes y productos (paginación, variantes, imágenes).
-- [ ] Documentar resultados y decisiones en `Notas.md`; guardar payloads reales anonimizados como fixtures en `tests/fixtures/shopify/`.
+- [x] App de prueba en el Dev Dashboard: obtener el token con *client credentials* (vence a las 24 h) y confirmar cómo se hará en la tienda de la Platería (app en su organización o instalación por enlace).
+- [x] Crear cliente persona y empresa como Company (P14 = b): alta de Company con contacto y ubicación, dónde va el RUC, orden con la empresa como comprador.
+- [x] Crear una orden con líneas personalizadas (título solo con el código) con y sin pagos incluidos; confirmar que con un adelanto queda "Parcialmente pagada" (comparar `orderCreate` vs. borrador de orden + completar).
+- [x] Registrar el pago que completa el saldo con `orderCreateManualPayment` (sin monto) y confirmar que en Grow no hay otra vía para pagos parciales (P43).
+- [ ] Registrar un pago parcial desde el POS y ver qué webhooks llegan. *(Requiere una URL pública: se hace con el primer despliegue en Vercel; los webhooks no llegan a localhost.)*
+- [x] Editar una orden (quitar línea, cambiar precio, agregar línea) con Order Editing; reembolsar un pago manual.
+- [ ] Cambiar el cliente de una orden desde Shopify y ver qué webhook llega (P12). *(Ídem: con el primer despliegue.)*
+- [x] Marcar líneas como preparadas (P44).
+- [x] Buscar clientes y productos (paginación, variantes, imágenes).
+- [x] Documentar resultados y decisiones en `Notas.md`; guardar payloads reales anonimizados como fixtures en `tests/fixtures/shopify/`.
 - Tests: No aplica (exploratorio); los fixtures alimentan los tests de los pasos siguientes.
 - Commit: `docs(shopify): documenta resultados del spike y agrega fixtures`
 
@@ -468,7 +468,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] Paginación de búsquedas.
   - [x] **Contract test** compartido: `fake` y `live` (con MSW) cumplen la misma suite.
 - **E2E:** No aplica (sin interfaz). Opcional `@shopify-live`: contract test contra la tienda de desarrollo.
-- Hecho (2026-10-03, antes del spike): código en `src/server/shopify/`. El adaptador `live` ya implementa clientes, productos y la lectura de órdenes (`findOrderByTag`, `getOrderFinancials`) con su cliente GraphQL (versión fijada, timeout, reintentos ante THROTTLED/429/5xx/red, una renovación del token ante 401) y el token *client credentials* en `shopify_tokens` (solo clave secreta). **Pendiente tras el spike 4.1:** las escrituras de órdenes en `live` (`createOrder`, `editOrder`, `recordFullPayment`, `refundPayment`, `fulfillLines`) lanzan `ShopifyNotImplementedError`; las queries se validan con la tienda real y los fixtures reemplazan al emulador. El contract test corre contra el `fake` y contra el `live` con un emulador de la API en MSW (`tests/msw/shopify-emulator.ts`). `/api/test/shopify` (GET estado, POST `reset`/`fail`) responde 404 fuera del modo fake. `/api/test`, `/api/cron` y `/api/webhooks` no pasan por el login del proxy: cada uno se autentica solo.
+- Hecho (2026-10-03, antes del spike): código en `src/server/shopify/`. El adaptador `live` ya implementa clientes, productos y la lectura de órdenes (`findOrderByTag`, `getOrderFinancials`) con su cliente GraphQL (versión fijada, timeout, reintentos ante THROTTLED/429/5xx/red, una renovación del token ante 401) y el token *client credentials* en `shopify_tokens` (solo clave secreta). **Completado tras el spike 4.1 (2026-10-04):** el adaptador `live` implementa también las escrituras de órdenes (`createOrder` con adelanto y Company, `editOrder` con quitar/cambiar precio/agregar, `recordFullPayment` con caída a pago "manual", `refundPayment` con `@idempotent`, `fulfillLines`), con las mutaciones validadas en la tienda de desarrollo; el emulador de MSW las cubre en el contract test. El contract test corre contra el `fake` y contra el `live` con un emulador de la API en MSW (`tests/msw/shopify-emulator.ts`). `/api/test/shopify` (GET estado, POST `reset`/`fail`) responde 404 fuera del modo fake. `/api/test`, `/api/cron` y `/api/webhooks` no pasan por el login del proxy: cada uno se autentica solo.
 - Commit: `feat(shopify): agrega puerto ShopifyGateway con adaptadores live y fake`
 
 #### Paso 4.3 — Outbox de sincronización

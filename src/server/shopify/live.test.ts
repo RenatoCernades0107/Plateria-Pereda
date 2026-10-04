@@ -7,7 +7,6 @@ import {
   TEST_API_VERSION,
   TEST_SHOP,
 } from "../../../tests/msw/shopify-emulator";
-import { ShopifyNotImplementedError } from "./errors";
 import { FakeShopifyGateway, fakeShopify } from "./fake";
 import { createGraphqlClient } from "./graphql-client";
 import { LiveShopifyGateway } from "./live";
@@ -85,21 +84,5 @@ describe("adaptador live: órdenes", () => {
     await expect(
       makeLive().updateCustomer("gid://shopify/Customer/1", { firstName: "x" }),
     ).rejects.toThrow("Customer does not exist");
-  });
-
-  it.each([
-    "createOrder",
-    "editOrder",
-    "recordFullPayment",
-    "refundPayment",
-    "fulfillLines",
-  ] as const)("%s queda pendiente del spike", async (method) => {
-    const live = makeLive() as unknown as Record<
-      string,
-      () => Promise<unknown>
-    >;
-    await expect(live[method]!()).rejects.toBeInstanceOf(
-      ShopifyNotImplementedError,
-    );
   });
 });

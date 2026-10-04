@@ -1,7 +1,7 @@
 import { http, HttpResponse, type JsonBodyType } from "msw";
 
 import { ShopifyUserError } from "@/server/shopify/errors";
-import { FakeShopifyGateway } from "@/server/shopify/fake";
+import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
 import type { ShopifyCustomer, ShopifyOrder } from "@/server/shopify/types";
 
 export const TEST_SHOP = "pereda-test.myshopify.com";
@@ -34,9 +34,10 @@ const orderNode = (o: ShopifyOrder) => ({
     nodes: o.lines.map((l) => ({
       id: l.id,
       title: l.title,
-      quantity: l.quantity,
+      currentQuantity: l.quantity,
       unfulfilledQuantity: l.fulfilled ? 0 : l.quantity,
-      originalUnitPriceSet: amount(l.price),
+      // Shopify omite los ceros finales ("150.0").
+      originalUnitPriceSet: amount(String(Number(l.price))),
     })),
   },
 });
@@ -54,7 +55,286 @@ async function withUserErrors<T>(run: () => Promise<T>) {
 
 type Vars = Record<string, unknown>;
 
-const operations: Record<string, (variables: Vars) => Promise<JsonBodyType>> = {
+const suffix = (gid: string) => gid.split("/").pop()!;
+const IDEMPOTENT_KEY = /@idempotent\(key:\s*"([^"]+)"\)/;
+
+/** Métodos de pago manual configurados en la tienda emulada. */
+export const EMULATED_MANUAL_METHODS = new Set<string>();
+
+/** Ediciones abiertas (orderEditBegin) hasta su commit. */
+const edits = new Map<
+  string,
+  {
+    orderId: string;
+    remove: string[];
+    add: { title: string; price: string; quantity: number }[];
+  }
+>();
+
+const userErrorsOf = (error: unknown) => {
+  if (error instanceof ShopifyUserError) return error.fields;
+  throw error;
+};
+
+const operations: Record<
+  string,
+  (variables: Vars, query: string) => Promise<JsonBodyType>
+> = {
+  ShopCurrency: async () => ({ data: { shop: { currencyCode: "PEN" } } }),
+  OrderCreate: async (variables: Vars) => {
+    const order = variables.order as {
+      customerId: string;
+      tags: string[];
+      note?: string;
+      lineItems: {
+        title: string;
+        quantity: number;
+        priceSet: { shopMoney: { amount: string } };
+      }[];
+      transactions: {
+        gateway: string;
+        amountSet: { shopMoney: { amount: string } };
+      }[];
+    };
+    const { result, userErrors } = await withUserErrors(() =>
+      store.createOrder({
+        customerId: order.customerId,
+        tags: order.tags,
+        note: order.note,
+        lines: order.lineItems.map((l) => ({
+          title: l.title,
+          quantity: l.quantity,
+          price: l.priceSet.shopMoney.amount,
+        })),
+        payments: order.transactions.map((t) => ({
+          gateway: t.gateway,
+          amount: t.amountSet.shopMoney.amount,
+        })),
+      }),
+    );
+    return {
+      data: { orderCreate: { order: result && orderNode(result), userErrors } },
+    };
+  },
+  OrderGet: async (variables: Vars) => {
+    const order = fakeShopify
+      .snapshot()
+      .orders.find((o) => o.id === variables.id);
+    return { data: { order: order ? orderNode(order) : null } };
+  },
+  OrderEditBegin: async (variables: Vars) => {
+    const order = fakeShopify
+      .snapshot()
+      .orders.find((o) => o.id === variables.id);
+    if (!order) {
+      return {
+        data: {
+          orderEditBegin: {
+            calculatedOrder: null,
+            userErrors: [{ field: ["id"], message: "Order not found" }],
+          },
+        },
+      };
+    }
+    const id = `gid://shopify/CalculatedOrder/${suffix(order.id)}`;
+    edits.set(id, { orderId: order.id, remove: [], add: [] });
+    return {
+      data: {
+        orderEditBegin: {
+          calculatedOrder: {
+            id,
+            lineItems: {
+              nodes: order.lines.map((l) => ({
+                id: `gid://shopify/CalculatedLineItem/${suffix(l.id)}`,
+                quantity: l.quantity,
+              })),
+            },
+          },
+          userErrors: [],
+        },
+      },
+    };
+  },
+  OrderEditSetQuantity: async (variables: Vars) => {
+    const edit = edits.get(variables.id as string)!;
+    edit.remove.push(
+      `gid://shopify/LineItem/${suffix(variables.lineItemId as string)}`,
+    );
+    return {
+      data: {
+        orderEditSetQuantity: {
+          calculatedOrder: { id: variables.id },
+          userErrors: [],
+        },
+      },
+    };
+  },
+  OrderEditAddCustomItem: async (variables: Vars) => {
+    const edit = edits.get(variables.id as string)!;
+    edit.add.push({
+      title: variables.title as string,
+      price: (variables.price as { amount: string }).amount,
+      quantity: variables.quantity as number,
+    });
+    return {
+      data: {
+        orderEditAddCustomItem: {
+          calculatedLineItem: { id: "x" },
+          userErrors: [],
+        },
+      },
+    };
+  },
+  OrderEditCommit: async (variables: Vars) => {
+    const edit = edits.get(variables.id as string)!;
+    edits.delete(variables.id as string);
+    const { result, userErrors } = await withUserErrors(() =>
+      store.editOrder(edit.orderId, {
+        removeLineIds: edit.remove,
+        addLines: edit.add,
+      }),
+    );
+    return {
+      data: {
+        orderEditCommit: { order: result && orderNode(result), userErrors },
+      },
+    };
+  },
+  OrderCreateManualPayment: async (variables: Vars) => {
+    const name = variables.paymentMethodName as string | undefined;
+    if (name && !EMULATED_MANUAL_METHODS.has(name)) {
+      return {
+        data: {
+          orderCreateManualPayment: {
+            order: null,
+            userErrors: [
+              {
+                field: ["paymentMethodName"],
+                message: "Payment provider is not configured on shop.",
+              },
+            ],
+          },
+        },
+      };
+    }
+    try {
+      await store.recordFullPayment(variables.id as string, name ?? "manual");
+      return {
+        data: {
+          orderCreateManualPayment: {
+            order: { id: variables.id },
+            userErrors: [],
+          },
+        },
+      };
+    } catch (error) {
+      return {
+        data: {
+          orderCreateManualPayment: {
+            order: null,
+            userErrors: userErrorsOf(error),
+          },
+        },
+      };
+    }
+  },
+  OrderTransactions: async (variables: Vars) => {
+    const order = fakeShopify
+      .snapshot()
+      .orders.find((o) => o.id === variables.id);
+    return {
+      data: {
+        order: order && {
+          transactions: order.transactions.map((t, i) => ({
+            id: `gid://shopify/OrderTransaction/${suffix(order.id)}${i}`,
+            kind: t.cents > 0 ? "SALE" : "REFUND",
+            status: "SUCCESS",
+            gateway: t.gateway,
+          })),
+        },
+      },
+    };
+  },
+  RefundCreate: async (variables: Vars, query: string) => {
+    const key = IDEMPOTENT_KEY.exec(query)?.[1];
+    if (!key) {
+      return {
+        errors: [
+          {
+            message:
+              "The @idempotent directive is required for this mutation but was not provided.",
+          },
+        ],
+      };
+    }
+    const input = variables.input as {
+      orderId: string;
+      note?: string;
+      transactions: { gateway: string; amount: string }[];
+    };
+    const t = input.transactions[0]!;
+    try {
+      await store.refundPayment(input.orderId, {
+        amount: t.amount,
+        gateway: t.gateway,
+        note: input.note,
+        idempotencyKey: key,
+      });
+      return {
+        data: { refundCreate: { refund: { id: "r" }, userErrors: [] } },
+      };
+    } catch (error) {
+      return {
+        data: {
+          refundCreate: { refund: null, userErrors: userErrorsOf(error) },
+        },
+      };
+    }
+  },
+  FulfillmentOrders: async (variables: Vars) => {
+    const order = fakeShopify
+      .snapshot()
+      .orders.find((o) => o.id === variables.id);
+    return {
+      data: {
+        order: order && {
+          fulfillmentOrders: {
+            nodes: [
+              {
+                id: `gid://shopify/FulfillmentOrder/${suffix(order.id)}`,
+                lineItems: {
+                  nodes: order.lines.map((l) => ({
+                    id: `gid://shopify/FulfillmentOrderLineItem/${suffix(l.id)}`,
+                    remainingQuantity: l.fulfilled ? 0 : l.quantity,
+                    lineItem: { id: l.id },
+                  })),
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+  },
+  FulfillmentCreate: async (variables: Vars) => {
+    const { lineItemsByFulfillmentOrder } = variables.fulfillment as {
+      lineItemsByFulfillmentOrder: {
+        fulfillmentOrderId: string;
+        fulfillmentOrderLineItems: { id: string }[];
+      }[];
+    };
+    const group = lineItemsByFulfillmentOrder[0]!;
+    const orderId = `gid://shopify/Order/${suffix(group.fulfillmentOrderId)}`;
+    await store.fulfillLines(
+      orderId,
+      group.fulfillmentOrderLineItems.map(
+        (i) => `gid://shopify/LineItem/${suffix(i.id)}`,
+      ),
+    );
+    return {
+      data: { fulfillmentCreate: { fulfillment: { id: "f" }, userErrors: [] } },
+    };
+  },
   CustomerCreate: async (variables: Vars) => {
     const { input } = variables as { input: Vars };
     const { result, userErrors } = await withUserErrors(() =>
@@ -139,7 +419,7 @@ const operations: Record<string, (variables: Vars) => Promise<JsonBodyType>> = {
             name: f.name,
             displayFinancialStatus: f.financialStatus,
             // Shopify a veces omite los ceros finales ("200.0").
-            totalPriceSet: amount(String(Number(f.total))),
+            currentTotalPriceSet: amount(String(Number(f.total))),
             totalReceivedSet: amount(f.received),
             totalOutstandingSet: amount(f.outstanding),
           },
@@ -223,7 +503,7 @@ export const shopifyEmulator = [
           errors: [{ message: `Operación no emulada: ${name}` }],
         });
       }
-      return HttpResponse.json(await operation(variables ?? {}));
+      return HttpResponse.json(await operation(variables ?? {}, query));
     },
   ),
 ];

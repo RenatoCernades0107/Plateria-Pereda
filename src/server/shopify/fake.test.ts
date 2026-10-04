@@ -34,28 +34,6 @@ describe("Shopify falso: órdenes y pagos", () => {
       payments,
     });
 
-  it("crea la orden con el adelanto: queda parcialmente pagada (flujo de P43)", async () => {
-    const order = await createOrder();
-    expect(order.name).toBe("#1001");
-    expect(await shopify.getOrderFinancials(order.id)).toMatchObject({
-      financialStatus: "PARTIALLY_PAID",
-      total: "400.00",
-      received: "200.00",
-      outstanding: "200.00",
-    });
-
-    // El saldo completa la orden.
-    expect(await shopify.recordFullPayment(order.id, "Efectivo")).toMatchObject(
-      {
-        financialStatus: "PAID",
-        outstanding: "0.00",
-      },
-    );
-    await expect(
-      shopify.recordFullPayment(order.id, "Efectivo"),
-    ).rejects.toThrow("Order is already paid");
-  });
-
   it("sin pagos la orden queda pendiente; no se aceptan pagos mayores al total", async () => {
     const order = await createOrder([]);
     expect((await shopify.getOrderFinancials(order.id)).financialStatus).toBe(
@@ -64,12 +42,6 @@ describe("Shopify falso: órdenes y pagos", () => {
     await expect(
       createOrder([{ amount: "500.00", gateway: "Yape" }]),
     ).rejects.toBeInstanceOf(ShopifyUserError);
-  });
-
-  it("encuentra la orden por la etiqueta de la restauración", async () => {
-    const order = await createOrder();
-    expect((await shopify.findOrderByTag("RES-00001"))?.id).toBe(order.id);
-    expect(await shopify.findOrderByTag("RES-99999")).toBeNull();
   });
 
   it("valida el cliente y las líneas al crear la orden", async () => {
@@ -88,46 +60,21 @@ describe("Shopify falso: órdenes y pagos", () => {
     ).rejects.toThrow("Quantity must be at least 1");
   });
 
-  it("edita la orden: quita una línea, cambia un precio y agrega otra", async () => {
-    const order = await createOrder([]);
-    const [first, second] = order.lines;
-    const edited = await shopify.editOrder(order.id, {
-      removeLineIds: [first!.id],
-      setPrices: [{ lineId: second!.id, price: "300.00" }],
-      addLines: [
-        { title: "Restauración RES-00001-3", price: "50.00", quantity: 1 },
-      ],
-    });
-    expect(edited.lines.map((l) => [l.title, l.price])).toEqual([
-      ["Restauración RES-00001-2", "300.00"],
-      ["Restauración RES-00001-3", "50.00"],
-    ]);
-    expect((await shopify.getOrderFinancials(order.id)).total).toBe("350.00");
-    await expect(
-      shopify.editOrder(order.id, { removeLineIds: ["gid://nada"] }),
-    ).rejects.toBeInstanceOf(ShopifyUserError);
-  });
-
-  it("reembolsa un pago y marca líneas como preparadas", async () => {
+  it("reembolsa hasta lo cobrado y valida las líneas a preparar", async () => {
     const order = await createOrder();
-    expect(
-      await shopify.refundPayment(order.id, {
-        amount: "50.00",
+    const refund = (amount: string, idempotencyKey: string) =>
+      shopify.refundPayment(order.id, {
+        amount,
         gateway: "Yape",
-      }),
-    ).toMatchObject({
-      financialStatus: "PARTIALLY_REFUNDED",
-      received: "150.00",
+        idempotencyKey,
+      });
+    expect(await refund("200.00", "r1")).toMatchObject({
+      financialStatus: "REFUNDED",
+      received: "0.00",
     });
-    expect(
-      await shopify.refundPayment(order.id, {
-        amount: "150.00",
-        gateway: "Yape",
-      }),
-    ).toMatchObject({ financialStatus: "REFUNDED", received: "0.00" });
-    await expect(
-      shopify.refundPayment(order.id, { amount: "1.00", gateway: "Yape" }),
-    ).rejects.toThrow("Refund amount is invalid");
+    await expect(refund("1.00", "r2")).rejects.toThrow(
+      "Refund amount is invalid",
+    );
 
     const fulfilled = await shopify.fulfillLines(order.id, [
       order.lines[0]!.id,

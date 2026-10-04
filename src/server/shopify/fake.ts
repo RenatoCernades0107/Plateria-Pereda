@@ -36,6 +36,8 @@ type FakeState = {
   orders: Map<string, FakeOrder>;
   products: ShopifyProduct[];
   failures: Map<GatewayMethod, ShopifyError[]>;
+  /** Claves de idempotencia de reembolsos ya usadas. */
+  idempotency: Map<string, unknown>;
   calls: { method: GatewayMethod; args: unknown[] }[];
 };
 
@@ -101,6 +103,7 @@ function createState(): FakeState {
     orders: new Map(),
     products: structuredClone(SEED_PRODUCTS),
     failures: new Map(),
+    idempotency: new Map(),
     calls: [],
   };
 }
@@ -408,13 +411,18 @@ export class FakeShopifyGateway implements ShopifyGateway {
         ]);
       }
     }
-    for (const { lineId, price } of edit.setPrices ?? []) {
+    // Como en Shopify: cambiar el precio quita la línea y agrega otra con el mismo título.
+    const repriced = (edit.setPrices ?? []).map(({ lineId, price }) => {
       const line = lines.find((l) => l.id === lineId)!;
-      toCents(price);
-      line.price = price;
-    }
+      return toLine({ title: line.title, price, quantity: line.quantity });
+    });
+    const removed = new Set([
+      ...(edit.removeLineIds ?? []),
+      ...(edit.setPrices ?? []).map((p) => p.lineId),
+    ]);
     order.lines = [
-      ...lines.filter((l) => !edit.removeLineIds?.includes(l.id)),
+      ...lines.filter((l) => !removed.has(l.id)),
+      ...repriced,
       ...(edit.addLines ?? []).map(toLine),
     ];
     return publicOrder(order);
@@ -439,6 +447,9 @@ export class FakeShopifyGateway implements ShopifyGateway {
   ) {
     this.track("refundPayment", [orderId, payment]);
     const order = getOrder(orderId);
+    // Como @idempotent en Shopify: la misma clave no reembolsa dos veces.
+    if (state().idempotency.has(payment.idempotencyKey))
+      return financials(order);
     const cents = toCents(payment.amount);
     if (cents <= 0 || cents > toCents(financials(order).received)) {
       throw new ShopifyUserError([
@@ -446,6 +457,7 @@ export class FakeShopifyGateway implements ShopifyGateway {
       ]);
     }
     order.transactions.push({ cents: -cents, gateway: payment.gateway });
+    state().idempotency.set(payment.idempotencyKey, true);
     return financials(order);
   }
 
@@ -453,10 +465,13 @@ export class FakeShopifyGateway implements ShopifyGateway {
     this.track("fulfillLines", [orderId, lineIds]);
     const order = getOrder(orderId);
     for (const id of lineIds) {
-      const line = order.lines.find((l) => l.id === id);
+      const line = order.lines.find((l) => l.id === id && !l.fulfilled);
       if (!line)
         throw new ShopifyUserError([
-          { field: ["lineItemId"], message: `Line item ${id} not found` },
+          {
+            field: ["lineItemId"],
+            message: `Line item ${id} not found or already fulfilled`,
+          },
         ]);
       line.fulfilled = true;
     }

@@ -62,13 +62,25 @@ export type CustomLine = { title: string; price: Money; quantity: number };
 export type PaymentInput = { amount: Money; gateway: string };
 
 export type OrderInput = {
+  /** Cliente (persona o contacto de la empresa) que hace el pedido. */
   customerId: string;
+  /** Ubicación de la Company cuando la orden es a nombre de una empresa (P14). */
+  companyLocationId?: string;
   lines: CustomLine[];
-  /** Incluye la etiqueta con el código de la restauración, para encontrarla si se reintenta. */
+  /**
+   * Incluye el código de la restauración. Shopify no evita duplicar órdenes con
+   * @idempotent (spike 4.1): antes de reintentar se busca la orden por esta etiqueta.
+   */
   tags: string[];
   note?: string;
   /** Pagos que la orden ya trae al crearse (p. ej., el adelanto). */
   payments?: PaymentInput[];
+};
+
+export type RefundInput = PaymentInput & {
+  /** Clave estable del reembolso; Shopify la exige en 2026-10. */
+  idempotencyKey: string;
+  note?: string;
 };
 
 export type ShopifyOrderLine = {

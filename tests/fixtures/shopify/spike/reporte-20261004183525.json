@@ -233,9 +233,7 @@
       "result": {
         "id": "gid://shopify/Order/7544672256191",
         "name": "#1002",
-        "tags": [
-          "SPIKE-20261004183525"
-        ],
+        "tags": ["SPIKE-20261004183525"],
         "displayFinancialStatus": "PARTIALLY_PAID",
         "displayFulfillmentStatus": "UNFULFILLED",
         "totalPriceSet": {
@@ -311,9 +309,7 @@
           {
             "id": "gid://shopify/Order/7544672256191",
             "name": "#1002",
-            "tags": [
-              "SPIKE-20261004183525"
-            ]
+            "tags": ["SPIKE-20261004183525"]
           }
         ]
       }
@@ -364,9 +360,7 @@
       "result": {
         "id": "gid://shopify/Order/7544672256191",
         "name": "#1002",
-        "tags": [
-          "SPIKE-20261004183525"
-        ],
+        "tags": ["SPIKE-20261004183525"],
         "displayFinancialStatus": "PARTIALLY_PAID",
         "displayFulfillmentStatus": "UNFULFILLED",
         "totalPriceSet": {
@@ -451,9 +445,7 @@
       "result": {
         "conNombre": [
           {
-            "field": [
-              "paymentMethodName"
-            ],
+            "field": ["paymentMethodName"],
             "message": "Payment provider is not configured on shop."
           }
         ],
@@ -461,9 +453,7 @@
         "order": {
           "id": "gid://shopify/Order/7544672256191",
           "name": "#1002",
-          "tags": [
-            "SPIKE-20261004183525"
-          ],
+          "tags": ["SPIKE-20261004183525"],
           "displayFinancialStatus": "PAID",
           "displayFulfillmentStatus": "UNFULFILLED",
           "totalPriceSet": {

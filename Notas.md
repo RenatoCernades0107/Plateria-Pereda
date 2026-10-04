@@ -176,6 +176,16 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004183003.json`.
 - ❌ **Company:** `companyCreate` rechazó la dirección de la ubicación (INVALID_INPUT); probablemente falta la región (`zoneCode` "LIM"). Ronda 2 la envía como dirección de envío con región.
 - ℹ️ La tienda de desarrollo está en USD; la de la Platería estará en PEN (el código toma la moneda de la tienda).
 
+### Spike 4.1 — Ronda 2 (2026-10-04) — 15/15 pasos
+Reporte: `tests/fixtures/shopify/spike/reporte-20261004183525.json`.
+- ✅ **Company:** `companyCreate` funciona con la ubicación como dirección de **envío con región** (`zoneCode: "LIM"`) y `billingSameAsShipping: true`; el RUC va en `externalId`. Crea la Company, su contacto (un cliente) y la ubicación.
+- ✅ **Orden a nombre de la empresa:** `orderCreate` con `customerId` del contacto + `companyLocationId` → `purchasingEntity` = la Company, su ubicación y el contacto.
+- ✅ **Edición:** la línea quitada queda con `currentQuantity` 0; `currentTotalPriceSet` da el total vigente (300) y `totalPriceSet` el original (450).
+- ✅ **Pago del saldo** sin nombre de método: la orden queda **"Pagada"** y la transacción con gateway `manual`. Con `paymentMethodName: "Efectivo"` sigue fallando si el método manual no existe en la tienda → el adaptador intenta con el nombre y, si no está configurado, registra sin nombre; el sistema guarda el método real.
+- ✅ **Preparar** una línea con `fulfillmentCreate` (por fulfillment order). ✅ **Reembolso** parcial con `@idempotent` → "Parcialmente reembolsada".
+- ⚠️ **`@idempotent` no evita duplicar `orderCreate`:** la misma clave dos veces creó dos órdenes (#1003 y #1004). **Decisión:** antes de crear la orden, el handler del outbox la busca por la etiqueta del código; el índice tarda ~5 s (clientes) y ~7,5 s (órdenes), y el outbox reintenta recién a los 30 s.
+- Pendiente (ronda 3): confirmar que el id de la línea calculada de una edición termina en el mismo número que la línea (el adaptador los relaciona así) y el pago del saldo con los métodos manuales creados en la tienda.
+
 ## C. Restauraciones y piezas
 
 ### P17 · ¿Validan las transiciones de estado de las piezas? — Bloqueante (Fase 8)
