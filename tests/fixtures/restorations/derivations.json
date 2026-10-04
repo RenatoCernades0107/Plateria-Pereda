@@ -1,0 +1,601 @@
+{
+  "description": "Escenarios de los derivados de piezas y restauraciones (Todo.md §7.2–§7.4). Los usan los tests unitarios del dominio (Paso 8.2) y los de BD/integración (Paso 8.3) para verificar que TypeScript y la BD den lo mismo. Fechas en UTC; Lima es UTC-5.",
+  "restorationStatus": [
+    {
+      "name": "una pieza recién registrada",
+      "pieces": [
+        { "status": "registrada", "approvedAt": null, "firstSentAt": null }
+      ],
+      "expected": "registrada",
+      "readyForOrder": false
+    },
+    {
+      "name": "una pieza en consulta y otra aprobada",
+      "pieces": [
+        { "status": "en_consulta", "approvedAt": null, "firstSentAt": null },
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "registrada",
+      "readyForOrder": false
+    },
+    {
+      "name": "una pieza en espera de respuesta y otra aprobada",
+      "pieces": [
+        { "status": "en_espera", "approvedAt": null, "firstSentAt": null },
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "registrada",
+      "readyForOrder": false
+    },
+    {
+      "name": "todas aprobadas",
+      "pieces": [
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        },
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": true
+    },
+    {
+      "name": "aprobada y recibida (llegó antes de aprobarse)",
+      "pieces": [
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        },
+        {
+          "status": "recibida",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": true
+    },
+    {
+      "name": "aprobadas y una anulada",
+      "pieces": [
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        },
+        { "status": "anulada", "approvedAt": null, "firstSentAt": null }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": true
+    },
+    {
+      "name": "una anulada después de ir al taller no cuenta",
+      "pieces": [
+        {
+          "status": "recibida",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        },
+        {
+          "status": "anulada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": true
+    },
+    {
+      "name": "todas anuladas",
+      "pieces": [
+        { "status": "anulada", "approvedAt": null, "firstSentAt": null },
+        {
+          "status": "anulada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "anulada",
+      "readyForOrder": false
+    },
+    {
+      "name": "una en el taller mientras otra sigue en consulta (P18)",
+      "pieces": [
+        {
+          "status": "enviada_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        { "status": "en_consulta", "approvedAt": null, "firstSentAt": null }
+      ],
+      "expected": "en_proceso",
+      "readyForOrder": false
+    },
+    {
+      "name": "una en el taller y otra recibida",
+      "pieces": [
+        {
+          "status": "enviada_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "recibida",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": null
+        }
+      ],
+      "expected": "en_proceso",
+      "readyForOrder": true
+    },
+    {
+      "name": "una devuelta y otra en el taller",
+      "pieces": [
+        {
+          "status": "devuelta_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "enviada_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "parcialmente_lista",
+      "readyForOrder": true
+    },
+    {
+      "name": "una entregada y otra aún sin aprobar",
+      "pieces": [
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        { "status": "en_espera", "approvedAt": null, "firstSentAt": null }
+      ],
+      "expected": "parcialmente_lista",
+      "readyForOrder": false
+    },
+    {
+      "name": "todas devueltas por el taller",
+      "pieces": [
+        {
+          "status": "devuelta_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "devuelta_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "lista",
+      "readyForOrder": true
+    },
+    {
+      "name": "una devuelta y otra entregada",
+      "pieces": [
+        {
+          "status": "devuelta_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "lista",
+      "readyForOrder": true
+    },
+    {
+      "name": "todas entregadas",
+      "pieces": [
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "completada",
+      "readyForOrder": true
+    },
+    {
+      "name": "entregadas y una anulada",
+      "pieces": [
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        { "status": "anulada", "approvedAt": null, "firstSentAt": null }
+      ],
+      "expected": "completada",
+      "readyForOrder": true
+    },
+    {
+      "name": "retrocede: una devuelta y otra observada",
+      "pieces": [
+        {
+          "status": "devuelta_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "observada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "parcialmente_lista",
+      "readyForOrder": true
+    },
+    {
+      "name": "retrocede: la única pieza observada vuelve al taller",
+      "pieces": [
+        {
+          "status": "enviada_taller",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "en_proceso",
+      "readyForOrder": true
+    },
+    {
+      "name": "retrocede: reclamo después de la entrega",
+      "pieces": [
+        {
+          "status": "observada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        },
+        {
+          "status": "entregada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "firstSentAt": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "expected": "parcialmente_lista",
+      "readyForOrder": true
+    }
+  ],
+  "location": [
+    { "status": "registrada", "arrivedAt": null, "expected": "por_recibir" },
+    {
+      "status": "registrada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    { "status": "en_consulta", "arrivedAt": null, "expected": "por_recibir" },
+    {
+      "status": "en_consulta",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    { "status": "en_espera", "arrivedAt": null, "expected": "por_recibir" },
+    {
+      "status": "en_espera",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    { "status": "aprobada", "arrivedAt": null, "expected": "por_recibir" },
+    {
+      "status": "recibida",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "enviada_taller",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_taller"
+    },
+    {
+      "status": "devuelta_taller",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "observada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "entregada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "entregada"
+    },
+    { "status": "anulada", "arrivedAt": null, "expected": "anulada" },
+    {
+      "status": "anulada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "expected": "anulada"
+    }
+  ],
+  "daysInWorkshop": [
+    {
+      "name": "nunca fue al taller",
+      "history": [
+        { "from": null, "to": "registrada", "at": "2026-10-01T15:00:00Z" },
+        { "from": "registrada", "to": "aprobada", "at": "2026-10-01T15:00:00Z" }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 0, "ongoing": false }
+    },
+    {
+      "name": "un viaje de tres días",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-04T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 3, "ongoing": false }
+    },
+    {
+      "name": "ida y vuelta el mismo día",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T14:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-01T22:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 0, "ongoing": false }
+    },
+    {
+      "name": "dos viajes por una observación",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-03T15:00:00Z"
+        },
+        {
+          "from": "devuelta_taller",
+          "to": "observada",
+          "at": "2026-10-04T15:00:00Z"
+        },
+        {
+          "from": "observada",
+          "to": "enviada_taller",
+          "at": "2026-10-05T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-08T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 5, "ongoing": false }
+    },
+    {
+      "name": "sigue en el taller",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-04T20:00:00Z",
+      "expected": { "days": 3, "ongoing": true }
+    },
+    {
+      "name": "volvió al taller tras una observación y sigue ahí",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-03T15:00:00Z"
+        },
+        {
+          "from": "devuelta_taller",
+          "to": "observada",
+          "at": "2026-10-03T16:00:00Z"
+        },
+        {
+          "from": "observada",
+          "to": "enviada_taller",
+          "at": "2026-10-05T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-06T15:00:00Z",
+      "expected": { "days": 3, "ongoing": true }
+    },
+    {
+      "name": "anulada mientras estaba en el taller",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "anulada",
+          "at": "2026-10-03T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 2, "ongoing": false }
+    },
+    {
+      "name": "cruza la medianoche de Lima pero no la de UTC (23:30 → 00:30 en Lima)",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-02T04:30:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-02T05:30:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 1, "ongoing": false }
+    },
+    {
+      "name": "cruza la medianoche de UTC pero no la de Lima (18:00 → 20:30 en Lima)",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-10-01T23:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-02T01:30:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 0, "ongoing": false }
+    },
+    {
+      "name": "cambio de mes",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2026-09-29T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": { "days": 3, "ongoing": false }
+    },
+    {
+      "name": "febrero de un año bisiesto",
+      "history": [
+        {
+          "from": "recibida",
+          "to": "enviada_taller",
+          "at": "2028-02-28T15:00:00Z"
+        },
+        {
+          "from": "enviada_taller",
+          "to": "devuelta_taller",
+          "at": "2028-03-01T15:00:00Z"
+        }
+      ],
+      "now": "2028-03-10T15:00:00Z",
+      "expected": { "days": 2, "ongoing": false }
+    }
+  ],
+  "fulfillmentDays": [
+    {
+      "name": "entregada dos semanas después del registro",
+      "piece": {
+        "status": "entregada",
+        "registeredAt": "2026-10-01T15:00:00Z",
+        "deliveredAt": "2026-10-15T15:00:00Z"
+      },
+      "now": "2026-10-20T15:00:00Z",
+      "expected": { "days": 14, "ongoing": false }
+    },
+    {
+      "name": "registrada y entregada el mismo día",
+      "piece": {
+        "status": "entregada",
+        "registeredAt": "2026-10-01T14:00:00Z",
+        "deliveredAt": "2026-10-01T22:00:00Z"
+      },
+      "now": "2026-10-20T15:00:00Z",
+      "expected": { "days": 0, "ongoing": false }
+    },
+    {
+      "name": "aún en el taller",
+      "piece": {
+        "status": "enviada_taller",
+        "registeredAt": "2026-10-01T15:00:00Z",
+        "deliveredAt": null
+      },
+      "now": "2026-10-04T15:00:00Z",
+      "expected": { "days": 3, "ongoing": true }
+    },
+    {
+      "name": "observada por un reclamo después de entregarse",
+      "piece": {
+        "status": "observada",
+        "registeredAt": "2026-10-01T15:00:00Z",
+        "deliveredAt": "2026-10-05T15:00:00Z"
+      },
+      "now": "2026-10-08T15:00:00Z",
+      "expected": { "days": 7, "ongoing": true }
+    },
+    {
+      "name": "registrada a las 23:30 de Lima y entregada a la mañana siguiente",
+      "piece": {
+        "status": "entregada",
+        "registeredAt": "2026-10-02T04:30:00Z",
+        "deliveredAt": "2026-10-02T14:00:00Z"
+      },
+      "now": "2026-10-20T15:00:00Z",
+      "expected": { "days": 1, "ongoing": false }
+    },
+    {
+      "name": "anulada",
+      "piece": {
+        "status": "anulada",
+        "registeredAt": "2026-10-01T15:00:00Z",
+        "deliveredAt": null
+      },
+      "now": "2026-10-20T15:00:00Z",
+      "expected": null
+    }
+  ]
+}

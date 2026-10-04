@@ -738,15 +738,16 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(piezas): agrega máquina de estados de piezas`
 
 #### Paso 8.2 — Derivaciones (dominio) ⛔ P19 ⛔ P23
-- [ ] `deriveRestorationStatus(pieces)` (§7.3), `deriveLocation(piece)` (§7.2), `daysInWorkshop(history, now)`, `fulfillmentDays(piece, now)`, `isReadyForShopifyOrder(pieces)`.
-- [ ] Escenarios en un fixture JSON compartido (se reutiliza en 8.3 contra la BD).
+- [x] `deriveRestorationStatus(pieces)` (§7.3), `deriveLocation(piece)` (§7.2), `daysInWorkshop(history, now)`, `fulfillmentDays(piece, now)`, `isReadyForShopifyOrder(pieces)`.
+- [x] Escenarios en un fixture JSON compartido (se reutiliza en 8.3 contra la BD).
 - **Unit:**
-  - [ ] Cada regla de §7.3 y su precedencia (con piezas anuladas, mezcla de estados, todas anuladas, retroceso por observación).
-  - [ ] Ubicación para cada estado con y sin `arrived_at`.
-  - [ ] Días en taller con varios viajes, en curso, cruzando medianoche en Lima vs. UTC, cambio de mes.
-  - [ ] Días de cumplimiento.
-  - [ ] `isReadyForShopifyOrder` con piezas en consulta, aprobadas y anuladas.
+  - [x] Cada regla de §7.3 y su precedencia (con piezas anuladas, mezcla de estados, todas anuladas, retroceso por observación).
+  - [x] Ubicación para cada estado con y sin `arrived_at`.
+  - [x] Días en taller con varios viajes, en curso, cruzando medianoche en Lima vs. UTC, cambio de mes.
+  - [x] Días de cumplimiento.
+  - [x] `isReadyForShopifyOrder` con piezas en consulta, aprobadas y anuladas.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): `src/domain/restoration-status.ts` (estado general, ubicación, `isReadyForShopifyOrder` y sus etiquetas) y `src/domain/piece-days.ts` (días calendario en Lima con `Intl`, sin dependencias nuevas). Escenarios en `tests/fixtures/restorations/derivations.json` (estado general y orden lista, ubicación, días en taller y de cumplimiento) para reutilizarlos en 8.3. **P19 y P23 siguen pendientes:** se usó su propuesta (el estado puede retroceder; días calendario; cumplimiento = del registro de la pieza a su entrega). Sin piezas la restauración queda Registrada; una pieza observada por un reclamo después de la entrega vuelve a contar días de cumplimiento "en curso"; una anulada no tiene días de cumplimiento. Que la orden aún no exista lo revisa el trigger que encola `order_create` (8.3).
 - Commit: `feat(piezas): agrega cálculo de estado general, ubicación y tiempos`
 
 #### Paso 8.3 — Implementación en BD
