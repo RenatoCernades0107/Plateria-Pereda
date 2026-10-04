@@ -695,6 +695,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Tras registrar aparece el diálogo con el mensaje.
   - [ ] **Copiar** deja el texto en el portapapeles (permiso de clipboard en Chromium).
   - [ ] El enlace de WhatsApp es correcto.
+- Avance (2026-10-04): dominio y componente listos, falta conectarlos al registro y al detalle y los E2E. `src/domain/whatsapp-quote.ts`: `buildQuoteMessage(template, data)` arma el mensaje con la plantilla de la configuración (`quoteValues()` da cada variable y `quoteAmounts()` el total y el adelanto, recalculados sin las piezas anuladas) y `whatsappUrl(phone, text)` el enlace a wa.me con el número normalizado (null sin teléfono válido). `WhatsAppQuoteDialog` (`src/components/restorations/`) muestra la vista previa con **Copiar** y, si hay teléfono, **Abrir WhatsApp**. Unit hechos: los tres tipos de pago (snapshots), anuladas excluidas, soles y saltos de línea, URL codificada y sin teléfono. **P25 sigue pendiente:** se usó su propuesta; una línea numerada por pieza ("descripción – servicio: S/ precio", sin servicio solo la descripción), el saludo va al contacto si la restauración tiene uno, y la plantilla por defecto cambia la línea fija del adelanto por la nueva variable `{forma_pago}` ("Al contado (S/ total)", "A cuenta (adelanto del 50 %: S/ …)" o "Al crédito (sin adelanto)"); también hay `{tipo_pago}`. Las plantillas ya personalizadas siguen funcionando.
 - Commit: `feat(restauraciones): genera mensaje de cotización para WhatsApp`
 
 #### Paso 7.6 — Detalle de restauración
@@ -707,6 +708,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
   - [ ] Logística no puede abrir restauraciones entregadas o anuladas (P42).
   - [ ] `@mobile` legible sin scroll horizontal.
+- Avance (2026-10-04): componentes presentacionales en `src/components/restorations/`: `PieceStatusBadge`, `RestorationStatusBadge` y `LocationBadge` (`status-badges.tsx`) y `MoneySummary` (total / pagado / saldo; si se pagó de más, "A favor del cliente"; no se renderiza para logística, P42), con sus unit. Falta la página.
 - Commit: `feat(restauraciones): agrega vista de detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas
@@ -796,6 +798,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Render de eventos y de días "en curso".
 - **E2E:**
   - [ ] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
+- Avance (2026-10-04): `Timeline` (`src/components/restorations/timeline.tsx`) ordena los eventos de una pieza (estado, fecha, usuario o "Sistema", nota) y muestra los días en taller y de cumplimiento con `piece-days.ts` ("en curso" si siguen abiertos); unit de eventos y días en curso hechos. Faltan el resumen por restauración, la vista reducida de logística y el E2E.
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
 
 ### Fase 9 — Orden automática en Shopify
