@@ -542,17 +542,18 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 6 — Clientes y contactos
 
-#### Paso 6.1 — Esquema y validaciones ⛔ P27
-- [ ] Tablas `clients` y `contacts` + RLS + auditoría + índices de búsqueda (`pg_trgm` sobre nombre, documento, teléfono, email).
-- [ ] Esquemas zod: persona (nombres, apellidos, DNI / CE / pasaporte) y empresa (razón social, RUC); teléfono peruano; email.
+#### Paso 6.1 — Esquema y validaciones
+- [x] Tablas `clients` y `contacts` + RLS + auditoría + índices de búsqueda (`pg_trgm` sobre nombre, documento, teléfono, email).
+- [x] Esquemas zod: persona (nombres, apellidos, DNI / CE / pasaporte) y empresa (razón social, RUC); teléfono peruano; email.
 - **Unit:**
-  - [ ] DNI (8 dígitos), RUC (11 dígitos, prefijo válido y dígito verificador), teléfono, email.
-  - [ ] Normalización (espacios, mayúsculas, teléfono en formato E.164 `+51...`).
+  - [x] DNI (8 dígitos), RUC (11 dígitos, prefijo válido y dígito verificador), teléfono, email.
+  - [x] Normalización (espacios, mayúsculas, teléfono en formato E.164 `+51...`).
 - **BD:**
-  - [ ] Documento único por tipo.
-  - [ ] Un contacto siempre pertenece a un cliente.
-  - [ ] RLS por rol.
+  - [x] Documento único por tipo.
+  - [x] Un contacto siempre pertenece a un cliente.
+  - [x] RLS por rol.
 - **E2E:** No aplica (la interfaz llega en 6.2).
+- Hecho (2026-10-04): tablas `clients` (persona o empresa, `display_name` generado, ids de Shopify: Customer para persona; Company + ubicación para empresa) y `contacts` (siempre de una empresa; Customer + CompanyContact). Documento único por tipo, teléfono en E.164, email en minúsculas, el tipo de cliente no cambia, no se borran. Todos leen; admin y ventas crean y editan; auditados. Validaciones en `src/domain/documents.ts`, `src/domain/phone.ts` y `src/lib/validation/clients.ts`. **P27 sigue pendiente:** se usó su propuesta (persona: nombres, apellidos y teléfono; empresa: razón social, RUC y teléfono; contacto: nombre y teléfono), definida solo en zod para cambiarla sin migraciones.
 - Commit: `feat(clientes): agrega esquema de clientes y contactos`
 
 #### Paso 6.2 — Alta de cliente sincronizada con Shopify

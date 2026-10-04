@@ -42,6 +42,152 @@ export type Database = {
         };
         Relationships: [];
       };
+      clients: {
+        Row: {
+          active: boolean;
+          address: string;
+          created_at: string;
+          created_by: string | null;
+          display_name: string | null;
+          document_number: string | null;
+          document_type: Database["public"]["Enums"]["document_type"] | null;
+          email: string | null;
+          first_name: string;
+          id: string;
+          kind: Database["public"]["Enums"]["client_kind"];
+          last_name: string;
+          legal_name: string;
+          notes: string;
+          phone: string | null;
+          shopify_company_id: string | null;
+          shopify_company_location_id: string | null;
+          shopify_customer_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          address?: string;
+          created_at?: string;
+          created_by?: string | null;
+          display_name?: never;
+          document_number?: string | null;
+          document_type?: Database["public"]["Enums"]["document_type"] | null;
+          email?: string | null;
+          first_name?: string;
+          id?: string;
+          kind: Database["public"]["Enums"]["client_kind"];
+          last_name?: string;
+          legal_name?: string;
+          notes?: string;
+          phone?: string | null;
+          shopify_company_id?: string | null;
+          shopify_company_location_id?: string | null;
+          shopify_customer_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          address?: string;
+          created_at?: string;
+          created_by?: string | null;
+          display_name?: never;
+          document_number?: string | null;
+          document_type?: Database["public"]["Enums"]["document_type"] | null;
+          email?: string | null;
+          first_name?: string;
+          id?: string;
+          kind?: Database["public"]["Enums"]["client_kind"];
+          last_name?: string;
+          legal_name?: string;
+          notes?: string;
+          phone?: string | null;
+          shopify_company_id?: string | null;
+          shopify_company_location_id?: string | null;
+          shopify_customer_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clients_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      contacts: {
+        Row: {
+          active: boolean;
+          client_id: string;
+          created_at: string;
+          created_by: string | null;
+          display_name: string | null;
+          document_number: string | null;
+          document_type: Database["public"]["Enums"]["document_type"] | null;
+          email: string | null;
+          first_name: string;
+          id: string;
+          last_name: string;
+          phone: string | null;
+          position: string;
+          shopify_company_contact_id: string | null;
+          shopify_customer_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          client_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          display_name?: never;
+          document_number?: string | null;
+          document_type?: Database["public"]["Enums"]["document_type"] | null;
+          email?: string | null;
+          first_name: string;
+          id?: string;
+          last_name?: string;
+          phone?: string | null;
+          position?: string;
+          shopify_company_contact_id?: string | null;
+          shopify_customer_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          client_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          display_name?: never;
+          document_number?: string | null;
+          document_type?: Database["public"]["Enums"]["document_type"] | null;
+          email?: string | null;
+          first_name?: string;
+          id?: string;
+          last_name?: string;
+          phone?: string | null;
+          position?: string;
+          shopify_company_contact_id?: string | null;
+          shopify_customer_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contacts_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "contacts_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       materials: {
         Row: {
           active: boolean;
@@ -387,6 +533,8 @@ export type Database = {
     };
     Enums: {
       app_role: "admin" | "ventas" | "logistica";
+      client_kind: "persona" | "empresa";
+      document_type: "dni" | "ce" | "pasaporte" | "ruc";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -515,6 +663,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "ventas", "logistica"],
+      client_kind: ["persona", "empresa"],
+      document_type: ["dni", "ce", "pasaporte", "ruc"],
     },
   },
 } as const;

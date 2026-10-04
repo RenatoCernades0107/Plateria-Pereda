@@ -1,3 +1,5 @@
+import { DOCUMENT_LABELS, type DocumentType } from "@/domain/documents";
+import { formatPhone } from "@/domain/phone";
 import { formatMoney } from "@/lib/format";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 
@@ -78,6 +80,64 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
         label: "Estado",
         format: (value) => (value ? "Activo" : "Inactivo"),
       },
+    },
+  },
+  clients: {
+    label: "Cliente",
+    fields: {
+      kind: {
+        label: "Tipo",
+        format: (value) => (value === "empresa" ? "Empresa" : "Persona"),
+      },
+      first_name: { label: "Nombres" },
+      last_name: { label: "Apellidos" },
+      legal_name: { label: "Razón social" },
+      document_type: {
+        label: "Tipo de documento",
+        format: (value) =>
+          DOCUMENT_LABELS[value as DocumentType] ?? formatValue(value),
+      },
+      document_number: { label: "Número de documento" },
+      phone: {
+        label: "Teléfono",
+        format: (value) => formatPhone(String(value)),
+      },
+      email: { label: "Email" },
+      address: { label: "Dirección" },
+      notes: { label: "Notas" },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+      shopify_customer_id: { label: "Cliente en Shopify" },
+      shopify_company_id: { label: "Empresa en Shopify" },
+      shopify_company_location_id: { label: "Ubicación en Shopify" },
+    },
+  },
+  contacts: {
+    label: "Contacto",
+    fields: {
+      client_id: { label: "Empresa" },
+      first_name: { label: "Nombre" },
+      last_name: { label: "Apellidos" },
+      position: { label: "Cargo" },
+      document_type: {
+        label: "Tipo de documento",
+        format: (value) =>
+          DOCUMENT_LABELS[value as DocumentType] ?? formatValue(value),
+      },
+      document_number: { label: "Número de documento" },
+      phone: {
+        label: "Teléfono",
+        format: (value) => formatPhone(String(value)),
+      },
+      email: { label: "Email" },
+      active: {
+        label: "Estado",
+        format: (value) => (value ? "Activo" : "Inactivo"),
+      },
+      shopify_customer_id: { label: "Cliente en Shopify" },
+      shopify_company_contact_id: { label: "Contacto en Shopify" },
     },
   },
   settings: {
