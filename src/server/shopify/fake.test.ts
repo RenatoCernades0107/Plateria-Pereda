@@ -142,3 +142,21 @@ describe("Shopify falso: órdenes y pagos", () => {
     expect(snapshot.customers).toHaveLength(1);
   });
 });
+
+describe("Shopify falso: catálogo", () => {
+  beforeEach(() => fakeShopify.reset());
+
+  it("busca productos por título o por SKU de una variante", async () => {
+    const shopify = new FakeShopifyGateway();
+    const byTitle = await shopify.searchProducts("anillo");
+    expect(byTitle.items).toEqual([
+      expect.objectContaining({
+        title: "Anillo de plata personalizable",
+        minPrice: "150.00",
+        maxPrice: "165.50",
+      }),
+    ]);
+    const bySku = await shopify.searchProducts("ani-950-08");
+    expect(bySku.items.map((p) => p.id)).toEqual([byTitle.items[0]!.id]);
+  });
+});

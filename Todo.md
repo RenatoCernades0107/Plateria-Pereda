@@ -992,12 +992,13 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(cotizador): agrega cálculos de cotización`
 
 #### Paso 14.3 — Selector de productos de Shopify ⛔ P37
-- [ ] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
+- [x] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
 - **Unit:**
-  - [ ] Mapeo producto/variante → línea de cotización.
-  - [ ] Componente: búsqueda y selección de variante.
+  - [x] Mapeo producto/variante → línea de cotización.
+  - [x] Componente: búsqueda y selección de variante.
 - **E2E:**
-  - [ ] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+  - [x] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+- Hecho (2026-10-04): `ProductPicker` (popover con `cmdk`) busca con espera de 300 ms en Shopify por título o SKU (el fake y el adaptador live ahora también buscan por SKU: `title:*x* OR sku:x*`; se agregó al catálogo semilla del fake un "Anillo de plata personalizable" con tallas 6 y 8), muestra imagen y rango de precios, y al elegir el producto carga sus variantes (si tiene una sola se agrega directo). `lineFromCatalog` copia producto, variante, SKU, imagen y precio del catálogo en una línea editable (`QuoteLinesEditor`: personalización, cantidad, precio con aviso del precio de catálogo si se cambia, descuento por línea, total de la línea, duplicar y quitar). Server actions `searchCatalog`/`getCatalogProduct` con permiso `cotizador.usar`. `/cotizaciones/nueva` muestra por ahora solo las líneas y el total (el resto llega en 14.4). **P37 sigue pendiente:** se usó su propuesta (se permite una línea libre sin producto del catálogo y se guarda la imagen para el PDF).
 - Commit: `feat(cotizador): agrega selector de productos de Shopify`
 
 #### Paso 14.4 — Editor y listado de cotizaciones ⛔ P38

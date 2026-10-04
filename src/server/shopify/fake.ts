@@ -112,6 +112,28 @@ const SEED_PRODUCTS: ShopifyProduct[] = [
       },
     ],
   },
+  {
+    id: "gid://shopify/Product/1004",
+    title: "Anillo de plata personalizable",
+    description: "Anillo de plata 950 con grabado a pedido.",
+    imageUrl: null,
+    variants: [
+      {
+        id: "gid://shopify/ProductVariant/2005",
+        title: "Talla 6",
+        price: "150.00",
+        sku: "ANI-950-06",
+        imageUrl: null,
+      },
+      {
+        id: "gid://shopify/ProductVariant/2006",
+        title: "Talla 8",
+        price: "165.50",
+        sku: "ANI-950-08",
+        imageUrl: null,
+      },
+    ],
+  },
 ];
 
 function createState(): FakeState {
@@ -661,7 +683,13 @@ export class FakeShopifyGateway implements ShopifyGateway {
     this.track("searchProducts", [query, options]);
     const q = query.trim().toLowerCase();
     const matches = state()
-      .products.filter((p) => !q || p.title.toLowerCase().includes(q))
+      // Como el adaptador live: por título o SKU de alguna variante.
+      .products.filter(
+        (p) =>
+          !q ||
+          p.title.toLowerCase().includes(q) ||
+          p.variants.some((v) => v.sku?.toLowerCase().includes(q)),
+      )
       .map((p) => {
         const prices = p.variants.map((v) => toCents(v.price));
         return {

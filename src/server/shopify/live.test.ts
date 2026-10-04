@@ -9,7 +9,7 @@ import {
 } from "../../../tests/msw/shopify-emulator";
 import { FakeShopifyGateway, fakeShopify } from "./fake";
 import { createGraphqlClient } from "./graphql-client";
-import { LiveShopifyGateway } from "./live";
+import { LiveShopifyGateway, productQuery } from "./live";
 
 function makeLive() {
   return new LiveShopifyGateway(
@@ -84,5 +84,22 @@ describe("adaptador live: órdenes", () => {
     await expect(
       makeLive().updateCustomer("gid://shopify/Customer/1", { firstName: "x" }),
     ).rejects.toThrow("Customer does not exist");
+  });
+});
+
+describe("adaptador live: catálogo", () => {
+  it("busca por título o por SKU y limpia la sintaxis de búsqueda", () => {
+    expect(productQuery("anillo")).toBe("title:*anillo* OR sku:anillo*");
+    expect(productQuery(" ani*(950):'x' ")).toBe(
+      "title:*ani950x* OR sku:ani950x*",
+    );
+  });
+
+  it("encuentra productos por SKU con la API emulada", async () => {
+    fakeShopify.reset();
+    const page = await makeLive().searchProducts("ANI-950");
+    expect(page.items.map((p) => p.title)).toEqual([
+      "Anillo de plata personalizable",
+    ]);
   });
 });
