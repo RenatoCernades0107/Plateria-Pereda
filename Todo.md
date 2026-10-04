@@ -669,48 +669,51 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega creación transaccional de restauraciones`
 
 #### Paso 7.4 — Formulario de registro ⛔ P20
-- [ ] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
-- [ ] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
-- [ ] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
+- [x] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
+- [x] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
+- [x] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
 - **Unit:**
-  - [ ] Total en vivo al agregar/quitar/editar piezas.
-  - [ ] Errores visibles por pieza.
-  - [ ] Campos condicionales según el tipo de pago.
+  - [x] Total en vivo al agregar/quitar/editar piezas.
+  - [x] Errores visibles por pieza.
+  - [x] Campos condicionales según el tipo de pago.
 - **E2E:**
-  - [ ] Registrar una restauración con 3 piezas → redirige al detalle con código y total correctos.
-  - [ ] Las validaciones impiden enviar datos incompletos.
-  - [ ] Crear un cliente nuevo desde el formulario sin perder lo ya escrito.
-  - [ ] `@mobile` registro completo desde el celular.
-- Commit: `feat(restauraciones): agrega formulario de registro`
+  - [x] Registrar una restauración con 3 piezas → redirige al detalle con código y total correctos.
+  - [x] Las validaciones impiden enviar datos incompletos.
+  - [x] Crear un cliente nuevo desde el formulario sin perder lo ya escrito.
+  - [x] `@mobile` registro completo desde el celular.
+- Hecho (2026-10-04): `/restauraciones/nueva` (admin y ventas) con `RestorationForm`: `ClientPicker` (con "Crear nuevo cliente" sin perder lo escrito); si es empresa, selector del contacto (`listClientContacts`); un contacto elegido en el buscador fija su empresa y el contacto. Piezas como tarjetas colapsables (agregar, duplicar, quitar; hasta 100); material y servicio con sugerencias del catálogo (`<datalist>`) o texto libre, y el servicio del catálogo propone su precio sugerido si la pieza aún no tiene precio. Tipo de pago con % solo en "A cuenta" (por defecto el de la configuración); total y adelanto en vivo en una barra fija; botón deshabilitado mientras se guarda; aviso del navegador al salir con cambios. Al guardar abre el detalle con `?registrada=1`. **P20 sigue pendiente:** la casilla "La pieza ya está en tienda" queda desmarcada por defecto.
+- Commit: junto con 7.5 y 7.6 en `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`.
 
 #### Paso 7.5 — Mensaje de cotización para WhatsApp ⛔ P25
-- [ ] `src/domain/whatsapp-quote.ts`: arma el mensaje (saludo, código, piezas con servicio y precio, total, tipo de pago, adelanto, condiciones) a partir de la plantilla de configuración.
-- [ ] Al registrar se abre un diálogo con la vista previa, botón **Copiar** y botón **Abrir WhatsApp** (`https://wa.me/51XXXXXXXXX?text=...`). También disponible desde el detalle.
+- [x] `src/domain/whatsapp-quote.ts`: arma el mensaje (saludo, código, piezas con servicio y precio, total, tipo de pago, adelanto, condiciones) a partir de la plantilla de configuración.
+- [x] Al registrar se abre un diálogo con la vista previa, botón **Copiar** y botón **Abrir WhatsApp** (`https://wa.me/51XXXXXXXXX?text=...`). También disponible desde el detalle.
 - **Unit:**
-  - [ ] Snapshot del mensaje para Contado, A cuenta y Crédito.
-  - [ ] Excluye piezas anuladas.
-  - [ ] Formato de soles y saltos de línea.
-  - [ ] URL de wa.me codificada y con el número normalizado.
-  - [ ] Sin teléfono → no se muestra "Abrir WhatsApp".
+  - [x] Snapshot del mensaje para Contado, A cuenta y Crédito.
+  - [x] Excluye piezas anuladas.
+  - [x] Formato de soles y saltos de línea.
+  - [x] URL de wa.me codificada y con el número normalizado.
+  - [x] Sin teléfono → no se muestra "Abrir WhatsApp".
 - **E2E:**
-  - [ ] Tras registrar aparece el diálogo con el mensaje.
-  - [ ] **Copiar** deja el texto en el portapapeles (permiso de clipboard en Chromium).
-  - [ ] El enlace de WhatsApp es correcto.
+  - [x] Tras registrar aparece el diálogo con el mensaje.
+  - [x] **Copiar** deja el texto en el portapapeles (permiso de clipboard en Chromium).
+  - [x] El enlace de WhatsApp es correcto.
 - Avance (2026-10-04): dominio y componente listos, falta conectarlos al registro y al detalle y los E2E. `src/domain/whatsapp-quote.ts`: `buildQuoteMessage(template, data)` arma el mensaje con la plantilla de la configuración (`quoteValues()` da cada variable y `quoteAmounts()` el total y el adelanto, recalculados sin las piezas anuladas) y `whatsappUrl(phone, text)` el enlace a wa.me con el número normalizado (null sin teléfono válido). `WhatsAppQuoteDialog` (`src/components/restorations/`) muestra la vista previa con **Copiar** y, si hay teléfono, **Abrir WhatsApp**. Unit hechos: los tres tipos de pago (snapshots), anuladas excluidas, soles y saltos de línea, URL codificada y sin teléfono. **P25 sigue pendiente:** se usó su propuesta; una línea numerada por pieza ("descripción – servicio: S/ precio", sin servicio solo la descripción), el saludo va al contacto si la restauración tiene uno, y la plantilla por defecto cambia la línea fija del adelanto por la nueva variable `{forma_pago}` ("Al contado (S/ total)", "A cuenta (adelanto del 50 %: S/ …)" o "Al crédito (sin adelanto)"); también hay `{tipo_pago}`. Las plantillas ya personalizadas siguen funcionando.
-- Commit: `feat(restauraciones): genera mensaje de cotización para WhatsApp`
+- Hecho (2026-10-04): conectado al detalle con `QuoteMessageButton` ("Mensaje de cotización", admin y ventas): recién registrada la restauración el diálogo se abre solo y al cerrarlo se limpia `?registrada=1`. El teléfono es el del contacto o, si no hay, el del cliente. E2E: diálogo tras registrar, Copiar (portapapeles de Chromium) y enlace de wa.me.
+- Commit: junto con 7.4 y 7.6.
 
 #### Paso 7.6 — Detalle de restauración
-- [ ] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial (logística no ve montos ni las pestañas Pagos e Historial, P42).
+- [x] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial (logística no ve montos ni las pestañas Pagos e Historial, P42).
 - **Unit:**
-  - [ ] Badges por estado y ubicación.
-  - [ ] Resumen de montos.
+  - [x] Badges por estado y ubicación.
+  - [x] Resumen de montos.
 - **E2E:**
-  - [ ] El detalle muestra los datos registrados.
-  - [ ] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
-  - [ ] Logística no puede abrir restauraciones entregadas o anuladas (P42).
-  - [ ] `@mobile` legible sin scroll horizontal.
+  - [x] El detalle muestra los datos registrados.
+  - [x] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
+  - [x] Logística no puede abrir restauraciones entregadas o anuladas (P42).
+  - [x] `@mobile` legible sin scroll horizontal.
 - Avance (2026-10-04): componentes presentacionales en `src/components/restorations/`: `PieceStatusBadge`, `RestorationStatusBadge` y `LocationBadge` (`status-badges.tsx`) y `MoneySummary` (total / pagado / saldo; si se pagó de más, "A favor del cliente"; no se renderiza para logística, P42), con sus unit. Falta la página.
-- Commit: `feat(restauraciones): agrega vista de detalle`
+- Hecho (2026-10-04): `/restauraciones/[id]` con `getRestorationDetail()`: los datos sin dinero salen de las vistas `*_operational` (logística recibe 404 en restauraciones completadas o anuladas, D24) y los montos de las tablas solo para admin y ventas. Cabecera con código, cliente (enlace), contacto y teléfono, estado general, estado de pago, tipo de pago y número de orden de Shopify (el enlace al admin de Shopify llega con la orden en 9.1); `MoneySummary` y adelanto esperado; pestañas Piezas (tarjetas con estado, ubicación, servicio, material, medida, peso, taller y precio), Pagos (Fase 11), Archivos (Fase 10) e Historial (auditoría de la restauración). Logística no ve montos, Pagos, Historial ni el mensaje de cotización. La pestaña Archivos y Pagos se llenan en sus fases; la línea de tiempo por pieza, en 8.5. `/restauraciones` tiene por ahora solo "Nueva restauración" (el listado es la Fase 12). Las pestañas inactivas de `ui/tabs` subieron de contraste (axe AA).
+- Commit: `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas
 - [ ] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.

@@ -41,3 +41,25 @@ export async function createRestoration(
     return { error: ERRORS[code] ?? "No se pudo registrar la restauración." };
   }
 }
+
+export type ContactChoice = { id: string; name: string; position: string };
+
+/** Contactos activos de una empresa, para elegir quién deja las piezas. */
+export async function listClientContacts(
+  clientId: string,
+): Promise<ContactChoice[]> {
+  await requirePermission("restauraciones.editar");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("id, display_name, position")
+    .eq("client_id", clientId)
+    .eq("active", true)
+    .order("display_name");
+  if (error) throw error;
+  return data.map((k) => ({
+    id: k.id,
+    name: k.display_name ?? "",
+    position: k.position,
+  }));
+}

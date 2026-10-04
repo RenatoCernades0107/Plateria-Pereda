@@ -79,6 +79,22 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
 };
 
 /** % de adelanto por defecto si la configuración no tiene otro (N2). */
+/** Estados de pago (P29, pendiente: se usa su propuesta). */
+export const PAYMENT_STATUSES = [
+  "pendiente",
+  "parcial",
+  "pagado",
+  "reembolsado",
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pendiente: "Pago pendiente",
+  parcial: "Pago parcial",
+  pagado: "Pagado",
+  reembolsado: "Reembolsado",
+};
+
 export const DEFAULT_DEPOSIT_PERCENT = 50;
 
 /**
