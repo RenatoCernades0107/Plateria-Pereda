@@ -631,15 +631,16 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 7 — Restauraciones: registro y cotización por WhatsApp
 
 #### Paso 7.1 — Esquema de restauraciones y piezas
-- [ ] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-00001`, pieza `RES-00001-1`); RLS; auditoría; índices.
-- [ ] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
-- [ ] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
+- [x] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-00001`, pieza `RES-00001-1`); RLS; auditoría; índices.
+- [x] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
+- [x] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Códigos correlativos únicos.
-  - [ ] Total recalculado al insertar, editar y anular piezas.
-  - [ ] RLS por rol; logística no puede leer precios ni montos (P42).
+  - [x] Códigos correlativos únicos.
+  - [x] Total recalculado al insertar, editar y anular piezas.
+  - [x] RLS por rol; logística no puede leer precios ni montos (P42).
 - **E2E:** No aplica (sin interfaz).
+- Hecho (2026-10-04): montos en soles `numeric(12,2)` (la app convierte a céntimos). `RES-00001` sale de una secuencia (crece a 6+ dígitos pasado el 99999); el número y el código de la pieza los fija un trigger que bloquea la restauración. Columnas generadas: `expected_deposit` (% en A cuenta, total en Contado, 0 en Crédito), `balance` y `pieces.location` (igual que `deriveLocation`, adelanta parte de 8.3). `payment_status` con la propuesta de P29 (pendiente, parcial, pagado, reembolsado). El contacto debe ser de la empresa de la restauración. Privilegios por columna: los usuarios solo escriben datos de captura; estado, totales, pagos, fechas de hitos e ids de Shopify los fijan triggers/RPC, y el cliente no se cambia (P12). Las tablas con dinero solo las leen admin y ventas; todos los roles usan `restorations_operational` y `pieces_operational` (sin dinero), donde logística no ve restauraciones completadas ni anuladas (D24).
 - Commit: `feat(restauraciones): agrega esquema de restauraciones y piezas`
 
 #### Paso 7.2 — Dominio: dinero y validaciones ⛔ P28

@@ -242,6 +242,139 @@ export type Database = {
         };
         Relationships: [];
       };
+      pieces: {
+        Row: {
+          approved_at: string | null;
+          arrived_at: string | null;
+          cancelled_at: string | null;
+          code: string;
+          created_at: string;
+          created_by: string | null;
+          delivered_at: string | null;
+          description: string;
+          first_sent_at: string | null;
+          id: string;
+          last_returned_at: string | null;
+          location: Database["public"]["Enums"]["piece_location"] | null;
+          material_id: string | null;
+          material_name: string;
+          measure: string;
+          notes: string;
+          number: number;
+          price: number;
+          received_at: string | null;
+          restoration_id: string;
+          service_id: string | null;
+          service_name: string;
+          shopify_line_item_id: string | null;
+          status: Database["public"]["Enums"]["piece_status"];
+          updated_at: string;
+          weight_grams: number | null;
+          workshop_id: string | null;
+        };
+        Insert: {
+          approved_at?: string | null;
+          arrived_at?: string | null;
+          cancelled_at?: string | null;
+          code: string;
+          created_at?: string;
+          created_by?: string | null;
+          delivered_at?: string | null;
+          description: string;
+          first_sent_at?: string | null;
+          id?: string;
+          last_returned_at?: string | null;
+          location?: never;
+          material_id?: string | null;
+          material_name?: string;
+          measure?: string;
+          notes?: string;
+          number: number;
+          price: number;
+          received_at?: string | null;
+          restoration_id: string;
+          service_id?: string | null;
+          service_name?: string;
+          shopify_line_item_id?: string | null;
+          status?: Database["public"]["Enums"]["piece_status"];
+          updated_at?: string;
+          weight_grams?: number | null;
+          workshop_id?: string | null;
+        };
+        Update: {
+          approved_at?: string | null;
+          arrived_at?: string | null;
+          cancelled_at?: string | null;
+          code?: string;
+          created_at?: string;
+          created_by?: string | null;
+          delivered_at?: string | null;
+          description?: string;
+          first_sent_at?: string | null;
+          id?: string;
+          last_returned_at?: string | null;
+          location?: never;
+          material_id?: string | null;
+          material_name?: string;
+          measure?: string;
+          notes?: string;
+          number?: number;
+          price?: number;
+          received_at?: string | null;
+          restoration_id?: string;
+          service_id?: string | null;
+          service_name?: string;
+          shopify_line_item_id?: string | null;
+          status?: Database["public"]["Enums"]["piece_status"];
+          updated_at?: string;
+          weight_grams?: number | null;
+          workshop_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pieces_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_workshop_id_fkey";
+            columns: ["workshop_id"];
+            isOneToOne: false;
+            referencedRelation: "workshops";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           active: boolean;
@@ -271,6 +404,91 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      restorations: {
+        Row: {
+          balance: number | null;
+          client_id: string;
+          code: string;
+          contact_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          deposit_percent: number | null;
+          expected_deposit: number | null;
+          id: string;
+          notes: string;
+          paid: number;
+          payment_status: Database["public"]["Enums"]["payment_status"];
+          payment_type: Database["public"]["Enums"]["payment_type"];
+          shopify_order_id: string | null;
+          shopify_order_name: string | null;
+          status: Database["public"]["Enums"]["restoration_status"];
+          total: number;
+          updated_at: string;
+        };
+        Insert: {
+          balance?: never;
+          client_id: string;
+          code?: string;
+          contact_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deposit_percent?: number | null;
+          expected_deposit?: never;
+          id?: string;
+          notes?: string;
+          paid?: number;
+          payment_status?: Database["public"]["Enums"]["payment_status"];
+          payment_type: Database["public"]["Enums"]["payment_type"];
+          shopify_order_id?: string | null;
+          shopify_order_name?: string | null;
+          status?: Database["public"]["Enums"]["restoration_status"];
+          total?: number;
+          updated_at?: string;
+        };
+        Update: {
+          balance?: never;
+          client_id?: string;
+          code?: string;
+          contact_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          deposit_percent?: number | null;
+          expected_deposit?: never;
+          id?: string;
+          notes?: string;
+          paid?: number;
+          payment_status?: Database["public"]["Enums"]["payment_status"];
+          payment_type?: Database["public"]["Enums"]["payment_type"];
+          shopify_order_id?: string | null;
+          shopify_order_name?: string | null;
+          status?: Database["public"]["Enums"]["restoration_status"];
+          total?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "restorations_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       services: {
         Row: {
@@ -505,7 +723,135 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      pieces_operational: {
+        Row: {
+          approved_at: string | null;
+          arrived_at: string | null;
+          cancelled_at: string | null;
+          code: string | null;
+          created_at: string | null;
+          delivered_at: string | null;
+          description: string | null;
+          first_sent_at: string | null;
+          id: string | null;
+          last_returned_at: string | null;
+          location: Database["public"]["Enums"]["piece_location"] | null;
+          material_id: string | null;
+          material_name: string | null;
+          measure: string | null;
+          notes: string | null;
+          number: number | null;
+          received_at: string | null;
+          restoration_id: string | null;
+          service_id: string | null;
+          service_name: string | null;
+          status: Database["public"]["Enums"]["piece_status"] | null;
+          updated_at: string | null;
+          weight_grams: number | null;
+          workshop_id: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pieces_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_workshop_id_fkey";
+            columns: ["workshop_id"];
+            isOneToOne: false;
+            referencedRelation: "workshops";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      restorations_operational: {
+        Row: {
+          client_id: string | null;
+          code: string | null;
+          contact_id: string | null;
+          created_at: string | null;
+          created_by: string | null;
+          id: string | null;
+          notes: string | null;
+          payment_type: Database["public"]["Enums"]["payment_type"] | null;
+          shopify_order_name: string | null;
+          status: Database["public"]["Enums"]["restoration_status"] | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          client_id?: string | null;
+          code?: string | null;
+          contact_id?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string | null;
+          notes?: string | null;
+          payment_type?: Database["public"]["Enums"]["payment_type"] | null;
+          shopify_order_name?: string | null;
+          status?: Database["public"]["Enums"]["restoration_status"] | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          client_id?: string | null;
+          code?: string | null;
+          contact_id?: string | null;
+          created_at?: string | null;
+          created_by?: string | null;
+          id?: string | null;
+          notes?: string | null;
+          payment_type?: Database["public"]["Enums"]["payment_type"] | null;
+          shopify_order_name?: string | null;
+          status?: Database["public"]["Enums"]["restoration_status"] | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "restorations_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       apply_shopify_customer_update: {
@@ -596,6 +942,29 @@ export type Database = {
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
+      payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
+      payment_type: "contado" | "a_cuenta" | "credito";
+      piece_location:
+        "por_recibir" | "en_tienda" | "en_taller" | "entregada" | "anulada";
+      piece_status:
+        | "registrada"
+        | "en_consulta"
+        | "en_espera"
+        | "aprobada"
+        | "recibida"
+        | "enviada_taller"
+        | "devuelta_taller"
+        | "observada"
+        | "entregada"
+        | "anulada";
+      restoration_status:
+        | "registrada"
+        | "aprobada"
+        | "en_proceso"
+        | "parcialmente_lista"
+        | "lista"
+        | "completada"
+        | "anulada";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -726,6 +1095,36 @@ export const Constants = {
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],
+      payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
+      payment_type: ["contado", "a_cuenta", "credito"],
+      piece_location: [
+        "por_recibir",
+        "en_tienda",
+        "en_taller",
+        "entregada",
+        "anulada",
+      ],
+      piece_status: [
+        "registrada",
+        "en_consulta",
+        "en_espera",
+        "aprobada",
+        "recibida",
+        "enviada_taller",
+        "devuelta_taller",
+        "observada",
+        "entregada",
+        "anulada",
+      ],
+      restoration_status: [
+        "registrada",
+        "aprobada",
+        "en_proceso",
+        "parcialmente_lista",
+        "lista",
+        "completada",
+        "anulada",
+      ],
     },
   },
 } as const;
