@@ -21,6 +21,14 @@ for (const name of [
 
 const RUN = `SPIKE-${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`;
 const report = { run: RUN, shop, version, steps: [] };
+
+/** RUC válido al azar: Shopify no repite el externalId de una Company entre rondas. */
+function randomRuc() {
+  const base = `20${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`;
+  const weights = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  const sum = weights.reduce((acc, w, i) => acc + w * Number(base[i]), 0);
+  return `${base}${(11 - (sum % 11)) % 10}`;
+}
 const ctx = {};
 
 async function step(name, fn) {
@@ -271,7 +279,7 @@ await step("crear company con contacto y ubicación", async () => {
     `,
     {
       input: {
-        company: { name: `Empresa ${RUN} S.A.C.`, externalId: "20100047218" },
+        company: { name: `Empresa ${RUN} S.A.C.`, externalId: randomRuc() },
         companyContact: {
           firstName: "Contacto",
           lastName: RUN,
@@ -293,6 +301,163 @@ await step("crear company con contacto y ubicación", async () => {
   );
   ctx.company = check(data.companyCreate).company;
   return ctx.company;
+});
+
+// Ronda 3: contactos nuevos y existentes de la Company, y otra región.
+await step("agregar contacto nuevo a la company", async () => {
+  if (!ctx.company) throw new Error("No hay company");
+  const data = await graphql(
+    `
+      mutation ($companyId: ID!, $input: CompanyContactInput!) {
+        companyContactCreate(companyId: $companyId, input: $input) {
+          companyContact {
+            id
+            customer {
+              id
+              displayName
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      companyId: ctx.company.id,
+      input: {
+        firstName: "Segundo",
+        lastName: RUN,
+        email: `segundo-${RUN.toLowerCase()}@example.com`,
+      },
+    },
+  );
+  ctx.newContact = check(data.companyContactCreate).companyContact;
+  return ctx.newContact;
+});
+
+await step("vincular un cliente existente como contacto", async () => {
+  if (!ctx.company || !ctx.customer)
+    throw new Error("No hay company o cliente");
+  const data = await graphql(
+    `
+      mutation ($companyId: ID!, $customerId: ID!) {
+        companyAssignCustomerAsContact(
+          companyId: $companyId
+          customerId: $customerId
+        ) {
+          companyContact {
+            id
+            customer {
+              id
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    { companyId: ctx.company.id, customerId: ctx.customer.id },
+  );
+  return check(data.companyAssignCustomerAsContact).companyContact;
+});
+
+await step("orden de la company pedida por el contacto nuevo", async () => {
+  const location = ctx.company?.locations.nodes[0];
+  if (!ctx.newContact || !location) throw new Error("No hay contacto nuevo");
+  const data = await graphql(
+    `
+      mutation ($order: OrderCreateOrderInput!) {
+        orderCreate(
+          order: $order
+          options: { inventoryBehaviour: BYPASS, sendReceipt: false }
+        ) {
+          order {
+            id
+            name
+            purchasingEntity {
+              __typename
+              ... on PurchasingCompany {
+                contact {
+                  customer {
+                    displayName
+                  }
+                }
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `,
+    {
+      order: {
+        customerId: ctx.newContact.customer.id,
+        companyLocationId: location.id,
+        currency: ctx.currency,
+        tags: [RUN, "contacto-nuevo"],
+        lineItems: [
+          {
+            title: `Restauración ${RUN}-C1`,
+            quantity: 1,
+            priceSet: money("10.00"),
+            requiresShipping: false,
+          },
+        ],
+      },
+    },
+  );
+  return check(data.orderCreate).order;
+});
+
+await step("company en otra región (Arequipa, ARE)", async () => {
+  const data = await graphql(
+    `
+      mutation ($input: CompanyCreateInput!) {
+        companyCreate(input: $input) {
+          company {
+            id
+            locations(first: 1) {
+              nodes {
+                id
+                shippingAddress {
+                  zoneCode
+                  city
+                }
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+            code
+          }
+        }
+      }
+    `,
+    {
+      input: {
+        company: { name: `Empresa AQP ${RUN}`, externalId: randomRuc() },
+        companyLocation: {
+          name: "Principal",
+          shippingAddress: {
+            address1: "Calle Mercaderes 100",
+            city: "Arequipa",
+            zoneCode: "ARE",
+            countryCode: "PE",
+          },
+          billingSameAsShipping: true,
+        },
+      },
+    },
+  );
+  return check(data.companyCreate).company;
 });
 
 // 5. Productos

@@ -2,6 +2,7 @@ import { ShopifyNotFoundError, ShopifyUserError } from "./errors";
 import type { ShopifyGateway } from "./gateway";
 import { assertNoUserErrors, type GraphqlClient } from "./graphql-client";
 import type {
+  CompanyInput,
   CustomerInput,
   CustomLine,
   FinancialStatus,
@@ -11,6 +12,8 @@ import type {
   OrderFinancials,
   Page,
   PageOptions,
+  ShopifyCompany,
+  ShopifyCompanyContact,
   ShopifyCustomer,
   ShopifyOrder,
   ShopifyProduct,
@@ -117,6 +120,35 @@ export const PRODUCT_GET = `query ProductGet($id: ID!) {
   }
 }`;
 
+const COMPANY_FIELDS = `
+  id
+  name
+  externalId
+  contacts(first: 50) { nodes { id customer { id } } }
+  locations(first: 1) { nodes { id } }
+`;
+
+export const COMPANY_CREATE = `mutation CompanyCreate($input: CompanyCreateInput!) {
+  companyCreate(input: $input) {
+    company { ${COMPANY_FIELDS} }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_CONTACT_CREATE = `mutation CompanyContactCreate($companyId: ID!, $input: CompanyContactInput!) {
+  companyContactCreate(companyId: $companyId, input: $input) {
+    companyContact { id customer { id } }
+    userErrors { field message }
+  }
+}`;
+
+export const COMPANY_ASSIGN_CUSTOMER = `mutation CompanyAssignCustomerAsContact($companyId: ID!, $customerId: ID!) {
+  companyAssignCustomerAsContact(companyId: $companyId, customerId: $customerId) {
+    companyContact { id customer { id } }
+    userErrors { field message }
+  }
+}`;
+
 export const SHOP_CURRENCY = `query ShopCurrency { shop { currencyCode } }`;
 
 export const ORDER_CREATE = `mutation OrderCreate($order: OrderCreateOrderInput!) {
@@ -190,6 +222,21 @@ export const FULFILLMENT_CREATE = `mutation FulfillmentCreate($fulfillment: Fulf
     userErrors { field message }
   }
 }`;
+
+type CompanyNode = {
+  id: string;
+  name: string;
+  externalId: string | null;
+  contacts: { nodes: { id: string; customer: { id: string } }[] };
+  locations: { nodes: { id: string }[] };
+};
+
+type ContactNode = { id: string; customer: { id: string } };
+
+const toContact = (node: ContactNode) => ({
+  id: node.id,
+  customerId: node.customer.id,
+});
 
 type CustomerNode = {
   id: string;
@@ -270,6 +317,11 @@ function customerInput(input: Partial<CustomerInput>) {
   );
 }
 
+/** CompanyContactInput no tiene nota, a diferencia de CustomerInput. */
+function companyContactInput(input: CustomerInput) {
+  return customerInput({ ...input, note: undefined });
+}
+
 /** Escapa comillas para el lenguaje de búsqueda de Shopify. */
 const quote = (value: string) => `'${value.replace(/['\\]/g, "\\$&")}'`;
 
@@ -313,6 +365,71 @@ export class LiveShopifyGateway implements ShopifyGateway {
       { id },
     );
     return data.customer ? toCustomer(data.customer) : null;
+  }
+
+  async createCompany(input: CompanyInput): Promise<ShopifyCompany> {
+    const data = await this.client.request<{
+      companyCreate: { company: CompanyNode | null; userErrors: UserErrors };
+    }>(COMPANY_CREATE, {
+      input: {
+        company: { name: input.name, externalId: input.externalId },
+        ...(input.contact && {
+          companyContact: companyContactInput(input.contact),
+        }),
+        companyLocation: {
+          name: "Principal",
+          ...(input.phone && { phone: input.phone }),
+          // Perú exige la región; con billingSameAsShipping basta la dirección de envío.
+          shippingAddress: {
+            address1: input.address.address1,
+            city: input.address.city,
+            zoneCode: input.address.zoneCode,
+            countryCode: "PE",
+          },
+          billingSameAsShipping: true,
+        },
+      },
+    });
+    assertNoUserErrors(data.companyCreate.userErrors);
+    const company = data.companyCreate.company!;
+    return {
+      id: company.id,
+      name: company.name,
+      externalId: company.externalId,
+      locationId: company.locations.nodes[0]!.id,
+      contacts: company.contacts.nodes.map(toContact),
+    };
+  }
+
+  async createCompanyContact(
+    companyId: string,
+    input: CustomerInput,
+  ): Promise<ShopifyCompanyContact> {
+    const data = await this.client.request<{
+      companyContactCreate: {
+        companyContact: ContactNode | null;
+        userErrors: UserErrors;
+      };
+    }>(COMPANY_CONTACT_CREATE, {
+      companyId,
+      input: companyContactInput(input),
+    });
+    assertNoUserErrors(data.companyContactCreate.userErrors);
+    return toContact(data.companyContactCreate.companyContact!);
+  }
+
+  async assignCustomerAsContact(
+    companyId: string,
+    customerId: string,
+  ): Promise<ShopifyCompanyContact> {
+    const data = await this.client.request<{
+      companyAssignCustomerAsContact: {
+        companyContact: ContactNode | null;
+        userErrors: UserErrors;
+      };
+    }>(COMPANY_ASSIGN_CUSTOMER, { companyId, customerId });
+    assertNoUserErrors(data.companyAssignCustomerAsContact.userErrors);
+    return toContact(data.companyAssignCustomerAsContact.companyContact!);
   }
 
   async findOrderByTag(tag: string) {

@@ -6,6 +6,7 @@ import {
   PERSON_DOCUMENT_TYPES,
 } from "@/domain/documents";
 import { normalizePhone } from "@/domain/phone";
+import { REGION_CODES } from "@/domain/regions";
 
 /**
  * Datos obligatorios según la propuesta de P27 (pendiente de confirmar): se definen
@@ -127,6 +128,9 @@ export const companySchema = z
       z.string().min(1, "Ingresa la razón social"),
     ),
     ruc,
+    // Ciudad y región de la sede: Shopify las pide para la ubicación de la Company.
+    city: cleanText(100).pipe(z.string().min(1, "Ingresa la ciudad")),
+    region: z.enum(REGION_CODES, { error: "Elige la región" }),
     ...common,
   })
   .transform(({ ruc: documentNumber, ...rest }) => ({

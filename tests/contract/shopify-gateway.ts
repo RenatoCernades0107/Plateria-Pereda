@@ -125,6 +125,90 @@ export function shopifyGatewayContract(
       expect(await gateway.getProduct("gid://shopify/Product/1")).toBeNull();
     });
 
+    describe("empresas como Company (P14)", () => {
+      const address = {
+        address1: "Av. Larco 123",
+        city: "Lima",
+        zoneCode: "LIM",
+      };
+
+      it("crea la empresa con su ubicación y su primer contacto", async () => {
+        const company = await gateway.createCompany({
+          name: "Joyería Andina S.A.C.",
+          externalId: "20100047218",
+          phone: "+5112345678",
+          address,
+          contact: {
+            firstName: "Luis",
+            lastName: "Rojas",
+            email: "luis@andina.pe",
+          },
+        });
+        expect(company).toMatchObject({
+          id: expect.stringMatching(/^gid:\/\/shopify\/Company\//),
+          name: "Joyería Andina S.A.C.",
+          externalId: "20100047218",
+          locationId: expect.stringMatching(/CompanyLocation/),
+        });
+        expect(company.contacts).toHaveLength(1);
+        const customer = await gateway.getCustomer(
+          company.contacts[0]!.customerId,
+        );
+        expect(customer?.email).toBe("luis@andina.pe");
+      });
+
+      it("no repite el RUC y exige la región de la dirección", async () => {
+        await gateway.createCompany({
+          name: "A S.A.C.",
+          externalId: "20100047218",
+          address,
+        });
+        await expect(
+          gateway.createCompany({
+            name: "B S.A.C.",
+            externalId: "20100047218",
+            address,
+          }),
+        ).rejects.toBeInstanceOf(ShopifyUserError);
+        await expect(
+          gateway.createCompany({
+            name: "C S.A.C.",
+            externalId: "20131312955",
+            address: { ...address, zoneCode: "" },
+          }),
+        ).rejects.toBeInstanceOf(ShopifyUserError);
+      });
+
+      it("agrega contactos nuevos y vincula clientes existentes", async () => {
+        const company = await gateway.createCompany({
+          name: "Joyería Andina S.A.C.",
+          externalId: "20100047218",
+          address,
+        });
+        const nuevo = await gateway.createCompanyContact(company.id, {
+          firstName: "Rosa",
+          lastName: "Díaz",
+          phone: "+51988777666",
+        });
+        expect((await gateway.getCustomer(nuevo.customerId))?.phone).toBe(
+          "+51988777666",
+        );
+
+        const existente = await gateway.createCustomer({
+          firstName: "Pedro",
+          lastName: "Soto",
+        });
+        const vinculado = await gateway.assignCustomerAsContact(
+          company.id,
+          existente.id,
+        );
+        expect(vinculado.customerId).toBe(existente.id);
+        await expect(
+          gateway.assignCustomerAsContact(company.id, existente.id),
+        ).rejects.toBeInstanceOf(ShopifyUserError);
+      });
+    });
+
     describe("órdenes (validado en el spike 4.1)", () => {
       let customerId: string;
 

@@ -17,6 +17,8 @@ const company = {
   kind: "empresa" as const,
   legalName: " Joyería Andina S.A.C. ",
   ruc: "20100047218",
+  city: " Lima ",
+  region: "LIM" as const,
   phone: "(01) 234-5678",
   email: "",
   address: "Av. Larco 123",
@@ -107,6 +109,8 @@ describe("clientSchema: empresa", () => {
       legalName: "Joyería Andina S.A.C.",
       documentType: "ruc",
       documentNumber: "20100047218",
+      city: "Lima",
+      region: "LIM",
       phone: "+5112345678",
       email: null,
       address: "Av. Larco 123",
@@ -118,6 +122,8 @@ describe("clientSchema: empresa", () => {
     [{ legalName: "" }, "legalName", "Ingresa la razón social"],
     [{ ruc: "" }, "ruc", "Ingresa el RUC"],
     [{ ruc: "20100047219" }, "ruc", "Ingresa un RUC válido"],
+    [{ city: " " }, "city", "Ingresa la ciudad"],
+    [{ region: "XXX" }, "region", "Elige la región"],
   ])("rechaza %j", (patch, path, message) => {
     expect(errorsOf(clientSchema, { ...company, ...patch })[path]).toBe(
       message,

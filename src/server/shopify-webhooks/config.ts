@@ -9,14 +9,17 @@ type Env = Pick<
   "SHOPIFY_MODE" | "SHOPIFY_CLIENT_SECRET" | "SHOPIFY_STORE_DOMAIN"
 >;
 
-/** Secreto para verificar la firma; sin él (live mal configurado) se rechaza todo. */
+/**
+ * Secreto para verificar la firma; sin él (live mal configurado) se rechaza todo. En
+ * modo fake siempre es el de desarrollo: Shopify real no envía webhooks a un fake.
+ */
 export function webhookSecret(env: Env): string | null {
   if (env.SHOPIFY_MODE === "live") return env.SHOPIFY_CLIENT_SECRET ?? null;
-  return env.SHOPIFY_CLIENT_SECRET ?? FAKE_WEBHOOK_SECRET;
+  return FAKE_WEBHOOK_SECRET;
 }
 
 /** Tienda de la que se aceptan webhooks. */
 export function expectedShopDomain(env: Env): string | null {
   if (env.SHOPIFY_MODE === "live") return env.SHOPIFY_STORE_DOMAIN ?? null;
-  return env.SHOPIFY_STORE_DOMAIN ?? FAKE_SHOP_DOMAIN;
+  return FAKE_SHOP_DOMAIN;
 }

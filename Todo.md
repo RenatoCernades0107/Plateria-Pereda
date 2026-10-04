@@ -557,18 +557,20 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(clientes): agrega esquema de clientes y contactos`
 
 #### Paso 6.2 — Alta de cliente sincronizada con Shopify
-- [ ] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
-- [ ] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
-- [ ] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
+- [x] Diálogo "Nuevo cliente" (persona / empresa) reutilizable desde cualquier formulario.
+- [x] Al guardar: se crea en BD y se encola `customer_create`; si Shopify indica que el email/teléfono ya existe, se **vincula** al cliente existente en lugar de duplicarlo.
+- [x] Empresa: Company de Shopify con razón social y RUC; sus contactos, como contactos de la Company (P14 = b). Detalles de la API según el spike.
 - **Unit:**
-  - [ ] Mapeo cliente → input de Shopify (persona y empresa).
-  - [ ] Manejo de "ya existe" → vinculación.
+  - [x] Mapeo cliente → input de Shopify (persona y empresa).
+  - [x] Manejo de "ya existe" → vinculación.
 - **Integración:**
-  - [ ] Crear cliente → job `ok` → `shopify_customer_id` guardado (fake).
+  - [x] Crear cliente → job `ok` → `shopify_customer_id` guardado (fake).
 - **E2E:**
-  - [ ] Crear persona y empresa → aparecen como "Sincronizado" y el fake recibió los datos correctos.
-  - [ ] Error forzado en el fake → "Error de sincronización" → "Reintentar" → sincronizado.
-  - [ ] `@mobile` crear cliente.
+  - [x] Crear persona y empresa → aparecen como "Sincronizado" y el fake recibió los datos correctos.
+  - [x] Error forzado en el fake → "Error de sincronización" → "Reintentar" → sincronizado.
+  - [x] `@mobile` crear cliente.
+- Hecho (2026-10-04): el gateway suma `createCompany`, `createCompanyContact` y `assignCustomerAsContact` (fake, live y emulador; contract test). Un trigger encola `customer.create` / `company.create` / `contact.create` al registrar (salvo importados con id de Shopify). Handlers idempotentes en `src/server/clients/shopify-sync.ts`: si el email o teléfono ya existe en Shopify vinculan ese cliente; el contacto espera a que su empresa esté sincronizada. `public.shopify_sync_status()` expone el estado a todos los roles (el outbox sigue siendo solo de admin). `clients` suma ciudad y región (código de Shopify, `src/domain/regions.ts`). Diálogo `NewClientDialog` (persona / empresa) reutilizable con `onCreated`; `/clientes` muestra los últimos clientes con su estado y se refresca solo mientras hay pendientes. El fake guarda la descripción de los fallos forzados y crea el error al lanzarlo (en desarrollo las rutas y las acciones pueden cargar copias distintas de las clases de error).
+- Pendiente de validar en la ronda 3 del spike: `companyContactCreate`, `companyAssignCustomerAsContact`, orden pedida por un contacto agregado después y códigos de región distintos de LIM. Si la empresa ya existe en Shopify con ese RUC, por ahora queda en error con el mensaje de Shopify (se resuelve con la importación de 6.6).
 - Commit: `feat(clientes): registra clientes y los sincroniza con Shopify`
 
 #### Paso 6.3 — Buscador unificado `ClientPicker`

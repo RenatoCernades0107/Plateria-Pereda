@@ -80,6 +80,104 @@ const operations: Record<
   string,
   (variables: Vars, query: string) => Promise<JsonBodyType>
 > = {
+  CompanyCreate: async (variables: Vars) => {
+    const input = variables.input as {
+      company: { name: string; externalId: string };
+      companyContact?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+      };
+      companyLocation: {
+        phone?: string;
+        shippingAddress: { address1: string; city: string; zoneCode?: string };
+      };
+    };
+    const { result, userErrors } = await withUserErrors(() =>
+      store.createCompany({
+        name: input.company.name,
+        externalId: input.company.externalId,
+        phone: input.companyLocation.phone ?? null,
+        address: {
+          address1: input.companyLocation.shippingAddress.address1,
+          city: input.companyLocation.shippingAddress.city,
+          zoneCode: input.companyLocation.shippingAddress.zoneCode ?? "",
+        },
+        contact: input.companyContact && {
+          firstName: input.companyContact.firstName ?? "",
+          lastName: input.companyContact.lastName ?? "",
+          email: input.companyContact.email,
+          phone: input.companyContact.phone,
+        },
+      }),
+    );
+    return {
+      data: {
+        companyCreate: {
+          company: result && {
+            id: result.id,
+            name: result.name,
+            externalId: result.externalId,
+            contacts: {
+              nodes: result.contacts.map((c) => ({
+                id: c.id,
+                customer: { id: c.customerId },
+              })),
+            },
+            locations: { nodes: [{ id: result.locationId }] },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyContactCreate: async (variables: Vars) => {
+    const input = variables.input as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    };
+    const { result, userErrors } = await withUserErrors(() =>
+      store.createCompanyContact(variables.companyId as string, {
+        firstName: input.firstName ?? "",
+        lastName: input.lastName ?? "",
+        email: input.email,
+        phone: input.phone,
+      }),
+    );
+    return {
+      data: {
+        companyContactCreate: {
+          companyContact: result && {
+            id: result.id,
+            customer: { id: result.customerId },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
+  CompanyAssignCustomerAsContact: async (variables: Vars) => {
+    const { result, userErrors } = await withUserErrors(() =>
+      store.assignCustomerAsContact(
+        variables.companyId as string,
+        variables.customerId as string,
+      ),
+    );
+    return {
+      data: {
+        companyAssignCustomerAsContact: {
+          companyContact: result && {
+            id: result.id,
+            customer: { id: result.customerId },
+          },
+          userErrors,
+        },
+      },
+    };
+  },
   ShopCurrency: async () => ({ data: { shop: { currencyCode: "PEN" } } }),
   OrderCreate: async (variables: Vars) => {
     const order = variables.order as {

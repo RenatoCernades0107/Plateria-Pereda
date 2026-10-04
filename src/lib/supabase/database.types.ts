@@ -46,6 +46,7 @@ export type Database = {
         Row: {
           active: boolean;
           address: string;
+          city: string;
           created_at: string;
           created_by: string | null;
           display_name: string | null;
@@ -59,6 +60,7 @@ export type Database = {
           legal_name: string;
           notes: string;
           phone: string | null;
+          region: string | null;
           shopify_company_id: string | null;
           shopify_company_location_id: string | null;
           shopify_customer_id: string | null;
@@ -67,6 +69,7 @@ export type Database = {
         Insert: {
           active?: boolean;
           address?: string;
+          city?: string;
           created_at?: string;
           created_by?: string | null;
           display_name?: never;
@@ -80,6 +83,7 @@ export type Database = {
           legal_name?: string;
           notes?: string;
           phone?: string | null;
+          region?: string | null;
           shopify_company_id?: string | null;
           shopify_company_location_id?: string | null;
           shopify_customer_id?: string | null;
@@ -88,6 +92,7 @@ export type Database = {
         Update: {
           active?: boolean;
           address?: string;
+          city?: string;
           created_at?: string;
           created_by?: string | null;
           display_name?: never;
@@ -101,6 +106,7 @@ export type Database = {
           legal_name?: string;
           notes?: string;
           phone?: string | null;
+          region?: string | null;
           shopify_company_id?: string | null;
           shopify_company_location_id?: string | null;
           shopify_customer_id?: string | null;
@@ -529,6 +535,15 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      shopify_sync_status: {
+        Args: { p_entity_ids: string[]; p_entity_table: string };
+        Returns: {
+          entity_id: string;
+          job_id: number;
+          last_error: string;
+          status: string;
+        }[];
       };
     };
     Enums: {

@@ -32,6 +32,40 @@ export type CustomerInput = {
   note?: string;
 };
 
+/** Dirección peruana de la ubicación de una empresa (Perú exige la región, spike 4.1). */
+export type CompanyAddress = {
+  address1: string;
+  city: string;
+  /** Código de región de Shopify, p. ej. "LIM". */
+  zoneCode: string;
+};
+
+export type CompanyInput = {
+  /** Razón social. */
+  name: string;
+  /** RUC (se guarda como externalId de la Company). */
+  externalId: string;
+  phone?: string | null;
+  address: CompanyAddress;
+  /** Primer contacto, si ya se conoce. */
+  contact?: CustomerInput;
+};
+
+export type ShopifyCompanyContact = {
+  /** Id del CompanyContact. */
+  id: string;
+  /** Id del Customer que representa al contacto. */
+  customerId: string;
+};
+
+export type ShopifyCompany = {
+  id: string;
+  name: string;
+  externalId: string | null;
+  locationId: string;
+  contacts: ShopifyCompanyContact[];
+};
+
 export type ShopifyProductSummary = {
   id: string;
   title: string;

@@ -1,4 +1,5 @@
 import type {
+  CompanyInput,
   CustomerInput,
   OrderEdit,
   OrderFinancials,
@@ -6,6 +7,8 @@ import type {
   Page,
   PageOptions,
   RefundInput,
+  ShopifyCompany,
+  ShopifyCompanyContact,
   ShopifyCustomer,
   ShopifyOrder,
   ShopifyProduct,
@@ -28,6 +31,19 @@ export interface ShopifyGateway {
     options?: PageOptions,
   ): Promise<Page<ShopifyCustomer>>;
   getCustomer(id: string): Promise<ShopifyCustomer | null>;
+
+  /** Empresa como Company con su ubicación y, opcionalmente, su primer contacto (P14). */
+  createCompany(input: CompanyInput): Promise<ShopifyCompany>;
+  /** Crea un cliente nuevo y lo asocia a la empresa como contacto. */
+  createCompanyContact(
+    companyId: string,
+    input: CustomerInput,
+  ): Promise<ShopifyCompanyContact>;
+  /** Asocia como contacto a un cliente que ya existe en Shopify. */
+  assignCustomerAsContact(
+    companyId: string,
+    customerId: string,
+  ): Promise<ShopifyCompanyContact>;
 
   createOrder(input: OrderInput): Promise<ShopifyOrder>;
   /**
