@@ -1058,6 +1058,8 @@ Objetivo: validar con llamadas reales antes de construir.
 
 #### Paso 16.3 — Shopify en producción
 - [ ] App de producción en la organización de la Platería (Dev Dashboard) con los permisos mínimos; Client ID y secret en Vercel; `pnpm shopify:register-webhooks` apuntando a producción.
+  - Permisos (2026-10-04): `read_customers`, `write_customers`, `read_orders`, `write_orders`, `write_order_edits`, `read_products`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders` + acceso a datos protegidos de clientes (nombre, email, teléfono, dirección). Si las Companies piden un permiso propio, agregarlo (se confirma en 4.1).
+  - [ ] `read_all_orders` no aparece en el Dev Dashboard: pedirlo (probar declararlo en `shopify.app.toml` con Shopify CLI) para que el sistema siga viendo órdenes de más de 60 días. Si no se concede: el sistema avisa qué órdenes de más de 60 días hay que actualizar a mano en Shopify.
 - [ ] Verificación manual con checklist (cliente de prueba, orden con adelanto, pago del saldo, reembolso, anulación) y limpieza de los datos de prueba.
 - Tests: checklist manual documentado.
 - Commit: `docs(shopify): agrega checklist de puesta en producción`
