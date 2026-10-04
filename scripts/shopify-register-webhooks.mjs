@@ -37,8 +37,11 @@ if (!appUrl.startsWith("https://")) {
 
 const tokenResponse = await fetch(`https://${shop}/admin/oauth/access_token`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded",
+    Accept: "application/json",
+  },
+  body: new URLSearchParams({
     grant_type: "client_credentials",
     client_id: SHOPIFY_CLIENT_ID,
     client_secret: SHOPIFY_CLIENT_SECRET,

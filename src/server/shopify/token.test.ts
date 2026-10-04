@@ -38,7 +38,12 @@ describe("token de Shopify (client credentials)", () => {
     requests = [];
     server.use(
       http.post(URL, async ({ request }) => {
-        requests.push(await request.json());
+        expect(request.headers.get("content-type")).toContain(
+          "application/x-www-form-urlencoded",
+        );
+        requests.push(
+          Object.fromEntries(new URLSearchParams(await request.text())),
+        );
         return HttpResponse.json({
           access_token: `shpat_${requests.length}`,
           scope: "read_customers",

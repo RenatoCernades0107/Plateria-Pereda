@@ -46,11 +46,12 @@ export function createTokenProvider({
     try {
       response = await fetchImpl(`https://${shop}/admin/oauth/access_token`, {
         method: "POST",
+        // Shopify espera el pedido del token como formulario, no como JSON.
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
         },
-        body: JSON.stringify({
+        body: new URLSearchParams({
           grant_type: "client_credentials",
           client_id: clientId,
           client_secret: clientSecret,

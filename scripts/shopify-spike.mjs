@@ -85,18 +85,39 @@ const money = (amount) => ({
 await step("token client credentials", async () => {
   const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({
       grant_type: "client_credentials",
       client_id: env.SHOPIFY_CLIENT_ID,
       client_secret: env.SHOPIFY_CLIENT_SECRET,
     }),
   });
-  const body = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let body = {};
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // Shopify a veces responde HTML o vacío en los errores.
+  }
   if (!response.ok || !body.access_token) {
-    throw new Error(
-      `HTTP ${response.status}: ${JSON.stringify(body).slice(0, 300)}`,
+    const error = new Error(
+      `HTTP ${response.status}: ${text.slice(0, 300) || "(respuesta vacía)"}`,
     );
+    error.details = {
+      status: response.status,
+      body: text.slice(0, 1000),
+      requestId: response.headers.get("x-request-id"),
+      // Revisiones de formato, sin mostrar las credenciales.
+      clientIdLength: env.SHOPIFY_CLIENT_ID.length,
+      clientIdHasSpacesOrQuotes: /[\s"']/.test(env.SHOPIFY_CLIENT_ID),
+      clientSecretPrefix: env.SHOPIFY_CLIENT_SECRET.slice(0, 6),
+      clientSecretHasSpacesOrQuotes: /[\s"']/.test(env.SHOPIFY_CLIENT_SECRET),
+      hint: "400 suele indicar que la app no está instalada en la tienda o que la tienda no pertenece a la misma organización que la app; 401, credenciales incorrectas.",
+    };
+    throw error;
   }
   ctx.token = body.access_token;
   return { expires_in: body.expires_in, scope: body.scope };
