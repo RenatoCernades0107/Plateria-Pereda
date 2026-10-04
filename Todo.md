@@ -716,18 +716,19 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas
-- [ ] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
-- [ ] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio, porque el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
-- [ ] El cliente no se puede cambiar en el sistema una vez registrada la restauración (P12); si hace falta, se cambia en Shopify y llega por webhook (11.3).
-- [ ] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
+- [x] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
+- [x] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio, porque el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
+- [x] El cliente no se puede cambiar en el sistema una vez registrada la restauración (P12); si hace falta, se cambia en Shopify y llega por webhook (11.3).
+- [x] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
 - **Unit:**
-  - [ ] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
+  - [x] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
 - **BD:**
-  - [ ] El trigger/RPC impide editar campos bloqueados; logística no edita nada salvo fotos.
+  - [x] El trigger/RPC impide editar campos bloqueados; logística no edita nada salvo fotos.
 - **E2E:**
-  - [ ] Editar descripción y precio antes de aprobar.
-  - [ ] Con la orden creada: el material se puede editar y el precio sigue el flujo de P12.
-  - [ ] El cambio aparece en el historial.
+  - [x] Editar descripción y precio antes de aprobar.
+  - [x] Con la orden creada: el material se puede editar y el precio sigue el flujo de P12.
+  - [x] El cambio aparece en el historial.
+- Hecho (2026-10-04): `editableFields(ctx, piece)` (`src/domain/restoration-edit.ts`) decide por rol, orden y estado: logística nada; pieza anulada nada; entregada solo notas; antes de la orden todo; con la orden, los campos libres de P12 y el precio sale de la edición directa (solo admin lo cambiará por el flujo de la orden en 9.2, con motivo). En el detalle: "Editar" (contacto, tipo y % de adelanto, notas), "Editar" por pieza (campos bloqueados deshabilitados con explicación) y "Agregar pieza" (entra Registrada; llega a Shopify al aprobarse). Los campos de la pieza son un componente común (`PieceFields`) del registro y los diálogos; ahora sí muestran las sugerencias del catálogo (`<datalist>`). La BD lo exige con el trigger `guard_piece_edit` (anulada, entregada y precio con orden salvo `app.shopify_order_edit = 'on'`, que usará 9.2) y `guard_piece_insert` (no se agregan piezas a restauraciones completadas o anuladas); el cliente ya era inmutable por privilegios (7.1). Todo queda en la auditoría. **Pendiente para 9.2:** el motivo de los cambios que tocan Shopify y el E2E del precio con la orden creada (aquí se verifica que el precio queda bloqueado y el material se edita).
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
 ### Fase 8 — Estados, ubicación, fechas y tiempos

@@ -191,6 +191,73 @@ test.describe("Restauraciones", () => {
     ).toHaveValue("Bandeja con asas");
   });
 
+  test("edita la restauración y sus piezas antes de la orden, y agrega una pieza", async ({
+    page,
+  }) => {
+    await page.goto(detailUrl);
+    const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
+
+    await page.getByRole("button", { name: `Editar pieza ${code}-1` }).click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Descripción").fill("Fuente ovalada restaurada");
+    await dialog.getByLabel("Precio (S/)").fill("1300");
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByText("Pieza actualizada.")).toBeVisible();
+    await expect(page.getByTestId(`pieza-${code}-1`)).toContainText(
+      "Fuente ovalada restaurada",
+    );
+    await expect(page.getByTestId("monto-total")).toContainText("2,535.50");
+
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Notas").fill("Entregar antes de Navidad");
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByText("Restauración actualizada.")).toBeVisible();
+    await expect(page.getByText("Entregar antes de Navidad")).toBeVisible();
+
+    await page.getByRole("button", { name: "Agregar pieza" }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Descripción").fill("Azucarera");
+    await dialog.getByLabel("Precio (S/)").fill("64.50");
+    await dialog.getByRole("button", { name: "Agregar pieza" }).click();
+    await expect(page.getByTestId(`pieza-${code}-4`)).toContainText(
+      "Azucarera",
+    );
+    await expect(page.getByTestId("monto-total")).toContainText("2,600.00");
+
+    await page.getByRole("tab", { name: "Historial" }).click();
+    await expect(
+      page.getByText("Entregar antes de Navidad").last(),
+    ).toBeVisible();
+  });
+
+  test("con la orden creada se edita el material pero no el precio (P12)", async ({
+    page,
+  }) => {
+    const id = detailUrl.split("/").pop()!;
+    // La orden la crea la Fase 9; aquí se simula.
+    await adminClient()
+      .from("restorations")
+      .update({
+        shopify_order_id: `gid://shopify/Order/e2e${run}`,
+        shopify_order_name: `#E2E${run}`,
+      })
+      .eq("id", id);
+    await page.goto(detailUrl);
+    const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
+    await page.getByRole("button", { name: `Editar pieza ${code}-2` }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
+    await expect(
+      dialog.getByText("solo el administrador cambia el precio"),
+    ).toBeVisible();
+    await dialog.getByLabel("Material").fill("Plata 925");
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByTestId(`pieza-${code}-2`)).toContainText(
+      "Material: Plata 925",
+    );
+  });
+
   test("logística ve el detalle sin precios, pagos ni historial", async ({
     page,
     loginAs,
@@ -198,9 +265,9 @@ test.describe("Restauraciones", () => {
     await loginAs("logistica");
     await page.goto(detailUrl);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^RES-/);
-    await expect(page.getByText("Fuente ovalada abollada")).toBeVisible();
+    await expect(page.getByText("Fuente ovalada restaurada")).toBeVisible();
     await expect(page.getByTestId("monto-total")).toHaveCount(0);
-    await expect(page.getByText("1,200.50")).toHaveCount(0);
+    await expect(page.getByText("1,300.00")).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Pagos" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Historial" })).toHaveCount(0);
     await expect(

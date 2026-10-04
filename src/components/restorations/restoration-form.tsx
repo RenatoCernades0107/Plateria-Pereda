@@ -8,6 +8,7 @@ import {
   useFieldArray,
   useForm,
   useWatch,
+  type FieldValues,
   type UseFormReturn,
 } from "react-hook-form";
 
@@ -23,7 +24,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -55,7 +55,9 @@ import {
   type ContactChoice,
 } from "@/server/restorations/actions";
 
-export type CatalogOption = { id: string; name: string; price: number | null };
+import { PieceFields, type CatalogOption } from "./piece-fields";
+
+export type { CatalogOption };
 
 type FormValues = {
   clientId: string;
@@ -83,54 +85,6 @@ export const EMPTY_PIECE: PieceFormInput = {
 /** Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0). */
 export function liveTotal(pieces: readonly { price?: string }[]) {
   return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
-}
-
-/** Material o servicio: sugerencias del catálogo o texto libre (P22). */
-function CatalogField({
-  form,
-  index,
-  name,
-  label,
-  options,
-  onPick,
-}: {
-  form: UseFormReturn<FormValues>;
-  index: number;
-  name: "material" | "service";
-  label: string;
-  options: CatalogOption[];
-  onPick?: (option: CatalogOption) => void;
-}) {
-  const listId = `${name}-opciones`;
-  return (
-    <FormField
-      control={form.control}
-      name={`pieces.${index}.${name}.name`}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <FormControl>
-            <Input
-              list={listId}
-              autoComplete="off"
-              {...field}
-              value={field.value ?? ""}
-              onChange={(event) => {
-                const value = event.target.value;
-                const match = options.find(
-                  (o) => o.name.toLowerCase() === value.trim().toLowerCase(),
-                );
-                field.onChange(value);
-                form.setValue(`pieces.${index}.${name}.id`, match?.id ?? null);
-                if (match) onPick?.(match);
-              }}
-            />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  );
 }
 
 function PieceCard({
@@ -210,107 +164,13 @@ function PieceCard({
           <Trash2 />
         </Button>
       </div>
-      <div className={cn("space-y-4 border-t p-3", !open && "hidden")}>
-        <TextField
-          form={form}
-          name={`pieces.${index}.description`}
-          label="Descripción"
-          multiline
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <CatalogField
-            form={form}
-            index={index}
-            name="service"
-            label="Servicio"
-            options={services}
-            onPick={(option) => {
-              // El precio sugerido del servicio solo se propone si aún no hay precio.
-              if (
-                option.price !== null &&
-                !form.getValues(`pieces.${index}.price`)
-              ) {
-                form.setValue(`pieces.${index}.price`, option.price.toFixed(2));
-              }
-            }}
-          />
-          <TextField
-            form={form}
-            name={`pieces.${index}.price`}
-            label="Precio (S/)"
-            inputMode="numeric"
-          />
-          <CatalogField
-            form={form}
-            index={index}
-            name="material"
-            label="Material"
-            options={materials}
-          />
-          <TextField
-            form={form}
-            name={`pieces.${index}.measure`}
-            label="Medida"
-          />
-          <TextField
-            form={form}
-            name={`pieces.${index}.weight`}
-            label="Peso (g)"
-            inputMode="numeric"
-          />
-          <FormField
-            control={form.control}
-            name={`pieces.${index}.workshopId`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Taller</FormLabel>
-                <Select
-                  value={field.value ?? NONE}
-                  onValueChange={(v) => field.onChange(v === NONE ? null : v)}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {workshops.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={form.control}
-          name={`pieces.${index}.arrived`}
-          render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
-              <FormControl>
-                <input
-                  type="checkbox"
-                  className="accent-primary size-4"
-                  checked={field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              </FormControl>
-              <FormLabel className="font-normal">
-                La pieza ya está en tienda
-              </FormLabel>
-            </FormItem>
-          )}
-        />
-        <TextField
-          form={form}
-          name={`pieces.${index}.notes`}
-          label="Notas de la pieza"
-          multiline
+      <div className={cn("border-t p-3", !open && "hidden")}>
+        <PieceFields
+          form={form as unknown as UseFormReturn<FieldValues>}
+          prefix={`pieces.${index}.`}
+          workshops={workshops}
+          materials={materials}
+          services={services}
         />
       </div>
     </li>

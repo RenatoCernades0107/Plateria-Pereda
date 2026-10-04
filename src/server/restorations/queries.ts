@@ -20,7 +20,10 @@ export type PieceDetail = {
   materialName: string;
   serviceName: string;
   weightGrams: number | null;
+  workshopId: string | null;
   workshopName: string | null;
+  materialId: string | null;
+  serviceId: string | null;
   notes: string;
   arrivedAt: string | null;
   createdAt: string;
@@ -44,6 +47,8 @@ export type RestorationDetail = {
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
+  /** La orden de Shopify ya existe (cambia lo editable, P12). */
+  hasOrder: boolean;
   createdAt: string;
   client: { id: string; name: string; phone: string | null; kind: string };
   contact: { id: string; name: string; phone: string | null } | null;
@@ -92,7 +97,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("restorations")
           .select(
-            "total, paid, expected_deposit, deposit_percent, payment_status",
+            "total, paid, expected_deposit, deposit_percent, payment_status, shopify_order_id",
           )
           .eq("id", id)
           .single()
@@ -124,6 +129,7 @@ export async function getRestorationDetail(
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
+    hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
     createdAt: r.created_at!,
     client: {
       id: client.data!.id,
@@ -149,6 +155,9 @@ export async function getRestorationDetail(
       materialName: p.material_name ?? "",
       serviceName: p.service_name ?? "",
       weightGrams: p.weight_grams === null ? null : Number(p.weight_grams),
+      workshopId: p.workshop_id,
+      materialId: p.material_id,
+      serviceId: p.service_id,
       workshopName: p.workshop_id
         ? (workshopName.get(p.workshop_id) ?? null)
         : null,

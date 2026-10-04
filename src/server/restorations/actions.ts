@@ -2,9 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { TablesInsert } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
+import { toDecimalString } from "@/domain/money";
 import {
+  pieceSchema,
+  restorationEditSchema,
   restorationSchema,
+  type PieceFormInput,
+  type RestorationEditFormInput,
   type RestorationFormInput,
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
@@ -62,4 +68,107 @@ export async function listClientContacts(
     name: k.display_name ?? "",
     position: k.position,
   }));
+}
+
+export type ActionResult = { ok: true } | { error: string };
+
+/** Mensaje para el usuario: las reglas de la BD (23514) ya vienen en español. */
+function editError(
+  error: { code?: string; message?: string },
+  fallback: string,
+) {
+  if (error.code === "23514" && error.message) return error.message;
+  return ERRORS[error.code ?? ""] ?? fallback;
+}
+
+/** Edita contacto, tipo y % de adelanto y notas (P12: no tocan Shopify). */
+export async function updateRestoration(
+  id: string,
+  input: RestorationEditFormInput,
+): Promise<ActionResult> {
+  await requirePermission("restauraciones.editar");
+  const parsed = restorationEditSchema.safeParse(input);
+  if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  const v = parsed.data;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("restorations")
+    .update({
+      contact_id: v.contactId,
+      payment_type: v.paymentType,
+      deposit_percent: v.depositPercent,
+      notes: v.notes,
+    })
+    .eq("id", id)
+    .select("id");
+  if (error)
+    return { error: editError(error, "No se pudo guardar la restauración.") };
+  if (data.length === 0) return { error: "La restauración no existe." };
+  revalidatePath(`/restauraciones/${id}`);
+  return { ok: true };
+}
+
+function pieceColumns(input: PieceFormInput) {
+  const parsed = pieceSchema.safeParse(input);
+  if (!parsed.success) return null;
+  const p = parsed.data;
+  return {
+    piece: p,
+    columns: {
+      workshop_id: p.workshopId,
+      description: p.description,
+      measure: p.measure,
+      material_id: p.material?.id ?? null,
+      material_name: p.material?.name ?? "",
+      service_id: p.service?.id ?? null,
+      service_name: p.service?.name ?? "",
+      weight_grams: p.weightGrams,
+      price: Number(toDecimalString(p.priceCents)),
+      notes: p.notes,
+    },
+  };
+}
+
+/** Edita una pieza; la BD bloquea lo que su estado o la orden de Shopify no permiten. */
+export async function updatePiece(
+  pieceId: string,
+  input: PieceFormInput,
+): Promise<ActionResult> {
+  await requirePermission("restauraciones.editar");
+  const parsed = pieceColumns(input);
+  if (!parsed) return { error: "Revisa los datos de la pieza." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pieces")
+    .update(parsed.columns)
+    .eq("id", pieceId)
+    .select("restoration_id");
+  if (error) return { error: editError(error, "No se pudo guardar la pieza.") };
+  if (data.length === 0) return { error: "La pieza no existe." };
+  revalidatePath(`/restauraciones/${data[0]!.restoration_id}`);
+  return { ok: true };
+}
+
+/** Agrega una pieza a una restauración existente (llega a Shopify al aprobarse). */
+export async function addPiece(
+  restorationId: string,
+  input: PieceFormInput,
+): Promise<ActionResult> {
+  await requirePermission("restauraciones.editar");
+  const parsed = pieceColumns(input);
+  if (!parsed) return { error: "Revisa los datos de la pieza." };
+
+  const supabase = await createClient();
+  // `number` y `code` los fija un trigger (los tipos generados los piden igual).
+  const row = {
+    restoration_id: restorationId,
+    ...parsed.columns,
+    arrived_at: parsed.piece.arrived ? new Date().toISOString() : null,
+  } as TablesInsert<"pieces">;
+  const { error } = await supabase.from("pieces").insert(row);
+  if (error) return { error: editError(error, "No se pudo agregar la pieza.") };
+  revalidatePath(`/restauraciones/${restorationId}`);
+  return { ok: true };
 }

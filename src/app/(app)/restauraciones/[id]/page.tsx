@@ -4,6 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
+import {
+  EditRestorationDialog,
+  PieceDialog,
+} from "@/components/restorations/edit-dialogs";
 import { MoneySummary } from "@/components/restorations/money-summary";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import {
@@ -21,8 +25,11 @@ import {
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { formatPhone } from "@/domain/phone";
+import { editableFields } from "@/domain/restoration-edit";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
+import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { listCatalog } from "@/server/catalogs";
 import {
   getRestorationDetail,
   type PieceDetail,
@@ -33,7 +40,13 @@ export const metadata: Metadata = { title: "Restauración" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function PieceCard({ piece }: { piece: PieceDetail }) {
+function PieceCard({
+  piece,
+  action,
+}: {
+  piece: PieceDetail;
+  action?: React.ReactNode;
+}) {
   const details = [
     piece.serviceName && `Servicio: ${piece.serviceName}`,
     piece.materialName && `Material: ${piece.materialName}`,
@@ -67,6 +80,7 @@ function PieceCard({ piece }: { piece: PieceDetail }) {
       {piece.notes ? (
         <p className="text-sm whitespace-pre-line">{piece.notes}</p>
       ) : null}
+      {action ? <div className="flex justify-end">{action}</div> : null}
     </li>
   );
 }
@@ -104,6 +118,12 @@ export default async function RestauracionDetallePage({
       })
     : null;
   const phone = restoration.contact?.phone ?? restoration.client.phone;
+
+  // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita.
+  const editing = canSeeMoney
+    ? await loadEditingData(restoration.client)
+    : null;
+  const ctx = { role: user.role, hasOrder: restoration.hasOrder };
 
   return (
     <div className="space-y-6">
@@ -159,13 +179,27 @@ export default async function RestauracionDetallePage({
             ) : null}
           </div>
         </div>
-        {message ? (
-          <QuoteMessageButton
-            message={message}
-            phone={phone}
-            autoOpen={justCreated}
-          />
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {editing ? (
+            <EditRestorationDialog
+              restorationId={restoration.id}
+              initial={{
+                contactId: restoration.contact?.id ?? null,
+                paymentType: restoration.paymentType,
+                depositPercent: restoration.money?.depositPercent ?? null,
+                notes: restoration.notes,
+              }}
+              contacts={editing.contacts}
+            />
+          ) : null}
+          {message ? (
+            <QuoteMessageButton
+              message={message}
+              phone={phone}
+              autoOpen={justCreated}
+            />
+          ) : null}
+        </div>
       </header>
 
       {restoration.money ? (
@@ -200,11 +234,42 @@ export default async function RestauracionDetallePage({
             <TabsTrigger value="historial">Historial</TabsTrigger>
           ) : null}
         </TabsList>
-        <TabsContent value="piezas">
+        <TabsContent value="piezas" className="space-y-3">
+          {editing && editableFields(ctx).canAddPieces ? (
+            <PieceDialog
+              restorationId={restoration.id}
+              workshops={editing.workshops}
+              materials={editing.materials}
+              services={editing.services}
+            />
+          ) : null}
           <ul className="grid gap-3 md:grid-cols-2">
-            {restoration.pieces.map((piece) => (
-              <PieceCard key={piece.id} piece={piece} />
-            ))}
+            {restoration.pieces.map((piece) => {
+              const fields = editableFields(ctx, piece);
+              return (
+                <PieceCard
+                  key={piece.id}
+                  piece={piece}
+                  action={
+                    editing && fields.piece.length > 0 ? (
+                      <PieceDialog
+                        restorationId={restoration.id}
+                        piece={piece}
+                        editable={fields.piece}
+                        priceHint={
+                          fields.priceNeedsOrderFlow
+                            ? "Con la orden de Shopify creada, el precio se cambia desde la orden (con motivo)."
+                            : "Con la orden de Shopify creada, solo el administrador cambia el precio."
+                        }
+                        workshops={editing.workshops}
+                        materials={editing.materials}
+                        services={editing.services}
+                      />
+                    ) : null
+                  }
+                />
+              );
+            })}
           </ul>
         </TabsContent>
         {canSeeMoney ? (
@@ -230,4 +295,53 @@ export default async function RestauracionDetallePage({
       </Tabs>
     </div>
   );
+}
+
+/** Catálogos activos, talleres y contactos de la empresa para los diálogos de edición. */
+async function loadEditingData(client: { id: string; kind: string }) {
+  const supabase = await createClient();
+  const [materials, services, workshops, contacts] = await Promise.all([
+    listCatalog("materials", { onlyActive: true }),
+    listCatalog("services", { onlyActive: true }),
+    supabase
+      .from("workshops")
+      .select("id, name")
+      .eq("active", true)
+      .order("name"),
+    client.kind === "empresa"
+      ? supabase
+          .from("contacts")
+          .select("id, display_name, position")
+          .eq("client_id", client.id)
+          .eq("active", true)
+          .order("display_name")
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (workshops.error) throw workshops.error;
+  if (contacts.error) throw contacts.error;
+  const option = ({
+    id,
+    name,
+    price,
+  }: {
+    id: string;
+    name: string;
+    price: number | null;
+  }) => ({
+    id,
+    name,
+    price,
+  });
+  return {
+    materials: materials.map(option),
+    services: services.map(option),
+    workshops: workshops.data,
+    contacts: contacts.data
+      ? contacts.data.map((k) => ({
+          id: k.id,
+          name: k.display_name ?? "",
+          position: k.position,
+        }))
+      : null,
+  };
 }
