@@ -242,6 +242,112 @@ export type Database = {
         };
         Relationships: [];
       };
+      piece_status_history: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          from_status: Database["public"]["Enums"]["piece_status"] | null;
+          id: number;
+          note: string | null;
+          occurred_at: string;
+          piece_id: string;
+          restoration_id: string;
+          to_status: Database["public"]["Enums"]["piece_status"];
+          workshop_id: string | null;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          from_status?: Database["public"]["Enums"]["piece_status"] | null;
+          id?: never;
+          note?: string | null;
+          occurred_at?: string;
+          piece_id: string;
+          restoration_id: string;
+          to_status: Database["public"]["Enums"]["piece_status"];
+          workshop_id?: string | null;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          from_status?: Database["public"]["Enums"]["piece_status"] | null;
+          id?: never;
+          note?: string | null;
+          occurred_at?: string;
+          piece_id?: string;
+          restoration_id?: string;
+          to_status?: Database["public"]["Enums"]["piece_status"];
+          workshop_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "piece_status_history_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "piece_metrics";
+            referencedColumns: ["piece_id"];
+          },
+          {
+            foreignKeyName: "piece_status_history_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "piece_status_history_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "piece_status_history_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "piece_status_history_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "piece_status_history_workshop_id_fkey";
+            columns: ["workshop_id"];
+            isOneToOne: false;
+            referencedRelation: "workshops";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      piece_status_transitions: {
+        Row: {
+          from_status: Database["public"]["Enums"]["piece_status"];
+          requires_note: boolean;
+          requires_workshop: boolean;
+          roles: Database["public"]["Enums"]["app_role"][];
+          to_status: Database["public"]["Enums"]["piece_status"];
+        };
+        Insert: {
+          from_status: Database["public"]["Enums"]["piece_status"];
+          requires_note?: boolean;
+          requires_workshop?: boolean;
+          roles: Database["public"]["Enums"]["app_role"][];
+          to_status: Database["public"]["Enums"]["piece_status"];
+        };
+        Update: {
+          from_status?: Database["public"]["Enums"]["piece_status"];
+          requires_note?: boolean;
+          requires_workshop?: boolean;
+          roles?: Database["public"]["Enums"]["app_role"][];
+          to_status?: Database["public"]["Enums"]["piece_status"];
+        };
+        Relationships: [];
+      };
       pieces: {
         Row: {
           approved_at: string | null;
@@ -926,6 +1032,34 @@ export type Database = {
       };
     };
     Views: {
+      piece_metrics: {
+        Row: {
+          code: string | null;
+          fulfillment_days: number | null;
+          fulfillment_ongoing: boolean | null;
+          piece_id: string | null;
+          restoration_id: string | null;
+          status: Database["public"]["Enums"]["piece_status"] | null;
+          workshop_days: number | null;
+          workshop_ongoing: boolean | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       pieces_operational: {
         Row: {
           approved_at: string | null;
@@ -1067,6 +1201,18 @@ export type Database = {
         };
         Returns: number;
       };
+      change_piece_status: {
+        Args: {
+          p_note?: string;
+          p_piece_ids: string[];
+          p_to: Database["public"]["Enums"]["piece_status"];
+          p_workshop_id?: string;
+        };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       claim_shopify_jobs: {
         Args: { p_limit?: number; p_lock_timeout?: string };
         Returns: {
@@ -1109,10 +1255,33 @@ export type Database = {
           id: string;
         }[];
       };
+      derive_piece_location: {
+        Args: {
+          p_arrived_at: string;
+          p_status: Database["public"]["Enums"]["piece_status"];
+        };
+        Returns: Database["public"]["Enums"]["piece_location"];
+      };
+      derive_restoration_status: {
+        Args: { p_pieces: Json };
+        Returns: Database["public"]["Enums"]["restoration_status"];
+      };
       duplicate_quote: { Args: { p_id: string }; Returns: string };
       effective_status: {
         Args: { q: Database["public"]["Tables"]["quotes"]["Row"] };
         Returns: string;
+      };
+      fulfillment_days: {
+        Args: {
+          p_delivered_at: string;
+          p_now: string;
+          p_registered_at: string;
+          p_status: Database["public"]["Enums"]["piece_status"];
+        };
+        Returns: {
+          days: number;
+          ongoing: boolean;
+        }[];
       };
       import_shopify_customer: {
         Args: {
@@ -1125,6 +1294,14 @@ export type Database = {
           p_phone: string;
         };
         Returns: string;
+      };
+      is_ready_for_shopify_order: {
+        Args: { p_pieces: Json };
+        Returns: boolean;
+      };
+      lima_days_between: {
+        Args: { p_end: string; p_start: string };
+        Returns: number;
       };
       list_clients: {
         Args: {
@@ -1150,6 +1327,22 @@ export type Database = {
           total_count: number;
         }[];
       };
+      mark_pieces_arrived: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
+      piece_logistics_info: {
+        Args: { p_restoration_id: string };
+        Returns: {
+          last_observation: string;
+          piece_id: string;
+          workshop_days: number;
+          workshop_ongoing: boolean;
+        }[];
+      };
       save_quote: {
         Args: { p_id: string; p_items: Json; p_quote: Json };
         Returns: string;
@@ -1161,6 +1354,13 @@ export type Database = {
           job_id: number;
           last_error: string;
           status: string;
+        }[];
+      };
+      workshop_days: {
+        Args: { p_history: Json; p_now: string };
+        Returns: {
+          days: number;
+          ongoing: boolean;
         }[];
       };
     };

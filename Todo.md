@@ -760,23 +760,24 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(piezas): agrega cálculo de estado general, ubicación y tiempos`
 
 #### Paso 8.3 — Implementación en BD
-- [ ] Tabla `piece_status_transitions` (semilla con §7.1) y `piece_status_history`.
-- [ ] RPC `change_piece_status(piece_ids[], to, note, workshop_id)` (acepta varias piezas para acciones masivas): valida transición y rol, bloquea filas, registra historial, fija fechas, aplica "Aprobada → Recibida".
-- [ ] RPC `mark_pieces_arrived(piece_ids[])`.
-- [ ] Columna generada `ubicacion`; trigger que recalcula el estado general; trigger que encola `order_create` cuando la restauración está lista para la orden y aún no tiene una.
-- [ ] Vista `piece_metrics` (días en taller, días de cumplimiento).
+- [x] Tabla `piece_status_transitions` (semilla con §7.1) y `piece_status_history`.
+- [x] RPC `change_piece_status(piece_ids[], to, note, workshop_id)` (acepta varias piezas para acciones masivas): valida transición y rol, bloquea filas, registra historial, fija fechas, aplica "Aprobada → Recibida".
+- [x] RPC `mark_pieces_arrived(piece_ids[])`.
+- [x] Columna generada `ubicacion`; trigger que recalcula el estado general; trigger que encola `order_create` cuando la restauración está lista para la orden y aún no tiene una.
+- [x] Vista `piece_metrics` (días en taller, días de cumplimiento).
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Transición válida, inválida y con rol no permitido.
-  - [ ] Fechas fijadas por cada hito.
-  - [ ] Historial con actor y nota.
-  - [ ] Estado general y ubicación para los escenarios de 8.2.
-  - [ ] `order_create` se encola una sola vez.
-  - [ ] `piece_metrics` con un historial conocido.
+  - [x] Transición válida, inválida y con rol no permitido.
+  - [x] Fechas fijadas por cada hito.
+  - [x] Historial con actor y nota.
+  - [x] Estado general y ubicación para los escenarios de 8.2.
+  - [x] `order_create` se encola una sola vez.
+  - [x] `piece_metrics` con un historial conocido.
 - **Integración:**
-  - [ ] **Consistencia**: `piece_status_transitions` es idéntica a la máquina de estados de TypeScript.
-  - [ ] Los escenarios del fixture compartido dan el mismo resultado en TypeScript y en la BD.
+  - [x] **Consistencia**: `piece_status_transitions` es idéntica a la máquina de estados de TypeScript.
+  - [x] Los escenarios del fixture compartido dan el mismo resultado en TypeScript y en la BD.
 - **E2E:** se cubre en 8.4.
+- Hecho (2026-10-05): `piece_status_transitions` sembrada con la tabla de TypeScript (un test de integración compara ambas). `piece_status_history` con actor, nota, taller y el paso inicial al registrar la pieza (completa el "historial inicial" de 7.3); solo admin y ventas la leen. `change_piece_status()` (varias piezas a la vez, bloquea filas, valida transición, rol, nota y taller activo, fija las fechas y aplica la llegada anticipada en dos pasos; Aprobada → Recibida se rechaza: es `mark_pieces_arrived()`). Logística no cambia piezas de restauraciones pasadas. La ubicación ya era columna generada (7.1); `derive_piece_location()`, `derive_restoration_status()`, `is_ready_for_shopify_order()`, `workshop_days()` y `fulfillment_days()` replican el dominio y el fixture `derivations.json` se verifica en TypeScript y en la BD. El trigger de piezas recalcula el estado general y encola `order.create` (clave `order:<id>`) una sola vez por restauración: un job con error se reintenta con "Reintentar". **Hasta la Fase 9 no hay handler de `order.create`:** el job queda en error al procesarse y se reintenta cuando exista. Vista `piece_metrics` (con los permisos de quien consulta, así logística no la ve) y `piece_logistics_info()` para logística (días en taller y nota de la última observación, P42).
 - Commit: `feat(piezas): implementa cambios de estado, historial y derivados en BD`
 
 #### Paso 8.4 — Interfaz de cambio de estado
