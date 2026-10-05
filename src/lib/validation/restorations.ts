@@ -136,3 +136,24 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
 
 export type RestorationFormInput = z.input<typeof restorationSchema>;
 export type RestorationInput = z.output<typeof restorationSchema>;
+
+const editFields = {
+  contactId: restorationFields.contactId,
+  notes: restorationFields.notes,
+};
+
+/** Datos editables de una restauración ya registrada (el cliente no cambia, P12). */
+export const restorationEditSchema = z.discriminatedUnion("paymentType", [
+  z.object({
+    ...editFields,
+    paymentType: z.literal("a_cuenta"),
+    depositPercent,
+  }),
+  z.object({
+    ...editFields,
+    paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
+    depositPercent: z.unknown().transform(() => null),
+  }),
+]);
+
+export type RestorationEditFormInput = z.input<typeof restorationEditSchema>;

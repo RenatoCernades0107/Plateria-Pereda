@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 3100;
+// E2E_PORT permite correr otra copia del proyecto (otro worktree) a la vez.
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 const isCI = !!process.env.CI;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 

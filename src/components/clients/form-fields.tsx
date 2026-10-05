@@ -30,6 +30,7 @@ export function TextField<T extends FieldValues>({
   type = "text",
   inputMode,
   multiline = false,
+  disabled = false,
 }: {
   form: UseFormReturn<T>;
   name: FieldPath<T>;
@@ -37,6 +38,7 @@ export function TextField<T extends FieldValues>({
   type?: string;
   inputMode?: "numeric" | "tel" | "email";
   multiline?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <FormField
@@ -47,13 +49,19 @@ export function TextField<T extends FieldValues>({
           <FormLabel>{label}</FormLabel>
           <FormControl>
             {multiline ? (
-              <Textarea rows={2} {...field} value={String(field.value ?? "")} />
+              <Textarea
+                rows={2}
+                {...field}
+                disabled={disabled}
+                value={String(field.value ?? "")}
+              />
             ) : (
               <Input
                 type={type}
                 inputMode={inputMode}
                 autoComplete="off"
                 {...field}
+                disabled={disabled}
                 value={String(field.value ?? "")}
               />
             )}

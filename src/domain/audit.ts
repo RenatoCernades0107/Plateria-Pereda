@@ -1,6 +1,15 @@
 import { DOCUMENT_LABELS, type DocumentType } from "@/domain/documents";
+import { PAYMENT_TYPE_LABELS, type PaymentType } from "@/domain/money";
 import { formatPhone } from "@/domain/phone";
+import {
+  PIECE_STATUS_LABELS,
+  type PieceStatus,
+} from "@/domain/piece-state-machine";
 import { PERU_REGIONS } from "@/domain/regions";
+import {
+  RESTORATION_STATUS_LABELS,
+  type RestorationStatus,
+} from "@/domain/restoration-status";
 import { formatMoney } from "@/lib/format";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 
@@ -146,6 +155,63 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       },
       shopify_customer_id: { label: "Cliente en Shopify" },
       shopify_company_contact_id: { label: "Contacto en Shopify" },
+    },
+  },
+  restorations: {
+    label: "Restauración",
+    fields: {
+      code: { label: "Código" },
+      client_id: { label: "Cliente" },
+      contact_id: { label: "Contacto" },
+      status: {
+        label: "Estado",
+        format: (value) =>
+          RESTORATION_STATUS_LABELS[value as RestorationStatus] ??
+          formatValue(value),
+      },
+      payment_type: {
+        label: "Tipo de pago",
+        format: (value) =>
+          PAYMENT_TYPE_LABELS[value as PaymentType] ?? formatValue(value),
+      },
+      deposit_percent: { label: "Adelanto (%)" },
+      total: { label: "Total", format: (value) => formatMoney(Number(value)) },
+      paid: { label: "Pagado", format: (value) => formatMoney(Number(value)) },
+      payment_status: { label: "Estado de pago" },
+      notes: { label: "Notas" },
+      shopify_order_id: { label: "Orden en Shopify" },
+      shopify_order_name: { label: "Número de orden en Shopify" },
+    },
+  },
+  pieces: {
+    label: "Pieza",
+    fields: {
+      code: { label: "Código" },
+      number: { label: "Número" },
+      restoration_id: { label: "Restauración" },
+      status: {
+        label: "Estado",
+        format: (value) =>
+          PIECE_STATUS_LABELS[value as PieceStatus] ?? formatValue(value),
+      },
+      workshop_id: { label: "Taller" },
+      description: { label: "Descripción" },
+      measure: { label: "Medida" },
+      material_id: { label: "Material (catálogo)" },
+      material_name: { label: "Material" },
+      service_id: { label: "Servicio (catálogo)" },
+      service_name: { label: "Servicio" },
+      weight_grams: { label: "Peso (g)" },
+      price: { label: "Precio", format: (value) => formatMoney(Number(value)) },
+      notes: { label: "Notas" },
+      arrived_at: { label: "Llegada a tienda" },
+      approved_at: { label: "Aprobada" },
+      received_at: { label: "Recibida" },
+      first_sent_at: { label: "Primer envío al taller" },
+      last_returned_at: { label: "Última devolución del taller" },
+      delivered_at: { label: "Entregada" },
+      cancelled_at: { label: "Anulada" },
+      shopify_line_item_id: { label: "Línea en Shopify" },
     },
   },
   settings: {

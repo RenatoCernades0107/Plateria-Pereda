@@ -631,15 +631,16 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 7 — Restauraciones: registro y cotización por WhatsApp
 
 #### Paso 7.1 — Esquema de restauraciones y piezas
-- [ ] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-00001`, pieza `RES-00001-1`); RLS; auditoría; índices.
-- [ ] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
-- [ ] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
+- [x] Enums (estado general, estado de pieza, ubicación, estado de pago, tipo de pago); tablas `restorations` y `pieces`; códigos correlativos (`RES-00001`, pieza `RES-00001-1`); RLS; auditoría; índices.
+- [x] Restricciones: precio ≥ 0, peso ≥ 0, % de adelanto entre 1 y 100; total = suma de precios de piezas no anuladas (trigger).
+- [x] Logística lee restauraciones y piezas sin columnas de dinero (vistas o privilegios por columna; P42).
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Códigos correlativos únicos.
-  - [ ] Total recalculado al insertar, editar y anular piezas.
-  - [ ] RLS por rol; logística no puede leer precios ni montos (P42).
+  - [x] Códigos correlativos únicos.
+  - [x] Total recalculado al insertar, editar y anular piezas.
+  - [x] RLS por rol; logística no puede leer precios ni montos (P42).
 - **E2E:** No aplica (sin interfaz).
+- Hecho (2026-10-04): montos en soles `numeric(12,2)` (la app convierte a céntimos). `RES-00001` sale de una secuencia (crece a 6+ dígitos pasado el 99999); el número y el código de la pieza los fija un trigger que bloquea la restauración. Columnas generadas: `expected_deposit` (% en A cuenta, total en Contado, 0 en Crédito), `balance` y `pieces.location` (igual que `deriveLocation`, adelanta parte de 8.3). `payment_status` con la propuesta de P29 (pendiente, parcial, pagado, reembolsado). El contacto debe ser de la empresa de la restauración. Privilegios por columna: los usuarios solo escriben datos de captura; estado, totales, pagos, fechas de hitos e ids de Shopify los fijan triggers/RPC, y el cliente no se cambia (P12). Las tablas con dinero solo las leen admin y ventas; todos los roles usan `restorations_operational` y `pieces_operational` (sin dinero), donde logística no ve restauraciones completadas ni anuladas (D24).
 - Commit: `feat(restauraciones): agrega esquema de restauraciones y piezas`
 
 #### Paso 7.2 — Dominio: dinero y validaciones ⛔ P28
@@ -655,72 +656,79 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega reglas de dinero y validaciones`
 
 #### Paso 7.3 — RPC `create_restoration`
-- [ ] Función SQL transaccional que crea la restauración + piezas + historial inicial y devuelve el código; valida permisos y datos.
+- [x] Función SQL transaccional que crea la restauración + piezas + historial inicial y devuelve el código; valida permisos y datos.
 - **Unit:** No aplica (SQL); el server action se prueba en integración.
 - **BD:**
-  - [ ] Crea todo o nada.
-  - [ ] Rechaza restauraciones sin piezas o con datos inválidos.
-  - [ ] Rechaza al rol logística.
+  - [x] Crea todo o nada.
+  - [x] Rechaza restauraciones sin piezas o con datos inválidos.
+  - [x] Rechaza al rol logística.
 - **Integración:**
-  - [ ] Server action → RPC → datos correctos y auditados.
+  - [x] Server action → RPC → datos correctos y auditados.
 - **E2E:** se cubre en 7.4.
+- Hecho (2026-10-04): `create_restoration()` corre como quien llama (RLS y privilegios por columna de 7.1 deciden: admin y ventas), exige 1–100 piezas y un cliente/contacto activos, y devuelve `id` y `code`. El historial inicial es por ahora el registro de auditoría de cada alta; la tabla `piece_status_history` llega en 8.3 (ahí se agrega el paso inicial). Acción `createRestoration()` (valida con `restorationSchema`, traduce errores) y `createRestorationRecord()` (`src/server/restorations/`), que convierte céntimos a soles para la BD.
 - Commit: `feat(restauraciones): agrega creación transaccional de restauraciones`
 
 #### Paso 7.4 — Formulario de registro ⛔ P20
-- [ ] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
-- [ ] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
-- [ ] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
+- [x] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
+- [x] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
+- [x] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
 - **Unit:**
-  - [ ] Total en vivo al agregar/quitar/editar piezas.
-  - [ ] Errores visibles por pieza.
-  - [ ] Campos condicionales según el tipo de pago.
+  - [x] Total en vivo al agregar/quitar/editar piezas.
+  - [x] Errores visibles por pieza.
+  - [x] Campos condicionales según el tipo de pago.
 - **E2E:**
-  - [ ] Registrar una restauración con 3 piezas → redirige al detalle con código y total correctos.
-  - [ ] Las validaciones impiden enviar datos incompletos.
-  - [ ] Crear un cliente nuevo desde el formulario sin perder lo ya escrito.
-  - [ ] `@mobile` registro completo desde el celular.
-- Commit: `feat(restauraciones): agrega formulario de registro`
+  - [x] Registrar una restauración con 3 piezas → redirige al detalle con código y total correctos.
+  - [x] Las validaciones impiden enviar datos incompletos.
+  - [x] Crear un cliente nuevo desde el formulario sin perder lo ya escrito.
+  - [x] `@mobile` registro completo desde el celular.
+- Hecho (2026-10-04): `/restauraciones/nueva` (admin y ventas) con `RestorationForm`: `ClientPicker` (con "Crear nuevo cliente" sin perder lo escrito); si es empresa, selector del contacto (`listClientContacts`); un contacto elegido en el buscador fija su empresa y el contacto. Piezas como tarjetas colapsables (agregar, duplicar, quitar; hasta 100); material y servicio con sugerencias del catálogo (`<datalist>`) o texto libre, y el servicio del catálogo propone su precio sugerido si la pieza aún no tiene precio. Tipo de pago con % solo en "A cuenta" (por defecto el de la configuración); total y adelanto en vivo en una barra fija; botón deshabilitado mientras se guarda; aviso del navegador al salir con cambios. Al guardar abre el detalle con `?registrada=1`. **P20 sigue pendiente:** la casilla "La pieza ya está en tienda" queda desmarcada por defecto.
+- Commit: junto con 7.5 y 7.6 en `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`.
 
 #### Paso 7.5 — Mensaje de cotización para WhatsApp ⛔ P25
-- [ ] `src/domain/whatsapp-quote.ts`: arma el mensaje (saludo, código, piezas con servicio y precio, total, tipo de pago, adelanto, condiciones) a partir de la plantilla de configuración.
-- [ ] Al registrar se abre un diálogo con la vista previa, botón **Copiar** y botón **Abrir WhatsApp** (`https://wa.me/51XXXXXXXXX?text=...`). También disponible desde el detalle.
+- [x] `src/domain/whatsapp-quote.ts`: arma el mensaje (saludo, código, piezas con servicio y precio, total, tipo de pago, adelanto, condiciones) a partir de la plantilla de configuración.
+- [x] Al registrar se abre un diálogo con la vista previa, botón **Copiar** y botón **Abrir WhatsApp** (`https://wa.me/51XXXXXXXXX?text=...`). También disponible desde el detalle.
 - **Unit:**
-  - [ ] Snapshot del mensaje para Contado, A cuenta y Crédito.
-  - [ ] Excluye piezas anuladas.
-  - [ ] Formato de soles y saltos de línea.
-  - [ ] URL de wa.me codificada y con el número normalizado.
-  - [ ] Sin teléfono → no se muestra "Abrir WhatsApp".
+  - [x] Snapshot del mensaje para Contado, A cuenta y Crédito.
+  - [x] Excluye piezas anuladas.
+  - [x] Formato de soles y saltos de línea.
+  - [x] URL de wa.me codificada y con el número normalizado.
+  - [x] Sin teléfono → no se muestra "Abrir WhatsApp".
 - **E2E:**
-  - [ ] Tras registrar aparece el diálogo con el mensaje.
-  - [ ] **Copiar** deja el texto en el portapapeles (permiso de clipboard en Chromium).
-  - [ ] El enlace de WhatsApp es correcto.
-- Commit: `feat(restauraciones): genera mensaje de cotización para WhatsApp`
+  - [x] Tras registrar aparece el diálogo con el mensaje.
+  - [x] **Copiar** deja el texto en el portapapeles (permiso de clipboard en Chromium).
+  - [x] El enlace de WhatsApp es correcto.
+- Avance (2026-10-04): dominio y componente listos, falta conectarlos al registro y al detalle y los E2E. `src/domain/whatsapp-quote.ts`: `buildQuoteMessage(template, data)` arma el mensaje con la plantilla de la configuración (`quoteValues()` da cada variable y `quoteAmounts()` el total y el adelanto, recalculados sin las piezas anuladas) y `whatsappUrl(phone, text)` el enlace a wa.me con el número normalizado (null sin teléfono válido). `WhatsAppQuoteDialog` (`src/components/restorations/`) muestra la vista previa con **Copiar** y, si hay teléfono, **Abrir WhatsApp**. Unit hechos: los tres tipos de pago (snapshots), anuladas excluidas, soles y saltos de línea, URL codificada y sin teléfono. **P25 sigue pendiente:** se usó su propuesta; una línea numerada por pieza ("descripción – servicio: S/ precio", sin servicio solo la descripción), el saludo va al contacto si la restauración tiene uno, y la plantilla por defecto cambia la línea fija del adelanto por la nueva variable `{forma_pago}` ("Al contado (S/ total)", "A cuenta (adelanto del 50 %: S/ …)" o "Al crédito (sin adelanto)"); también hay `{tipo_pago}`. Las plantillas ya personalizadas siguen funcionando.
+- Hecho (2026-10-04): conectado al detalle con `QuoteMessageButton` ("Mensaje de cotización", admin y ventas): recién registrada la restauración el diálogo se abre solo y al cerrarlo se limpia `?registrada=1`. El teléfono es el del contacto o, si no hay, el del cliente. E2E: diálogo tras registrar, Copiar (portapapeles de Chromium) y enlace de wa.me.
+- Commit: junto con 7.4 y 7.6.
 
 #### Paso 7.6 — Detalle de restauración
-- [ ] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial (logística no ve montos ni las pestañas Pagos e Historial, P42).
+- [x] `/restauraciones/[id]`: cabecera (código, cliente, contacto, estado general, estado de pago, total / pagado / saldo, orden de Shopify con enlace), piezas en tarjetas con estado y ubicación, pestañas Piezas, Pagos, Archivos e Historial (logística no ve montos ni las pestañas Pagos e Historial, P42).
 - **Unit:**
-  - [ ] Badges por estado y ubicación.
-  - [ ] Resumen de montos.
+  - [x] Badges por estado y ubicación.
+  - [x] Resumen de montos.
 - **E2E:**
-  - [ ] El detalle muestra los datos registrados.
-  - [ ] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
-  - [ ] Logística no puede abrir restauraciones entregadas o anuladas (P42).
-  - [ ] `@mobile` legible sin scroll horizontal.
-- Commit: `feat(restauraciones): agrega vista de detalle`
+  - [x] El detalle muestra los datos registrados.
+  - [x] Logística ve el detalle sin precios ni las pestañas Pagos e Historial (P42).
+  - [x] Logística no puede abrir restauraciones entregadas o anuladas (P42).
+  - [x] `@mobile` legible sin scroll horizontal.
+- Avance (2026-10-04): componentes presentacionales en `src/components/restorations/`: `PieceStatusBadge`, `RestorationStatusBadge` y `LocationBadge` (`status-badges.tsx`) y `MoneySummary` (total / pagado / saldo; si se pagó de más, "A favor del cliente"; no se renderiza para logística, P42), con sus unit. Falta la página.
+- Hecho (2026-10-04): `/restauraciones/[id]` con `getRestorationDetail()`: los datos sin dinero salen de las vistas `*_operational` (logística recibe 404 en restauraciones completadas o anuladas, D24) y los montos de las tablas solo para admin y ventas. Cabecera con código, cliente (enlace), contacto y teléfono, estado general, estado de pago, tipo de pago y número de orden de Shopify (el enlace al admin de Shopify llega con la orden en 9.1); `MoneySummary` y adelanto esperado; pestañas Piezas (tarjetas con estado, ubicación, servicio, material, medida, peso, taller y precio), Pagos (Fase 11), Archivos (Fase 10) e Historial (auditoría de la restauración). Logística no ve montos, Pagos, Historial ni el mensaje de cotización. La pestaña Archivos y Pagos se llenan en sus fases; la línea de tiempo por pieza, en 8.5. `/restauraciones` tiene por ahora solo "Nueva restauración" (el listado es la Fase 12). Las pestañas inactivas de `ui/tabs` subieron de contraste (axe AA).
+- Commit: `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`
 
 #### Paso 7.7 — Edición de restauraciones y piezas
-- [ ] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
-- [ ] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio, porque el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
-- [ ] El cliente no se puede cambiar en el sistema una vez registrada la restauración (P12); si hace falta, se cambia en Shopify y llega por webhook (11.3).
-- [ ] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
+- [x] Editar datos de la restauración y de sus piezas; agregar piezas a una restauración existente.
+- [x] Antes de crear la orden: todo editable por ventas y admin. Después: libres los campos que no tocan Shopify (P12: contacto, tipo y % de adelanto, notas; medida, material, peso, taller, notas; descripción y servicio, porque el título de la línea lleva solo el código). Los que sí tocan Shopify (precio, agregar o anular pieza) siguen P12 (Paso 9.2).
+- [x] El cliente no se puede cambiar en el sistema una vez registrada la restauración (P12); si hace falta, se cambia en Shopify y llega por webhook (11.3).
+- [x] Todo cambio queda en la auditoría (quién, cuándo, antes → después); los cambios que tocan Shopify piden motivo.
 - **Unit:**
-  - [ ] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
+  - [x] `editableFields(restoration, piece, role)` según el estado, el rol y si ya existe la orden.
 - **BD:**
-  - [ ] El trigger/RPC impide editar campos bloqueados; logística no edita nada salvo fotos.
+  - [x] El trigger/RPC impide editar campos bloqueados; logística no edita nada salvo fotos.
 - **E2E:**
-  - [ ] Editar descripción y precio antes de aprobar.
-  - [ ] Con la orden creada: el material se puede editar y el precio sigue el flujo de P12.
-  - [ ] El cambio aparece en el historial.
+  - [x] Editar descripción y precio antes de aprobar.
+  - [x] Con la orden creada: el material se puede editar y el precio sigue el flujo de P12.
+  - [x] El cambio aparece en el historial.
+- Hecho (2026-10-04): `editableFields(ctx, piece)` (`src/domain/restoration-edit.ts`) decide por rol, orden y estado: logística nada; pieza anulada nada; entregada solo notas; antes de la orden todo; con la orden, los campos libres de P12 y el precio sale de la edición directa (solo admin lo cambiará por el flujo de la orden en 9.2, con motivo). En el detalle: "Editar" (contacto, tipo y % de adelanto, notas), "Editar" por pieza (campos bloqueados deshabilitados con explicación) y "Agregar pieza" (entra Registrada; llega a Shopify al aprobarse). Los campos de la pieza son un componente común (`PieceFields`) del registro y los diálogos; ahora sí muestran las sugerencias del catálogo (`<datalist>`). La BD lo exige con el trigger `guard_piece_edit` (anulada, entregada y precio con orden salvo `app.shopify_order_edit = 'on'`, que usará 9.2) y `guard_piece_insert` (no se agregan piezas a restauraciones completadas o anuladas); el cliente ya era inmutable por privilegios (7.1). Todo queda en la auditoría. **Pendiente para 9.2:** el motivo de los cambios que tocan Shopify y el E2E del precio con la orden creada (aquí se verifica que el precio queda bloqueado y el material se edita).
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
 ### Fase 8 — Estados, ubicación, fechas y tiempos
@@ -752,49 +760,53 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(piezas): agrega cálculo de estado general, ubicación y tiempos`
 
 #### Paso 8.3 — Implementación en BD
-- [ ] Tabla `piece_status_transitions` (semilla con §7.1) y `piece_status_history`.
-- [ ] RPC `change_piece_status(piece_ids[], to, note, workshop_id)` (acepta varias piezas para acciones masivas): valida transición y rol, bloquea filas, registra historial, fija fechas, aplica "Aprobada → Recibida".
-- [ ] RPC `mark_pieces_arrived(piece_ids[])`.
-- [ ] Columna generada `ubicacion`; trigger que recalcula el estado general; trigger que encola `order_create` cuando la restauración está lista para la orden y aún no tiene una.
-- [ ] Vista `piece_metrics` (días en taller, días de cumplimiento).
+- [x] Tabla `piece_status_transitions` (semilla con §7.1) y `piece_status_history`.
+- [x] RPC `change_piece_status(piece_ids[], to, note, workshop_id)` (acepta varias piezas para acciones masivas): valida transición y rol, bloquea filas, registra historial, fija fechas, aplica "Aprobada → Recibida".
+- [x] RPC `mark_pieces_arrived(piece_ids[])`.
+- [x] Columna generada `ubicacion`; trigger que recalcula el estado general; trigger que encola `order_create` cuando la restauración está lista para la orden y aún no tiene una.
+- [x] Vista `piece_metrics` (días en taller, días de cumplimiento).
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Transición válida, inválida y con rol no permitido.
-  - [ ] Fechas fijadas por cada hito.
-  - [ ] Historial con actor y nota.
-  - [ ] Estado general y ubicación para los escenarios de 8.2.
-  - [ ] `order_create` se encola una sola vez.
-  - [ ] `piece_metrics` con un historial conocido.
+  - [x] Transición válida, inválida y con rol no permitido.
+  - [x] Fechas fijadas por cada hito.
+  - [x] Historial con actor y nota.
+  - [x] Estado general y ubicación para los escenarios de 8.2.
+  - [x] `order_create` se encola una sola vez.
+  - [x] `piece_metrics` con un historial conocido.
 - **Integración:**
-  - [ ] **Consistencia**: `piece_status_transitions` es idéntica a la máquina de estados de TypeScript.
-  - [ ] Los escenarios del fixture compartido dan el mismo resultado en TypeScript y en la BD.
+  - [x] **Consistencia**: `piece_status_transitions` es idéntica a la máquina de estados de TypeScript.
+  - [x] Los escenarios del fixture compartido dan el mismo resultado en TypeScript y en la BD.
 - **E2E:** se cubre en 8.4.
+- Hecho (2026-10-05): `piece_status_transitions` sembrada con la tabla de TypeScript (un test de integración compara ambas). `piece_status_history` con actor, nota, taller y el paso inicial al registrar la pieza (completa el "historial inicial" de 7.3); solo admin y ventas la leen. `change_piece_status()` (varias piezas a la vez, bloquea filas, valida transición, rol, nota y taller activo, fija las fechas y aplica la llegada anticipada en dos pasos; Aprobada → Recibida se rechaza: es `mark_pieces_arrived()`). Logística no cambia piezas de restauraciones pasadas. La ubicación ya era columna generada (7.1); `derive_piece_location()`, `derive_restoration_status()`, `is_ready_for_shopify_order()`, `workshop_days()` y `fulfillment_days()` replican el dominio y el fixture `derivations.json` se verifica en TypeScript y en la BD. El trigger de piezas recalcula el estado general y encola `order.create` (clave `order:<id>`) una sola vez por restauración: un job con error se reintenta con "Reintentar". **Hasta la Fase 9 no hay handler de `order.create`:** el job queda en error al procesarse y se reintenta cuando exista. Vista `piece_metrics` (con los permisos de quien consulta, así logística no la ve) y `piece_logistics_info()` para logística (días en taller y nota de la última observación, P42).
 - Commit: `feat(piezas): implementa cambios de estado, historial y derivados en BD`
 
 #### Paso 8.4 — Interfaz de cambio de estado
-- [ ] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
-- [ ] Acción "Marcar llegada a tienda".
-- [ ] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
-- [ ] Asignar / cambiar taller (queda auditado).
+- [x] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
+- [x] Acción "Marcar llegada a tienda".
+- [x] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
+- [x] Asignar / cambiar taller (queda auditado).
 - **Unit:**
-  - [ ] El componente muestra los botones correctos por estado y rol.
-  - [ ] El diálogo exige nota/taller cuando corresponde.
+  - [x] El componente muestra los botones correctos por estado y rol.
+  - [x] El diálogo exige nota/taller cuando corresponde.
 - **E2E:**
-  - [ ] Flujo feliz: Registrada → Aprobada → (llegada) Recibida → Enviada al taller → Devuelta → Entregada, verificando estado general y ubicación en cada paso.
-  - [ ] Flujo de consulta: En consulta → En espera de respuesta → Aprobada; y En espera → Anulada.
-  - [ ] Pieza que llegó antes de aprobarse pasa a Recibida al aprobarla.
-  - [ ] Observada y reenvío al taller.
-  - [ ] Anular todas las piezas → restauración Anulada.
-  - [ ] Cada rol solo ve las acciones que le corresponden (logística no consulta, aprueba ni anula).
-  - [ ] `@mobile` cambio de estado desde el celular.
+  - [x] Flujo feliz: Registrada → Aprobada → (llegada) Recibida → Enviada al taller → Devuelta → Entregada, verificando estado general y ubicación en cada paso.
+  - [x] Flujo de consulta: En consulta → En espera de respuesta → Aprobada; y En espera → Anulada.
+  - [x] Pieza que llegó antes de aprobarse pasa a Recibida al aprobarla.
+  - [x] Observada y reenvío al taller.
+  - [x] Anular todas las piezas → restauración Anulada.
+  - [x] Cada rol solo ve las acciones que le corresponden (logística no consulta, aprueba ni anula).
+  - [x] `@mobile` cambio de estado desde el celular.
+- Hecho (2026-10-05): en el detalle, `PiecesBoard` muestra cada pieza con `PieceStatusPanel`: estado y ubicación (se actualizan al instante y vuelven atrás si la BD rechaza el cambio), "Marcar llegada a tienda" y solo las transiciones del rol (`availableTransitions`). Nota, taller o anular abren `StatusChangeDialog` (nota obligatoria donde corresponde; el taller ya asignado viene elegido). Selección de piezas para acciones masivas: se ofrecen solo los cambios posibles para todas las elegidas (`commonTransitions`), la llegada en bloque y "Asignar taller". Asignar o cambiar el taller va por el RPC `assign_piece_workshop()` (admin, ventas y logística; no en piezas en el taller, entregadas o anuladas), auditado. Acciones del servidor en `src/server/restorations/status-actions.ts`; los mensajes de error vienen de la BD. Al completarse la restauración, logística deja de verla (D24), por eso en el E2E la entrega final la hace ventas. El service role también puede registrar restauraciones (permiso sobre `next_restoration_code`).
 - Commit: `feat(piezas): agrega acciones de cambio de estado en la interfaz`
 
 #### Paso 8.5 — Línea de tiempo
-- [ ] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento. Logística no la ve: solo el estado actual, los días en taller y la nota de la última observación (P42).
+- [x] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento. Logística no la ve: solo el estado actual, los días en taller y la nota de la última observación (P42).
 - **Unit:**
-  - [ ] Render de eventos y de días "en curso".
+  - [x] Render de eventos y de días "en curso".
 - **E2E:**
-  - [ ] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
+  - [x] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
+- Avance (2026-10-04): `Timeline` (`src/components/restorations/timeline.tsx`) ordena los eventos de una pieza (estado, fecha, usuario o "Sistema", nota) y muestra los días en taller y de cumplimiento con `piece-days.ts` ("en curso" si siguen abiertos); unit de eventos y días en curso hechos. Faltan el resumen por restauración, la vista reducida de logística y el E2E.
+- Hecho (2026-10-05): cada pieza tiene una "Línea de tiempo" plegable (`Timeline`: estado, fecha, usuario o "Sistema", nota; días en taller y de cumplimiento, "en curso" si siguen abiertos) a partir de `piece_status_history`; la pestaña Historial suma "Cambios de estado" de todas las piezas (del más reciente al más antiguo) sobre la auditoría. Logística no ve la línea de tiempo: en cada pieza ve los días en taller y la nota de la última observación (`piece_logistics_info()`).
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
 
 ### Fase 9 — Orden automática en Shopify
@@ -971,44 +983,48 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 14 — Cotizador de productos personalizados
 
 #### Paso 14.1 — Esquema de cotizaciones ⛔ P34
-- [ ] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
+- [x] Tablas `quotes` y `quote_items`; código `COT-000001`; estados (borrador, emitida, aceptada, rechazada; "vencida" se calcula); snapshot de los datos del cliente y de los productos; RLS; auditoría.
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Correlativo único.
-  - [ ] Totales recalculados por trigger.
-  - [ ] RLS por rol.
+  - [x] Correlativo único.
+  - [x] Totales recalculados por trigger.
+  - [x] RLS por rol.
 - **E2E:** No aplica (sin interfaz).
+- Hecho (2026-10-04): `quotes` (código generado desde un identity que no se escribe a mano; cliente obligatorio y contacto opcional de esa empresa; vigencia por defecto de `settings.quote_validity_days`; `valid_until` = emisión + días) y `quote_items` (producto/variante de Shopify con título, variante, SKU, imagen y precio de catálogo copiados al cotizar, o línea libre; personalización, cantidad entera 1–100 000, precio ≥ 0 y descuento opcional por línea en monto o %; subtotal, descuento y total de la línea como columnas generadas). Un trigger suma las líneas en la cotización y los usuarios no pueden escribir totales, código, snapshot ni fechas de emisión (privilegios por columna). Solo se edita en borrador; estados: borrador → emitida (necesita una línea; fija la fecha de emisión en Lima y refresca los datos del cliente, que desde ahí quedan fijos) → aceptada / rechazada, y de aceptada o rechazada se puede volver a emitida (corrección). "Vencida" = emitida con `valid_until` anterior a hoy en Lima (`effective_status(quotes)`, columna calculada de PostgREST). Solo admin y ventas (cotizador.usar) leen y escriben; nadie borra cotizaciones; auditadas. **P34, P35 y P13 siguen pendientes:** se usó su propuesta (estados con vencida automática; solo soles, descuento por línea y sin descuento global; precios con IGV). Si P34 cambia (p. ej., sin historial de estados) basta con no usar los estados en la interfaz.
 - Commit: `feat(cotizador): agrega esquema de cotizaciones`
 
 #### Paso 14.2 — Dominio de la cotización ⛔ P13 ⛔ P35
-- [ ] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
+- [x] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
 - **Unit:**
-  - [ ] Cálculos con decimales, cantidades grandes y 0.
-  - [ ] Vigencia en zona Lima (fin de mes, año bisiesto).
-  - [ ] Detección de cotización vencida.
+  - [x] Cálculos con decimales, cantidades grandes y 0.
+  - [x] Vigencia en zona Lima (fin de mes, año bisiesto).
+  - [x] Detección de cotización vencida.
 - **E2E:** No aplica (lógica pura).
+- Hecho (2026-10-04): en céntimos con `money.ts`. `lineGross`, `lineDiscount` (monto o %, redondeado a céntimos igual que la BD y nunca mayor que el subtotal de la línea), `lineTotal` y `quoteTotals()` (subtotal, descuento, total y desglose `igvBreakdown`: operación gravada = total / 1.18 redondeada e IGV = el resto, para el PDF). Vigencia con fechas calendario de Lima (`limaDateOf`, `addDays`, `quoteValidUntil`; vigente hasta el último día inclusive), `isQuoteExpired`, `quoteDisplayStatus` ("vencida" solo para emitidas) y la tabla de cambios de estado de la BD (`nextQuoteStatuses`, `canChangeQuoteStatus`). **P13 y P35 siguen pendientes:** se usó su propuesta (precios con IGV incluido; solo soles; descuento opcional por línea, sin descuento global).
 - Commit: `feat(cotizador): agrega cálculos de cotización`
 
 #### Paso 14.3 — Selector de productos de Shopify ⛔ P37
-- [ ] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
+- [x] `ProductPicker`: búsqueda con debounce en el catálogo (título, SKU); muestra imagen, variantes y precio; al elegir crea una línea editable (descripción de la personalización, cantidad, precio). Línea libre sin producto según P37.
 - **Unit:**
-  - [ ] Mapeo producto/variante → línea de cotización.
-  - [ ] Componente: búsqueda y selección de variante.
+  - [x] Mapeo producto/variante → línea de cotización.
+  - [x] Componente: búsqueda y selección de variante.
 - **E2E:**
-  - [ ] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+  - [x] Buscar "anillo" (fake con catálogo semilla) → elegir variante → se crea la línea con el precio del catálogo.
+- Hecho (2026-10-04): `ProductPicker` (popover con `cmdk`) busca con espera de 300 ms en Shopify por título o SKU (el fake y el adaptador live ahora también buscan por SKU: `title:*x* OR sku:x*`; se agregó al catálogo semilla del fake un "Anillo de plata personalizable" con tallas 6 y 8), muestra imagen y rango de precios, y al elegir el producto carga sus variantes (si tiene una sola se agrega directo). `lineFromCatalog` copia producto, variante, SKU, imagen y precio del catálogo en una línea editable (`QuoteLinesEditor`: personalización, cantidad, precio con aviso del precio de catálogo si se cambia, descuento por línea, total de la línea, duplicar y quitar). Server actions `searchCatalog`/`getCatalogProduct` con permiso `cotizador.usar`. `/cotizaciones/nueva` muestra por ahora solo las líneas y el total (el resto llega en 14.4). **P37 sigue pendiente:** se usó su propuesta (se permite una línea libre sin producto del catálogo y se guarda la imagen para el PDF).
 - Commit: `feat(cotizador): agrega selector de productos de Shopify`
 
 #### Paso 14.4 — Editor y listado de cotizaciones ⛔ P38
-- [ ] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
-- [ ] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
+- [x] `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (clientes de Shopify o contactos internos), líneas, subtotales y total en vivo, vigencia (por defecto desde configuración), notas y condiciones; guardar borrador, emitir, duplicar, cambiar estado.
+- [x] `/cotizaciones`: listado con filtros (estado, cliente, fechas) y búsqueda.
 - **Unit:**
-  - [ ] Totales en vivo en el formulario.
-  - [ ] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
+  - [x] Totales en vivo en el formulario.
+  - [x] Validaciones: al menos una línea, cantidad > 0, precio ≥ 0.
 - **E2E:**
-  - [ ] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
-  - [ ] Crear cotización para un contacto interno.
-  - [ ] Duplicar una cotización.
-  - [ ] `@mobile` crear cotización.
+  - [x] Crear cotización con un cliente de Shopify y 2 productos personalizados → totales correctos → guardar → aparece en el listado.
+  - [x] Crear cotización para un contacto interno.
+  - [x] Duplicar una cotización.
+  - [x] `@mobile` crear cotización.
+- Hecho (2026-10-04): migración `cotizaciones_edicion` con `save_quote(id, cotización, líneas)` (crea o edita el borrador y deja exactamente las líneas enviadas, en orden, conservando el id de las existentes y rechazando líneas de otra cotización) y `duplicate_quote(id)` (copia cualquier estado como borrador nuevo con `duplicated_from`), ambas security invoker y en una transacción. `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (persona/empresa del sistema o de Shopify, que se guarda al elegirla, o contacto de una empresa → "Atención:"), líneas del Paso 14.3, subtotal, descuentos, total e IGV incluido en vivo, vigencia (por defecto de la configuración, con la fecha de vencimiento), notas y condiciones (por defecto las de la configuración); "Guardar borrador", "Emitir" (guarda y emite), y en las guardadas "Duplicar cotización" y los cambios de estado (aceptar, rechazar, volver a emitida). Una emitida se muestra sin edición con los datos copiados del cliente. Validación con zod compartida por el formulario y la acción (al menos una línea, cantidad entera 1–100 000, precio ≥ 0, descuento ≤ subtotal o ≤ 100 %, vigencia 1–365). `/cotizaciones`: tabla (tarjetas en el celular) con búsqueda por código o cliente y filtros por estado (incluida "vencida"), cliente (`ClientPicker`) y fechas de creación en Lima; paginado. **P38 sigue pendiente:** se usó su propuesta (lo usan ventas y admin; a un contacto se le cotiza a nombre de su empresa con "Atención: contacto"). **P34/P35/P13** como en 14.1/14.2.
 - Commit: `feat(cotizador): agrega editor y listado de cotizaciones`
 
 #### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38

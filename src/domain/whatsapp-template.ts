@@ -4,6 +4,8 @@ export const WHATSAPP_PLACEHOLDERS = {
   codigo: "Código de la restauración (RES-00001)",
   piezas: "Una línea por pieza con su descripción, servicio y precio",
   total: "Total de la restauración",
+  tipo_pago: "Tipo de pago (al contado, a cuenta o al crédito)",
+  forma_pago: "Línea con el tipo de pago y el adelanto que corresponde",
   porcentaje_adelanto: "Porcentaje de adelanto",
   adelanto: "Monto del adelanto",
   condiciones: "Términos y condiciones",
@@ -17,7 +19,7 @@ Te compartimos la cotización de tu restauración *{codigo}*:
 {piezas}
 
 *Total: S/ {total}*
-Para empezar el trabajo se requiere un adelanto del {porcentaje_adelanto} %: S/ {adelanto}
+{forma_pago}
 {condiciones}`;
 
 const PLACEHOLDER = /\{([^{}]*)\}/g;
