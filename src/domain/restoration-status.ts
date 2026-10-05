@@ -1,7 +1,8 @@
 import type { PieceStatus } from "./piece-state-machine";
 
 /**
- * Derivados de las piezas (Todo.md §7.2 y §7.3, P19 y P21 con su propuesta).
+ * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
+ * avanza; P21 con su propuesta).
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -72,9 +73,9 @@ const isBack = (p: PieceForRestorationStatus) =>
   p.status === "devuelta_taller" || p.status === "entregada";
 
 /**
- * Estado general de la restauración (§7.3): ignora las piezas anuladas y aplica
- * las reglas en orden. Puede retroceder, p. ej., si una pieza devuelta se observa
- * y vuelve al taller (P19).
+ * Estado general calculado de las piezas (§7.3): ignora las piezas anuladas y
+ * aplica las reglas en orden. El que se guarda solo avanza
+ * (`advanceRestorationStatus`, P19).
  */
 export function deriveRestorationStatus(
   pieces: readonly PieceForRestorationStatus[],
@@ -87,6 +88,29 @@ export function deriveRestorationStatus(
   if (active.some((p) => p.firstSentAt)) return "en_proceso";
   if (active.every((p) => p.approvedAt)) return "aprobada";
   return "registrada";
+}
+
+/** Orden de avance del estado general; Anulada es final. */
+const STATUS_RANK: Record<RestorationStatus, number> = {
+  registrada: 0,
+  aprobada: 1,
+  en_proceso: 2,
+  parcialmente_lista: 3,
+  lista: 4,
+  completada: 5,
+  anulada: 6,
+};
+
+/**
+ * Estado que se guarda (P19: solo avanza). Si lo calculado retrocede —p. ej. una
+ * pieza devuelta se observa y vuelve al taller— se conserva el estado alcanzado;
+ * si se anulan todas las piezas queda Anulada.
+ */
+export function advanceRestorationStatus(
+  current: RestorationStatus,
+  derived: RestorationStatus,
+): RestorationStatus {
+  return STATUS_RANK[derived] > STATUS_RANK[current] ? derived : current;
 }
 
 /**

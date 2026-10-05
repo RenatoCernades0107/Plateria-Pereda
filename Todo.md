@@ -225,7 +225,7 @@ Se evalúa en este orden:
 
 (Al pasar a Recibida siempre se completa `arrived_at`.)
 
-### 7.3 Estado general de la restauración ⛔ P19
+### 7.3 Estado general de la restauración (P19 ✅)
 
 Se ignoran las piezas anuladas y se evalúa en este orden:
 
@@ -237,7 +237,7 @@ Se ignoran las piezas anuladas y se evalúa en este orden:
 6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
 7. Si no → **Registrada**
 
-- El estado puede retroceder (p. ej., una pieza devuelta que se observa y vuelve al taller).
+- El estado **solo avanza** (P19, 2026-10-05): si una pieza devuelta se observa y vuelve al taller, la restauración conserva el estado alcanzado. Si se anulan todas las piezas queda Anulada (final).
 - **Creación de la orden en Shopify:** se dispara cuando todas las piezas no anuladas fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general. Incluye los pagos registrados al aprobar (adelanto), ver §7.5.
 
 ### 7.4 Fechas y tiempos ⛔ P23
@@ -668,7 +668,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-04): `create_restoration()` corre como quien llama (RLS y privilegios por columna de 7.1 deciden: admin y ventas), exige 1–100 piezas y un cliente/contacto activos, y devuelve `id` y `code`. El historial inicial es por ahora el registro de auditoría de cada alta; la tabla `piece_status_history` llega en 8.3 (ahí se agrega el paso inicial). Acción `createRestoration()` (valida con `restorationSchema`, traduce errores) y `createRestorationRecord()` (`src/server/restorations/`), que convierte céntimos a soles para la BD.
 - Commit: `feat(restauraciones): agrega creación transaccional de restauraciones`
 
-#### Paso 7.4 — Formulario de registro ⛔ P20
+#### Paso 7.4 — Formulario de registro (P20 ✅)
 - [x] `/restauraciones/nueva`: cliente (`ClientPicker`) + contacto opcional, tipo de pago y % de adelanto (50 % por defecto; muestra el monto), notas.
 - [x] Lista dinámica de piezas (agregar, duplicar, quitar). Por pieza: taller (opcional), descripción, medida, material y servicio (lista o texto libre, P22), peso, precio y casilla "La pieza ya está en tienda" (marca `arrived_at`).
 - [x] Total en vivo; diseño mobile-first (piezas como tarjetas colapsables); prevención de doble envío; aviso al salir con cambios sin guardar.
@@ -681,7 +681,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] Las validaciones impiden enviar datos incompletos.
   - [x] Crear un cliente nuevo desde el formulario sin perder lo ya escrito.
   - [x] `@mobile` registro completo desde el celular.
-- Hecho (2026-10-04): `/restauraciones/nueva` (admin y ventas) con `RestorationForm`: `ClientPicker` (con "Crear nuevo cliente" sin perder lo escrito); si es empresa, selector del contacto (`listClientContacts`); un contacto elegido en el buscador fija su empresa y el contacto. Piezas como tarjetas colapsables (agregar, duplicar, quitar; hasta 100); material y servicio con sugerencias del catálogo (`<datalist>`) o texto libre, y el servicio del catálogo propone su precio sugerido si la pieza aún no tiene precio. Tipo de pago con % solo en "A cuenta" (por defecto el de la configuración); total y adelanto en vivo en una barra fija; botón deshabilitado mientras se guarda; aviso del navegador al salir con cambios. Al guardar abre el detalle con `?registrada=1`. **P20 sigue pendiente:** la casilla "La pieza ya está en tienda" queda desmarcada por defecto.
+- Hecho (2026-10-04): `/restauraciones/nueva` (admin y ventas) con `RestorationForm`: `ClientPicker` (con "Crear nuevo cliente" sin perder lo escrito); si es empresa, selector del contacto (`listClientContacts`); un contacto elegido en el buscador fija su empresa y el contacto. Piezas como tarjetas colapsables (agregar, duplicar, quitar; hasta 100); material y servicio con sugerencias del catálogo (`<datalist>`) o texto libre, y el servicio del catálogo propone su precio sugerido si la pieza aún no tiene precio. Tipo de pago con % solo en "A cuenta" (por defecto el de la configuración); total y adelanto en vivo en una barra fija; botón deshabilitado mientras se guarda; aviso del navegador al salir con cambios. Al guardar abre el detalle con `?registrada=1`. P20 (respondida el 2026-10-05): las piezas suelen llegar al registrar, así que "La pieza ya está en tienda" viene marcada por defecto (también al agregar una pieza).
 - Commit: junto con 7.5 y 7.6 en `feat(restauraciones): agrega registro, cotización por WhatsApp y detalle`.
 
 #### Paso 7.5 — Mensaje de cotización para WhatsApp ⛔ P25
@@ -746,7 +746,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-04): estados `registrada`, `en_consulta`, `en_espera`, `aprobada`, `recibida`, `enviada_taller`, `devuelta_taller`, `observada`, `entregada` y `anulada` (el enum de la BD del Paso 7.1 debe usar estos mismos valores). `PIECE_TRANSITIONS` es la tabla que siembra `piece_status_transitions` en 8.3; los roles salen de la matriz de `permissions.ts` (P42) y anular una pieza que está en el taller es solo de admin (P41 d). Nota obligatoria al consultar, anular y observar (también el reclamo después de la entrega); taller obligatorio al enviar (usa el ya asignado o el elegido). `applyTransition()` devuelve los cambios (estado, fechas de §7.4, taller), la nota recortada y los pasos para el historial: aprobar una pieza que ya llegó deja dos pasos (→ Aprobada → Recibida); el reenvío tras una observación conserva `first_sent_at`. Aprobada → Recibida no se ofrece como transición: se hace con `markArrived()` ("Marcar llegada a tienda", todos los roles; en los estados previos a Aprobada solo guarda `arrived_at`). Errores tipados con mensaje (`transicion_invalida`, `rol_no_permitido`, `nota_requerida`, `taller_requerido`). La regla de entrega con saldo pendiente (P45) se agrega en 11.2.
 - Commit: `feat(piezas): agrega máquina de estados de piezas`
 
-#### Paso 8.2 — Derivaciones (dominio) ⛔ P19 ⛔ P23
+#### Paso 8.2 — Derivaciones (dominio) (P19 ✅) ⛔ P23
 - [x] `deriveRestorationStatus(pieces)` (§7.3), `deriveLocation(piece)` (§7.2), `daysInWorkshop(history, now)`, `fulfillmentDays(piece, now)`, `isReadyForShopifyOrder(pieces)`.
 - [x] Escenarios en un fixture JSON compartido (se reutiliza en 8.3 contra la BD).
 - **Unit:**
@@ -757,6 +757,7 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] `isReadyForShopifyOrder` con piezas en consulta, aprobadas y anuladas.
 - **E2E:** No aplica (lógica pura).
 - Hecho (2026-10-04): `src/domain/restoration-status.ts` (estado general, ubicación, `isReadyForShopifyOrder` y sus etiquetas) y `src/domain/piece-days.ts` (días calendario en Lima con `Intl`, sin dependencias nuevas). Escenarios en `tests/fixtures/restorations/derivations.json` (estado general y orden lista, ubicación, días en taller y de cumplimiento) para reutilizarlos en 8.3. **P19 y P23 siguen pendientes:** se usó su propuesta (el estado puede retroceder; días calendario; cumplimiento = del registro de la pieza a su entrega). Sin piezas la restauración queda Registrada; una pieza observada por un reclamo después de la entrega vuelve a contar días de cumplimiento "en curso"; una anulada no tiene días de cumplimiento. Que la orden aún no exista lo revisa el trigger que encola `order_create` (8.3).
+- Actualización (2026-10-05, P19 respondida: solo avanza): `deriveRestorationStatus` sigue calculando el estado de las piezas y `advanceRestorationStatus(actual, calculado)` decide el que se guarda (nunca retrocede; Anulada si se anulan todas). En la BD lo aplica `advance_restoration_status()` en el trigger `sync_restoration_status` (migración `estado_general_solo_avanza`); un test de integración compara ambos lados para todos los pares de estados.
 - Commit: `feat(piezas): agrega cálculo de estado general, ubicación y tiempos`
 
 #### Paso 8.3 — Implementación en BD

@@ -4,6 +4,7 @@ import scenarios from "../../tests/fixtures/restorations/derivations.json";
 
 import { PIECE_STATUSES, type PieceStatus } from "./piece-state-machine";
 import {
+  advanceRestorationStatus,
   deriveLocation,
   deriveRestorationStatus,
   isReadyForShopifyOrder,
@@ -93,5 +94,28 @@ describe("etiquetas", () => {
     expect(Object.keys(PIECE_LOCATION_LABELS).sort()).toEqual(
       [...PIECE_LOCATIONS].sort(),
     );
+  });
+});
+
+describe("advanceRestorationStatus (P19: solo avanza)", () => {
+  it("avanza cuando lo calculado es posterior", () => {
+    expect(advanceRestorationStatus("aprobada", "en_proceso")).toBe(
+      "en_proceso",
+    );
+    expect(advanceRestorationStatus("lista", "completada")).toBe("completada");
+  });
+
+  it("no retrocede si una pieza se observa y vuelve al taller", () => {
+    expect(advanceRestorationStatus("lista", "en_proceso")).toBe("lista");
+    expect(advanceRestorationStatus("completada", "parcialmente_lista")).toBe(
+      "completada",
+    );
+    // Una pieza nueva en una restauración aprobada no la devuelve a Registrada.
+    expect(advanceRestorationStatus("aprobada", "registrada")).toBe("aprobada");
+  });
+
+  it("si se anulan todas las piezas queda Anulada, y Anulada es final", () => {
+    expect(advanceRestorationStatus("en_proceso", "anulada")).toBe("anulada");
+    expect(advanceRestorationStatus("anulada", "registrada")).toBe("anulada");
   });
 });

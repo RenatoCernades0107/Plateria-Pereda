@@ -1191,6 +1191,13 @@ export type Database = {
       };
     };
     Functions: {
+      advance_restoration_status: {
+        Args: {
+          p_current: Database["public"]["Enums"]["restoration_status"];
+          p_derived: Database["public"]["Enums"]["restoration_status"];
+        };
+        Returns: Database["public"]["Enums"]["restoration_status"];
+      };
       apply_shopify_customer_update: {
         Args: {
           p_customer_id: string;

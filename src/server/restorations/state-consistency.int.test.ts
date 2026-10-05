@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { PIECE_TRANSITIONS } from "@/domain/piece-state-machine";
 import {
+  advanceRestorationStatus,
   deriveRestorationStatus,
   isReadyForShopifyOrder,
+  RESTORATION_STATUSES,
 } from "@/domain/restoration-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import fixture from "../../../tests/fixtures/restorations/derivations.json";
@@ -93,4 +95,21 @@ describe("consistencia entre TypeScript y la BD", () => {
       expect(data).toEqual(expected);
     },
   );
+
+  it("el estado general solo avanza igual en TypeScript y en la BD (P19)", async () => {
+    const admin = createAdminClient();
+    for (const current of RESTORATION_STATUSES) {
+      for (const derived of RESTORATION_STATUSES) {
+        const { data } = await admin.rpc("advance_restoration_status", {
+          p_current: current,
+          p_derived: derived,
+        });
+        expect([current, derived, data]).toEqual([
+          current,
+          derived,
+          advanceRestorationStatus(current, derived),
+        ]);
+      }
+    }
+  });
 });
