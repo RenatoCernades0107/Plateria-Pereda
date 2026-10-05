@@ -186,4 +186,40 @@ test.describe("Vista de piezas", () => {
       page.viewportSize()?.width ?? Infinity,
     );
   });
+  test("en kanban elige piezas de una columna y las envía al taller", async ({
+    page,
+    loginAs,
+  }) => {
+    const { pieces } = await seedReceived(2, "Kanban");
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=${clientName}`);
+    await page
+      .getByRole("navigation", { name: "Vista" })
+      .getByRole("link", { name: "Kanban" })
+      .click();
+    await expect(page).toHaveURL(/vista=kanban/);
+    const received = page.getByTestId("columna-recibida");
+    for (const piece of pieces) {
+      await expect(received.getByTestId(`tarjeta-${piece.code}`)).toBeVisible();
+      await received.getByLabel(`Elegir ${piece.code}`).check();
+    }
+    const bar = page.getByRole("region", {
+      name: "Acciones para las piezas elegidas",
+    });
+    await expect(bar).toContainText("2 piezas elegidas");
+    await bar.getByRole("button", { name: "Enviar al taller" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .click();
+    const sent = page.getByTestId("columna-enviada_taller");
+    for (const piece of pieces)
+      await expect(sent.getByTestId(`tarjeta-${piece.code}`)).toContainText(
+        workshopName,
+      );
+    await expect(received).toContainText("Sin piezas");
+    await expect(page).toHaveURL(/vista=kanban/);
+  });
 });

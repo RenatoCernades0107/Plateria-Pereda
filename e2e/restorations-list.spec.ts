@@ -162,5 +162,47 @@ test.describe("Listado de restauraciones", () => {
     expect(scrollWidth).toBeLessThanOrEqual(
       page.viewportSize()?.width ?? Infinity,
     );
+
+    // El kanban se desplaza dentro de su contenedor, no la página.
+    await page.goto(`/restauraciones?q=${codes[0]}&vista=kanban`);
+    await expect(page.getByTestId(`tarjeta-${codes[0]}`)).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(page.viewportSize()?.width ?? Infinity);
+  });
+  test("cambia a kanban por estado y la vista queda en la URL", async ({
+    page,
+  }) => {
+    await page.goto(`/restauraciones?q=${clientName}`);
+    await page
+      .getByRole("navigation", { name: "Vista" })
+      .getByRole("link", { name: "Kanban" })
+      .click();
+    await expect(page).toHaveURL(/vista=kanban/);
+    await expect(
+      page.getByTestId("columna-en_proceso").getByTestId(`tarjeta-${codes[0]}`),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId("columna-lista").getByTestId(`tarjeta-${codes[1]}`),
+    ).toBeVisible();
+    await expect(page.getByTestId("columna-registrada")).toContainText("25");
+    await expect(
+      page.getByRole("navigation", { name: "Paginación" }),
+    ).toHaveCount(0);
+
+    // Filtrar mantiene la vista kanban.
+    await page.getByLabel("Estado", { exact: true }).click();
+    await page.getByRole("option", { name: "Lista", exact: true }).click();
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page).toHaveURL(/estado=lista.*vista=kanban/);
+    await expect(page.getByTestId(`tarjeta-${codes[1]}`)).toBeVisible();
+    await expect(page.getByTestId(`tarjeta-${codes[0]}`)).toHaveCount(0);
+
+    await page
+      .getByRole("navigation", { name: "Vista" })
+      .getByRole("link", { name: "Tabla" })
+      .click();
+    await expect(page).not.toHaveURL(/vista=/);
+    await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
   });
 });

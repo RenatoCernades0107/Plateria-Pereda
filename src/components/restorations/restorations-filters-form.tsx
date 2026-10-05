@@ -23,6 +23,7 @@ import {
   PAYMENT_TYPES,
 } from "@/domain/money";
 import {
+  parseRestorationFilters,
   restorationFiltersHref,
   type RestorationFilters,
 } from "@/domain/restoration-filters";
@@ -207,7 +208,13 @@ export function RestorationsFiltersForm({
         <Button
           type="button"
           variant="ghost"
-          onClick={() => router.push("/restauraciones")}
+          onClick={() =>
+            router.push(
+              restorationFiltersHref(parseRestorationFilters({}), {
+                view: filters.view,
+              }),
+            )
+          }
         >
           Limpiar
         </Button>

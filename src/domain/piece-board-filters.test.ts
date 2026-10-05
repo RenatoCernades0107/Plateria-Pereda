@@ -16,6 +16,7 @@ describe("filtros de la vista de piezas", () => {
       workshopId: null,
       minDays: null,
       page: 1,
+      view: "tabla",
     });
     expect(
       parsePieceBoardFilters({
@@ -33,6 +34,7 @@ describe("filtros de la vista de piezas", () => {
       workshopId: "00000000-0000-0000-0000-0000000000aa",
       minDays: 10,
       page: 2,
+      view: "tabla",
     });
     const closed = parsePieceBoardFilters({
       ubicacion: "entregada",
@@ -83,5 +85,14 @@ describe("filtros de la vista de piezas", () => {
     expect(
       isLongInWorkshop({ workshopDays: 3, workshopOngoing: true }, 3),
     ).toBe(true);
+  });
+
+  it("en kanban trae todo en una página y lo guarda en la URL", () => {
+    const filters = parsePieceBoardFilters({ vista: "kanban", pagina: "2" });
+    expect(pieceBoardHref(filters)).toBe("/piezas?vista=kanban");
+    expect(listPiecesBoardArgs(filters)).toMatchObject({
+      p_limit: 200,
+      p_offset: 0,
+    });
   });
 });

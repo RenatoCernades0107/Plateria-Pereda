@@ -3,9 +3,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
+import { RestorationsKanban } from "@/components/restorations/restorations-kanban";
 import { RestorationsFiltersForm } from "@/components/restorations/restorations-filters-form";
 import { RestorationsList } from "@/components/restorations/restorations-list";
 import { Button } from "@/components/ui/button";
+import { ViewToggle } from "@/components/view-toggle";
 import { can } from "@/domain/permissions";
 import {
   parseRestorationFilters,
@@ -37,8 +39,13 @@ export default async function RestauracionesPage({
       page: 1,
       sort: "created_at",
       dir: "desc",
+      view: "tabla",
     }) !== "";
-  const exportQuery = restorationFiltersQuery(filters, { page: 1 });
+  const exportQuery = restorationFiltersQuery(filters, {
+    page: 1,
+    view: "tabla",
+  });
+  const kanban = filters.view === "kanban";
 
   return (
     <div className="space-y-4">
@@ -79,49 +86,69 @@ export default async function RestauracionesPage({
         workshops={workshops.data}
         showMoney={canEdit}
       />
-      <RestorationsList
-        items={items}
-        filters={filters}
-        showMoney={canEdit}
-        emptyMessage={
-          filtered
-            ? "No hay restauraciones con esos filtros."
-            : "Aún no hay restauraciones registradas."
-        }
+      <ViewToggle
+        view={filters.view}
+        tableHref={restorationFiltersHref(filters, { view: "tabla", page: 1 })}
+        kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 restauración" : `${total} restauraciones`} · Página{" "}
-          {filters.page} de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={restorationFiltersHref(filters, {
-                  page: filters.page - 1,
-                })}
-              >
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={restorationFiltersHref(filters, {
-                  page: filters.page + 1,
-                })}
-              >
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      {kanban ? (
+        <>
+          <RestorationsKanban items={items} showMoney={canEdit} />
+          <p className="text-muted-foreground text-sm">
+            {items.length < total
+              ? `Se muestran ${items.length} de ${total} restauraciones. Usa los filtros para ver las demás.`
+              : total === 1
+                ? "1 restauración"
+                : `${total} restauraciones`}
+          </p>
+        </>
+      ) : (
+        <>
+          <RestorationsList
+            items={items}
+            filters={filters}
+            showMoney={canEdit}
+            emptyMessage={
+              filtered
+                ? "No hay restauraciones con esos filtros."
+                : "Aún no hay restauraciones registradas."
+            }
+          />
+          <nav
+            aria-label="Paginación"
+            className="flex items-center justify-between gap-2 text-sm"
+          >
+            <span className="text-muted-foreground">
+              {total === 1 ? "1 restauración" : `${total} restauraciones`} ·
+              Página {filters.page} de {pages}
+            </span>
+            <div className="flex gap-2">
+              {filters.page > 1 ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={restorationFiltersHref(filters, {
+                      page: filters.page - 1,
+                    })}
+                  >
+                    Anterior
+                  </Link>
+                </Button>
+              ) : null}
+              {filters.page < pages ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={restorationFiltersHref(filters, {
+                      page: filters.page + 1,
+                    })}
+                  >
+                    Siguiente
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </nav>
+        </>
+      )}
     </div>
   );
 }
