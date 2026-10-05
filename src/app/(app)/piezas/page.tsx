@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
 import { PiecesBoardFiltersForm } from "@/components/restorations/pieces-board-filters-form";
+import { PiecesKanban } from "@/components/restorations/pieces-kanban";
 import { PiecesBoardTable } from "@/components/restorations/pieces-board-table";
 import { Button } from "@/components/ui/button";
+import { ViewToggle } from "@/components/view-toggle";
 import {
   parsePieceBoardFilters,
   pieceBoardHref,
@@ -44,36 +46,64 @@ export default async function PiezasPage({
         filters={filters}
         workshops={workshops.data}
       />
-      <PiecesBoardTable
-        pieces={items}
-        role={user.role}
-        workshops={workshops.data}
+      <ViewToggle
+        view={filters.view}
+        tableHref={pieceBoardHref(filters, { view: "tabla", page: 1 })}
+        kanbanHref={pieceBoardHref(filters, { view: "kanban" })}
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 pieza" : `${total} piezas`} · Página {filters.page}{" "}
-          de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={pieceBoardHref(filters, { page: filters.page - 1 })}>
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link href={pieceBoardHref(filters, { page: filters.page + 1 })}>
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      {filters.view === "kanban" ? (
+        <>
+          <PiecesKanban
+            pieces={items}
+            role={user.role}
+            workshops={workshops.data}
+          />
+          <p className="text-muted-foreground text-sm">
+            {items.length < total
+              ? `Se muestran ${items.length} de ${total} piezas. Usa los filtros para ver las demás.`
+              : total === 1
+                ? "1 pieza"
+                : `${total} piezas`}
+          </p>
+        </>
+      ) : (
+        <>
+          <PiecesBoardTable
+            pieces={items}
+            role={user.role}
+            workshops={workshops.data}
+          />
+          <nav
+            aria-label="Paginación"
+            className="flex items-center justify-between gap-2 text-sm"
+          >
+            <span className="text-muted-foreground">
+              {total === 1 ? "1 pieza" : `${total} piezas`} · Página{" "}
+              {filters.page} de {pages}
+            </span>
+            <div className="flex gap-2">
+              {filters.page > 1 ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={pieceBoardHref(filters, { page: filters.page - 1 })}
+                  >
+                    Anterior
+                  </Link>
+                </Button>
+              ) : null}
+              {filters.page < pages ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={pieceBoardHref(filters, { page: filters.page + 1 })}
+                  >
+                    Siguiente
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </nav>
+        </>
+      )}
     </div>
   );
 }

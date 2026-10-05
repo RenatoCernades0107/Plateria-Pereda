@@ -4,6 +4,8 @@ import type { PieceLocation } from "./restoration-status";
 /** Filtros de la vista de piezas (`/piezas?ubicacion=…`), inicio de logística. */
 
 export const PIECES_PAGE_SIZE = 50;
+/** El kanban muestra todo en una página (con el tope de la consulta). */
+export const PIECES_KANBAN_LIMIT = 200;
 
 /**
  * Desde cuántos días en el taller se resalta una pieza. Propuesta: una semana; se
@@ -37,6 +39,8 @@ export type PieceBoardFilters = {
   /** Solo piezas con al menos estos días en el taller. */
   minDays: number | null;
   page: number;
+  /** Tabla paginada o tablero kanban por estado. */
+  view: "tabla" | "kanban";
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -62,6 +66,7 @@ export function parsePieceBoardFilters(
     workshopId: UUID.test(workshop) ? workshop.toLowerCase() : null,
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
     page: Number.isFinite(page) && page > 0 ? page : 1,
+    view: first(params.vista) === "kanban" ? "kanban" : "tabla",
   };
 }
 
@@ -76,7 +81,9 @@ export function pieceBoardHref(
   if (next.status) params.set("estado", next.status);
   if (next.workshopId) params.set("taller", next.workshopId);
   if (next.minDays) params.set("dias", String(next.minDays));
-  if (next.page > 1) params.set("pagina", String(next.page));
+  if (next.page > 1 && next.view === "tabla")
+    params.set("pagina", String(next.page));
+  if (next.view === "kanban") params.set("vista", "kanban");
   const query = params.toString();
   return query ? `/piezas?${query}` : "/piezas";
 }
@@ -88,8 +95,9 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
     p_status: filters.status ?? undefined,
     p_workshop_id: filters.workshopId ?? undefined,
     p_min_workshop_days: filters.minDays ?? undefined,
-    p_limit: PIECES_PAGE_SIZE,
-    p_offset: (filters.page - 1) * PIECES_PAGE_SIZE,
+    p_limit: filters.view === "kanban" ? PIECES_KANBAN_LIMIT : PIECES_PAGE_SIZE,
+    p_offset:
+      filters.view === "kanban" ? 0 : (filters.page - 1) * PIECES_PAGE_SIZE,
   };
 }
 

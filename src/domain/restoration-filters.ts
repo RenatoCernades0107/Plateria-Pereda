@@ -21,6 +21,12 @@ export const RESTORATION_SORTS = [
   "client",
   "total",
 ] as const;
+/** Tabla paginada o tablero kanban por estado. */
+export const LIST_VIEWS = ["tabla", "kanban"] as const;
+export type ListView = (typeof LIST_VIEWS)[number];
+/** El kanban muestra todo en una página (con tope): sin paginación. */
+export const RESTORATIONS_KANBAN_LIMIT = 300;
+
 export type RestorationSort = (typeof RESTORATION_SORTS)[number];
 export type SortDir = "asc" | "desc";
 
@@ -38,6 +44,7 @@ export type RestorationFilters = {
   sort: RestorationSort;
   dir: SortDir;
   page: number;
+  view: ListView;
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -78,6 +85,7 @@ export function parseRestorationFilters(
     sort: oneOf(RESTORATION_SORTS, first(params.orden)) ?? "created_at",
     dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
+    view: first(params.vista) === "kanban" ? "kanban" : "tabla",
   };
 }
 
@@ -98,7 +106,9 @@ export function restorationFiltersQuery(
   if (next.to) params.set("hasta", next.to);
   if (next.sort !== "created_at") params.set("orden", next.sort);
   if (next.dir !== "desc") params.set("dir", next.dir);
-  if (next.page > 1) params.set("pagina", String(next.page));
+  if (next.page > 1 && next.view === "tabla")
+    params.set("pagina", String(next.page));
+  if (next.view === "kanban") params.set("vista", "kanban");
   return params.toString();
 }
 
@@ -145,7 +155,11 @@ export function listRestorationsArgs(
     p_to: filters.to ?? undefined,
     p_sort: filters.sort,
     p_dir: filters.dir,
-    p_limit: all ? RESTORATIONS_EXPORT_LIMIT : limit,
-    p_offset: all ? 0 : (filters.page - 1) * limit,
+    p_limit: all
+      ? RESTORATIONS_EXPORT_LIMIT
+      : filters.view === "kanban"
+        ? RESTORATIONS_KANBAN_LIMIT
+        : limit,
+    p_offset: all || filters.view === "kanban" ? 0 : (filters.page - 1) * limit,
   };
 }
