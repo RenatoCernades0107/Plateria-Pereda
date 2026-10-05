@@ -936,17 +936,18 @@ Objetivo: validar con llamadas reales antes de construir.
 ### Fase 12 — Listados y gestión operativa
 
 #### Paso 12.1 — Listado de restauraciones ⛔ P33
-- [ ] Data table con paginación y orden en servidor; filtros por estado general, estado de pago, tipo de pago, cliente, taller y rango de fechas; búsqueda por código, cliente o documento; filtros en la URL (compartibles); tarjetas en móvil; exportar CSV (según P33).
+- [x] Data table con paginación y orden en servidor; filtros por estado general, estado de pago, tipo de pago, cliente, taller y rango de fechas; búsqueda por código, cliente o documento; filtros en la URL (compartibles); tarjetas en móvil; exportar CSV (según P33).
 - **Unit:**
-  - [ ] Parseo y serialización de filtros en la URL.
-  - [ ] Constructor de la consulta.
+  - [x] Parseo y serialización de filtros en la URL.
+  - [x] Constructor de la consulta.
 - **BD:**
   - [ ] Los índices se usan en las consultas principales (EXPLAIN con seed de volumen, opcional).
 - **E2E:**
-  - [ ] Filtrar por estado y por estado de pago; buscar por código.
-  - [ ] Recargar mantiene los filtros.
-  - [ ] Paginación.
-  - [ ] `@mobile` vista de tarjetas.
+  - [x] Filtrar por estado y por estado de pago; buscar por código.
+  - [x] Recargar mantiene los filtros.
+  - [x] Paginación.
+  - [x] `@mobile` vista de tarjetas.
+- Hecho (2026-10-05): `list_restorations()` (BD) filtra por estado, estado de pago, tipo de pago, cliente, taller (de alguna pieza) y fechas de registro en Lima; busca por código, cliente, documento o contacto; ordena por fecha, código, cliente o total y pagina, con el total de filas. Logística recibe las mismas filas sin montos ni estado de pago y sin restauraciones pasadas (P42, D24). Filtros en la URL (`src/domain/restoration-filters.ts`: lectura, escritura, cambio de orden y argumentos de la consulta). Tabla con encabezados ordenables y tarjetas en el celular. **P33 sigue pendiente:** se usó su propuesta para exportar: "Exportar CSV" (admin y ventas) con los mismos filtros, hasta 5000 filas, con BOM para Excel (`/api/restauraciones/exportar`). Índices para estado de pago y tipo de pago; el EXPLAIN con volumen queda para la Fase 15.3.
 - Commit: `feat(restauraciones): agrega listado con filtros y búsqueda`
 
 #### Paso 12.2 — Vista de piezas (logística)
