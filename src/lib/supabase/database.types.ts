@@ -1191,6 +1191,13 @@ export type Database = {
       };
     };
     Functions: {
+      advance_restoration_status: {
+        Args: {
+          p_current: Database["public"]["Enums"]["restoration_status"];
+          p_derived: Database["public"]["Enums"]["restoration_status"];
+        };
+        Returns: Database["public"]["Enums"]["restoration_status"];
+      };
       apply_shopify_customer_update: {
         Args: {
           p_customer_id: string;
@@ -1328,6 +1335,67 @@ export type Database = {
           last_error: string;
           phone: string;
           sync_status: string;
+          total_count: number;
+        }[];
+      };
+      list_pieces_board: {
+        Args: {
+          p_limit?: number;
+          p_location?: Database["public"]["Enums"]["piece_location"];
+          p_min_workshop_days?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: Database["public"]["Enums"]["piece_status"];
+          p_workshop_id?: string;
+        };
+        Returns: {
+          arrived_at: string;
+          client_name: string;
+          code: string;
+          description: string;
+          id: string;
+          last_observation: string;
+          location: Database["public"]["Enums"]["piece_location"];
+          restoration_code: string;
+          restoration_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+          total_count: number;
+          workshop_days: number;
+          workshop_id: string;
+          workshop_name: string;
+          workshop_ongoing: boolean;
+        }[];
+      };
+      list_restorations: {
+        Args: {
+          p_client_id?: string;
+          p_dir?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_payment_status?: Database["public"]["Enums"]["payment_status"];
+          p_payment_type?: Database["public"]["Enums"]["payment_type"];
+          p_query?: string;
+          p_sort?: string;
+          p_status?: Database["public"]["Enums"]["restoration_status"];
+          p_to?: string;
+          p_workshop_id?: string;
+        };
+        Returns: {
+          balance: number;
+          client_id: string;
+          client_name: string;
+          code: string;
+          contact_name: string;
+          created_at: string;
+          document_number: string;
+          id: string;
+          paid: number;
+          payment_status: Database["public"]["Enums"]["payment_status"];
+          payment_type: Database["public"]["Enums"]["payment_type"];
+          pieces_count: number;
+          status: Database["public"]["Enums"]["restoration_status"];
+          total: number;
           total_count: number;
         }[];
       };

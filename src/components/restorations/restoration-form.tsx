@@ -78,7 +78,8 @@ export const EMPTY_PIECE: PieceFormInput = {
   service: { id: null, name: "" },
   weight: "",
   price: "",
-  arrived: false,
+  // P20: las piezas suelen llegar al registrar la restauración.
+  arrived: true,
   notes: "",
 };
 

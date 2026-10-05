@@ -96,6 +96,11 @@ test.describe("Restauraciones", () => {
       service: "Restauración completa",
       price: "1,200.50",
     });
+    // P20: la casilla viene marcada; esta pieza llega después.
+    await page
+      .getByTestId("pieza-1")
+      .getByLabel("La pieza ya está en tienda")
+      .uncheck();
     await page.getByRole("button", { name: "Duplicar pieza 1" }).click();
     await page
       .getByTestId("pieza-2")

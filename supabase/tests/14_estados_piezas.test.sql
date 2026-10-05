@@ -1,6 +1,6 @@
 begin;
 
-select plan(26);
+select plan(28);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000aa1', 'ventas@estados.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -141,8 +141,8 @@ select lives_ok(
 reset role;
 select results_eq(
   $$ select r.status::text, r.total from public.restorations r where r.id = '00000000-0000-0000-0000-00000000aa30' $$,
-  $$ values ('en_proceso', 100.00::numeric) $$,
-  'al anular, el total baja; con la pieza observada que ya fue al taller la restauración vuelve a En proceso'
+  $$ values ('parcialmente_lista', 100.00::numeric) $$,
+  'al anular, el total baja; la observación no hace retroceder el estado alcanzado (P19)'
 );
 select is(
   (select count(*)::int from public.shopify_sync_jobs
@@ -180,6 +180,15 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select is(
   (select count(*)::int from public.piece_metrics), 0, 'logística no lee las métricas (P42)'
+);
+
+select is(
+  public.advance_restoration_status('lista', 'en_proceso')::text, 'lista',
+  'advance_restoration_status no retrocede'
+);
+select is(
+  public.advance_restoration_status('en_proceso', 'anulada')::text, 'anulada',
+  'si se anulan todas las piezas queda Anulada'
 );
 
 select * from finish();
