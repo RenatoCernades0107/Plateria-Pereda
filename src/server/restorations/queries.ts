@@ -8,6 +8,11 @@ import type {
   RestorationStatus,
 } from "@/domain/restoration-status";
 import {
+  listPiecesBoardArgs,
+  PIECES_PAGE_SIZE,
+  type PieceBoardFilters,
+} from "@/domain/piece-board-filters";
+import {
   listRestorationsArgs,
   RESTORATIONS_PAGE_SIZE,
   type RestorationFilters,
@@ -302,6 +307,56 @@ export async function listRestorations(
       paidCents: centsOrNull(r.paid),
       balanceCents: centsOrNull(r.balance),
       createdAt: r.created_at,
+    })),
+  };
+}
+
+export type BoardPiece = {
+  id: string;
+  code: string;
+  restorationId: string;
+  restorationCode: string;
+  clientName: string;
+  description: string;
+  status: PieceStatus;
+  location: PieceLocation;
+  workshopId: string | null;
+  workshopName: string | null;
+  arrivedAt: string | null;
+  workshopDays: number;
+  workshopOngoing: boolean;
+  lastObservation: string | null;
+};
+
+/** Vista operativa de piezas en curso, sin precios (`list_pieces_board`). */
+export async function listPiecesBoard(
+  filters: PieceBoardFilters,
+): Promise<{ items: BoardPiece[]; total: number; pages: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    "list_pieces_board",
+    listPiecesBoardArgs(filters),
+  );
+  if (error) throw error;
+  const total = Number(data[0]?.total_count ?? 0);
+  return {
+    total,
+    pages: Math.max(1, Math.ceil(total / PIECES_PAGE_SIZE)),
+    items: data.map((p) => ({
+      id: p.id,
+      code: p.code,
+      restorationId: p.restoration_id,
+      restorationCode: p.restoration_code,
+      clientName: p.client_name ?? "",
+      description: p.description,
+      status: p.status,
+      location: p.location,
+      workshopId: p.workshop_id,
+      workshopName: p.workshop_name,
+      arrivedAt: p.arrived_at,
+      workshopDays: p.workshop_days,
+      workshopOngoing: p.workshop_ongoing,
+      lastObservation: p.last_observation,
     })),
   };
 }

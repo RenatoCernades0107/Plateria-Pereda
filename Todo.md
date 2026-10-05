@@ -951,12 +951,13 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): agrega listado con filtros y búsqueda`
 
 #### Paso 12.2 — Vista de piezas (logística)
-- [ ] `/piezas` (página de inicio de logística): todas las piezas con filtros por ubicación, estado, taller y días en taller (> N); acciones masivas (enviar al taller, marcar devueltas); resaltado de piezas con muchos días en taller; sin precios. Logística solo ve piezas en curso (no las entregadas ni anuladas), con la nota de la última observación (P42).
+- [x] `/piezas` (página de inicio de logística): todas las piezas con filtros por ubicación, estado, taller y días en taller (> N); acciones masivas (enviar al taller, marcar devueltas); resaltado de piezas con muchos días en taller; sin precios. Logística solo ve piezas en curso (no las entregadas ni anuladas), con la nota de la última observación (P42).
 - **Unit:**
-  - [ ] Filtros y regla de resaltado.
+  - [x] Filtros y regla de resaltado.
 - **E2E:**
-  - [ ] Logística filtra piezas "En tienda / Recibida", selecciona 3 y las envía al Taller A → pasan a "En taller".
-  - [ ] `@mobile` acción masiva.
+  - [x] Logística filtra piezas "En tienda / Recibida", selecciona 3 y las envía al Taller A → pasan a "En taller".
+  - [x] `@mobile` acción masiva.
+- Hecho (2026-10-05): `/piezas` con `list_pieces_board()` (BD): solo piezas en curso (sin entregadas ni anuladas, ni de restauraciones pasadas) para todos los roles, sin precios, con cliente, taller, días en taller y la nota de la última observación; filtros por texto, ubicación, estado, taller y días en taller mínimos (en la URL); primero las que llevan más días en el taller. Se resaltan las que siguen en el taller desde hace 7 días o más (`WORKSHOP_DAYS_ALERT`, propuesta; se puede volver configurable). Selección por pieza o de toda la página y la misma barra de acciones masivas del detalle (`PiecesBulkBar`: cambios comunes como "Enviar al taller" o "Recibir del taller", marcar llegada y asignar taller), ahora para piezas de varias restauraciones.
 - Commit: `feat(piezas): agrega vista operativa de piezas`
 
 ### Fase 13 — Dashboard
