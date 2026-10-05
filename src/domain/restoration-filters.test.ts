@@ -23,6 +23,7 @@ describe("filtros del listado de restauraciones", () => {
       sort: "created_at",
       dir: "desc",
       page: 1,
+      view: "tabla",
     });
   });
 
@@ -53,6 +54,7 @@ describe("filtros del listado de restauraciones", () => {
       sort: "total",
       dir: "asc",
       page: 3,
+      view: "tabla",
     });
     const bad = parseRestorationFilters({
       estado: "x",
@@ -72,6 +74,7 @@ describe("filtros del listado de restauraciones", () => {
       sort: "code",
       dir: "asc",
       page: 2,
+      view: "tabla",
     });
     expect(href).toBe(
       "/restauraciones?q=Ana&estado=lista&pago=pendiente&orden=code&dir=asc&pagina=2",
@@ -123,5 +126,22 @@ describe("filtros del listado de restauraciones", () => {
       p_limit: 5000,
       p_offset: 0,
     });
+  });
+
+  it("en kanban trae todo en una página y lo guarda en la URL", () => {
+    const filters = parseRestorationFilters({
+      vista: "kanban",
+      pagina: "3",
+      q: "Ana",
+    });
+    expect(filters.view).toBe("kanban");
+    expect(restorationFiltersHref(filters)).toBe(
+      "/restauraciones?q=Ana&vista=kanban",
+    );
+    expect(listRestorationsArgs(filters)).toMatchObject({
+      p_limit: 300,
+      p_offset: 0,
+    });
+    expect(parseRestorationFilters({ vista: "otra" }).view).toBe("tabla");
   });
 });

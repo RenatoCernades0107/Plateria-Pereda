@@ -16,6 +16,7 @@ import {
 import {
   BOARD_LOCATIONS,
   BOARD_STATUSES,
+  parsePieceBoardFilters,
   pieceBoardHref,
   type PieceBoardFilters,
 } from "@/domain/piece-board-filters";
@@ -143,7 +144,13 @@ export function PiecesBoardFiltersForm({
         <Button
           type="button"
           variant="ghost"
-          onClick={() => router.push("/piezas")}
+          onClick={() =>
+            router.push(
+              pieceBoardHref(parsePieceBoardFilters({}), {
+                view: filters.view,
+              }),
+            )
+          }
         >
           Limpiar
         </Button>

@@ -960,6 +960,17 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-05): `/piezas` con `list_pieces_board()` (BD): solo piezas en curso (sin entregadas ni anuladas, ni de restauraciones pasadas) para todos los roles, sin precios, con cliente, taller, días en taller y la nota de la última observación; filtros por texto, ubicación, estado, taller y días en taller mínimos (en la URL); primero las que llevan más días en el taller. Se resaltan las que siguen en el taller desde hace 7 días o más (`WORKSHOP_DAYS_ALERT`, propuesta; se puede volver configurable). Selección por pieza o de toda la página y la misma barra de acciones masivas del detalle (`PiecesBulkBar`: cambios comunes como "Enviar al taller" o "Recibir del taller", marcar llegada y asignar taller), ahora para piezas de varias restauraciones.
 - Commit: `feat(piezas): agrega vista operativa de piezas`
 
+#### Paso 12.3 — Vista tabla o kanban por estado (pedido del usuario, 2026-10-05)
+- [x] `/restauraciones` y `/piezas` se ven como tabla (paginada) o como kanban con una columna por estado; la elección queda en la URL (`vista=kanban`) y se mantiene al filtrar o limpiar filtros.
+- **Unit:**
+  - [x] Lectura y escritura de la vista en la URL; el kanban trae una sola página (hasta 300 restauraciones o 200 piezas).
+- **E2E:**
+  - [x] Cambiar a kanban, ver las tarjetas en su columna, filtrar sin perder la vista y volver a la tabla.
+  - [x] Elegir piezas en el kanban y enviarlas al taller con la barra de acciones masivas.
+  - [x] `@mobile` el kanban se desplaza dentro de su contenedor, sin desbordar la página.
+- Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición).
+- Commit: `feat(listados): agrega vista kanban por estado en restauraciones y piezas`
+
 ### Fase 13 — Dashboard
 
 #### Paso 13.1 — Métricas en BD ⛔ P33
