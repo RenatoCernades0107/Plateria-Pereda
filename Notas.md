@@ -11,9 +11,9 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P13, P19–P21, P23, P25, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
-| Respondidas en parte | P17 (→ P41), P28, P30 (→ P42) |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Respondidas en parte | P13 (falta el efecto de "no incluye IGV"), P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
 > 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
@@ -144,7 +144,7 @@
 ### P13 · ¿Los precios incluyen IGV?
 - **Contexto:** aplica a restauraciones (orden de Shopify y mensaje de WhatsApp) y a cotizaciones (PDF). Depende también de la configuración de impuestos de la tienda.
 - **Propuesta:** todos los precios incluyen IGV; en el PDF se puede mostrar el desglose (op. gravada + IGV 18 %) si lo desean.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-05):** 🟡 **No asumir: preguntar siempre si el precio incluye IGV** (en cada restauración y en cada cotización). Falta confirmar qué pasa cuando **no** lo incluye (¿se suma el 18 % al total que se cobra o solo se indica "+ IGV"?) y si aplica igual a restauraciones y cotizaciones.
 
 ### P14 · ¿Cómo registramos a las empresas en Shopify?
 - **Contexto:** desde abril de 2026 el plan Grow incluye perfiles de empresa (Companies), con contactos y ubicaciones.
@@ -217,12 +217,12 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 ### P19 · ¿Validan cómo se calcula el estado general?
 - **Contexto:** la regla propuesta está en `Todo.md` §7.3. Un caso a confirmar: si una pieza devuelta se observa y vuelve al taller, la restauración puede **retroceder** de "Lista" a "Parcialmente lista" o "En proceso".
 - **Propuesta:** sí, el estado refleja siempre la situación real y puede retroceder.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-05):** ✅ **Solo avanza.** El estado general nunca retrocede: si una pieza devuelta se observa y vuelve al taller, la restauración conserva el estado al que ya había llegado. Excepción: si se anulan todas las piezas queda Anulada.
 
 ### P20 · ¿La pieza suele llegar a la tienda al registrar la restauración?
 - **Contexto:** si llega antes de aprobarse, debe pasar a "Recibida" apenas se apruebe; hay que saber que ya está físicamente en la tienda.
 - **Propuesta:** en el registro, casilla "La pieza ya está en tienda" marcada por defecto; para las que llegan después, un botón "Marcar llegada" (lo usan logística y ventas).
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-05):** ✅ **Sí, suelen llegar al registrar.** La casilla "La pieza ya está en tienda" viene marcada por defecto (se desmarca para las que llegan después).
 
 ### P21 · ¿Hay una sola tienda física?
 - **Contexto:** si hay varias sedes, la ubicación "En tienda" debería indicar en cuál está la pieza.
@@ -267,7 +267,23 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   {condiciones}
   ```
   Con botón "Copiar" y botón "Abrir WhatsApp" con el número del cliente.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-05):** 🟡 Piden una propuesta concreta: se les envió un ejemplo con los tres tipos de pago (ver abajo); falta su visto bueno.
+- **Propuesta concreta (2026-10-05):** plantilla editable en Configuración; una línea por pieza no anulada y la forma de pago según el tipo:
+  ```
+  Hola Ana Pérez, te saludamos de Platería Pereda.
+  Te compartimos la cotización de tu restauración *RES-00012*:
+
+  1. Fuente ovalada abollada – Restauración completa: S/ 1,200.50
+  2. Juego de cubiertos (12) – Limpieza y pulido: S/ 180.00
+  3. Candelabro de 3 brazos – Soldadura: S/ 95.00
+
+  *Total: S/ 1,475.50*
+  Forma de pago: A cuenta (adelanto del 50 %: S/ 737.75)
+  {condiciones de la configuración}
+  ```
+  - Al contado: "Forma de pago: Al contado (S/ 1,475.50)". Al crédito: "Forma de pago: Al crédito (sin adelanto)".
+  - Si la restauración es de un contacto de una empresa, el saludo va a su nombre.
+  - Según P13 se agregaría "(incluye IGV)" o "(+ IGV)" junto al total.
 
 ### P26 · ¿Hay restauraciones en curso que migrar?
 - **Contexto:** si hoy llevan el control en Excel u otro sistema, podemos cargar las restauraciones en curso al lanzar.
@@ -510,6 +526,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 |---|---|---|
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
+| 2026-10-05 | P13, P19, P20, P25 | Preguntar siempre si el precio incluye IGV (falta el efecto si no lo incluye); el estado general solo avanza; las piezas suelen llegar al registrar (casilla marcada por defecto); P25: piden propuesta concreta. |
 | 2026-10-03 | P12, P41, P42, P43, P44, P45 | Propuesta de pagos aceptada (hoy la guía es de papel y el pago se registra en el POS con un texto libre); entrega bloqueada con saldo pendiente; se mantiene "En espera de respuesta del cliente"; logística sin historial de pedidos pero con última observación y días en taller; marcar "Preparado" al entregar; el cliente no se cambia en el sistema. Pendiente en P12: título de la línea y cambio de cliente hecho en Shopify. |
 | 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |
 | 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |

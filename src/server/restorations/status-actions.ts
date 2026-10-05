@@ -8,6 +8,12 @@ import { requirePermission } from "@/server/auth";
 
 export type StatusActionResult = { ok: true } | { error: string };
 
+/** Refresca el detalle de la restauración (si hay una) y la vista de piezas. */
+function refresh(restorationId: string | null) {
+  if (restorationId) revalidatePath(`/restauraciones/${restorationId}`);
+  revalidatePath("/piezas");
+}
+
 /** Las reglas de la BD ya traen mensajes en español para estos códigos. */
 const READABLE = new Set(["23514", "42501", "23503", "22023"]);
 
@@ -28,7 +34,7 @@ function fail(
  * transición, rol, nota y taller con la tabla de transiciones).
  */
 export async function changePieceStatus(
-  restorationId: string,
+  restorationId: string | null,
   pieceIds: string[],
   to: PieceStatus,
   note: string | null = null,
@@ -44,13 +50,13 @@ export async function changePieceStatus(
     p_workshop_id: workshopId ?? undefined,
   });
   if (error) return fail(error, "No se pudo cambiar el estado.");
-  revalidatePath(`/restauraciones/${restorationId}`);
+  refresh(restorationId);
   return { ok: true };
 }
 
 /** "Marcar llegada a tienda" (todos los roles). */
 export async function markPiecesArrived(
-  restorationId: string,
+  restorationId: string | null,
   pieceIds: string[],
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.marcar-llegada");
@@ -59,13 +65,13 @@ export async function markPiecesArrived(
     p_piece_ids: pieceIds,
   });
   if (error) return fail(error, "No se pudo marcar la llegada.");
-  revalidatePath(`/restauraciones/${restorationId}`);
+  refresh(restorationId);
   return { ok: true };
 }
 
 /** Asigna o cambia el taller de las piezas (queda en la auditoría). */
 export async function assignWorkshop(
-  restorationId: string,
+  restorationId: string | null,
   pieceIds: string[],
   workshopId: string | null,
 ): Promise<StatusActionResult> {
@@ -76,6 +82,6 @@ export async function assignWorkshop(
     p_workshop_id: workshopId as string,
   });
   if (error) return fail(error, "No se pudo asignar el taller.");
-  revalidatePath(`/restauraciones/${restorationId}`);
+  refresh(restorationId);
   return { ok: true };
 }

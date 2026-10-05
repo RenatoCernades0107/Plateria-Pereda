@@ -6,6 +6,9 @@ const isCI = !!process.env.CI;
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || undefined;
 
 export default defineConfig({
+  // Los flujos con sincronización a Shopify, sumados a la primera compilación de
+  // cada página en `pnpm dev`, pasaban de 30 s al correr toda la suite en paralelo.
+  timeout: 60_000,
   testDir: "e2e",
   fullyParallel: true,
   forbidOnly: isCI,

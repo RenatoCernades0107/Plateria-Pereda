@@ -87,6 +87,15 @@ describe("RestorationForm", () => {
     expect(total).toHaveTextContent("S/ 51.00");
   });
 
+  it("la pieza viene marcada como ya en tienda (P20)", () => {
+    renderForm();
+    expect(
+      within(screen.getByTestId("pieza-1")).getByLabelText(
+        "La pieza ya está en tienda",
+      ),
+    ).toBeChecked();
+  });
+
   it("propone el precio sugerido del servicio elegido del catálogo", async () => {
     const user = userEvent.setup();
     renderForm();
