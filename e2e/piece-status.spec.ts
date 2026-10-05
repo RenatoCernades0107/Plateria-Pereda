@@ -237,6 +237,82 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, code)).toContainText("Enviada al taller");
   });
 
+  test("la línea de tiempo muestra usuarios y notas en orden; logística ve solo días y observación", async ({
+    page,
+    loginAs,
+  }) => {
+    const r = await seedRestoration([{ description: "Sopera con historia" }]);
+    const code = `${r.code}-1`;
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    await card(page, code)
+      .getByRole("button", { name: "Poner en consulta" })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByLabel("Nota (obligatoria)")
+      .fill("Consulta inicial");
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Confirmar/ })
+      .click();
+    await expect(card(page, code)).toContainText("En consulta");
+    await card(page, code)
+      .getByRole("button", { name: "Esperar respuesta" })
+      .click();
+    await expect(card(page, code)).toContainText("En espera");
+    await card(page, code).getByRole("button", { name: "Aprobar" }).click();
+    await expect(card(page, code)).toContainText("Aprobada");
+
+    await page.reload();
+    const timeline = card(page, code).getByTestId("linea-tiempo");
+    await timeline.getByText("Línea de tiempo").click();
+    const events = timeline.getByTestId("evento");
+    await expect(events).toHaveCount(4);
+    await expect(events.nth(0)).toContainText("Registrada");
+    await expect(events.nth(1)).toContainText("En consulta");
+    await expect(events.nth(1)).toContainText("Ventas de prueba");
+    await expect(events.nth(1)).toContainText("Consulta inicial");
+    await expect(events.nth(3)).toContainText("Aprobada");
+    await expect(timeline.getByTestId("dias-cumplimiento")).toContainText(
+      "(en curso)",
+    );
+
+    await page.getByRole("tab", { name: "Historial" }).click();
+    await expect(page.getByTestId("resumen-estados")).toContainText(
+      "En espera de respuesta del cliente → Aprobada",
+    );
+
+    // Observación tras el taller, para el resumen de logística.
+    await adminClient()
+      .from("pieces")
+      .update({
+        status: "devuelta_taller",
+        first_sent_at: new Date().toISOString(),
+      } as never)
+      .eq("restoration_id", r.id);
+    await page.goto(`/restauraciones/${r.id}`);
+    await card(page, code).getByRole("button", { name: "Observar" }).click();
+    await page
+      .getByRole("dialog")
+      .getByLabel("Nota (obligatoria)")
+      .fill("Mancha en la tapa");
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Confirmar/ })
+      .click();
+    await expect(card(page, code)).toContainText("Observada");
+
+    await loginAs("logistica");
+    await page.goto(`/restauraciones/${r.id}`);
+    await expect(card(page, code).getByTestId("linea-tiempo")).toHaveCount(0);
+    const summary = card(page, code).getByTestId("resumen-logistica");
+    await expect(summary).toContainText("Días en taller: 0 días");
+    await expect(summary).toContainText(
+      "Última observación: Mancha en la tapa",
+    );
+  });
+
   test("anular todas las piezas deja la restauración Anulada", async ({
     page,
     loginAs,

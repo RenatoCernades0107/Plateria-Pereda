@@ -181,3 +181,61 @@ export async function getRestorationDetail(
       : null,
   };
 }
+
+export type PieceTimelineEvent = {
+  pieceId: string;
+  at: string;
+  fromStatus: PieceStatus | null;
+  toStatus: PieceStatus;
+  actorName: string | null;
+  note: string | null;
+};
+
+/** Historial de estados de las piezas (admin y ventas; la RLS lo exige). */
+export async function getStatusHistory(
+  restorationId: string,
+): Promise<PieceTimelineEvent[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("piece_status_history")
+    .select("piece_id, occurred_at, from_status, to_status, actor_name, note")
+    .eq("restoration_id", restorationId)
+    .order("occurred_at")
+    .order("id");
+  if (error) throw error;
+  return data.map((h) => ({
+    pieceId: h.piece_id,
+    at: h.occurred_at,
+    fromStatus: h.from_status,
+    toStatus: h.to_status,
+    actorName: h.actor_name,
+    note: h.note,
+  }));
+}
+
+export type LogisticsPieceInfo = {
+  workshopDays: number;
+  workshopOngoing: boolean;
+  lastObservation: string | null;
+};
+
+/** Para logística: días en taller y última observación de cada pieza (P42). */
+export async function getLogisticsInfo(
+  restorationId: string,
+): Promise<Map<string, LogisticsPieceInfo>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("piece_logistics_info", {
+    p_restoration_id: restorationId,
+  });
+  if (error) throw error;
+  return new Map(
+    data.map((row) => [
+      row.piece_id,
+      {
+        workshopDays: row.workshop_days,
+        workshopOngoing: row.workshop_ongoing,
+        lastObservation: row.last_observation,
+      },
+    ]),
+  );
+}

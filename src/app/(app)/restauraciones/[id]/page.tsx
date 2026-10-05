@@ -9,6 +9,11 @@ import {
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
 import { MoneySummary } from "@/components/restorations/money-summary";
+import {
+  LogisticsPieceSummary,
+  PieceTimelineDetails,
+  RestorationStatusSummary,
+} from "@/components/restorations/piece-history";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
@@ -27,7 +32,11 @@ import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
-import { getRestorationDetail } from "@/server/restorations/queries";
+import {
+  getLogisticsInfo,
+  getRestorationDetail,
+  getStatusHistory,
+} from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
 
 export const metadata: Metadata = { title: "Restauración" };
@@ -74,6 +83,31 @@ export default async function RestauracionDetallePage({
     : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
+
+  // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
+  // en taller y la última observación (P42).
+  const now = new Date();
+  const [history, logistics] = await Promise.all([
+    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+    canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
+  ]);
+  const extra = Object.fromEntries(
+    restoration.pieces.map((piece) => {
+      const info = logistics?.get(piece.id);
+      return [
+        piece.id,
+        canSeeMoney ? (
+          <PieceTimelineDetails
+            piece={piece}
+            events={history.filter((e) => e.pieceId === piece.id)}
+            now={now}
+          />
+        ) : info ? (
+          <LogisticsPieceSummary info={info} />
+        ) : null,
+      ];
+    }),
+  );
 
   return (
     <div className="space-y-6">
@@ -200,6 +234,7 @@ export default async function RestauracionDetallePage({
             pieces={restoration.pieces}
             role={user.role}
             workshops={workshops}
+            extra={extra}
             editing={
               editing
                 ? {
@@ -233,7 +268,16 @@ export default async function RestauracionDetallePage({
           </p>
         </TabsContent>
         {canSeeMoney ? (
-          <TabsContent value="historial">
+          <TabsContent value="historial" className="space-y-6">
+            <section className="space-y-2" aria-labelledby="cambios-estado">
+              <h2 id="cambios-estado" className="text-heading font-semibold">
+                Cambios de estado
+              </h2>
+              <RestorationStatusSummary
+                pieces={restoration.pieces}
+                events={history}
+              />
+            </section>
             <EntityHistorySection
               table="restorations"
               recordId={restoration.id}

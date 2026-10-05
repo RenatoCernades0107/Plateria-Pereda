@@ -800,12 +800,13 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(piezas): agrega acciones de cambio de estado en la interfaz`
 
 #### Paso 8.5 — Línea de tiempo
-- [ ] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento. Logística no la ve: solo el estado actual, los días en taller y la nota de la última observación (P42).
+- [x] `Timeline` por pieza (estado, fecha, usuario, nota) y resumen por restauración; muestra días en taller y días de cumplimiento. Logística no la ve: solo el estado actual, los días en taller y la nota de la última observación (P42).
 - **Unit:**
-  - [ ] Render de eventos y de días "en curso".
+  - [x] Render de eventos y de días "en curso".
 - **E2E:**
-  - [ ] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
+  - [x] Tras varios cambios, la línea de tiempo muestra usuarios y notas en orden.
 - Avance (2026-10-04): `Timeline` (`src/components/restorations/timeline.tsx`) ordena los eventos de una pieza (estado, fecha, usuario o "Sistema", nota) y muestra los días en taller y de cumplimiento con `piece-days.ts` ("en curso" si siguen abiertos); unit de eventos y días en curso hechos. Faltan el resumen por restauración, la vista reducida de logística y el E2E.
+- Hecho (2026-10-05): cada pieza tiene una "Línea de tiempo" plegable (`Timeline`: estado, fecha, usuario o "Sistema", nota; días en taller y de cumplimiento, "en curso" si siguen abiertos) a partir de `piece_status_history`; la pestaña Historial suma "Cambios de estado" de todas las piezas (del más reciente al más antiguo) sobre la auditoría. Logística no ve la línea de tiempo: en cada pieza ve los días en taller y la nota de la última observación (`piece_logistics_info()`).
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
 
 ### Fase 9 — Orden automática en Shopify
