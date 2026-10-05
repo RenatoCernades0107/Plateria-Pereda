@@ -781,21 +781,22 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(piezas): implementa cambios de estado, historial y derivados en BD`
 
 #### Paso 8.4 — Interfaz de cambio de estado
-- [ ] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
-- [ ] Acción "Marcar llegada a tienda".
-- [ ] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
-- [ ] Asignar / cambiar taller (queda auditado).
+- [x] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
+- [x] Acción "Marcar llegada a tienda".
+- [x] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
+- [x] Asignar / cambiar taller (queda auditado).
 - **Unit:**
-  - [ ] El componente muestra los botones correctos por estado y rol.
-  - [ ] El diálogo exige nota/taller cuando corresponde.
+  - [x] El componente muestra los botones correctos por estado y rol.
+  - [x] El diálogo exige nota/taller cuando corresponde.
 - **E2E:**
-  - [ ] Flujo feliz: Registrada → Aprobada → (llegada) Recibida → Enviada al taller → Devuelta → Entregada, verificando estado general y ubicación en cada paso.
-  - [ ] Flujo de consulta: En consulta → En espera de respuesta → Aprobada; y En espera → Anulada.
-  - [ ] Pieza que llegó antes de aprobarse pasa a Recibida al aprobarla.
-  - [ ] Observada y reenvío al taller.
-  - [ ] Anular todas las piezas → restauración Anulada.
-  - [ ] Cada rol solo ve las acciones que le corresponden (logística no consulta, aprueba ni anula).
-  - [ ] `@mobile` cambio de estado desde el celular.
+  - [x] Flujo feliz: Registrada → Aprobada → (llegada) Recibida → Enviada al taller → Devuelta → Entregada, verificando estado general y ubicación en cada paso.
+  - [x] Flujo de consulta: En consulta → En espera de respuesta → Aprobada; y En espera → Anulada.
+  - [x] Pieza que llegó antes de aprobarse pasa a Recibida al aprobarla.
+  - [x] Observada y reenvío al taller.
+  - [x] Anular todas las piezas → restauración Anulada.
+  - [x] Cada rol solo ve las acciones que le corresponden (logística no consulta, aprueba ni anula).
+  - [x] `@mobile` cambio de estado desde el celular.
+- Hecho (2026-10-05): en el detalle, `PiecesBoard` muestra cada pieza con `PieceStatusPanel`: estado y ubicación (se actualizan al instante y vuelven atrás si la BD rechaza el cambio), "Marcar llegada a tienda" y solo las transiciones del rol (`availableTransitions`). Nota, taller o anular abren `StatusChangeDialog` (nota obligatoria donde corresponde; el taller ya asignado viene elegido). Selección de piezas para acciones masivas: se ofrecen solo los cambios posibles para todas las elegidas (`commonTransitions`), la llegada en bloque y "Asignar taller". Asignar o cambiar el taller va por el RPC `assign_piece_workshop()` (admin, ventas y logística; no en piezas en el taller, entregadas o anuladas), auditado. Acciones del servidor en `src/server/restorations/status-actions.ts`; los mensajes de error vienen de la BD. Al completarse la restauración, logística deja de verla (D24), por eso en el E2E la entrega final la hace ventas. El service role también puede registrar restauraciones (permiso sobre `next_restoration_code`).
 - Commit: `feat(piezas): agrega acciones de cambio de estado en la interfaz`
 
 #### Paso 8.5 — Línea de tiempo

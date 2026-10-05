@@ -1201,6 +1201,10 @@ export type Database = {
         };
         Returns: number;
       };
+      assign_piece_workshop: {
+        Args: { p_piece_ids: string[]; p_workshop_id: string };
+        Returns: number;
+      };
       change_piece_status: {
         Args: {
           p_note?: string;

@@ -9,12 +9,9 @@ import {
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
 import { MoneySummary } from "@/components/restorations/money-summary";
+import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
-import {
-  LocationBadge,
-  PieceStatusBadge,
-  RestorationStatusBadge,
-} from "@/components/restorations/status-badges";
+import { RestorationStatusBadge } from "@/components/restorations/status-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,60 +27,12 @@ import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
-import {
-  getRestorationDetail,
-  type PieceDetail,
-} from "@/server/restorations/queries";
+import { getRestorationDetail } from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
 
 export const metadata: Metadata = { title: "Restauración" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function PieceCard({
-  piece,
-  action,
-}: {
-  piece: PieceDetail;
-  action?: React.ReactNode;
-}) {
-  const details = [
-    piece.serviceName && `Servicio: ${piece.serviceName}`,
-    piece.materialName && `Material: ${piece.materialName}`,
-    piece.measure && `Medida: ${piece.measure}`,
-    piece.weightGrams !== null && `Peso: ${piece.weightGrams} g`,
-    `Taller: ${piece.workshopName ?? "sin asignar"}`,
-  ].filter(Boolean);
-  return (
-    <li
-      className="space-y-2 rounded-lg border p-4"
-      data-testid={`pieza-${piece.code}`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-muted-foreground text-xs">{piece.code}</p>
-          <p className="text-heading font-medium break-words">
-            {piece.description}
-          </p>
-        </div>
-        {piece.priceCents !== null ? (
-          <p className="font-medium tabular-nums">
-            {formatCents(piece.priceCents)}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <PieceStatusBadge status={piece.status} />
-        <LocationBadge location={piece.location} />
-      </div>
-      <p className="text-muted-foreground text-sm">{details.join(" · ")}</p>
-      {piece.notes ? (
-        <p className="text-sm whitespace-pre-line">{piece.notes}</p>
-      ) : null}
-      {action ? <div className="flex justify-end">{action}</div> : null}
-    </li>
-  );
-}
 
 export default async function RestauracionDetallePage({
   params,
@@ -124,6 +73,7 @@ export default async function RestauracionDetallePage({
     ? await loadEditingData(restoration.client)
     : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
+  const workshops = await listActiveWorkshops();
 
   return (
     <div className="space-y-6">
@@ -160,7 +110,9 @@ export default async function RestauracionDetallePage({
             ) : null}
           </p>
           <div className="flex flex-wrap gap-2">
-            <RestorationStatusBadge status={restoration.status} />
+            <span data-testid="estado-restauracion" className="contents">
+              <RestorationStatusBadge status={restoration.status} />
+            </span>
             {restoration.money ? (
               <Badge variant="outline" data-testid="estado-pago">
                 {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
@@ -238,39 +190,35 @@ export default async function RestauracionDetallePage({
           {editing && editableFields(ctx).canAddPieces ? (
             <PieceDialog
               restorationId={restoration.id}
-              workshops={editing.workshops}
+              workshops={workshops}
               materials={editing.materials}
               services={editing.services}
             />
           ) : null}
-          <ul className="grid gap-3 md:grid-cols-2">
-            {restoration.pieces.map((piece) => {
-              const fields = editableFields(ctx, piece);
-              return (
-                <PieceCard
-                  key={piece.id}
-                  piece={piece}
-                  action={
-                    editing && fields.piece.length > 0 ? (
-                      <PieceDialog
-                        restorationId={restoration.id}
-                        piece={piece}
-                        editable={fields.piece}
-                        priceHint={
-                          fields.priceNeedsOrderFlow
-                            ? "Con la orden de Shopify creada, el precio se cambia desde la orden (con motivo)."
-                            : "Con la orden de Shopify creada, solo el administrador cambia el precio."
-                        }
-                        workshops={editing.workshops}
-                        materials={editing.materials}
-                        services={editing.services}
-                      />
-                    ) : null
+          <PiecesBoard
+            restorationId={restoration.id}
+            pieces={restoration.pieces}
+            role={user.role}
+            workshops={workshops}
+            editing={
+              editing
+                ? {
+                    editable: Object.fromEntries(
+                      restoration.pieces.map((piece) => [
+                        piece.id,
+                        editableFields(ctx, piece).piece,
+                      ]),
+                    ),
+                    priceHint:
+                      user.role === "admin"
+                        ? "Con la orden de Shopify creada, el precio se cambia desde la orden (con motivo)."
+                        : "Con la orden de Shopify creada, solo el administrador cambia el precio.",
+                    materials: editing.materials,
+                    services: editing.services,
                   }
-                />
-              );
-            })}
-          </ul>
+                : null
+            }
+          />
         </TabsContent>
         {canSeeMoney ? (
           <TabsContent value="pagos">
@@ -297,17 +245,12 @@ export default async function RestauracionDetallePage({
   );
 }
 
-/** Catálogos activos, talleres y contactos de la empresa para los diálogos de edición. */
+/** Catálogos activos y contactos de la empresa para los diálogos de edición. */
 async function loadEditingData(client: { id: string; kind: string }) {
   const supabase = await createClient();
-  const [materials, services, workshops, contacts] = await Promise.all([
+  const [materials, services, contacts] = await Promise.all([
     listCatalog("materials", { onlyActive: true }),
     listCatalog("services", { onlyActive: true }),
-    supabase
-      .from("workshops")
-      .select("id, name")
-      .eq("active", true)
-      .order("name"),
     client.kind === "empresa"
       ? supabase
           .from("contacts")
@@ -317,7 +260,6 @@ async function loadEditingData(client: { id: string; kind: string }) {
           .order("display_name")
       : Promise.resolve({ data: null, error: null }),
   ]);
-  if (workshops.error) throw workshops.error;
   if (contacts.error) throw contacts.error;
   const option = ({
     id,
@@ -335,7 +277,6 @@ async function loadEditingData(client: { id: string; kind: string }) {
   return {
     materials: materials.map(option),
     services: services.map(option),
-    workshops: workshops.data,
     contacts: contacts.data
       ? contacts.data.map((k) => ({
           id: k.id,
@@ -344,4 +285,16 @@ async function loadEditingData(client: { id: string; kind: string }) {
         }))
       : null,
   };
+}
+
+/** Talleres activos (todos los roles envían piezas al taller o lo asignan). */
+async function listActiveWorkshops() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workshops")
+    .select("id, name")
+    .eq("active", true)
+    .order("name");
+  if (error) throw error;
+  return data;
 }
