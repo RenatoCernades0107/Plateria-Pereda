@@ -30,6 +30,15 @@ export const RESTORATION_STATUS_LABELS: Record<RestorationStatus, string> = {
   anulada: "Anulada",
 };
 
+/** Origen de la restauración (P46): oficina o copiada de una cotización de WhatsApp. */
+export const RESTORATION_ORIGINS = ["oficina", "whatsapp"] as const;
+export type RestorationOrigin = (typeof RESTORATION_ORIGINS)[number];
+
+export const RESTORATION_ORIGIN_LABELS: Record<RestorationOrigin, string> = {
+  oficina: "Oficina",
+  whatsapp: "WhatsApp",
+};
+
 export const PIECE_LOCATIONS = [
   "sin_enviar",
   "en_tienda",

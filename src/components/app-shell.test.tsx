@@ -21,7 +21,14 @@ describe("AppShell", () => {
     ["admin", NAV_ITEMS.map((i) => i.title)],
     [
       "ventas",
-      ["Dashboard", "Restauraciones", "Piezas", "Clientes", "Cotizaciones"],
+      [
+        "Dashboard",
+        "Restauraciones",
+        "Piezas",
+        "Cotizaciones de WhatsApp",
+        "Clientes",
+        "Cotizaciones",
+      ],
     ],
     ["logistica", ["Restauraciones", "Piezas", "Clientes", "Talleres"]],
   ] as const)("muestra a %s solo los módulos permitidos", (role, visibles) => {

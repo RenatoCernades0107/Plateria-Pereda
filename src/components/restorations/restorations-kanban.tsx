@@ -79,6 +79,9 @@ export function RestorationsKanban({
                       {showMoney && r.totalCents !== null ? (
                         <span>{formatCents(r.totalCents)}</span>
                       ) : null}
+                      {r.origin === "whatsapp" ? (
+                        <Badge variant="secondary">WhatsApp</Badge>
+                      ) : null}
                       {r.paymentStatus ? (
                         <Badge variant="outline">
                           {PAYMENT_STATUS_LABELS[r.paymentStatus]}

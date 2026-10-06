@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, Copy, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   useFieldArray,
   useForm,
@@ -46,14 +46,21 @@ import { cn } from "@/lib/utils";
 import {
   MAX_PIECES,
   restorationSchema,
+  whatsappQuoteSchema,
   type PieceFormInput,
   type RestorationFormInput,
+  type WhatsappQuoteFormInput,
 } from "@/lib/validation/restorations";
 import {
   createRestoration,
   listClientContacts,
   type ContactChoice,
 } from "@/server/restorations/actions";
+import {
+  createRestorationFromQuote,
+  createWhatsappQuote,
+  updateWhatsappQuote,
+} from "@/server/whatsapp-quotes/actions";
 
 import { PieceFields, type CatalogOption } from "./piece-fields";
 
@@ -62,6 +69,9 @@ export type { CatalogOption };
 type FormValues = {
   clientId: string;
   contactId: string | null;
+  /** Solo cotización de WhatsApp sin cliente (P46). */
+  customerName: string;
+  customerPhone: string;
   paymentType: PaymentType;
   depositPercent: string;
   notes: string;
@@ -96,6 +106,7 @@ function PieceCard({
   workshops,
   materials,
   services,
+  quoteOnly,
   onDuplicate,
   onRemove,
 }: {
@@ -105,6 +116,8 @@ function PieceCard({
   workshops: { id: string; name: string }[];
   materials: CatalogOption[];
   services: CatalogOption[];
+  /** Cotización de WhatsApp: sin taller, llegada ni marca urgente (P46). */
+  quoteOnly: boolean;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -173,44 +186,137 @@ function PieceCard({
           workshops={workshops}
           materials={materials}
           services={services}
+          showArrived={!quoteOnly}
+          showWorkshop={!quoteOnly}
+          showUrgent={!quoteOnly}
         />
       </div>
     </li>
   );
 }
 
+/** Cliente (persona o empresa) ya vinculado a la cotización. */
+export type QuoteClient = Extract<
+  ClientOption,
+  { source: "local"; kind: "persona" | "empresa" }
+>;
+
+/** Pieza cotizada por WhatsApp, para editar la cotización o pedirla (P46). */
+export type QuoteItemForForm = {
+  id: string;
+  number: number;
+  piece: PieceFormInput;
+  priceLabel: string;
+  /** Ya pedida en una restauración: no se puede volver a elegir. */
+  orderedIn: string | null;
+};
+
+export type QuoteForForm = {
+  id: string;
+  code: string;
+  /** Cliente vinculado; null si la cotización aún no tiene cliente. */
+  client: QuoteClient | null;
+  contactId: string | null;
+  customerName: string;
+  customerPhone: string;
+  paymentType: PaymentType;
+  depositPercent: number | null;
+  notes: string;
+  items: QuoteItemForForm[];
+};
+
 /**
- * Registro de una restauración (Paso 7.4): cliente, tipo de pago, piezas y total en
- * vivo. Al guardar abre el detalle con el mensaje de cotización para WhatsApp.
+ * - `nueva`: registro de una restauración, o de una cotización si se marca "El pedido
+ *   vino por WhatsApp" (P46).
+ * - `editar-cotizacion`: edición de una cotización (solo hasta la primera copia).
+ * - `copia`: "Crear restauración" desde una cotización con las piezas elegidas.
+ */
+export type RestorationFormMode =
+  | { kind: "nueva"; whatsapp?: boolean }
+  | { kind: "editar-cotizacion"; quote: QuoteForForm }
+  | { kind: "copia"; quote: QuoteForForm };
+
+/** Pieza cotizada como pieza del formulario de la copia (aún no llegó a la tienda). */
+const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
+  ...item.piece,
+  arrived: false,
+  quoteItemId: item.id,
+});
+
+function defaultsFor(
+  mode: RestorationFormMode,
+  defaultDepositPercent: number,
+): FormValues {
+  if (mode.kind === "nueva") {
+    return {
+      clientId: "",
+      contactId: null,
+      customerName: "",
+      customerPhone: "",
+      paymentType: "a_cuenta",
+      depositPercent: String(defaultDepositPercent),
+      notes: "",
+      pieces: [EMPTY_PIECE],
+    };
+  }
+  const q = mode.quote;
+  return {
+    clientId: q.client?.clientId ?? "",
+    contactId: q.contactId,
+    customerName: q.customerName,
+    customerPhone: q.customerPhone,
+    paymentType: q.paymentType,
+    depositPercent: String(q.depositPercent ?? defaultDepositPercent),
+    notes: mode.kind === "copia" ? "" : q.notes,
+    pieces:
+      mode.kind === "copia"
+        ? q.items.filter((i) => !i.orderedIn).map(copyPiece)
+        : q.items.map((i) => ({ ...i.piece, arrived: false })),
+  };
+}
+
+/**
+ * Registro de una restauración (Paso 7.4) o de una cotización de WhatsApp (P46):
+ * cliente, tipo de pago, piezas y total en vivo. Al guardar abre el detalle con el
+ * mensaje de cotización para WhatsApp.
  */
 export function RestorationForm({
   defaultDepositPercent,
   workshops,
   materials,
   services,
+  mode = { kind: "nueva" },
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
   materials: CatalogOption[];
   services: CatalogOption[];
+  mode?: RestorationFormMode;
 }) {
   const router = useRouter();
-  const [client, setClient] = useState<ClientOption | null>(null);
+  const quote = mode.kind === "nueva" ? null : mode.quote;
+  const [client, setClient] = useState<ClientOption | null>(
+    quote?.client ?? null,
+  );
   const [contacts, setContacts] = useState<ContactChoice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  // Cotización de WhatsApp: casilla en el registro; fija al editar o copiar.
+  const [viaWhatsapp, setViaWhatsapp] = useState(
+    mode.kind === "editar-cotizacion" ||
+      (mode.kind === "nueva" && Boolean(mode.whatsapp)),
+  );
+  // El resolver lee la casilla al validar (se actualiza al cambiarla, no al renderizar).
+  const quoteMode = useRef(viaWhatsapp);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(restorationSchema as never),
-    defaultValues: {
-      clientId: "",
-      contactId: null,
-      paymentType: "a_cuenta",
-      depositPercent: String(defaultDepositPercent),
-      notes: "",
-      pieces: [EMPTY_PIECE],
-    },
+    // El esquema depende de la casilla: la cotización no exige cliente.
+    resolver: (values, context, options) =>
+      zodResolver(
+        (quoteMode.current ? whatsappQuoteSchema : restorationSchema) as never,
+      )(values, context, options as never) as never,
+    defaultValues: defaultsFor(mode, defaultDepositPercent),
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
@@ -221,6 +327,15 @@ export function RestorationForm({
     paymentType === "a_cuenta" && !(percent >= 1 && percent <= 100)
       ? null
       : expectedDeposit(total, paymentType, percent);
+
+  // Contactos de la empresa ya vinculada (al editar o copiar una cotización).
+  useEffect(() => {
+    if (quote?.client && quote.client.kind !== "persona") {
+      listClientContacts(quote.client.clientId)
+        .then(setContacts)
+        .catch(() => setContacts([]));
+    }
+  }, [quote?.client]);
 
   // Aviso al salir con cambios sin guardar.
   const dirty = form.formState.isDirty && !saved;
@@ -250,19 +365,62 @@ export function RestorationForm({
     }
   };
 
+  const clearClient = () => {
+    setClient(null);
+    setContacts([]);
+    form.setValue("clientId", "", { shouldDirty: true });
+    form.setValue("contactId", null);
+  };
+
+  const toggleWhatsapp = (on: boolean) => {
+    quoteMode.current = on;
+    setViaWhatsapp(on);
+    form.clearErrors();
+  };
+
+  /** Elegir o quitar una pieza cotizada en la copia. */
+  const toggleItem = (item: QuoteItemForForm, on: boolean) => {
+    const index = (form.getValues("pieces") ?? []).findIndex(
+      (p) => p.quoteItemId === item.id,
+    );
+    if (on && index < 0) pieces.append(copyPiece(item));
+    if (!on && index >= 0) pieces.remove(index);
+  };
+
   const onSubmit = form.handleSubmit(() => {
     if (pending) return;
     setError(null);
+    const input = form.getValues();
     startTransition(async () => {
-      const result = await createRestoration(
-        form.getValues() as RestorationFormInput,
-      );
-      if ("error" in result) {
-        setError(result.error);
-        return;
+      if (mode.kind === "copia") {
+        const result = await createRestorationFromQuote(
+          mode.quote.id,
+          input as RestorationFormInput,
+        );
+        if ("error" in result) return setError(result.error);
+        setSaved(true);
+        router.push(`/restauraciones/${result.id}?registrada=1`);
+      } else if (mode.kind === "editar-cotizacion") {
+        const result = await updateWhatsappQuote(
+          mode.quote.id,
+          input as WhatsappQuoteFormInput,
+        );
+        if ("error" in result) return setError(result.error);
+        setSaved(true);
+        router.push(`/cotizaciones-whatsapp/${mode.quote.id}`);
+      } else if (viaWhatsapp) {
+        const result = await createWhatsappQuote(
+          input as WhatsappQuoteFormInput,
+        );
+        if ("error" in result) return setError(result.error);
+        setSaved(true);
+        router.push(`/cotizaciones-whatsapp/${result.id}?registrada=1`);
+      } else {
+        const result = await createRestoration(input as RestorationFormInput);
+        if ("error" in result) return setError(result.error);
+        setSaved(true);
+        router.push(`/restauraciones/${result.id}?registrada=1`);
       }
-      setSaved(true);
-      router.push(`/restauraciones/${result.id}?registrada=1`);
     });
   });
 
@@ -270,28 +428,103 @@ export function RestorationForm({
   const piecesError =
     form.formState.errors.pieces?.root?.message ??
     form.formState.errors.pieces?.message;
+  // En la copia, si la cotización ya tiene cliente, ese es el cliente (P46).
+  const clientFixed = mode.kind === "copia" && Boolean(quote?.client);
+  const chosenItems = new Set(
+    (values.pieces ?? []).map((p) => p?.quoteItemId).filter(Boolean),
+  );
+  const submitLabel =
+    mode.kind === "copia"
+      ? "Crear restauración"
+      : mode.kind === "editar-cotizacion"
+        ? "Guardar cotización"
+        : viaWhatsapp
+          ? "Registrar cotización"
+          : "Registrar restauración";
 
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="space-y-6" noValidate>
         {error ? <FormAlert>{error}</FormAlert> : null}
 
+        {mode.kind === "nueva" ? (
+          <label className="flex items-start gap-3 rounded-lg border p-3">
+            <input
+              type="checkbox"
+              className="accent-primary mt-0.5 size-4"
+              checked={viaWhatsapp}
+              onChange={(e) => toggleWhatsapp(e.target.checked)}
+            />
+            <span className="space-y-0.5">
+              <span className="block text-sm font-medium">
+                El pedido vino por WhatsApp
+              </span>
+              <span className="text-muted-foreground block text-sm">
+                Se registra como cotización (sin cliente obligatorio). Cuando el
+                cliente confirme qué piezas quiere, se crea la restauración.
+              </span>
+            </span>
+          </label>
+        ) : null}
+
         <section className="space-y-4" aria-labelledby="datos-cliente">
           <h2 id="datos-cliente" className="text-heading text-lg font-semibold">
             Cliente
           </h2>
-          <div className="space-y-1.5">
-            <Label htmlFor="cliente">Cliente</Label>
-            <ClientPicker
-              id="cliente"
-              value={client}
-              onSelect={chooseClient}
-              canCreate
-            />
-            {clientError ? (
-              <p className="text-destructive text-sm">{clientError}</p>
-            ) : null}
-          </div>
+          {clientFixed ? (
+            <p className="text-sm" data-testid="cliente-fijo">
+              {client?.name}
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="cliente">
+                {viaWhatsapp ? "Cliente (opcional)" : "Cliente"}
+              </Label>
+              <ClientPicker
+                id="cliente"
+                value={client}
+                onSelect={chooseClient}
+                canCreate
+                createPrefill={
+                  quote
+                    ? { name: quote.customerName, phone: quote.customerPhone }
+                    : {
+                        name: values.customerName ?? "",
+                        phone: values.customerPhone ?? "",
+                      }
+                }
+              />
+              {viaWhatsapp && client ? (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="h-auto px-0"
+                  onClick={clearClient}
+                >
+                  Quitar cliente
+                </Button>
+              ) : null}
+              {clientError ? (
+                <p className="text-destructive text-sm">{clientError}</p>
+              ) : null}
+            </div>
+          )}
+          {viaWhatsapp && !client ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <TextField
+                form={form}
+                name="customerName"
+                label="Nombre (opcional)"
+              />
+              <TextField
+                form={form}
+                name="customerPhone"
+                label="Teléfono (opcional)"
+                inputMode="tel"
+              />
+            </div>
+          ) : null}
           {client && client.kind !== "persona" ? (
             <FormField
               control={form.control}
@@ -324,10 +557,52 @@ export function RestorationForm({
           ) : null}
         </section>
 
+        {mode.kind === "copia" ? (
+          <section className="space-y-3" aria-labelledby="piezas-cotizadas">
+            <h2
+              id="piezas-cotizadas"
+              className="text-heading text-lg font-semibold"
+            >
+              Piezas de la cotización {mode.quote.code}
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Elige las que el cliente confirmó. Entran aprobadas; puedes
+              ajustar el precio o agregar piezas nuevas abajo.
+            </p>
+            <ul className="divide-y rounded-lg border">
+              {mode.quote.items.map((item) => (
+                <li key={item.id} className="flex items-start gap-3 p-3">
+                  <input
+                    type="checkbox"
+                    className="accent-primary mt-0.5 size-4"
+                    aria-label={`Pedir ${item.piece.description}`}
+                    checked={!item.orderedIn && chosenItems.has(item.id)}
+                    disabled={Boolean(item.orderedIn)}
+                    onChange={(e) => toggleItem(item, e.target.checked)}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words">
+                      {item.number}. {item.piece.description}
+                    </p>
+                    {item.orderedIn ? (
+                      <p className="text-muted-foreground text-xs">
+                        Pedida en {item.orderedIn}
+                      </p>
+                    ) : null}
+                  </div>
+                  <span className="text-muted-foreground text-sm tabular-nums">
+                    {item.priceLabel}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
         <section className="space-y-3" aria-labelledby="piezas">
           <div className="flex items-center justify-between gap-2">
             <h2 id="piezas" className="text-heading text-lg font-semibold">
-              Piezas
+              {mode.kind === "copia" ? "Piezas de la restauración" : "Piezas"}
             </h2>
             <span className="text-muted-foreground text-sm">
               {pieces.fields.length} de {MAX_PIECES}
@@ -346,11 +621,12 @@ export function RestorationForm({
                 workshops={workshops}
                 materials={materials}
                 services={services}
+                quoteOnly={viaWhatsapp}
                 onDuplicate={() =>
-                  pieces.insert(
-                    index + 1,
-                    structuredClone(form.getValues(`pieces.${index}`)),
-                  )
+                  pieces.insert(index + 1, {
+                    ...structuredClone(form.getValues(`pieces.${index}`)),
+                    quoteItemId: null,
+                  })
                 }
                 onRemove={() => pieces.remove(index)}
               />
@@ -359,7 +635,12 @@ export function RestorationForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() => pieces.append(structuredClone(EMPTY_PIECE))}
+            onClick={() =>
+              pieces.append({
+                ...structuredClone(EMPTY_PIECE),
+                arrived: mode.kind !== "copia",
+              })
+            }
             disabled={pieces.fields.length >= MAX_PIECES}
           >
             <Plus />
@@ -427,7 +708,7 @@ export function RestorationForm({
             </div>
           </dl>
           <Button type="submit" disabled={pending}>
-            {pending ? "Guardando…" : "Registrar restauración"}
+            {pending ? "Guardando…" : submitLabel}
           </Button>
         </div>
       </form>

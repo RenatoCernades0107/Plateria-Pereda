@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { ActiveToggle } from "@/components/clients/active-toggle";
+import { ClientWorkTabs } from "@/components/clients/client-work-tabs";
 import { ContactsSection } from "@/components/clients/contacts-section";
 import { EditClientDialog } from "@/components/clients/edit-client-dialog";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
@@ -16,9 +17,13 @@ import { DOCUMENT_LABELS } from "@/domain/documents";
 import { can } from "@/domain/permissions";
 import { formatPhone } from "@/domain/phone";
 import { PERU_REGIONS } from "@/domain/regions";
+import { parseRestorationFilters } from "@/domain/restoration-filters";
+import { parseWhatsappQuoteFilters } from "@/domain/whatsapp-quotes";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
 import { getClientDetail, type SyncState } from "@/server/clients/queries";
+import { listRestorations } from "@/server/restorations/queries";
+import { listWhatsappQuotes } from "@/server/whatsapp-quotes/queries";
 
 export const metadata: Metadata = { title: "Cliente" };
 
@@ -41,6 +46,9 @@ function Field({
   );
 }
 
+/** Cuántas restauraciones o cotizaciones se muestran en el cliente. */
+const CLIENT_LIST_LIMIT = 10;
+
 const isPending = (sync: SyncState | null) =>
   sync?.status === "pending" || sync?.status === "processing";
 
@@ -57,6 +65,21 @@ export default async function ClienteDetallePage({
   // Logística solo ve los datos de contacto (P42).
   const canSeeHistory = can(user.role, "historial.ver");
   const Icon = client.kind === "empresa" ? Building2 : User;
+  // Restauraciones y cotizaciones de WhatsApp del cliente, en pestañas separadas (P46).
+  const work = canSeeHistory
+    ? await Promise.all([
+        listRestorations(
+          { ...parseRestorationFilters({}), clientId: client.id },
+          { limit: CLIENT_LIST_LIMIT },
+        ),
+        can(user.role, "cotizaciones-whatsapp.usar")
+          ? listWhatsappQuotes(
+              { ...parseWhatsappQuoteFilters({}), clientId: client.id },
+              { limit: CLIENT_LIST_LIMIT },
+            )
+          : Promise.resolve(null),
+      ]).then(([restorations, quotes]) => ({ restorations, quotes }))
+    : null;
   const region = PERU_REGIONS.find((r) => r.code === client.region)?.name;
 
   return (
@@ -154,9 +177,15 @@ export default async function ClienteDetallePage({
             >
               Restauraciones y cotizaciones
             </h2>
-            <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-              Aquí se verán las restauraciones y cotizaciones del cliente.
-            </p>
+            <ClientWorkTabs
+              clientId={client.id}
+              restorations={work!.restorations.items}
+              restorationsTotal={work!.restorations.total}
+              quotes={work!.quotes?.items ?? []}
+              quotesTotal={work!.quotes?.total ?? 0}
+              showMoney={canSeeHistory}
+              showQuotes={work!.quotes !== null}
+            />
           </section>
           <section className="space-y-3" aria-labelledby="historial">
             <h2 id="historial" className="text-heading text-lg font-semibold">

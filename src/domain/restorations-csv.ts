@@ -7,7 +7,9 @@ import {
   type PaymentType,
 } from "./money";
 import {
+  RESTORATION_ORIGIN_LABELS,
   RESTORATION_STATUS_LABELS,
+  type RestorationOrigin,
   type RestorationStatus,
 } from "./restoration-status";
 
@@ -24,6 +26,7 @@ export type CsvRestoration = {
   paidCents: Cents | null;
   balanceCents: Cents | null;
   createdAt: string;
+  origin: RestorationOrigin;
 };
 
 /** Escapa un campo CSV (comillas, comas y saltos de línea). */
@@ -62,6 +65,7 @@ export function restorationsCsv(rows: readonly CsvRestoration[]): string {
     "Total",
     "Pagado",
     "Saldo",
+    "Origen",
   ];
   const lines = rows.map((r) =>
     [
@@ -77,6 +81,7 @@ export function restorationsCsv(rows: readonly CsvRestoration[]): string {
       money(r.totalCents),
       money(r.paidCents),
       money(r.balanceCents),
+      RESTORATION_ORIGIN_LABELS[r.origin],
     ]
       .map(field)
       .join(","),

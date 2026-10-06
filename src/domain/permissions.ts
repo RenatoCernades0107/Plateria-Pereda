@@ -19,6 +19,8 @@ const PERMISSIONS = {
   "clientes.ver": ["admin", "ventas", "logistica"],
   "clientes.editar": ["admin", "ventas"],
   "cotizador.usar": ["admin", "ventas"],
+  /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
+  "cotizaciones-whatsapp.usar": ["admin", "ventas"],
   "dashboard.ver": ["admin", "ventas"],
   "historial.ver": ["admin", "ventas"],
   "usuarios.gestionar": ["admin"],

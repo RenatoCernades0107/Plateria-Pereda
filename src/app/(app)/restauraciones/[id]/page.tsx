@@ -28,6 +28,7 @@ import {
 import { can } from "@/domain/permissions";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
+import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
@@ -76,6 +77,11 @@ export default async function RestauracionDetallePage({
       })
     : null;
   const phone = restoration.contact?.phone ?? restoration.client.phone;
+  // Cotización de la que salió (P46): solo un enlace, y solo para quien ve cotizaciones.
+  const quote =
+    restoration.whatsappQuoteId && can(user.role, "cotizaciones-whatsapp.usar")
+      ? await getQuoteCode(restoration.whatsappQuoteId)
+      : null;
 
   // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita.
   const editing = canSeeMoney
@@ -163,6 +169,20 @@ export default async function RestauracionDetallePage({
                 Shopify {restoration.shopifyOrderName}
               </Badge>
             ) : null}
+            <Badge variant="outline" data-testid="origen">
+              {RESTORATION_ORIGIN_LABELS[restoration.origin]}
+              {quote ? (
+                <>
+                  {" · desde "}
+                  <Link
+                    href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
+                    className="underline underline-offset-4"
+                  >
+                    {quote}
+                  </Link>
+                </>
+              ) : null}
+            </Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -341,4 +361,15 @@ async function listActiveWorkshops() {
     .order("name");
   if (error) throw error;
   return data;
+}
+
+/** Código de la cotización de WhatsApp (la RLS solo deja leerla a admin y ventas). */
+async function getQuoteCode(id: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("whatsapp_quotes")
+    .select("code")
+    .eq("id", id)
+    .maybeSingle();
+  return data?.code ?? null;
 }

@@ -35,7 +35,7 @@ import {
   searchClients,
 } from "@/server/clients/search-actions";
 
-import { NewClientDialog } from "./new-client-dialog";
+import { NewClientDialog, type ClientPrefill } from "./new-client-dialog";
 
 const ICONS = { persona: User, empresa: Building2, contacto: Users } as const;
 
@@ -85,6 +85,7 @@ export function ClientPicker({
   canCreate = false,
   placeholder = "Buscar cliente por nombre, documento o teléfono…",
   id,
+  createPrefill,
 }: {
   value?: ClientOption | null;
   onSelect: (option: ClientOption) => void;
@@ -92,6 +93,8 @@ export function ClientPicker({
   canCreate?: boolean;
   placeholder?: string;
   id?: string;
+  /** Nombre y teléfono que propone "Crear nuevo cliente". */
+  createPrefill?: ClientPrefill | null;
 }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -269,6 +272,7 @@ export function ClientPicker({
           trigger={null}
           open={creating}
           onOpenChange={setCreating}
+          prefill={createPrefill}
           onCreated={(client) =>
             onSelect({
               source: "local",

@@ -743,36 +743,37 @@ Objetivo: validar con llamadas reales antes de construir.
 Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp, piezas aprobadas), y se puede repetir con las pendientes.
 
 #### Paso 7B.1 — Esquema y RPC
-- [ ] `whatsapp_quotes` y `whatsapp_quote_items` (cliente opcional, nombre y teléfono libres); código `CWA-00001`; estados; RLS solo admin y ventas; auditoría.
-- [ ] `restorations.origin` (`oficina`, `whatsapp`) y `whatsapp_quote_id`; `pieces.whatsapp_quote_item_id` (único mientras la pieza no sea final).
-- [ ] RPC `create_whatsapp_quote`, `update_whatsapp_quote`, `discard_whatsapp_quote`, `reopen_whatsapp_quote`, `create_restoration_from_whatsapp_quote` y `list_whatsapp_quotes`; `list_restorations` con filtro por origen.
+- [x] `whatsapp_quotes` y `whatsapp_quote_items` (cliente opcional, nombre y teléfono libres); código `CWA-00001`; estados; RLS solo admin y ventas; auditoría.
+- [x] `restorations.origin` (`oficina`, `whatsapp`) y `whatsapp_quote_id`; `pieces.whatsapp_quote_item_id` (único mientras la pieza no sea final).
+- [x] RPC `create_whatsapp_quote`, `update_whatsapp_quote`, `discard_whatsapp_quote`, `reopen_whatsapp_quote`, `create_restoration_from_whatsapp_quote` y `list_whatsapp_quotes`; `list_restorations` con filtro por origen.
 - **BD:**
-  - [ ] Código correlativo; total; estado recalculado al copiar y al anular, rechazar o dejar sin arreglo una pieza copiada.
-  - [ ] Editable solo hasta la primera copia; descartada no se copia; reabrir.
-  - [ ] La copia exige cliente, vincula la cotización, aprueba las piezas y encola la orden.
-  - [ ] Una pieza ya pedida no se vuelve a pedir; logística no lee nada.
+  - [x] Código correlativo; total; estado recalculado al copiar y al anular, rechazar o dejar sin arreglo una pieza copiada.
+  - [x] Editable solo hasta la primera copia; descartada no se copia; reabrir.
+  - [x] La copia exige cliente, vincula la cotización, aprueba las piezas y encola la orden.
+  - [x] Una pieza ya pedida no se vuelve a pedir; logística no lee nada.
 - Commit: `feat(cotizaciones-whatsapp): agrega esquema y funciones`
 
 #### Paso 7B.2 — Dominio y validación
-- [ ] Estados y etiquetas, antigüedad, `canEditQuote`, `canCopyQuote`; esquemas zod de la cotización y de la copia; permiso `cotizaciones-whatsapp.usar`; filtro de origen en restauraciones y su columna en el CSV.
+- [x] Estados y etiquetas, antigüedad, `canEditQuote`, `canCopyQuote`; esquemas zod de la cotización y de la copia; permiso `cotizaciones-whatsapp.usar`; filtro de origen en restauraciones y su columna en el CSV.
 - **Unit:** estados, antigüedad, validaciones y filtros.
 
 #### Paso 7B.3 — Registro con la casilla "El pedido vino por WhatsApp"
-- [ ] En `/restauraciones/nueva`: con la casilla marcada el cliente es opcional (nombre y teléfono libres), se ocultan llegada y taller y se registra una cotización; abre su detalle con el mensaje de WhatsApp (saludo genérico sin nombre; sin teléfono solo "Copiar").
+- [x] En `/restauraciones/nueva`: con la casilla marcada el cliente es opcional (nombre y teléfono libres), se ocultan llegada y taller y se registra una cotización; abre su detalle con el mensaje de WhatsApp (saludo genérico sin nombre; sin teléfono solo "Copiar").
 - **Unit:** formulario en modo WhatsApp; mensaje sin nombre.
 - **E2E:** registrar una cotización sin cliente.
 
 #### Paso 7B.4 — Detalle y copia
-- [ ] `/cotizaciones-whatsapp/[id]`: datos, piezas con "Pendiente" o "Pedida en RES-…", mensaje, editar (hasta la primera copia), descartar o reabrir, historial.
-- [ ] "Crear restauración" (`/restauraciones/nueva?cotizacion=…`): cliente obligatorio (se crea con los datos anotados), piezas pendientes elegibles y editables, piezas nuevas; la restauración muestra "desde CWA-…".
+- [x] `/cotizaciones-whatsapp/[id]`: datos, piezas con "Pendiente" o "Pedida en RES-…", mensaje, editar (hasta la primera copia), descartar o reabrir, historial.
+- [x] "Crear restauración" (`/restauraciones/nueva?cotizacion=…`): cliente obligatorio (se crea con los datos anotados), piezas pendientes elegibles y editables, piezas nuevas; la restauración muestra "desde CWA-…".
 - **E2E:** copia parcial y luego la pieza restante; edición bloqueada tras la primera copia; descartar y reabrir.
 
 #### Paso 7B.5 — Listado, cliente y navegación
-- [ ] `/cotizaciones-whatsapp` con filtros y búsqueda por descripción de pieza; menú propio.
-- [ ] Filtro "Origen" en el listado de restauraciones, el kanban y el CSV.
-- [ ] Detalle del cliente con pestañas "Restauraciones" y "Cotizaciones de WhatsApp".
+- [x] `/cotizaciones-whatsapp` con filtros y búsqueda por descripción de pieza; menú propio.
+- [x] Filtro "Origen" en el listado de restauraciones, el kanban y el CSV.
+- [x] Detalle del cliente con pestañas "Restauraciones" y "Cotizaciones de WhatsApp".
 - **E2E:** buscar por descripción; filtrar por origen; logística no ve el menú ni la ruta; `@mobile` registro y copia.
-- Commit: `feat(cotizaciones-whatsapp): agrega registro, copia y listado`
+- Hecho (2026-10-06): migración `20261006170000_cotizaciones_whatsapp.sql` (tablas, RPC con control de rol, estado calculado por trigger, `list_restorations` con `p_origin`, vista operativa con el origen) y pgTAP `17_cotizaciones_whatsapp.test.sql`. Dominio `src/domain/whatsapp-quotes.ts` (estados, antigüedad, filtros), esquema `whatsappQuoteSchema`, acciones y consultas en `src/server/whatsapp-quotes/`. `RestorationForm` con tres modos: nueva (casilla "El pedido vino por WhatsApp": cliente opcional con nombre y teléfono, sin llegada, taller ni urgente), editar cotización y copia (`/restauraciones/nueva?cotizacion=…`: cliente obligatorio, "Crear nuevo cliente" con los datos anotados, piezas pendientes elegibles). Páginas `/cotizaciones-whatsapp`, su detalle (piezas con "Pendiente" o "Pedida en RES-…", mensaje con saludo genérico si no hay nombre, descartar y reabrir, historial) y su edición; menú propio; pestañas en el detalle del cliente; filtro y columna "Origen" en restauraciones, kanban y CSV; el detalle de la restauración enlaza "desde CWA-…". **E2E** escritos (`e2e/whatsapp-quotes.spec.ts`) pero no corridos en este entorno (sin el servicio de autenticación local).
+- Commit: `feat(cotizaciones-whatsapp): agrega cotizaciones por WhatsApp con copia a restauraciones`
 
 ### Fase 8 — Estados, ubicación, fechas y tiempos
 

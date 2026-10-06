@@ -120,6 +120,7 @@ describe("pieceToRpc", () => {
       arrived: false,
       urgent: true,
       notes: "",
+      quote_item_id: null,
     });
   });
 });

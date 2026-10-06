@@ -21,6 +21,7 @@ const item: RestorationListItem = {
   paidCents: 61725,
   balanceCents: 61725,
   createdAt: "2026-10-01T15:00:00Z",
+  origin: "oficina",
 };
 
 describe("RestorationsList", () => {

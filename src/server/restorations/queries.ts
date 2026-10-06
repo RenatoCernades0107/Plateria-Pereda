@@ -5,6 +5,7 @@ import { toCents, type Cents } from "@/domain/money";
 import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
 import type {
   PieceLocation,
+  RestorationOrigin,
   RestorationStatus,
 } from "@/domain/restoration-status";
 import {
@@ -63,6 +64,9 @@ export type RestorationDetail = {
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
+  /** Oficina o WhatsApp; con WhatsApp, la cotización de la que salió (P46). */
+  origin: RestorationOrigin;
+  whatsappQuoteId: string | null;
   /** La orden de Shopify ya existe (cambia lo editable, P12). */
   hasOrder: boolean;
   createdAt: string;
@@ -145,6 +149,8 @@ export async function getRestorationDetail(
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
+    origin: r.origin ?? "oficina",
+    whatsappQuoteId: r.whatsapp_quote_id,
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
     createdAt: r.created_at!,
     client: {
@@ -280,6 +286,7 @@ export type RestorationListItem = {
   paidCents: Cents | null;
   balanceCents: Cents | null;
   createdAt: string;
+  origin: RestorationOrigin;
 };
 
 export type RestorationsPage = {
@@ -294,7 +301,7 @@ const centsOrNull = (value: number | null) =>
 /** Listado con filtros, orden y paginación en la BD (`list_restorations`). */
 export async function listRestorations(
   filters: RestorationFilters,
-  options: { all?: boolean } = {},
+  options: { all?: boolean; limit?: number } = {},
 ): Promise<RestorationsPage> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(
@@ -321,6 +328,7 @@ export async function listRestorations(
       paidCents: centsOrNull(r.paid),
       balanceCents: centsOrNull(r.balance),
       createdAt: r.created_at,
+      origin: r.origin,
     })),
   };
 }

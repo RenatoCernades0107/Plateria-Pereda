@@ -25,6 +25,7 @@ export function pieceToRpc(piece: PieceInput) {
     arrived: piece.arrived,
     urgent: piece.urgent,
     notes: piece.notes,
+    quote_item_id: piece.quoteItemId ?? null,
   };
 }
 

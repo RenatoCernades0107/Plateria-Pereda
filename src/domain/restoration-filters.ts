@@ -5,7 +5,9 @@ import {
   type PaymentType,
 } from "./money";
 import {
+  RESTORATION_ORIGINS,
   RESTORATION_STATUSES,
+  type RestorationOrigin,
   type RestorationStatus,
 } from "./restoration-status";
 
@@ -36,6 +38,8 @@ export type RestorationFilters = {
   status: RestorationStatus | null;
   paymentStatus: PaymentStatus | null;
   paymentType: PaymentType | null;
+  /** Oficina o WhatsApp (P46): solo restauraciones, nunca cotizaciones. */
+  origin: RestorationOrigin | null;
   clientId: string | null;
   workshopId: string | null;
   /** Fecha de registro en Lima, "AAAA-MM-DD" (inclusive). */
@@ -78,6 +82,7 @@ export function parseRestorationFilters(
     status: oneOf(RESTORATION_STATUSES, first(params.estado)),
     paymentStatus: oneOf(PAYMENT_STATUSES, first(params.pago)),
     paymentType: oneOf(PAYMENT_TYPES, first(params.tipo)),
+    origin: oneOf(RESTORATION_ORIGINS, first(params.origen)),
     clientId: uuid(first(params.cliente)),
     workshopId: uuid(first(params.taller)),
     from: isoDate(first(params.desde)),
@@ -100,6 +105,7 @@ export function restorationFiltersQuery(
   if (next.status) params.set("estado", next.status);
   if (next.paymentStatus) params.set("pago", next.paymentStatus);
   if (next.paymentType) params.set("tipo", next.paymentType);
+  if (next.origin) params.set("origen", next.origin);
   if (next.clientId) params.set("cliente", next.clientId);
   if (next.workshopId) params.set("taller", next.workshopId);
   if (next.from) params.set("desde", next.from);
@@ -149,6 +155,7 @@ export function listRestorationsArgs(
     p_status: filters.status ?? undefined,
     p_payment_status: filters.paymentStatus ?? undefined,
     p_payment_type: filters.paymentType ?? undefined,
+    p_origin: filters.origin ?? undefined,
     p_client_id: filters.clientId ?? undefined,
     p_workshop_id: filters.workshopId ?? undefined,
     p_from: filters.from ?? undefined,

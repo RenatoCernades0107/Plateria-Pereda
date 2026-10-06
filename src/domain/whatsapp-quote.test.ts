@@ -114,6 +114,31 @@ describe("mensaje de cotización", () => {
     );
   });
 
+  it("excluye también las piezas rechazadas y sin arreglo (P47)", () => {
+    const message = buildQuoteMessage(
+      "{piezas}|{total}",
+      data({
+        pieces: [
+          { ...data().pieces[0]!, status: "rechazada" },
+          { ...data().pieces[1]!, status: "sin_arreglo" },
+          { ...data().pieces[0]!, description: "Copa", status: "aprobada" },
+        ],
+      }),
+    );
+    expect(message).toBe("1. Copa – Pulido: S/ 1,200.50|1,200.50");
+  });
+
+  it("cotización de WhatsApp sin nombre: saludo genérico y código CWA (P46)", () => {
+    const message = buildQuoteMessage(
+      DEFAULT_WHATSAPP_TEMPLATE,
+      data({ code: "CWA-00007", clientName: "" }),
+    );
+    expect(message.startsWith("Hola, te saludamos de Platería Pereda.")).toBe(
+      true,
+    );
+    expect(message).toContain("*CWA-00007*");
+  });
+
   it("al crédito el adelanto es 0", () => {
     expect(
       buildQuoteMessage(

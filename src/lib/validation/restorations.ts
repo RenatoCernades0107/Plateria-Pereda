@@ -87,6 +87,8 @@ export const pieceSchema = z
     arrived: z.boolean(),
     /** Marca "Urgente" (P47): no es un estado. */
     urgent: z.boolean().default(false),
+    /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */
+    quoteItemId: optionalId.optional(),
     notes: notes(1000),
   })
   .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
@@ -159,3 +161,36 @@ export const restorationEditSchema = z.discriminatedUnion("paymentType", [
 ]);
 
 export type RestorationEditFormInput = z.input<typeof restorationEditSchema>;
+
+/** Teléfono anotado en una cotización sin cliente: dígitos, espacios, + y guiones. */
+const optionalPhone = line(30).refine(
+  (v) => v === "" || /^\+?[\d\s()-]{6,}$/.test(v),
+  "Ingresa un teléfono válido",
+);
+
+const quoteFields = {
+  /** Opcional: sin cliente se anotan nombre y teléfono (P46). */
+  clientId: optionalId,
+  contactId: optionalId,
+  customerName: line(200),
+  customerPhone: optionalPhone,
+  notes: notes(2000),
+  pieces: restorationFields.pieces,
+};
+
+/** Cotización de restauración por WhatsApp (P46): como el registro, pero el cliente es opcional. */
+export const whatsappQuoteSchema = z.discriminatedUnion("paymentType", [
+  z.object({
+    ...quoteFields,
+    paymentType: z.literal("a_cuenta"),
+    depositPercent,
+  }),
+  z.object({
+    ...quoteFields,
+    paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
+    depositPercent: z.unknown().transform(() => null),
+  }),
+]);
+
+export type WhatsappQuoteFormInput = z.input<typeof whatsappQuoteSchema>;
+export type WhatsappQuoteInput = z.output<typeof whatsappQuoteSchema>;

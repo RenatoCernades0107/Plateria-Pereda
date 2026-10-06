@@ -383,6 +383,7 @@ export type Database = {
           updated_at: string;
           urgent: boolean;
           weight_grams: number | null;
+          whatsapp_quote_item_id: string | null;
           workshop_id: string | null;
         };
         Insert: {
@@ -416,6 +417,7 @@ export type Database = {
           updated_at?: string;
           urgent?: boolean;
           weight_grams?: number | null;
+          whatsapp_quote_item_id?: string | null;
           workshop_id?: string | null;
         };
         Update: {
@@ -449,6 +451,7 @@ export type Database = {
           updated_at?: string;
           urgent?: boolean;
           weight_grams?: number | null;
+          whatsapp_quote_item_id?: string | null;
           workshop_id?: string | null;
         };
         Relationships: [
@@ -492,6 +495,13 @@ export type Database = {
             columns: ["service_id"];
             isOneToOne: false;
             referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_whatsapp_quote_item_id_fkey";
+            columns: ["whatsapp_quote_item_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quote_items";
             referencedColumns: ["id"];
           },
           {
@@ -748,6 +758,7 @@ export type Database = {
           expected_deposit: number | null;
           id: string;
           notes: string;
+          origin: Database["public"]["Enums"]["restoration_origin"];
           paid: number;
           payment_status: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
@@ -756,6 +767,7 @@ export type Database = {
           status: Database["public"]["Enums"]["restoration_status"];
           total: number;
           updated_at: string;
+          whatsapp_quote_id: string | null;
         };
         Insert: {
           balance?: never;
@@ -768,6 +780,7 @@ export type Database = {
           expected_deposit?: never;
           id?: string;
           notes?: string;
+          origin?: Database["public"]["Enums"]["restoration_origin"];
           paid?: number;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
@@ -776,6 +789,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["restoration_status"];
           total?: number;
           updated_at?: string;
+          whatsapp_quote_id?: string | null;
         };
         Update: {
           balance?: never;
@@ -788,6 +802,7 @@ export type Database = {
           expected_deposit?: never;
           id?: string;
           notes?: string;
+          origin?: Database["public"]["Enums"]["restoration_origin"];
           paid?: number;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           payment_type?: Database["public"]["Enums"]["payment_type"];
@@ -796,6 +811,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["restoration_status"];
           total?: number;
           updated_at?: string;
+          whatsapp_quote_id?: string | null;
         };
         Relationships: [
           {
@@ -817,6 +833,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_whatsapp_quote_id_fkey";
+            columns: ["whatsapp_quote_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quotes";
             referencedColumns: ["id"];
           },
         ];
@@ -1016,6 +1039,158 @@ export type Database = {
         };
         Relationships: [];
       };
+      whatsapp_quote_items: {
+        Row: {
+          created_at: string;
+          description: string;
+          id: string;
+          material_id: string | null;
+          material_name: string;
+          measure: string;
+          notes: string;
+          number: number;
+          price: number;
+          quote_id: string;
+          service_id: string | null;
+          service_name: string;
+          updated_at: string;
+          weight_grams: number | null;
+        };
+        Insert: {
+          created_at?: string;
+          description: string;
+          id?: string;
+          material_id?: string | null;
+          material_name?: string;
+          measure?: string;
+          notes?: string;
+          number: number;
+          price: number;
+          quote_id: string;
+          service_id?: string | null;
+          service_name?: string;
+          updated_at?: string;
+          weight_grams?: number | null;
+        };
+        Update: {
+          created_at?: string;
+          description?: string;
+          id?: string;
+          material_id?: string | null;
+          material_name?: string;
+          measure?: string;
+          notes?: string;
+          number?: number;
+          price?: number;
+          quote_id?: string;
+          service_id?: string | null;
+          service_name?: string;
+          updated_at?: string;
+          weight_grams?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_quote_items_material_id_fkey";
+            columns: ["material_id"];
+            isOneToOne: false;
+            referencedRelation: "materials";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "whatsapp_quote_items_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quotes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "whatsapp_quote_items_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "services";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      whatsapp_quotes: {
+        Row: {
+          client_id: string | null;
+          code: string;
+          contact_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          customer_name: string;
+          customer_phone: string;
+          deposit_percent: number | null;
+          discard_reason: string | null;
+          discarded_at: string | null;
+          id: string;
+          notes: string;
+          payment_type: Database["public"]["Enums"]["payment_type"];
+          status: Database["public"]["Enums"]["whatsapp_quote_status"];
+          total: number;
+          updated_at: string;
+        };
+        Insert: {
+          client_id?: string | null;
+          code?: string;
+          contact_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_name?: string;
+          customer_phone?: string;
+          deposit_percent?: number | null;
+          discard_reason?: string | null;
+          discarded_at?: string | null;
+          id?: string;
+          notes?: string;
+          payment_type: Database["public"]["Enums"]["payment_type"];
+          status?: Database["public"]["Enums"]["whatsapp_quote_status"];
+          total?: number;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string | null;
+          code?: string;
+          contact_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          customer_name?: string;
+          customer_phone?: string;
+          deposit_percent?: number | null;
+          discard_reason?: string | null;
+          discarded_at?: string | null;
+          id?: string;
+          notes?: string;
+          payment_type?: Database["public"]["Enums"]["payment_type"];
+          status?: Database["public"]["Enums"]["whatsapp_quote_status"];
+          total?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_quotes_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "whatsapp_quotes_contact_id_fkey";
+            columns: ["contact_id"];
+            isOneToOne: false;
+            referencedRelation: "contacts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "whatsapp_quotes_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       workshops: {
         Row: {
           active: boolean;
@@ -1159,10 +1334,12 @@ export type Database = {
           created_by: string | null;
           id: string | null;
           notes: string | null;
+          origin: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type: Database["public"]["Enums"]["payment_type"] | null;
           shopify_order_name: string | null;
           status: Database["public"]["Enums"]["restoration_status"] | null;
           updated_at: string | null;
+          whatsapp_quote_id: string | null;
         };
         Insert: {
           client_id?: string | null;
@@ -1172,10 +1349,12 @@ export type Database = {
           created_by?: string | null;
           id?: string | null;
           notes?: string | null;
+          origin?: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type?: Database["public"]["Enums"]["payment_type"] | null;
           shopify_order_name?: string | null;
           status?: Database["public"]["Enums"]["restoration_status"] | null;
           updated_at?: string | null;
+          whatsapp_quote_id?: string | null;
         };
         Update: {
           client_id?: string | null;
@@ -1185,10 +1364,12 @@ export type Database = {
           created_by?: string | null;
           id?: string | null;
           notes?: string | null;
+          origin?: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type?: Database["public"]["Enums"]["payment_type"] | null;
           shopify_order_name?: string | null;
           status?: Database["public"]["Enums"]["restoration_status"] | null;
           updated_at?: string | null;
+          whatsapp_quote_id?: string | null;
         };
         Relationships: [
           {
@@ -1210,6 +1391,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restorations_whatsapp_quote_id_fkey";
+            columns: ["whatsapp_quote_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quotes";
             referencedColumns: ["id"];
           },
         ];
@@ -1291,6 +1479,37 @@ export type Database = {
           id: string;
         }[];
       };
+      create_restoration_from_whatsapp_quote: {
+        Args: {
+          p_client_id: string;
+          p_contact_id: string;
+          p_deposit_percent: number;
+          p_notes: string;
+          p_payment_type: Database["public"]["Enums"]["payment_type"];
+          p_pieces: Json;
+          p_quote_id: string;
+        };
+        Returns: {
+          code: string;
+          id: string;
+        }[];
+      };
+      create_whatsapp_quote: {
+        Args: {
+          p_client_id: string;
+          p_contact_id: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_deposit_percent: number;
+          p_items: Json;
+          p_notes: string;
+          p_payment_type: Database["public"]["Enums"]["payment_type"];
+        };
+        Returns: {
+          code: string;
+          id: string;
+        }[];
+      };
       derive_piece_location: {
         Args: {
           p_arrived_at: string;
@@ -1304,6 +1523,14 @@ export type Database = {
       derive_restoration_status: {
         Args: { p_pieces: Json };
         Returns: Database["public"]["Enums"]["restoration_status"];
+      };
+      derive_whatsapp_quote_status: {
+        Args: { p_items: number; p_ordered: number };
+        Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
+      };
+      discard_whatsapp_quote: {
+        Args: { p_id: string; p_reason: string };
+        Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
       };
       duplicate_quote: { Args: { p_id: string }; Returns: string };
       effective_status: {
@@ -1406,6 +1633,7 @@ export type Database = {
           p_from?: string;
           p_limit?: number;
           p_offset?: number;
+          p_origin?: Database["public"]["Enums"]["restoration_origin"];
           p_payment_status?: Database["public"]["Enums"]["payment_status"];
           p_payment_type?: Database["public"]["Enums"]["payment_type"];
           p_query?: string;
@@ -1423,11 +1651,38 @@ export type Database = {
           created_at: string;
           document_number: string;
           id: string;
+          origin: Database["public"]["Enums"]["restoration_origin"];
           paid: number;
           payment_status: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
           pieces_count: number;
           status: Database["public"]["Enums"]["restoration_status"];
+          total: number;
+          total_count: number;
+        }[];
+      };
+      list_whatsapp_quotes: {
+        Args: {
+          p_client_id?: string;
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: Database["public"]["Enums"]["whatsapp_quote_status"];
+          p_to?: string;
+        };
+        Returns: {
+          client_id: string;
+          client_name: string;
+          code: string;
+          contact_name: string;
+          created_at: string;
+          customer_name: string;
+          customer_phone: string;
+          id: string;
+          items_count: number;
+          pending_count: number;
+          status: Database["public"]["Enums"]["whatsapp_quote_status"];
           total: number;
           total_count: number;
         }[];
@@ -1455,6 +1710,10 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      reopen_whatsapp_quote: {
+        Args: { p_id: string };
+        Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
+      };
       return_pieces_to_client: {
         Args: { p_piece_ids: string[] };
         Returns: {
@@ -1473,6 +1732,29 @@ export type Database = {
           job_id: number;
           last_error: string;
           status: string;
+        }[];
+      };
+      update_whatsapp_quote: {
+        Args: {
+          p_client_id: string;
+          p_contact_id: string;
+          p_customer_name: string;
+          p_customer_phone: string;
+          p_deposit_percent: number;
+          p_id: string;
+          p_items: Json;
+          p_notes: string;
+          p_payment_type: Database["public"]["Enums"]["payment_type"];
+        };
+        Returns: undefined;
+      };
+      whatsapp_quote_item_orders: {
+        Args: { p_quote_id: string };
+        Returns: {
+          item_id: string;
+          piece_code: string;
+          restoration_code: string;
+          restoration_id: string;
         }[];
       };
       workshop_days: {
@@ -1505,6 +1787,7 @@ export type Database = {
         | "sin_arreglo"
         | "anulada";
       quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
+      restoration_origin: "oficina" | "whatsapp";
       restoration_status:
         | "registrada"
         | "aprobada"
@@ -1513,6 +1796,8 @@ export type Database = {
         | "lista"
         | "completada"
         | "anulada";
+      whatsapp_quote_status:
+        "cotizada" | "pedida_parcial" | "pedida" | "descartada";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -1666,6 +1951,7 @@ export const Constants = {
         "anulada",
       ],
       quote_status: ["borrador", "emitida", "aceptada", "rechazada"],
+      restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [
         "registrada",
         "aprobada",
@@ -1674,6 +1960,12 @@ export const Constants = {
         "lista",
         "completada",
         "anulada",
+      ],
+      whatsapp_quote_status: [
+        "cotizada",
+        "pedida_parcial",
+        "pedida",
+        "descartada",
       ],
     },
   },

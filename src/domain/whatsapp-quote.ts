@@ -28,8 +28,9 @@ export type QuotePiece = {
 };
 
 export type QuoteMessageData = {
-  /** Código de la restauración (RES-00001). */
+  /** Código de la restauración (RES-00001) o de la cotización de WhatsApp (CWA-00001). */
   code: string;
+  /** Vacío si la cotización no tiene cliente ni nombre: el saludo queda genérico (P46). */
   clientName: string;
   /** Contacto de la restauración; si hay, el saludo va a su nombre. */
   contactName?: string | null;
@@ -124,7 +125,9 @@ export function buildQuoteMessage(
   template: string,
   data: QuoteMessageData,
 ): string {
-  return renderWhatsAppTemplate(template, quoteValues(data));
+  const text = renderWhatsAppTemplate(template, quoteValues(data));
+  // Sin nombre, "Hola {cliente}, …" queda "Hola, …" (saludo genérico, P46).
+  return text.replace(/^(Hola)\s+,/, "$1,");
 }
 
 /**
