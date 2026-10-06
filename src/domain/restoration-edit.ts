@@ -1,6 +1,6 @@
 import type { AppRole } from "@/lib/roles";
 
-import type { PieceStatus } from "./piece-state-machine";
+import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 
 /**
  * Qué se puede editar de una restauración y sus piezas (Paso 7.7, P12). La BD lo
@@ -25,6 +25,7 @@ export const PIECE_FREE_FIELDS = [
   "weight",
   "workshopId",
   "notes",
+  "urgent",
 ] as const;
 export type PieceEditableField = (typeof PIECE_FREE_FIELDS)[number] | "price";
 
@@ -53,7 +54,8 @@ const canEdit = (role: AppRole) => role === "admin" || role === "ventas";
 
 /**
  * Campos editables según el rol, si existe la orden y el estado de la pieza.
- * Logística no edita nada (solo sube fotos, Fase 10). Una pieza anulada no se edita;
+ * Logística no edita nada (solo sube fotos, Fase 10). Una pieza anulada, rechazada o
+ * sin arreglo no se edita;
  * de una entregada solo las notas. Con la orden creada, el precio sigue el flujo
  * de P12 (solo admin, Paso 9.2). Las piezas nuevas se agregan siempre: llegan a
  * Shopify cuando se aprueban.
@@ -68,7 +70,7 @@ export function editableFields(
     canAddPieces: true,
   };
   if (!piece) return { ...base, piece: [], priceNeedsOrderFlow: false };
-  if (piece.status === "anulada") {
+  if (isClosedStatus(piece.status)) {
     return { ...base, piece: [], priceNeedsOrderFlow: false };
   }
   if (piece.status === "entregada") {

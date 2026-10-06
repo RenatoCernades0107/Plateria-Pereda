@@ -64,7 +64,7 @@ select results_eq(
 select results_eq(
   $$ select location::text from public.pieces
      where restoration_id = '00000000-0000-0000-0000-00000000c701' order by number $$,
-  $$ values ('por_recibir'), ('por_recibir'), ('en_tienda') $$,
+  $$ values ('sin_enviar'), ('sin_enviar'), ('en_tienda') $$,
   'la ubicación depende de la llegada a tienda'
 );
 

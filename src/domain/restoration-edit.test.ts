@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PIECE_STATUSES } from "./piece-state-machine";
+import { CLOSED_STATUSES, PIECE_STATUSES } from "./piece-state-machine";
 import { editableFields, PIECE_FREE_FIELDS } from "./restoration-edit";
 
 describe("editableFields", () => {
@@ -40,7 +40,7 @@ describe("editableFields", () => {
   it("con la orden creada, el precio sale de la edición directa; solo admin sigue el flujo de P12", () => {
     const ventas = editableFields(
       { role: "ventas", hasOrder: true },
-      { status: "recibida" },
+      { status: "aprobada" },
     );
     expect(ventas.piece).toEqual(PIECE_FREE_FIELDS);
     expect(ventas.piece).not.toContain("price");
@@ -49,18 +49,19 @@ describe("editableFields", () => {
 
     const admin = editableFields(
       { role: "admin", hasOrder: true },
-      { status: "recibida" },
+      { status: "aprobada" },
     );
     expect(admin.piece).not.toContain("price");
     expect(admin.priceNeedsOrderFlow).toBe(true);
   });
 
-  it("una pieza anulada no se edita y de una entregada solo las notas", () => {
+  it("una pieza anulada, rechazada o sin arreglo no se edita y de una entregada solo las notas", () => {
     for (const hasOrder of [false, true]) {
-      expect(
-        editableFields({ role: "admin", hasOrder }, { status: "anulada" })
-          .piece,
-      ).toEqual([]);
+      for (const status of CLOSED_STATUSES) {
+        expect(
+          editableFields({ role: "admin", hasOrder }, { status }).piece,
+        ).toEqual([]);
+      }
       expect(
         editableFields({ role: "ventas", hasOrder }, { status: "entregada" })
           .piece,
@@ -70,7 +71,7 @@ describe("editableFields", () => {
 
   it("los demás estados editan los campos libres", () => {
     const others = PIECE_STATUSES.filter(
-      (s) => s !== "anulada" && s !== "entregada",
+      (s) => !CLOSED_STATUSES.includes(s) && s !== "entregada",
     );
     for (const status of others) {
       expect(

@@ -56,6 +56,7 @@ describe("pieceSchema", () => {
       weightGrams: 850.5,
       priceCents: 125_050,
       arrived: true,
+      urgent: false,
       notes: "",
     });
   });
@@ -82,6 +83,7 @@ describe("pieceSchema", () => {
       weightGrams: null,
       priceCents: 0,
       arrived: false,
+      urgent: false,
       notes: "",
     });
   });

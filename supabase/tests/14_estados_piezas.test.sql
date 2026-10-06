@@ -1,6 +1,6 @@
 begin;
 
-select plan(28);
+select plan(46);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000aa1', 'ventas@estados.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -40,24 +40,25 @@ select throws_ok(
   '23514', 'Escribe una nota para este cambio de estado.', 'consultar exige nota'
 );
 
--- Aprobar las dos: la que ya llegó pasa a Recibida (llegada anticipada).
+-- Aprobar las dos: la que ya llegó sigue Aprobada (ya no existe Recibida, P47).
 select results_eq(
   $$ select status::text from public.change_piece_status(
        array['00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa42']::uuid[], 'aprobada')
      order by piece_id $$,
-  $$ values ('aprobada'), ('recibida') $$,
-  'aprobar en bloque; la pieza que ya estaba en tienda queda Recibida'
+  $$ values ('aprobada'), ('aprobada') $$,
+  'aprobar en bloque deja las dos piezas Aprobadas'
 );
 select results_eq(
   $$ select from_status::text, to_status::text, actor_name from public.piece_status_history
      where piece_id = '00000000-0000-0000-0000-00000000aa42' and from_status is not null order by id $$,
-  $$ values ('registrada', 'aprobada', 'Vera Ventas'), ('aprobada', 'recibida', 'Vera Ventas') $$,
-  'el historial guarda los dos pasos con el actor'
+  $$ values ('registrada', 'aprobada', 'Vera Ventas') $$,
+  'el historial guarda un solo paso con el actor'
 );
-select ok(
-  (select approved_at is not null and received_at is not null from public.pieces
-   where id = '00000000-0000-0000-0000-00000000aa42'),
-  'se fijan las fechas de aprobación y recepción'
+select results_eq(
+  $$ select location::text, approved_at is not null from public.pieces
+     where id in ('00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa42') order by id $$,
+  $$ values ('sin_enviar', true), ('en_tienda', true) $$,
+  'la ubicación distingue Sin enviar de En tienda y se fija la aprobación'
 );
 
 reset role;
@@ -74,14 +75,24 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'recibida') $$,
-  '23514', null, 'Aprobada → Recibida no es un cambio de estado: es marcar llegada'
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[],
+       'enviada_taller', null, '00000000-0000-0000-0000-00000000aa10') $$,
+  '23514', null, 'al taller solo va lo que está en la tienda'
 );
 select results_eq(
   $$ select status::text from public.mark_pieces_arrived(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
-  $$ values ('recibida') $$,
-  'logística marca la llegada: Aprobada → Recibida'
+  $$ values ('aprobada') $$,
+  'logística marca la llegada: la pieza sigue Aprobada'
 );
+reset role;
+select results_eq(
+  $$ select event::text, from_status::text, to_status::text from public.piece_status_history
+     where piece_id = '00000000-0000-0000-0000-00000000aa41' order by id desc limit 1 $$,
+  $$ values ('llegada', 'aprobada', 'aprobada') $$,
+  'la llegada queda como evento en el historial'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select throws_ok(
   $$ select * from public.mark_pieces_arrived(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
   '23514', null, 'no se marca dos veces la llegada'
@@ -95,17 +106,17 @@ select results_eq(
        array['00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa42']::uuid[],
        'enviada_taller', null, '00000000-0000-0000-0000-00000000aa10') order by piece_id $$,
   $$ values ('enviada_taller'), ('enviada_taller') $$,
-  'logística envía en bloque al taller'
+  'logística envía en bloque al taller (Interno)'
 );
 
 reset role;
 select results_eq(
-  $$ select status::text, (select location::text from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
-       (select workshop_id::text from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
-       (select first_sent_at is not null from public.pieces where id = '00000000-0000-0000-0000-00000000aa41')
-     from public.restorations where id = '00000000-0000-0000-0000-00000000aa30' $$,
-  $$ values ('en_proceso', 'en_taller', '00000000-0000-0000-0000-00000000aa10', true) $$,
-  'en el taller: restauración En proceso, pieza En taller con su taller y primer envío'
+  $$ select r.status::text, p.location::text, p.workshop_id::text, p.first_sent_at is not null,
+       p.last_sent_at is not null, p.ready_for_delivery
+     from public.restorations r join public.pieces p on p.restoration_id = r.id
+     where p.id = '00000000-0000-0000-0000-00000000aa41' $$,
+  $$ values ('en_proceso', 'en_taller', '00000000-0000-0000-0000-00000000aa10', true, true, false) $$,
+  'en el taller: restauración En proceso, pieza En taller con su taller y fechas de envío'
 );
 
 set local role authenticated;
@@ -114,10 +125,33 @@ select throws_ok(
   $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'anulada', 'Ya no la quiere') $$,
   '42501', null, 'una pieza en el taller solo la anula el admin (P41 d)'
 );
+select throws_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'entregada') $$,
+  '23514', null, 'no se entrega una pieza que sigue en el taller'
+);
+select throws_ok(
+  $$ select * from public.receive_from_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
+  '42501', null, 'ventas no recibe piezas del taller'
+);
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
-select lives_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'devuelta_taller') $$,
-  'logística recibe la pieza del taller'
+select results_eq(
+  $$ select status::text from public.receive_from_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
+  $$ values ('enviada_taller') $$,
+  'logística recibe la pieza del taller: sigue en Interno'
+);
+reset role;
+select results_eq(
+  $$ select location::text, ready_for_delivery, r.status::text
+     from public.pieces p join public.restorations r on r.id = p.restoration_id
+     where p.id = '00000000-0000-0000-0000-00000000aa41' $$,
+  $$ values ('en_tienda', true, 'parcialmente_lista') $$,
+  'de vuelta del taller: En tienda, lista para entregar, restauración Parcialmente lista'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
+select throws_ok(
+  $$ select * from public.receive_from_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
+  '23514', null, 'no se recibe dos veces del taller'
 );
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
 select lives_ok(
@@ -150,29 +184,114 @@ select is(
   1, 'la orden se encola una sola vez'
 );
 
+-- Rechazado, No tiene arreglo y Devolver al cliente (P47).
+insert into public.restorations (id, client_id, payment_type)
+  values ('00000000-0000-0000-0000-00000000aa32', '00000000-0000-0000-0000-00000000aa20', 'contado');
+insert into public.pieces (id, restoration_id, description, price, arrived_at, urgent) values
+  ('00000000-0000-0000-0000-00000000aa44', '00000000-0000-0000-0000-00000000aa32', 'Copa', 30, now(), false),
+  ('00000000-0000-0000-0000-00000000aa45', '00000000-0000-0000-0000-00000000aa32', 'Plato', 40, null, false),
+  ('00000000-0000-0000-0000-00000000aa46', '00000000-0000-0000-0000-00000000aa32', 'Jarra', 70, now(), false);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
+select throws_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[], 'rechazada') $$,
+  '23514', 'Escribe una nota para este cambio de estado.', 'rechazar exige nota'
+);
+select results_eq(
+  $$ select status::text from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[],
+       'rechazada', 'El cliente no acepta el precio') $$,
+  $$ values ('rechazada') $$,
+  'ventas rechaza una pieza registrada'
+);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa45']::uuid[], 'en_consulta', 'Revisar soldadura') $$,
+  'ventas consulta una pieza'
+);
+select results_eq(
+  $$ select status::text from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa45']::uuid[],
+       'sin_arreglo', 'La base está rota') $$,
+  $$ values ('sin_arreglo') $$,
+  'desde Consulta la pieza queda sin arreglo'
+);
+select throws_ok(
+  $$ update public.pieces set description = 'Copa grande' where id = '00000000-0000-0000-0000-00000000aa44' $$,
+  '23514', null, 'una pieza rechazada no se edita'
+);
+select lives_ok(
+  $$ update public.pieces set urgent = true where id = '00000000-0000-0000-0000-00000000aa46' $$,
+  'ventas marca una pieza como urgente'
+);
+reset role;
+select results_eq(
+  $$ select r.total, r.status::text, (select urgent from public.pieces where id = '00000000-0000-0000-0000-00000000aa46')
+     from public.restorations r where r.id = '00000000-0000-0000-0000-00000000aa32' $$,
+  $$ values (70.00::numeric, 'registrada', true) $$,
+  'rechazadas y sin arreglo no se cobran: el total solo suma la Jarra'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
+select results_eq(
+  $$ with u as (
+       update public.pieces set urgent = false where id = '00000000-0000-0000-0000-00000000aa46' returning 1
+     ) select count(*)::int from u $$,
+  $$ values (0) $$,
+  'logística no cambia la marca urgente (RLS)'
+);
+select throws_ok(
+  $$ select * from public.return_pieces_to_client(array['00000000-0000-0000-0000-00000000aa45']::uuid[]) $$,
+  '23514', null, 'no se devuelve una pieza que nunca llegó a la tienda'
+);
+select results_eq(
+  $$ select status::text from public.return_pieces_to_client(array['00000000-0000-0000-0000-00000000aa44']::uuid[]) $$,
+  $$ values ('rechazada') $$,
+  'logística devuelve al cliente la pieza rechazada'
+);
+reset role;
+select results_eq(
+  $$ select location::text, returned_at is not null, returned_by::text from public.pieces
+     where id = '00000000-0000-0000-0000-00000000aa44' $$,
+  $$ values ('entregada', true, '00000000-0000-0000-0000-000000000aa2') $$,
+  'la pieza devuelta queda con ubicación Entregada, fecha y quién la devolvió'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa46']::uuid[], 'anulada', 'Registro duplicado') $$,
+  'ventas anula la última pieza'
+);
+reset role;
+select is(
+  (select status::text from public.restorations where id = '00000000-0000-0000-0000-00000000aa32'),
+  'anulada', 'si todas las piezas quedan anuladas, rechazadas o sin arreglo, la restauración queda Anulada'
+);
+
 -- Métricas con un historial conocido (fechas fijas en Lima).
 insert into public.restorations (id, client_id, payment_type)
   values ('00000000-0000-0000-0000-00000000aa31', '00000000-0000-0000-0000-00000000aa20', 'contado');
 insert into public.pieces (id, restoration_id, description, price, created_at)
   values ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'Jarra', 10, '2026-10-01T15:00:00Z');
 delete from public.piece_status_history where piece_id = '00000000-0000-0000-0000-00000000aa43';
-insert into public.piece_status_history (piece_id, restoration_id, from_status, to_status, occurred_at) values
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'recibida', 'enviada_taller', '2026-10-02T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'enviada_taller', 'devuelta_taller', '2026-10-05T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'devuelta_taller', 'observada', '2026-10-06T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'observada', 'enviada_taller', '2026-10-07T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'enviada_taller', 'devuelta_taller', '2026-10-09T15:00:00Z');
+insert into public.piece_status_history (piece_id, restoration_id, event, from_status, to_status, occurred_at) values
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'aprobada', 'enviada_taller', '2026-10-02T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'enviada_taller', 'enviada_taller', '2026-10-05T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'enviada_taller', 'observada', '2026-10-06T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'observada', 'enviada_taller', '2026-10-07T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'enviada_taller', 'enviada_taller', '2026-10-09T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'enviada_taller', 'entregada', '2026-10-10T15:00:00Z');
 update public.pieces set status = 'entregada', delivered_at = '2026-10-10T15:00:00Z'
   where id = '00000000-0000-0000-0000-00000000aa43';
 select results_eq(
   $$ select workshop_days, workshop_ongoing, fulfillment_days, fulfillment_ongoing
      from public.piece_metrics where piece_id = '00000000-0000-0000-0000-00000000aa43' $$,
   $$ values (5, false, 9, false) $$,
-  'piece_metrics suma los dos viajes al taller y los días hasta la entrega'
+  'piece_metrics suma los dos viajes al taller (hasta cada vuelta) y los días hasta la entrega'
 );
 select is(
   (select count(*)::int from public.pieces p
-   where p.location is distinct from public.derive_piece_location(p.status, p.arrived_at)),
+   where p.location is distinct from public.derive_piece_location(
+     p.status, p.arrived_at, p.last_sent_at, p.last_returned_at, p.returned_at)),
   0, 'la columna generada de ubicación coincide con derive_piece_location()'
 );
 

@@ -11,7 +11,7 @@ let clientId = "";
 let workshopId = "";
 const restorationIds: string[] = [];
 
-/** Restauración con piezas ya recibidas en la tienda. */
+/** Restauración con piezas aprobadas que ya están en la tienda. */
 async function seedReceived(count: number, prefix: string) {
   const admin = adminClient();
   const { data: r, error } = await admin
@@ -35,9 +35,8 @@ async function seedReceived(count: number, prefix: string) {
   await admin
     .from("pieces")
     .update({
-      status: "recibida",
+      status: "aprobada",
       approved_at: new Date().toISOString(),
-      received_at: new Date().toISOString(),
     } as never)
     .eq("restoration_id", r.id);
   return { restoration: r, pieces: pieces! };
@@ -78,7 +77,7 @@ test.describe("Vista de piezas", () => {
     await admin.from("workshops").delete().eq("id", workshopId);
   });
 
-  test("logística filtra En tienda / Recibida, elige 3 piezas y las envía al taller", async ({
+  test("logística filtra En tienda / Aprobada, elige 3 piezas y las envía al taller", async ({
     page,
     loginAs,
   }) => {
@@ -90,9 +89,9 @@ test.describe("Vista de piezas", () => {
     await page.getByLabel("Ubicación").click();
     await page.getByRole("option", { name: "En tienda" }).click();
     await page.getByLabel("Estado").click();
-    await page.getByRole("option", { name: "Recibida" }).click();
+    await page.getByRole("option", { name: "Aprobada" }).click();
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page).toHaveURL(/ubicacion=en_tienda&estado=recibida/);
+    await expect(page).toHaveURL(/ubicacion=en_tienda&estado=aprobada/);
     await expect(page.getByText("3 piezas · Página 1 de 1")).toBeVisible();
 
     await page.getByLabel("Elegir todas las de esta página").check();
@@ -129,12 +128,16 @@ test.describe("Vista de piezas", () => {
     const admin = adminClient();
     await admin
       .from("pieces")
-      .update({ status: "enviada_taller", workshop_id: workshopId } as never)
+      .update({
+        status: "enviada_taller",
+        workshop_id: workshopId,
+        last_sent_at: new Date(Date.now() - 9 * 86_400_000).toISOString(),
+      } as never)
       .eq("id", pieces[0]!.id);
     await admin.from("piece_status_history").insert({
       piece_id: pieces[0]!.id,
       restoration_id: restorationIds.at(-1)!,
-      from_status: "recibida",
+      from_status: "aprobada",
       to_status: "enviada_taller",
       occurred_at: new Date(Date.now() - 9 * 86_400_000).toISOString(),
     } as never);
@@ -163,7 +166,7 @@ test.describe("Vista de piezas", () => {
     test.skip(!isMobile, "Solo aplica al proyecto móvil");
     const { pieces } = await seedReceived(2, "Movil");
     await loginAs("logistica");
-    await page.goto(`/piezas?q=${clientName}&estado=recibida`);
+    await page.goto(`/piezas?q=${clientName}&estado=aprobada`);
     for (const piece of pieces)
       await page.getByLabel(`Elegir ${piece.code}`).check();
     const bar = page.getByRole("region", {
@@ -186,6 +189,53 @@ test.describe("Vista de piezas", () => {
       page.viewportSize()?.width ?? Infinity,
     );
   });
+  test("recibe del taller en bloque y filtra urgentes y listas para entregar (P47)", async ({
+    page,
+    loginAs,
+  }) => {
+    const { pieces } = await seedReceived(2, "Vuelta");
+    const admin = adminClient();
+    await admin
+      .from("pieces")
+      .update({
+        status: "enviada_taller",
+        workshop_id: workshopId,
+        first_sent_at: new Date().toISOString(),
+        last_sent_at: new Date().toISOString(),
+      } as never)
+      .in(
+        "id",
+        pieces.map((p) => p.id),
+      );
+    await admin
+      .from("pieces")
+      .update({ urgent: true } as never)
+      .eq("id", pieces[1]!.id);
+
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=Vuelta`);
+    // Las urgentes van primero.
+    await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
+      "Urgente",
+    );
+    await page.getByLabel("Solo urgentes").check();
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page).toHaveURL(/urgentes=1/);
+    await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
+
+    await page.goto(`/piezas?q=Vuelta`);
+    await page.getByLabel("Elegir todas las de esta página").check();
+    const bar = page.getByRole("region", {
+      name: "Acciones para las piezas elegidas",
+    });
+    await bar.getByRole("button", { name: "Recibir del taller" }).click();
+    await page.goto(`/piezas?q=Vuelta&listas=1`);
+    await expect(page.getByText("2 piezas · Página 1 de 1")).toBeVisible();
+    await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
+      "Lista para entregar",
+    );
+  });
+
   test("en kanban elige piezas de una columna y las envía al taller", async ({
     page,
     loginAs,
@@ -198,7 +248,7 @@ test.describe("Vista de piezas", () => {
       .getByRole("link", { name: "Kanban" })
       .click();
     await expect(page).toHaveURL(/vista=kanban/);
-    const received = page.getByTestId("columna-recibida");
+    const received = page.getByTestId("columna-aprobada");
     for (const piece of pieces) {
       await expect(received.getByTestId(`tarjeta-${piece.code}`)).toBeVisible();
       await received.getByLabel(`Elegir ${piece.code}`).check();

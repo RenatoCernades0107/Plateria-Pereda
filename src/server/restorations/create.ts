@@ -23,6 +23,7 @@ export function pieceToRpc(piece: PieceInput) {
       piece.weightGrams === null ? null : piece.weightGrams.toFixed(2),
     price: toDecimalString(piece.priceCents),
     arrived: piece.arrived,
+    urgent: piece.urgent,
     notes: piece.notes,
   };
 }

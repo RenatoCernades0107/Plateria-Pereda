@@ -126,6 +126,7 @@ function pieceColumns(input: PieceFormInput) {
       weight_grams: p.weightGrams,
       price: Number(toDecimalString(p.priceCents)),
       notes: p.notes,
+      urgent: p.urgent,
     },
   };
 }

@@ -85,6 +85,8 @@ export const pieceSchema = z
     price,
     /** "La pieza ya está en tienda": marca su llegada al registrarla. */
     arrived: z.boolean(),
+    /** Marca "Urgente" (P47): no es un estado. */
+    urgent: z.boolean().default(false),
     notes: notes(1000),
   })
   .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({

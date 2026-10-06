@@ -1,8 +1,9 @@
-import type { PieceStatus } from "./piece-state-machine";
+import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 
 /**
  * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
- * avanza; P21 con su propuesta).
+ * avanza; P21 con su propuesta; P47: sin "Recibida" ni "Devuelta por el taller",
+ * la vuelta del taller deja la pieza "Lista para entregar").
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -30,7 +31,7 @@ export const RESTORATION_STATUS_LABELS: Record<RestorationStatus, string> = {
 };
 
 export const PIECE_LOCATIONS = [
-  "por_recibir",
+  "sin_enviar",
   "en_tienda",
   "en_taller",
   "entregada",
@@ -39,48 +40,69 @@ export const PIECE_LOCATIONS = [
 export type PieceLocation = (typeof PIECE_LOCATIONS)[number];
 
 export const PIECE_LOCATION_LABELS: Record<PieceLocation, string> = {
-  por_recibir: "Por recibir",
+  sin_enviar: "Sin enviar",
   en_tienda: "En tienda",
   en_taller: "En taller",
   entregada: "Entregada",
   anulada: "Anulada",
 };
 
-/** Ubicación física de la pieza (§7.2), evaluada en este orden. */
-export function deriveLocation(piece: {
+/** Lo que la ubicación necesita saber de la pieza. */
+export type PieceForLocation = {
   status: PieceStatus;
   arrivedAt: Date | null;
-}): PieceLocation {
+  lastSentAt?: Date | null;
+  lastReturnedAt?: Date | null;
+  returnedAt?: Date | null;
+};
+
+/** En Interno y ya de vuelta del taller (la última vuelta es posterior al último envío). */
+export function isBackFromWorkshop(piece: PieceForLocation): boolean {
+  return (
+    piece.status === "enviada_taller" &&
+    !!piece.lastReturnedAt &&
+    !!piece.lastSentAt &&
+    piece.lastReturnedAt.getTime() >= piece.lastSentAt.getTime()
+  );
+}
+
+/** Ubicación física de la pieza (§7.2), evaluada en este orden. */
+export function deriveLocation(piece: PieceForLocation): PieceLocation {
   switch (piece.status) {
     case "anulada":
       return "anulada";
     case "entregada":
       return "entregada";
+    case "rechazada":
+    case "sin_arreglo":
+      if (piece.returnedAt) return "entregada";
+      break;
     case "enviada_taller":
-      return "en_taller";
-    default:
-      return piece.arrivedAt ? "en_tienda" : "por_recibir";
+      return isBackFromWorkshop(piece) ? "en_tienda" : "en_taller";
   }
+  return piece.arrivedAt ? "en_tienda" : "sin_enviar";
 }
 
 export type PieceForRestorationStatus = {
   status: PieceStatus;
   approvedAt: Date | null;
   firstSentAt: Date | null;
+  /** En Interno y ya de vuelta del taller. */
+  readyForDelivery: boolean;
 };
 
 const isBack = (p: PieceForRestorationStatus) =>
-  p.status === "devuelta_taller" || p.status === "entregada";
+  p.readyForDelivery || p.status === "entregada";
 
 /**
- * Estado general calculado de las piezas (§7.3): ignora las piezas anuladas y
- * aplica las reglas en orden. El que se guarda solo avanza
- * (`advanceRestorationStatus`, P19).
+ * Estado general calculado de las piezas (§7.3): ignora las piezas finales
+ * (anuladas, rechazadas y sin arreglo) y aplica las reglas en orden. El que se
+ * guarda solo avanza (`advanceRestorationStatus`, P19).
  */
 export function deriveRestorationStatus(
   pieces: readonly PieceForRestorationStatus[],
 ): RestorationStatus {
-  const active = pieces.filter((p) => p.status !== "anulada");
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
   if (active.length === 0) return pieces.length > 0 ? "anulada" : "registrada";
   if (active.every((p) => p.status === "entregada")) return "completada";
   if (active.every(isBack)) return "lista";
@@ -103,7 +125,7 @@ const STATUS_RANK: Record<RestorationStatus, number> = {
 
 /**
  * Estado que se guarda (P19: solo avanza). Si lo calculado retrocede —p. ej. una
- * pieza devuelta se observa y vuelve al taller— se conserva el estado alcanzado;
+ * pieza lista se observa y vuelve al taller— se conserva el estado alcanzado;
  * si se anulan todas las piezas queda Anulada.
  */
 export function advanceRestorationStatus(
@@ -114,13 +136,13 @@ export function advanceRestorationStatus(
 }
 
 /**
- * La orden de Shopify se crea cuando todas las piezas no anuladas fueron aprobadas
+ * La orden de Shopify se crea cuando todas las piezas que se cobran fueron aprobadas
  * (y hay al menos una), sin importar el estado general (§7.3). Que la orden aún no
  * exista lo revisa quien encola el trabajo.
  */
 export function isReadyForShopifyOrder(
   pieces: readonly Pick<PieceForRestorationStatus, "status" | "approvedAt">[],
 ): boolean {
-  const active = pieces.filter((p) => p.status !== "anulada");
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
   return active.length > 0 && active.every((p) => p.approvedAt);
 }

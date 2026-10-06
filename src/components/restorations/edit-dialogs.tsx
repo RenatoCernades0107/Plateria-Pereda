@@ -222,6 +222,7 @@ function pieceDefaults(piece: PieceDetail): PieceFormInput {
     weight: piece.weightGrams === null ? "" : String(piece.weightGrams),
     price: piece.priceCents === null ? "" : toDecimalString(piece.priceCents),
     arrived: piece.arrivedAt !== null,
+    urgent: piece.urgent,
     notes: piece.notes,
   };
 }

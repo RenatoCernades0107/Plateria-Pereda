@@ -5,21 +5,34 @@ import {
 } from "@/domain/piece-days";
 import {
   PIECE_STATUS_LABELS,
+  type PieceEvent,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
 import { formatDateTime } from "@/lib/format";
 
+import { Badge } from "@/components/ui/badge";
+
 import { PieceStatusBadge } from "./status-badges";
 
 /**
- * Línea de tiempo de una pieza (Paso 8.5): cada cambio de estado con fecha,
+ * Línea de tiempo de una pieza (Pasos 8.5 y 8.6): cada cambio de estado, y las
+ * acciones que no lo cambian (llegada, vuelta del taller, devolución), con fecha,
  * usuario y nota, más los días en taller y de cumplimiento. Logística no la ve
  * (P42): para ella la página muestra solo el estado actual, los días en taller y
  * la nota de la última observación.
  */
 
+/** Acciones que no cambian el estado (P47). */
+const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
+  llegada: "Llegó a la tienda",
+  vuelta_taller: "Volvió del taller",
+  devolucion_cliente: "Devuelta al cliente",
+};
+
 /** Un paso de `piece_status_history`. */
 export type TimelineEvent = {
+  /** Por defecto "estado" (un cambio de estado). */
+  event?: PieceEvent;
   at: Date | string;
   /** Null en el registro inicial de la pieza. */
   fromStatus: PieceStatus | null;
@@ -55,7 +68,12 @@ export function Timeline({
     .map((e) => ({ ...e, at: new Date(e.at) }))
     .sort((a, b) => a.at.getTime() - b.at.getTime());
   const workshop = daysInWorkshop(
-    ordered.map((e) => ({ from: e.fromStatus, to: e.toStatus, at: e.at })),
+    ordered.map((e) => ({
+      event: e.event,
+      from: e.fromStatus,
+      to: e.toStatus,
+      at: e.at,
+    })),
     now,
   );
   const fulfillment = fulfillmentDays(
@@ -97,11 +115,19 @@ export function Timeline({
                 className="bg-primary absolute top-1.5 -left-[21px] size-2.5 rounded-full"
               />
               <div className="flex flex-wrap items-center gap-2">
-                <PieceStatusBadge status={event.toStatus} />
-                {event.fromStatus && (
-                  <span className="text-muted-foreground text-xs">
-                    desde {PIECE_STATUS_LABELS[event.fromStatus]}
-                  </span>
+                {event.event && event.event !== "estado" ? (
+                  <Badge variant="secondary" data-event={event.event}>
+                    {EVENT_LABELS[event.event]}
+                  </Badge>
+                ) : (
+                  <>
+                    <PieceStatusBadge status={event.toStatus} />
+                    {event.fromStatus && (
+                      <span className="text-muted-foreground text-xs">
+                        desde {PIECE_STATUS_LABELS[event.fromStatus]}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
               <p className="text-muted-foreground text-xs">

@@ -52,6 +52,7 @@ describe("consistencia entre TypeScript y la BD", () => {
         status: p.status as never,
         approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
         firstSentAt: p.firstSentAt ? new Date(p.firstSentAt) : null,
+        readyForDelivery: p.readyForDelivery,
       }));
       expect(status.data).toBe(expected);
       expect(deriveRestorationStatus(parsed)).toBe(expected);
@@ -61,11 +62,21 @@ describe("consistencia entre TypeScript y la BD", () => {
   );
 
   it.each(fixture.location)(
-    "ubicación: $status con llegada $arrivedAt",
-    async ({ status, arrivedAt, expected }) => {
+    "ubicación: $status con llegada $arrivedAt, vuelta $lastReturnedAt y devolución $returnedAt",
+    async ({
+      status,
+      arrivedAt,
+      lastSentAt,
+      lastReturnedAt,
+      returnedAt,
+      expected,
+    }) => {
       const { data } = await createAdminClient().rpc("derive_piece_location", {
         p_status: status as never,
         p_arrived_at: arrivedAt as string,
+        p_last_sent_at: lastSentAt as string,
+        p_last_returned_at: lastReturnedAt as string,
+        p_returned_at: returnedAt as string,
       });
       expect(data).toBe(expected);
     },

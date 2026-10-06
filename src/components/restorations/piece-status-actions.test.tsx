@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PieceStatus } from "@/domain/piece-state-machine";
+import { deriveLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 
 import { PieceStatusPanel } from "./piece-status-actions";
@@ -11,6 +12,8 @@ import { commonTransitions } from "./pieces-board";
 const mocks = vi.hoisted(() => ({
   change: vi.fn(),
   arrive: vi.fn(),
+  receive: vi.fn(),
+  giveBack: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -18,6 +21,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/restorations/status-actions", () => ({
   changePieceStatus: (...a: unknown[]) => mocks.change(...a),
   markPiecesArrived: (...a: unknown[]) => mocks.arrive(...a),
+  receiveFromWorkshop: (...a: unknown[]) => mocks.receive(...a),
+  returnPiecesToClient: (...a: unknown[]) => mocks.giveBack(...a),
   assignWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({
@@ -28,11 +33,20 @@ const workshops = [
   { id: "00000000-0000-0000-0000-0000000000f1", name: "Taller Central" },
 ];
 
+const ARRIVED = "2026-10-04T10:00:00Z";
+
 function renderPanel(
   status: PieceStatus,
   role: AppRole,
-  extra: { arrivedAt?: string | null; workshopId?: string | null } = {},
+  extra: {
+    arrivedAt?: string | null;
+    workshopId?: string | null;
+    readyForDelivery?: boolean;
+    urgent?: boolean;
+  } = {},
 ) {
+  const arrivedAt = extra.arrivedAt ?? null;
+  const readyForDelivery = extra.readyForDelivery ?? false;
   return render(
     <PieceStatusPanel
       restorationId="r1"
@@ -40,8 +54,19 @@ function renderPanel(
         id: "p1",
         code: "RES-00001-1",
         status,
-        arrivedAt: extra.arrivedAt ?? null,
+        location: deriveLocation({
+          status,
+          arrivedAt: arrivedAt ? new Date(arrivedAt) : null,
+          lastSentAt: new Date("2026-10-05T10:00:00Z"),
+          lastReturnedAt: readyForDelivery
+            ? new Date("2026-10-06T10:00:00Z")
+            : null,
+        }),
+        arrivedAt,
         workshopId: extra.workshopId ?? null,
+        readyForDelivery,
+        returnedAt: null,
+        urgent: extra.urgent ?? false,
       }}
       role={role}
       workshops={workshops}
@@ -58,6 +83,8 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.change.mockResolvedValue({ ok: true });
   mocks.arrive.mockResolvedValue({ ok: true });
+  mocks.receive.mockResolvedValue({ ok: true });
+  mocks.giveBack.mockResolvedValue({ ok: true });
 });
 
 describe("PieceStatusPanel", () => {
@@ -67,6 +94,7 @@ describe("PieceStatusPanel", () => {
       "Marcar llegada a tienda",
       "Poner en consulta",
       "Aprobar",
+      "Rechazar",
       "Anular",
     ]);
   });
@@ -77,22 +105,68 @@ describe("PieceStatusPanel", () => {
   });
 
   it("solo el admin anula una pieza que está en el taller", () => {
-    const { unmount } = renderPanel("enviada_taller", "ventas");
-    expect(screen.queryByRole("group")).toBeNull();
+    const { unmount } = renderPanel("enviada_taller", "ventas", {
+      arrivedAt: ARRIVED,
+    });
+    expect(buttons()).toEqual(["No tiene arreglo"]);
     unmount();
-    renderPanel("enviada_taller", "admin");
-    expect(buttons()).toEqual(["Recibir del taller", "Anular"]);
+    renderPanel("enviada_taller", "admin", { arrivedAt: ARRIVED });
+    expect(buttons()).toEqual([
+      "Recibir del taller",
+      "No tiene arreglo",
+      "Anular",
+    ]);
+    expect(screen.getByText("En taller")).toBeInTheDocument();
+  });
+
+  it("recibe la pieza del taller: sigue en Interno, lista para entregar", async () => {
+    const user = userEvent.setup();
+    renderPanel("enviada_taller", "logistica", { arrivedAt: ARRIVED });
+    await user.click(
+      screen.getByRole("button", { name: "Recibir del taller" }),
+    );
+    expect(mocks.receive).toHaveBeenCalledWith("r1", ["p1"]);
+    expect(mocks.change).not.toHaveBeenCalled();
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1: volvió del taller.",
+    );
+  });
+
+  it("de vuelta del taller se entrega u observa", () => {
+    renderPanel("enviada_taller", "logistica", {
+      arrivedAt: ARRIVED,
+      readyForDelivery: true,
+    });
+    expect(buttons()).toEqual(["No tiene arreglo", "Entregar", "Observar"]);
+    expect(screen.getByText("Lista para entregar")).toBeInTheDocument();
+    expect(screen.getByText("Interno")).toBeInTheDocument();
+  });
+
+  it("devuelve al cliente una pieza rechazada que está en la tienda", async () => {
+    const user = userEvent.setup();
+    renderPanel("rechazada", "logistica", { arrivedAt: ARRIVED });
+    expect(buttons()).toEqual(["Devolver al cliente"]);
+    await user.click(
+      screen.getByRole("button", { name: "Devolver al cliente" }),
+    );
+    expect(mocks.giveBack).toHaveBeenCalledWith("r1", ["p1"]);
+  });
+
+  it("muestra la marca urgente", () => {
+    renderPanel("aprobada", "ventas", { urgent: true });
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
   });
 
   it("sin acciones (anulada) solo muestra el estado y la ubicación", () => {
     renderPanel("anulada", "admin");
     expect(screen.queryByRole("group")).toBeNull();
-    expect(screen.getAllByText("Anulada")).toHaveLength(2);
+    expect(screen.getByText("Anulado")).toBeInTheDocument();
+    expect(screen.getByText("Anulada")).toBeInTheDocument();
   });
 
   it("aprueba al instante y muestra el estado de forma optimista", async () => {
     const user = userEvent.setup();
-    renderPanel("registrada", "ventas", { arrivedAt: "2026-10-04T10:00:00Z" });
+    renderPanel("registrada", "ventas", { arrivedAt: ARRIVED });
     await user.click(screen.getByRole("button", { name: "Aprobar" }));
     expect(mocks.change).toHaveBeenCalledWith(
       "r1",
@@ -147,7 +221,9 @@ describe("PieceStatusPanel", () => {
 
   it("el diálogo exige el taller al enviar y propone el ya asignado", async () => {
     const user = userEvent.setup();
-    const { unmount } = renderPanel("recibida", "logistica");
+    const { unmount } = renderPanel("aprobada", "logistica", {
+      arrivedAt: ARRIVED,
+    });
     await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
     let dialog = screen.getByRole("dialog");
     await user.click(
@@ -160,7 +236,10 @@ describe("PieceStatusPanel", () => {
     ).toBeVisible();
     unmount();
 
-    renderPanel("recibida", "logistica", { workshopId: workshops[0]!.id });
+    renderPanel("aprobada", "logistica", {
+      arrivedAt: ARRIVED,
+      workshopId: workshops[0]!.id,
+    });
     await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
     dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Taller")).toHaveTextContent(
@@ -192,14 +271,19 @@ describe("PieceStatusPanel", () => {
 
 describe("commonTransitions", () => {
   it("ofrece solo los cambios posibles para todas las piezas elegidas", () => {
+    const p = (status: PieceStatus) => ({
+      status,
+      arrivedAt: ARRIVED,
+      readyForDelivery: false,
+      returnedAt: null,
+    });
     expect(
-      commonTransitions(
-        [{ status: "recibida" }, { status: "observada" }],
-        "logistica",
-      ).map((c) => c.to),
+      commonTransitions([p("aprobada"), p("observada")], "logistica").map(
+        (c) => c.to,
+      ),
     ).toEqual(["enviada_taller"]);
     const anular = commonTransitions(
-      [{ status: "registrada" }, { status: "aprobada" }],
+      [p("registrada"), p("aprobada")],
       "ventas",
     );
     // Registrada puede consultar, aprobar o anular; Aprobada solo anular.

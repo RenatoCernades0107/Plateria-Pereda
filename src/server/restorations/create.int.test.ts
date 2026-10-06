@@ -115,7 +115,7 @@ describe("registro de restauraciones", () => {
         code: `${result.code}-2`,
         material_name: "",
         price: 0.2,
-        location: "por_recibir",
+        location: "sin_enviar",
       },
     ]);
 

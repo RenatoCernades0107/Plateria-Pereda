@@ -12,11 +12,12 @@ import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge } from "./status-badges";
+import { LocationBadge, ReadyBadge, UrgentBadge } from "./status-badges";
 
 /**
- * Tablero kanban de piezas en curso: una columna por estado. Se eligen piezas de una
- * o varias columnas y se usan las mismas acciones masivas que en la tabla.
+ * Tablero kanban de piezas en curso: una columna por estado (las urgentes primero en
+ * cada columna). Se eligen piezas de una o varias columnas y se usan las mismas
+ * acciones masivas que en la tabla.
  */
 export function PiecesKanban({
   pieces,
@@ -101,7 +102,9 @@ export function PiecesKanban({
                         </div>
                         <p className="break-words">{piece.description}</p>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
+                          {piece.urgent ? <UrgentBadge /> : null}
                           <LocationBadge location={piece.location} />
+                          {piece.readyForDelivery ? <ReadyBadge /> : null}
                           <span className="text-muted-foreground">
                             {piece.workshopName ?? "Sin taller"}
                           </span>

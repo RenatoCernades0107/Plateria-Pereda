@@ -854,21 +854,22 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
 
 #### Paso 8.6 — Estados nuevos de la pieza y marca "Urgente" (P47 ✅, pedido del 2026-10-06)
-- [ ] BD: `piece_status` sin `recibida` ni `devuelta_taller` y con `rechazada` y `sin_arreglo`; transiciones de §7.1; `piece_location` con `sin_enviar` en vez de `por_recibir`; columnas `urgent`, `last_sent_at`, `returned_at`, `returned_by` y `ready_for_delivery`; evento en `piece_status_history`; RPC `receive_from_workshop()` y `return_pieces_to_client()`; total, estado general, orden de Shopify y edición ignoran las piezas finales.
-- [ ] Dominio (TS) igual a la BD: estados, transiciones, ubicación, estado general, días en taller por eventos, filtros de `/piezas` (urgentes, listas para entregar, por devolver).
-- [ ] Interfaz: colores de la Platería, acciones "Rechazar", "No tiene arreglo", "Recibir del taller" y "Devolver al cliente"; casilla "Urgente"; urgentes primero en `/piezas` y el kanban.
+- [x] BD: `piece_status` sin `recibida` ni `devuelta_taller` y con `rechazada` y `sin_arreglo`; transiciones de §7.1; `piece_location` con `sin_enviar` en vez de `por_recibir`; columnas `urgent`, `last_sent_at`, `returned_at`, `returned_by` y `ready_for_delivery`; evento en `piece_status_history`; RPC `receive_from_workshop()` y `return_pieces_to_client()`; total, estado general, orden de Shopify y edición ignoran las piezas finales.
+- [x] Dominio (TS) igual a la BD: estados, transiciones, ubicación, estado general, días en taller por eventos, filtros de `/piezas` (urgentes, listas para entregar, por devolver).
+- [x] Interfaz: colores de la Platería, acciones "Rechazar", "No tiene arreglo", "Recibir del taller" y "Devolver al cliente"; casilla "Urgente"; urgentes primero en `/piezas` y el kanban.
 - **Unit:**
-  - [ ] Transiciones, ubicación, estado general y días en taller con los estados nuevos.
-  - [ ] Total y mensaje de WhatsApp sin las piezas finales.
+  - [x] Transiciones, ubicación, estado general y días en taller con los estados nuevos.
+  - [x] Total y mensaje de WhatsApp sin las piezas finales.
 - **BD:**
-  - [ ] Transiciones permitidas y prohibidas; enviar al taller exige la pieza en la tienda; entregar u observar desde Interno exige que haya vuelto.
-  - [ ] Rechazar y sin arreglo sacan la pieza del total; devolver al cliente cambia la ubicación.
-  - [ ] Urgentes primero en la vista de piezas.
+  - [x] Transiciones permitidas y prohibidas; enviar al taller exige la pieza en la tienda; entregar u observar desde Interno exige que haya vuelto.
+  - [x] Rechazar y sin arreglo sacan la pieza del total; devolver al cliente cambia la ubicación.
+  - [x] Urgentes primero en la vista de piezas.
 - **E2E:**
-  - [ ] Aprobar → marcar llegada → enviar a Interno → recibir del taller → entregar.
-  - [ ] Rechazar desde "Espera respuesta"; "No tiene arreglo" desde Interno; devolver al cliente.
-  - [ ] Marcar "Urgente" y filtrar por urgentes.
-- Commits: `feat(piezas): redefine los estados de la pieza` y `feat(piezas): agrega la marca urgente`
+  - [x] Aprobar → marcar llegada → enviar a Interno → recibir del taller → entregar.
+  - [x] Rechazar desde "Espera respuesta"; "No tiene arreglo" desde Interno; devolver al cliente.
+  - [x] Marcar "Urgente" y filtrar por urgentes.
+- Hecho (2026-10-06): migración `20261006150000_estados_pieza_v2.sql` recrea `piece_status` (convierte `recibida` → `aprobada` y `devuelta_taller` → `enviada_taller` ya de vuelta, con su historial como eventos `llegada` y `vuelta_taller`), renombra la ubicación a `sin_enviar` y agrega `urgent`, `last_sent_at`, `returned_at`, `returned_by` y la columna generada `ready_for_delivery`. RPC `receive_from_workshop()` y `return_pieces_to_client()`; `change_piece_status()` exige la pieza en la tienda para enviarla al taller y de vuelta para entregarla u observarla desde Interno. Total, estado general, orden de Shopify, días de cumplimiento y edición ignoran las piezas finales (anuladas, rechazadas y sin arreglo). Interfaz: colores de la Platería en `PieceStatusBadge`, insignias "Urgente" y "Lista para entregar", acciones "Rechazar", "No tiene arreglo", "Recibir del taller" y "Devolver al cliente" (por pieza y en bloque), eventos en la línea de tiempo, casilla "Urgente" en la pieza y filtros "Solo urgentes", "Listas para entregar" y "Por devolver al cliente" en `/piezas` (urgentes primero). El escenario compartido `derivations.json` cubre los estados nuevos (TS y BD coinciden). **E2E** actualizados pero no corridos en este entorno (sin el servicio de autenticación local).
+- Commit: `feat(piezas): redefine los estados de la pieza y agrega la marca urgente`
 
 ### Fase 9 — Orden automática en Shopify
 

@@ -17,6 +17,8 @@ type NewPiece = {
   arrived?: boolean;
   status?: string;
   workshop?: boolean;
+  /** En Interno y ya de vuelta del taller ("Lista para entregar", P47). */
+  back?: boolean;
 };
 
 /** Restauración de prueba creada directamente en la BD. */
@@ -48,7 +50,13 @@ async function seedRestoration(pieces: NewPiece[]) {
           status: p.status,
           workshop_id: p.workshop ? workshopId : null,
           approved_at: new Date().toISOString(),
-          first_sent_at: p.workshop ? new Date().toISOString() : null,
+          first_sent_at: p.workshop
+            ? new Date(Date.now() - 60_000).toISOString()
+            : null,
+          last_sent_at: p.workshop
+            ? new Date(Date.now() - 60_000).toISOString()
+            : null,
+          last_returned_at: p.back ? new Date().toISOString() : null,
         } as never)
         .eq("id", piece!.id);
     }
@@ -95,7 +103,7 @@ test.describe("Estados de las piezas", () => {
     await admin.from("workshops").delete().eq("id", workshopId);
   });
 
-  test("flujo feliz: registrada → aprobada → recibida → taller → devuelta → entregada", async ({
+  test("flujo feliz: aprobada → llegada → Interno → vuelta del taller → entregada", async ({
     page,
     loginAs,
   }) => {
@@ -106,7 +114,7 @@ test.describe("Estados de las piezas", () => {
     await page.goto(`/restauraciones/${r.id}`);
     await card(page, code).getByRole("button", { name: "Aprobar" }).click();
     await expect(card(page, code)).toContainText("Aprobada");
-    await expect(card(page, code)).toContainText("Por recibir");
+    await expect(card(page, code)).toContainText("Sin enviar");
     await expect(restorationStatus(page)).toHaveText("Aprobada");
 
     await loginAs("logistica");
@@ -114,7 +122,7 @@ test.describe("Estados de las piezas", () => {
     await card(page, code)
       .getByRole("button", { name: "Marcar llegada a tienda" })
       .click();
-    await expect(card(page, code)).toContainText("Recibida");
+    await expect(card(page, code)).toContainText("Aprobada");
     await expect(card(page, code)).toContainText("En tienda");
 
     await card(page, code)
@@ -126,7 +134,7 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, code)).toContainText("Enviada al taller");
+    await expect(card(page, code)).toContainText("Interno");
     await expect(card(page, code)).toContainText("En taller");
     await expect(card(page, code)).toContainText(`Taller: ${workshopName}`);
     await expect(restorationStatus(page)).toHaveText("En proceso");
@@ -134,7 +142,8 @@ test.describe("Estados de las piezas", () => {
     await card(page, code)
       .getByRole("button", { name: "Recibir del taller" })
       .click();
-    await expect(card(page, code)).toContainText("Devuelta por el taller");
+    await expect(card(page, code)).toContainText("Lista para entregar");
+    await expect(card(page, code)).toContainText("Interno");
     await expect(restorationStatus(page)).toHaveText("Lista");
 
     // La entrega la hace ventas: completada, logística ya no la ve (D24).
@@ -145,7 +154,7 @@ test.describe("Estados de las piezas", () => {
     await expect(restorationStatus(page)).toHaveText("Completada");
   });
 
-  test("consulta: en consulta → en espera → aprobada, y en espera → anulada", async ({
+  test("consulta: consulta → espera respuesta → aprobada, y espera respuesta → rechazado", async ({
     page,
     loginAs,
   }) => {
@@ -167,13 +176,11 @@ test.describe("Estados de las piezas", () => {
       ).toBeVisible();
       await dialog.getByLabel("Nota (obligatoria)").fill("¿Se repara el asa?");
       await dialog.getByRole("button", { name: /Confirmar/ }).click();
-      await expect(card(page, code)).toContainText("En consulta");
+      await expect(card(page, code)).toContainText("Consulta");
       await card(page, code)
         .getByRole("button", { name: "Esperar respuesta" })
         .click();
-      await expect(card(page, code)).toContainText(
-        "En espera de respuesta del cliente",
-      );
+      await expect(card(page, code)).toContainText("Espera respuesta cliente");
     }
 
     await card(page, `${r.code}-1`)
@@ -182,16 +189,18 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
 
     await card(page, `${r.code}-2`)
-      .getByRole("button", { name: "Anular" })
+      .getByRole("button", { name: "Rechazar" })
       .click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("El cliente no aceptó");
-    await dialog.getByRole("button", { name: "Confirmar: Anular" }).click();
-    await expect(card(page, `${r.code}-2`)).toContainText("Anulada");
+    await dialog.getByRole("button", { name: "Confirmar: Rechazar" }).click();
+    await expect(card(page, `${r.code}-2`)).toContainText(
+      "Rechazado (cliente)",
+    );
     await expect(restorationStatus(page)).toHaveText("Aprobada");
   });
 
-  test("una pieza que llegó antes de aprobarse pasa a Recibida al aprobarla", async ({
+  test("una pieza que llegó antes de aprobarse queda Aprobada y en tienda", async ({
     page,
     loginAs,
   }) => {
@@ -203,7 +212,7 @@ test.describe("Estados de las piezas", () => {
     await card(page, `${r.code}-1`)
       .getByRole("button", { name: "Aprobar" })
       .click();
-    await expect(card(page, `${r.code}-1`)).toContainText("Recibida");
+    await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
     await expect(card(page, `${r.code}-1`)).toContainText("En tienda");
   });
 
@@ -211,8 +220,10 @@ test.describe("Estados de las piezas", () => {
     const r = await seedRestoration([
       {
         description: "Bandeja observada",
-        status: "devuelta_taller",
+        arrived: true,
+        status: "enviada_taller",
         workshop: true,
+        back: true,
       },
     ]);
     const code = `${r.code}-1`;
@@ -222,7 +233,7 @@ test.describe("Estados de las piezas", () => {
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("Falta pulir el borde");
     await dialog.getByRole("button", { name: "Confirmar: Observar" }).click();
-    await expect(card(page, code)).toContainText("Observada");
+    await expect(card(page, code)).toContainText("Observación");
 
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
@@ -234,7 +245,8 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, code)).toContainText("Enviada al taller");
+    await expect(card(page, code)).toContainText("Interno");
+    await expect(card(page, code)).toContainText("En taller");
   });
 
   test("la línea de tiempo muestra usuarios y notas en orden; logística ve solo días y observación", async ({
@@ -256,11 +268,11 @@ test.describe("Estados de las piezas", () => {
       .getByRole("dialog")
       .getByRole("button", { name: /Confirmar/ })
       .click();
-    await expect(card(page, code)).toContainText("En consulta");
+    await expect(card(page, code)).toContainText("Consulta");
     await card(page, code)
       .getByRole("button", { name: "Esperar respuesta" })
       .click();
-    await expect(card(page, code)).toContainText("En espera");
+    await expect(card(page, code)).toContainText("Espera respuesta");
     await card(page, code).getByRole("button", { name: "Aprobar" }).click();
     await expect(card(page, code)).toContainText("Aprobada");
 
@@ -270,7 +282,7 @@ test.describe("Estados de las piezas", () => {
     const events = timeline.getByTestId("evento");
     await expect(events).toHaveCount(4);
     await expect(events.nth(0)).toContainText("Registrada");
-    await expect(events.nth(1)).toContainText("En consulta");
+    await expect(events.nth(1)).toContainText("Consulta");
     await expect(events.nth(1)).toContainText("Ventas de prueba");
     await expect(events.nth(1)).toContainText("Consulta inicial");
     await expect(events.nth(3)).toContainText("Aprobada");
@@ -280,15 +292,18 @@ test.describe("Estados de las piezas", () => {
 
     await page.getByRole("tab", { name: "Historial" }).click();
     await expect(page.getByTestId("resumen-estados")).toContainText(
-      "En espera de respuesta del cliente → Aprobada",
+      "Espera respuesta cliente → Aprobada",
     );
 
     // Observación tras el taller, para el resumen de logística.
     await adminClient()
       .from("pieces")
       .update({
-        status: "devuelta_taller",
-        first_sent_at: new Date().toISOString(),
+        status: "enviada_taller",
+        arrived_at: new Date(Date.now() - 120_000).toISOString(),
+        first_sent_at: new Date(Date.now() - 60_000).toISOString(),
+        last_sent_at: new Date(Date.now() - 60_000).toISOString(),
+        last_returned_at: new Date().toISOString(),
       } as never)
       .eq("restoration_id", r.id);
     await page.goto(`/restauraciones/${r.id}`);
@@ -301,7 +316,7 @@ test.describe("Estados de las piezas", () => {
       .getByRole("dialog")
       .getByRole("button", { name: /Confirmar/ })
       .click();
-    await expect(card(page, code)).toContainText("Observada");
+    await expect(card(page, code)).toContainText("Observación");
 
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
@@ -334,14 +349,14 @@ test.describe("Estados de las piezas", () => {
     await dialog.getByLabel("Nota (obligatoria)").fill("Desistió");
     await dialog.getByRole("button", { name: "Confirmar: Anular" }).click();
     await expect(restorationStatus(page)).toHaveText("Anulada");
-    await expect(card(page, `${r.code}-1`)).toContainText("Anulada");
-    await expect(card(page, `${r.code}-2`)).toContainText("Anulada");
+    await expect(card(page, `${r.code}-1`)).toContainText("Anulado");
+    await expect(card(page, `${r.code}-2`)).toContainText("Anulado");
   });
 
   test("logística envía en bloque al taller", async ({ page, loginAs }) => {
     const r = await seedRestoration([
-      { description: "Cubierto 1", status: "recibida" },
-      { description: "Cubierto 2", status: "recibida" },
+      { description: "Cubierto 1", status: "aprobada", arrived: true },
+      { description: "Cubierto 2", status: "aprobada", arrived: true },
     ]);
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
@@ -357,14 +372,14 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, `${r.code}-1`)).toContainText("Enviada al taller");
-    await expect(card(page, `${r.code}-2`)).toContainText("Enviada al taller");
+    await expect(card(page, `${r.code}-1`)).toContainText("Interno");
+    await expect(card(page, `${r.code}-2`)).toContainText("Interno");
   });
 
   test("cada rol ve solo sus acciones", async ({ page, loginAs }) => {
     const r = await seedRestoration([
       { description: "Pieza registrada" },
-      { description: "Pieza recibida", status: "recibida" },
+      { description: "Pieza en tienda", status: "aprobada", arrived: true },
     ]);
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
@@ -380,15 +395,79 @@ test.describe("Estados de las piezas", () => {
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    const recibida = page.getByRole("group", {
+    const enTienda = page.getByRole("group", {
       name: `Acciones de ${r.code}-2`,
     });
     await expect(
-      recibida.getByRole("button", { name: "Anular" }),
+      enTienda.getByRole("button", { name: "Anular" }),
     ).toBeVisible();
     await expect(
-      recibida.getByRole("button", { name: "Enviar al taller" }),
+      enTienda.getByRole("button", { name: "Enviar al taller" }),
     ).toHaveCount(0);
+  });
+
+  test("rechazo, sin arreglo desde Interno y devolución al cliente (P47)", async ({
+    page,
+    loginAs,
+  }) => {
+    const r = await seedRestoration([
+      { description: "Copa rechazada", arrived: true },
+      {
+        description: "Fuente sin arreglo",
+        arrived: true,
+        status: "enviada_taller",
+        workshop: true,
+      },
+      { description: "Jarra que sí se hace", arrived: true },
+    ]);
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    await card(page, `${r.code}-1`)
+      .getByRole("button", { name: "Rechazar" })
+      .click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Nota (obligatoria)").fill("No acepta el precio");
+    await dialog.getByRole("button", { name: "Confirmar: Rechazar" }).click();
+    await expect(card(page, `${r.code}-1`)).toContainText(
+      "Rechazado (cliente)",
+    );
+
+    await loginAs("logistica");
+    await page.goto(`/restauraciones/${r.id}`);
+    await card(page, `${r.code}-2`)
+      .getByRole("button", { name: "No tiene arreglo" })
+      .click();
+    dialog = page.getByRole("dialog");
+    await dialog
+      .getByLabel("Nota (obligatoria)")
+      .fill("El taller dice que la base está rota");
+    await dialog
+      .getByRole("button", { name: "Confirmar: No tiene arreglo" })
+      .click();
+    await expect(card(page, `${r.code}-2`)).toContainText("No tiene arreglo");
+    await expect(card(page, `${r.code}-2`)).toContainText("En tienda");
+
+    await card(page, `${r.code}-1`)
+      .getByRole("button", { name: "Devolver al cliente" })
+      .click();
+    await expect(card(page, `${r.code}-1`)).toContainText("Entregada");
+    await expect(
+      card(page, `${r.code}-1`).getByRole("button", {
+        name: "Devolver al cliente",
+      }),
+    ).toHaveCount(0);
+  });
+
+  test("ventas marca una pieza como urgente", async ({ page, loginAs }) => {
+    const r = await seedRestoration([{ description: "Bandeja urgente" }]);
+    const code = `${r.code}-1`;
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    await page.getByRole("button", { name: `Editar pieza ${code}` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Urgente").check();
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(card(page, code)).toContainText("Urgente");
   });
 
   test("cambia el estado desde el celular @mobile", async ({

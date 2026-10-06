@@ -16,6 +16,9 @@ import { can } from "@/domain/permissions";
 import {
   availableTransitions,
   canMarkArrived,
+  canReceiveFromWorkshop,
+  canReturnToClient,
+  isClosedStatus,
   PIECE_STATUS_LABELS,
   type PieceStatus,
   type PieceTransition,
@@ -25,6 +28,8 @@ import {
   assignWorkshop,
   changePieceStatus,
   markPiecesArrived,
+  receiveFromWorkshop,
+  returnPiecesToClient,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -32,30 +37,49 @@ import {
   ACTION_LABELS,
   needsDialog,
   requirementsFor,
+  snapshotOf,
   StatusChangeDialog,
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
 
-/** No se cambia el taller de una pieza en el taller, entregada o anulada. */
+/** No se cambia el taller de una pieza en el taller, entregada o en un estado final. */
 export const WORKSHOP_LOCKED: readonly PieceStatus[] = [
   "enviada_taller",
   "entregada",
+  "rechazada",
+  "sin_arreglo",
   "anulada",
 ];
+
+/** Lo que las acciones masivas necesitan de cada pieza. */
+type BulkPiece = Pick<
+  StatusPiece,
+  "status" | "arrivedAt" | "readyForDelivery" | "returnedAt"
+>;
+
+const snapshot = (piece: BulkPiece) =>
+  snapshotOf({
+    id: "",
+    code: "",
+    location: "sin_enviar",
+    workshopId: null,
+    urgent: false,
+    ...piece,
+  });
 
 /**
  * Cambios que se pueden aplicar a TODAS las piezas elegidas (acciones masivas),
  * agrupados por estado de destino.
  */
 export function commonTransitions(
-  pieces: readonly Pick<StatusPiece, "status">[],
+  pieces: readonly BulkPiece[],
   role: AppRole,
 ): PendingChange[] {
   if (pieces.length === 0) return [];
   const byTarget = new Map<PieceStatus, PieceTransition[]>();
   pieces.forEach((piece, index) => {
-    const targets = availableTransitions(piece, role);
+    const targets = availableTransitions(snapshot(piece), role);
     for (const t of targets) {
       if (index === 0) byTarget.set(t.to, [t]);
       else byTarget.get(t.to)?.push(t);
@@ -68,12 +92,13 @@ export function commonTransitions(
 }
 
 /** Si la pieza puede elegirse para alguna acción masiva. */
-export function isSelectable(
-  piece: Pick<StatusPiece, "status">,
-  role: AppRole,
-) {
+export function isSelectable(piece: BulkPiece, role: AppRole) {
+  const s = snapshot(piece);
   return (
-    availableTransitions(piece, role).length > 0 ||
+    availableTransitions(s, role).length > 0 ||
+    canMarkArrived(s, role) ||
+    canReceiveFromWorkshop(s, role) ||
+    canReturnToClient(s, role) ||
     (can(role, "piezas.asignar-taller") &&
       !WORKSHOP_LOCKED.includes(piece.status))
   );
@@ -104,17 +129,11 @@ export function PiecesBulkBar({
   const [pending, startTransition] = useTransition();
 
   const bulk = commonTransitions(chosen, role);
-  const bulkArrival =
-    chosen.length > 0 &&
-    chosen.every((p) =>
-      canMarkArrived(
-        {
-          status: p.status,
-          arrivedAt: p.arrivedAt ? new Date(p.arrivedAt) : null,
-        },
-        role,
-      ),
-    );
+  const every = (check: (piece: ReturnType<typeof snapshot>) => boolean) =>
+    chosen.length > 0 && chosen.every((p) => check(snapshot(p)));
+  const bulkArrival = every((p) => canMarkArrived(p, role));
+  const bulkReceive = every((p) => canReceiveFromWorkshop(p, role));
+  const bulkReturn = every((p) => canReturnToClient(p, role));
   const bulkAssign =
     can(role, "piezas.asignar-taller") &&
     chosen.length > 0 &&
@@ -125,6 +144,16 @@ export function PiecesBulkBar({
     toast.success(message);
     onDone();
   };
+  const count = chosen.length === 1 ? "1 pieza" : `${chosen.length} piezas`;
+  const act = (
+    call: () => Promise<{ ok: true } | { error: string }>,
+    message: string,
+  ) =>
+    startTransition(async () => {
+      const result = await call();
+      if ("error" in result) toast.error(result.error);
+      else done(`${count}: ${message}`);
+    });
 
   const applyBulk = async (
     change: PendingChange,
@@ -138,9 +167,7 @@ export function PiecesBulkBar({
       input.workshopId,
     );
     if ("error" in result) return result.error;
-    done(
-      `${chosen.length === 1 ? "1 pieza" : `${chosen.length} piezas`}: ${PIECE_STATUS_LABELS[change.to]}.`,
-    );
+    done(`${count}: ${PIECE_STATUS_LABELS[change.to]}.`);
     return null;
   };
 
@@ -163,22 +190,51 @@ export function PiecesBulkBar({
           variant="outline"
           disabled={pending}
           onClick={() =>
-            startTransition(async () => {
-              const result = await markPiecesArrived(restorationId, ids);
-              if ("error" in result) toast.error(result.error);
-              else done(`${chosen.length} piezas llegaron a la tienda.`);
-            })
+            act(
+              () => markPiecesArrived(restorationId, ids),
+              "llegada a la tienda.",
+            )
           }
         >
           Marcar llegada a tienda
+        </Button>
+      ) : null}
+      {bulkReceive ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() =>
+            act(
+              () => receiveFromWorkshop(restorationId, ids),
+              "de vuelta del taller.",
+            )
+          }
+        >
+          Recibir del taller
+        </Button>
+      ) : null}
+      {bulkReturn ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() =>
+            act(
+              () => returnPiecesToClient(restorationId, ids),
+              "devuelta al cliente.",
+            )
+          }
+        >
+          Devolver al cliente
         </Button>
       ) : null}
       {bulk.map((change) => (
         <Button
           key={change.to}
           size="sm"
-          variant={change.to === "anulada" ? "ghost" : "outline"}
-          className={change.to === "anulada" ? "text-destructive" : undefined}
+          variant={isClosedStatus(change.to) ? "ghost" : "outline"}
+          className={isClosedStatus(change.to) ? "text-destructive" : undefined}
           disabled={pending}
           onClick={() =>
             needsDialog(change)

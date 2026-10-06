@@ -9,6 +9,8 @@ import { PiecesBoardTable } from "./pieces-board-table";
 vi.mock("@/server/restorations/status-actions", () => ({
   changePieceStatus: vi.fn(),
   markPiecesArrived: vi.fn(),
+  receiveFromWorkshop: vi.fn(),
+  returnPiecesToClient: vi.fn(),
   assignWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -20,8 +22,11 @@ const base: BoardPiece = {
   restorationCode: "RES-00001",
   clientName: "Ana Pérez",
   description: "Fuente",
-  status: "recibida",
+  status: "aprobada",
   location: "en_tienda",
+  urgent: false,
+  readyForDelivery: false,
+  returnedAt: null,
   workshopId: null,
   workshopName: null,
   arrivedAt: "2026-10-01T15:00:00Z",
@@ -47,6 +52,7 @@ describe("PiecesBoardTable", () => {
             workshopName: "Taller Central",
             workshopDays: 9,
             workshopOngoing: true,
+            urgent: true,
             lastObservation: "Falta pulir",
           },
         ]}
@@ -58,6 +64,7 @@ describe("PiecesBoardTable", () => {
     ).toBeInTheDocument();
     expect(slow).toHaveTextContent("9 días (en curso)");
     expect(slow).toHaveTextContent("Última observación: Falta pulir");
+    expect(slow).toHaveTextContent("Urgente");
     expect(
       within(screen.getByTestId("pieza-RES-00001-1")).queryByLabelText(
         "Muchos días en el taller",

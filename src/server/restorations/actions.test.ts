@@ -104,6 +104,7 @@ describe("pieceToRpc", () => {
         weightGrams: 12.5,
         priceCents: 120050,
         arrived: false,
+        urgent: true,
         notes: "",
       }),
     ).toEqual({
@@ -117,6 +118,7 @@ describe("pieceToRpc", () => {
       weight_grams: "12.50",
       price: "1200.50",
       arrived: false,
+      urgent: true,
       notes: "",
     });
   });

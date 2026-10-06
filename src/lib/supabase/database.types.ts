@@ -246,6 +246,7 @@ export type Database = {
         Row: {
           actor_id: string | null;
           actor_name: string | null;
+          event: Database["public"]["Enums"]["piece_event"];
           from_status: Database["public"]["Enums"]["piece_status"] | null;
           id: number;
           note: string | null;
@@ -258,6 +259,7 @@ export type Database = {
         Insert: {
           actor_id?: string | null;
           actor_name?: string | null;
+          event?: Database["public"]["Enums"]["piece_event"];
           from_status?: Database["public"]["Enums"]["piece_status"] | null;
           id?: never;
           note?: string | null;
@@ -270,6 +272,7 @@ export type Database = {
         Update: {
           actor_id?: string | null;
           actor_name?: string | null;
+          event?: Database["public"]["Enums"]["piece_event"];
           from_status?: Database["public"]["Enums"]["piece_status"] | null;
           id?: never;
           note?: string | null;
@@ -361,6 +364,7 @@ export type Database = {
           first_sent_at: string | null;
           id: string;
           last_returned_at: string | null;
+          last_sent_at: string | null;
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_name: string;
@@ -368,13 +372,16 @@ export type Database = {
           notes: string;
           number: number;
           price: number;
-          received_at: string | null;
+          ready_for_delivery: boolean | null;
           restoration_id: string;
+          returned_at: string | null;
+          returned_by: string | null;
           service_id: string | null;
           service_name: string;
           shopify_line_item_id: string | null;
           status: Database["public"]["Enums"]["piece_status"];
           updated_at: string;
+          urgent: boolean;
           weight_grams: number | null;
           workshop_id: string | null;
         };
@@ -390,6 +397,7 @@ export type Database = {
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
+          last_sent_at?: string | null;
           location?: never;
           material_id?: string | null;
           material_name?: string;
@@ -397,13 +405,16 @@ export type Database = {
           notes?: string;
           number: number;
           price: number;
-          received_at?: string | null;
+          ready_for_delivery?: never;
           restoration_id: string;
+          returned_at?: string | null;
+          returned_by?: string | null;
           service_id?: string | null;
           service_name?: string;
           shopify_line_item_id?: string | null;
           status?: Database["public"]["Enums"]["piece_status"];
           updated_at?: string;
+          urgent?: boolean;
           weight_grams?: number | null;
           workshop_id?: string | null;
         };
@@ -419,6 +430,7 @@ export type Database = {
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
+          last_sent_at?: string | null;
           location?: never;
           material_id?: string | null;
           material_name?: string;
@@ -426,13 +438,16 @@ export type Database = {
           notes?: string;
           number?: number;
           price?: number;
-          received_at?: string | null;
+          ready_for_delivery?: never;
           restoration_id?: string;
+          returned_at?: string | null;
+          returned_by?: string | null;
           service_id?: string | null;
           service_name?: string;
           shopify_line_item_id?: string | null;
           status?: Database["public"]["Enums"]["piece_status"];
           updated_at?: string;
+          urgent?: boolean;
           weight_grams?: number | null;
           workshop_id?: string | null;
         };
@@ -463,6 +478,13 @@ export type Database = {
             columns: ["restoration_id"];
             isOneToOne: false;
             referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pieces_returned_by_fkey";
+            columns: ["returned_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
           {
@@ -1072,18 +1094,21 @@ export type Database = {
           first_sent_at: string | null;
           id: string | null;
           last_returned_at: string | null;
+          last_sent_at: string | null;
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_name: string | null;
           measure: string | null;
           notes: string | null;
           number: number | null;
-          received_at: string | null;
+          ready_for_delivery: boolean | null;
           restoration_id: string | null;
+          returned_at: string | null;
           service_id: string | null;
           service_name: string | null;
           status: Database["public"]["Enums"]["piece_status"] | null;
           updated_at: string | null;
+          urgent: boolean | null;
           weight_grams: number | null;
           workshop_id: string | null;
         };
@@ -1269,6 +1294,9 @@ export type Database = {
       derive_piece_location: {
         Args: {
           p_arrived_at: string;
+          p_last_returned_at?: string;
+          p_last_sent_at?: string;
+          p_returned_at?: string;
           p_status: Database["public"]["Enums"]["piece_status"];
         };
         Returns: Database["public"]["Enums"]["piece_location"];
@@ -1345,7 +1373,10 @@ export type Database = {
           p_min_workshop_days?: number;
           p_offset?: number;
           p_query?: string;
+          p_ready?: boolean;
           p_status?: Database["public"]["Enums"]["piece_status"];
+          p_to_return?: boolean;
+          p_urgent?: boolean;
           p_workshop_id?: string;
         };
         Returns: {
@@ -1356,10 +1387,12 @@ export type Database = {
           id: string;
           last_observation: string;
           location: Database["public"]["Enums"]["piece_location"];
+          ready_for_delivery: boolean;
           restoration_code: string;
           restoration_id: string;
           status: Database["public"]["Enums"]["piece_status"];
           total_count: number;
+          urgent: boolean;
           workshop_days: number;
           workshop_id: string;
           workshop_name: string;
@@ -1415,6 +1448,20 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      receive_from_workshop: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
+      return_pieces_to_client: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       save_quote: {
         Args: { p_id: string; p_items: Json; p_quote: Json };
         Returns: string;
@@ -1442,18 +1489,20 @@ export type Database = {
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
       payment_type: "contado" | "a_cuenta" | "credito";
+      piece_event:
+        "estado" | "llegada" | "vuelta_taller" | "devolucion_cliente";
       piece_location:
-        "por_recibir" | "en_tienda" | "en_taller" | "entregada" | "anulada";
+        "sin_enviar" | "en_tienda" | "en_taller" | "entregada" | "anulada";
       piece_status:
         | "registrada"
         | "en_consulta"
         | "en_espera"
         | "aprobada"
-        | "recibida"
         | "enviada_taller"
-        | "devuelta_taller"
         | "observada"
         | "entregada"
+        | "rechazada"
+        | "sin_arreglo"
         | "anulada";
       quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
       restoration_status:
@@ -1596,8 +1645,9 @@ export const Constants = {
       document_type: ["dni", "ce", "pasaporte", "ruc"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
       payment_type: ["contado", "a_cuenta", "credito"],
+      piece_event: ["estado", "llegada", "vuelta_taller", "devolucion_cliente"],
       piece_location: [
-        "por_recibir",
+        "sin_enviar",
         "en_tienda",
         "en_taller",
         "entregada",
@@ -1608,11 +1658,11 @@ export const Constants = {
         "en_consulta",
         "en_espera",
         "aprobada",
-        "recibida",
         "enviada_taller",
-        "devuelta_taller",
         "observada",
         "entregada",
+        "rechazada",
+        "sin_arreglo",
         "anulada",
       ],
       quote_status: ["borrador", "emitida", "aceptada", "rechazada"],

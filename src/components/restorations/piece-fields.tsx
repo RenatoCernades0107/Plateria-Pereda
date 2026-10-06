@@ -204,6 +204,24 @@ export function PieceFields({
           )}
         />
       </div>
+      <FormField
+        control={form.control}
+        name={path("urgent")}
+        render={({ field }) => (
+          <FormItem className="flex items-center gap-2">
+            <FormControl>
+              <input
+                type="checkbox"
+                className="accent-primary size-4"
+                checked={Boolean(field.value)}
+                disabled={off("urgent")}
+                onChange={(e) => field.onChange(e.target.checked)}
+              />
+            </FormControl>
+            <FormLabel className="font-normal">Urgente</FormLabel>
+          </FormItem>
+        )}
+      />
       {showArrived ? (
         <FormField
           control={form.control}

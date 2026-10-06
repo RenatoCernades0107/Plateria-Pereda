@@ -139,6 +139,26 @@ export function PiecesBoardFiltersForm({
           }}
         />
       </div>
+      <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:col-span-2 lg:col-span-full">
+        <legend className="sr-only">Mostrar solo</legend>
+        {(
+          [
+            ["urgent", "Solo urgentes"],
+            ["ready", "Listas para entregar"],
+            ["toReturn", "Por devolver al cliente"],
+          ] as const
+        ).map(([key, label]) => (
+          <label key={key} className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary size-4"
+              checked={state[key]}
+              onChange={(e) => set({ [key]: e.target.checked })}
+            />
+            {label}
+          </label>
+        ))}
+      </fieldset>
       <div className="flex items-end gap-2">
         <Button type="submit">Filtrar</Button>
         <Button

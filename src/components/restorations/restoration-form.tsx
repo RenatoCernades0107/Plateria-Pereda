@@ -80,6 +80,7 @@ export const EMPTY_PIECE: PieceFormInput = {
   price: "",
   // P20: las piezas suelen llegar al registrar la restauración.
   arrived: true,
+  urgent: false,
   notes: "",
 };
 

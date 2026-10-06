@@ -1,4 +1,8 @@
-import type { PieceStatus } from "./piece-state-machine";
+import {
+  isClosedStatus,
+  type PieceEvent,
+  type PieceStatus,
+} from "./piece-state-machine";
 
 /**
  * Días en taller y días de cumplimiento (Todo.md §7.4; P23 con su propuesta):
@@ -36,15 +40,18 @@ export type DayCount = {
 };
 
 export type StatusHistoryEntry = {
+  /** Por defecto "estado" (un cambio de estado). */
+  event?: PieceEvent;
   from: PieceStatus | null;
   to: PieceStatus;
   at: Date;
 };
 
 /**
- * Suma de los viajes al taller: de cada "Enviada al taller" a la siguiente salida
- * de ese estado (incluye reenvíos por observación). Si la pieza sigue en el
- * taller, el último viaje se cuenta hasta `now`.
+ * Suma de los viajes al taller: de cada envío (Interno) hasta su "Recibir del
+ * taller", o hasta un cambio de estado fuera de Interno (p. ej. "No tiene arreglo");
+ * incluye reenvíos por observación (P47). Si la pieza sigue en el taller, el último
+ * viaje se cuenta hasta `now`.
  */
 export function daysInWorkshop(
   history: readonly StatusHistoryEntry[],
@@ -54,9 +61,14 @@ export function daysInWorkshop(
   let days = 0;
   let sentAt: Date | null = null;
   for (const entry of ordered) {
-    if (entry.to === "enviada_taller") {
+    const event = entry.event ?? "estado";
+    if (event === "estado" && entry.to === "enviada_taller") {
       sentAt ??= entry.at;
-    } else if (sentAt) {
+    } else if (
+      sentAt &&
+      (event === "vuelta_taller" ||
+        (event === "estado" && entry.to !== "enviada_taller"))
+    ) {
       days += calendarDaysBetween(sentAt, entry.at);
       sentAt = null;
     }
@@ -68,8 +80,8 @@ export function daysInWorkshop(
 
 /**
  * Días desde el registro de la pieza hasta su entrega. Mientras no esté entregada
- * (incluida una observada tras un reclamo) se cuenta hasta `now`; una pieza anulada
- * no tiene días de cumplimiento.
+ * (incluida una observada tras un reclamo) se cuenta hasta `now`; una pieza anulada,
+ * rechazada o sin arreglo no tiene días de cumplimiento.
  */
 export function fulfillmentDays(
   piece: {
@@ -79,7 +91,7 @@ export function fulfillmentDays(
   },
   now: Date,
 ): DayCount | null {
-  if (piece.status === "anulada") return null;
+  if (isClosedStatus(piece.status)) return null;
   if (piece.status === "entregada" && piece.deliveredAt) {
     return {
       days: calendarDaysBetween(piece.registeredAt, piece.deliveredAt),

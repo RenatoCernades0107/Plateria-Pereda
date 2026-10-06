@@ -16,6 +16,7 @@ import { MoneySummary } from "./money-summary";
 import {
   LocationBadge,
   PieceStatusBadge,
+  UrgentBadge,
   RestorationStatusBadge,
 } from "./status-badges";
 import { Timeline, type TimelineEvent } from "./timeline";
@@ -43,21 +44,21 @@ describe("insignias", () => {
     );
   });
 
-  it("distingue lo observado y lo anulado sin depender solo del color", () => {
+  it("usa los colores de la Platería y tacha lo anulado (P47)", () => {
     render(
       <>
         <PieceStatusBadge status="observada" />
         <PieceStatusBadge status="anulada" />
+        <PieceStatusBadge status="rechazada" />
         <RestorationStatusBadge status="anulada" />
+        <UrgentBadge />
       </>,
     );
-    expect(screen.getByText("Observada")).toHaveAttribute(
-      "data-variant",
-      "destructive",
-    );
-    for (const badge of screen.getAllByText("Anulada")) {
-      expect(badge).toHaveClass("line-through");
-    }
+    expect(screen.getByText("Observación")).toHaveClass("bg-yellow-500");
+    expect(screen.getByText("Rechazado (cliente)")).toHaveClass("bg-amber-900");
+    expect(screen.getByText("Anulado")).toHaveClass("line-through");
+    expect(screen.getByText("Anulada")).toHaveClass("line-through");
+    expect(screen.getByText("Urgente")).toHaveAttribute("data-urgent");
   });
 });
 
@@ -93,7 +94,7 @@ const EVENTS: TimelineEvent[] = [
   // Desordenados a propósito: el componente los ordena por fecha.
   {
     at: at("05"),
-    fromStatus: "recibida",
+    fromStatus: "aprobada",
     toStatus: "enviada_taller",
     actorName: "Luis Logística",
     note: null,
@@ -132,13 +133,11 @@ describe("Timeline", () => {
     expect(items[0]).toHaveTextContent("Registrada");
     expect(items[0]).toHaveTextContent("01/10/2026 10:00");
     expect(items[0]).toHaveTextContent("Ana Ventas");
-    expect(items[1]).toHaveTextContent("En consulta");
+    expect(items[1]).toHaveTextContent("Consulta");
     expect(items[1]).toHaveTextContent("desde Registrada");
     expect(items[1]).toHaveTextContent("Sistema");
     expect(items[1]).toHaveTextContent("¿Se puede soldar el asa?");
-    expect(
-      within(items[2]!).getByText("Enviada al taller"),
-    ).toBeInTheDocument();
+    expect(within(items[2]!).getByText("Interno")).toBeInTheDocument();
     expect(items[2]).toHaveTextContent("Luis Logística");
   });
 
@@ -166,15 +165,16 @@ describe("Timeline", () => {
     const events: TimelineEvent[] = [
       ...EVENTS,
       {
+        event: "vuelta_taller",
         at: at("06"),
         fromStatus: "enviada_taller",
-        toStatus: "devuelta_taller",
+        toStatus: "enviada_taller",
         actorName: "Luis Logística",
         note: null,
       },
       {
         at: at("09"),
-        fromStatus: "devuelta_taller",
+        fromStatus: "enviada_taller",
         toStatus: "entregada",
         actorName: "Ana Ventas",
         note: null,

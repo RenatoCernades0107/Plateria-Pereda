@@ -151,7 +151,7 @@ test.describe("Restauraciones", () => {
       "En tienda",
     );
     await expect(page.getByTestId(`pieza-${code}-1`)).toContainText(
-      "Por recibir",
+      "Sin enviar",
     );
 
     const results = await makeAxeBuilder().analyze();
