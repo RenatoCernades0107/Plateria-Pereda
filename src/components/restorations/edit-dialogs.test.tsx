@@ -84,9 +84,6 @@ describe("PieceDialog", () => {
     expect(
       within(dialog).getByText("Solo el administrador cambia el precio."),
     ).toBeVisible();
-    expect(
-      within(dialog).queryByLabelText("La pieza ya está en tienda"),
-    ).toBeNull();
 
     await user.clear(within(dialog).getByLabelText("Material"));
     await user.type(within(dialog).getByLabelText("Material"), "Plata 925");

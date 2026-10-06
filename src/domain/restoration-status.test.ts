@@ -70,6 +70,7 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
     ({
       status,
       arrivedAt,
+      firstSentAt,
       lastSentAt,
       lastReturnedAt,
       returnedAt,
@@ -79,6 +80,7 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
         deriveLocation({
           status: status as PieceStatus,
           arrivedAt: date(arrivedAt),
+          firstSentAt: date(firstSentAt),
           lastSentAt: date(lastSentAt),
           lastReturnedAt: date(lastReturnedAt),
           returnedAt: date(returnedAt),

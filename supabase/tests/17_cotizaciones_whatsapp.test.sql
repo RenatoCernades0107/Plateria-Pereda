@@ -1,6 +1,6 @@
 begin;
 
-select plan(34);
+select plan(36);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ea1', 'ventas@cwa.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -99,8 +99,17 @@ select results_eq(
 );
 select results_eq(
   $$ select status::text, location::text from public.pieces where restoration_id = (select id from r1) order by number $$,
-  $$ values ('aprobada', 'en_tienda'), ('aprobada', 'sin_enviar') $$,
-  'las piezas entran Aprobadas; la que ya llegó queda en tienda'
+  $$ values ('aprobada', 'por_whatsapp'), ('aprobada', 'por_whatsapp') $$,
+  'las piezas entran Aprobadas y Por WhatsApp hasta que lleguen (P48)'
+);
+select lives_ok(
+  $$ select * from public.mark_pieces_arrived(array(
+       select p.id from public.pieces p where p.restoration_id = (select id from r1) and p.number = 1)) $$,
+  'se marca la llegada de la Fuente'
+);
+select is(
+  (select p.location::text from public.pieces p where p.restoration_id = (select id from r1) and p.number = 1),
+  'sin_enviar', 'al marcar la llegada pasa de Por WhatsApp a Sin enviar'
 );
 select is(
   (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r1)),

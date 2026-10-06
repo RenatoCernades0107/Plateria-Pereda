@@ -100,13 +100,13 @@ describe("RestorationForm", () => {
     expect(total).toHaveTextContent("S/ 51.00");
   });
 
-  it("la pieza viene marcada como ya en tienda (P20)", () => {
+  it("no pregunta si la pieza ya está en tienda: en oficina siempre lo está (P48)", () => {
     renderForm();
     expect(
-      within(screen.getByTestId("pieza-1")).getByLabelText(
+      within(screen.getByTestId("pieza-1")).queryByLabelText(
         "La pieza ya está en tienda",
       ),
-    ).toBeChecked();
+    ).toBeNull();
   });
 
   it("propone el precio sugerido del servicio elegido del catálogo", async () => {
@@ -190,7 +190,6 @@ const quoteItem = (
     service: { id: null, name: "" },
     weight: "",
     price,
-    arrived: false,
     urgent: false,
     notes: "",
     quoteItemId: null,
@@ -234,14 +233,9 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     const user = userEvent.setup();
     renderForm();
     const piece = screen.getByTestId("pieza-1");
-    expect(
-      within(piece).getByLabelText("La pieza ya está en tienda"),
-    ).toBeInTheDocument();
+    expect(within(piece).getByLabelText("Taller")).toBeInTheDocument();
 
     await user.click(screen.getByLabelText(/El pedido vino por WhatsApp/));
-    expect(
-      within(piece).queryByLabelText("La pieza ya está en tienda"),
-    ).toBeNull();
     expect(within(piece).queryByLabelText("Taller")).toBeNull();
     expect(screen.getByText("Cliente (opcional)")).toBeInTheDocument();
 
@@ -329,7 +323,6 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
           expect.objectContaining({
             description: "Jarra",
             quoteItemId: "00000000-0000-0000-0000-0000000000d2",
-            arrived: false,
           }),
         ],
       }),

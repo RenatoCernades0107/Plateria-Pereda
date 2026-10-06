@@ -43,12 +43,7 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import {
-  LocationBadge,
-  PieceStatusBadge,
-  ReadyBadge,
-  UrgentBadge,
-} from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
 export const ACTION_LABELS: Record<PieceStatus, string> = {
@@ -309,7 +304,6 @@ export function PieceStatusPanel({
       <div className="flex flex-wrap items-center gap-2">
         <PieceStatusBadge status={optimistic.status} />
         <LocationBadge location={optimistic.location} />
-        {optimistic.readyForDelivery ? <ReadyBadge /> : null}
         {optimistic.urgent ? <UrgentBadge /> : null}
         {pending ? (
           <Loader2
@@ -333,7 +327,7 @@ export function PieceStatusPanel({
                 act(
                   {
                     arrivedAt: new Date().toISOString(),
-                    location: "en_tienda",
+                    location: "sin_enviar",
                   },
                   () => markPiecesArrived(restorationId, [piece.id]),
                   "llegó a la tienda.",

@@ -17,7 +17,7 @@ type NewPiece = {
   arrived?: boolean;
   status?: string;
   workshop?: boolean;
-  /** En Interno y ya de vuelta del taller ("Lista para entregar", P47). */
+  /** En Interno y ya de vuelta del taller (ubicación "En tienda", P48). */
   back?: boolean;
 };
 
@@ -103,7 +103,7 @@ test.describe("Estados de las piezas", () => {
     await admin.from("workshops").delete().eq("id", workshopId);
   });
 
-  test("flujo feliz: aprobada → llegada → Interno → vuelta del taller → entregada", async ({
+  test("flujo feliz: aprobada (Sin enviar) → Interno (En taller) → vuelta (En tienda) → entregada", async ({
     page,
     loginAs,
   }) => {
@@ -117,13 +117,12 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, code)).toContainText("Sin enviar");
     await expect(restorationStatus(page)).toHaveText("Aprobada");
 
+    // Las piezas de oficina ya están en la tienda: no hay "Marcar llegada" (P48).
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code)
-      .getByRole("button", { name: "Marcar llegada a tienda" })
-      .click();
-    await expect(card(page, code)).toContainText("Aprobada");
-    await expect(card(page, code)).toContainText("En tienda");
+    await expect(
+      card(page, code).getByRole("button", { name: "Marcar llegada a tienda" }),
+    ).toHaveCount(0);
 
     await card(page, code)
       .getByRole("button", { name: "Enviar al taller" })
@@ -142,7 +141,7 @@ test.describe("Estados de las piezas", () => {
     await card(page, code)
       .getByRole("button", { name: "Recibir del taller" })
       .click();
-    await expect(card(page, code)).toContainText("Lista para entregar");
+    await expect(card(page, code)).toContainText("En tienda");
     await expect(card(page, code)).toContainText("Interno");
     await expect(restorationStatus(page)).toHaveText("Lista");
 
@@ -200,7 +199,7 @@ test.describe("Estados de las piezas", () => {
     await expect(restorationStatus(page)).toHaveText("Aprobada");
   });
 
-  test("una pieza que llegó antes de aprobarse queda Aprobada y en tienda", async ({
+  test("una pieza de oficina aprobada queda Aprobada y Sin enviar", async ({
     page,
     loginAs,
   }) => {
@@ -213,7 +212,7 @@ test.describe("Estados de las piezas", () => {
       .getByRole("button", { name: "Aprobar" })
       .click();
     await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
-    await expect(card(page, `${r.code}-1`)).toContainText("En tienda");
+    await expect(card(page, `${r.code}-1`)).toContainText("Sin enviar");
   });
 
   test("observada y reenvío al taller", async ({ page, loginAs }) => {
@@ -383,15 +382,10 @@ test.describe("Estados de las piezas", () => {
     ]);
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
-    const registrada = page.getByRole("group", {
-      name: `Acciones de ${r.code}-1`,
-    });
+    // Logística no consulta, aprueba ni anula; la pieza ya está en la tienda (P48).
     await expect(
-      registrada.getByRole("button", { name: "Marcar llegada a tienda" }),
-    ).toBeVisible();
-    for (const name of ["Aprobar", "Poner en consulta", "Anular"]) {
-      await expect(registrada.getByRole("button", { name })).toHaveCount(0);
-    }
+      page.getByRole("group", { name: `Acciones de ${r.code}-1` }),
+    ).toHaveCount(0);
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);

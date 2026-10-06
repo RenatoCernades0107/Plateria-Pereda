@@ -12,9 +12,9 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, N1, N2 |
 | Respondidas en parte | P13 (falta el efecto de "no incluye IGV"), P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
-| Supuestos por confirmar | P46 (supuestos a–c), P47 (supuestos a–c) |
+| Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
 > 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
@@ -224,6 +224,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Contexto:** si llega antes de aprobarse, debe pasar a "Recibida" apenas se apruebe; hay que saber que ya está físicamente en la tienda.
 - **Propuesta:** en el registro, casilla "La pieza ya está en tienda" marcada por defecto; para las que llegan después, un botón "Marcar llegada" (lo usan logística y ventas).
 - **Respuesta (2026-10-05):** ✅ **Sí, suelen llegar al registrar.** La casilla "La pieza ya está en tienda" viene marcada por defecto (se desmarca para las que llegan después).
+- **Reemplazada (2026-10-06, P48):** se quita la casilla. Toda pieza registrada en oficina ya está en la tienda ("Sin enviar"); solo las que vienen de una cotización de WhatsApp empiezan "Por WhatsApp".
 
 ### P21 · ¿Hay una sola tienda física?
 - **Contexto:** si hay varias sedes, la ubicación "En tienda" debería indicar en cuál está la pieza.
@@ -484,6 +485,16 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (b) **Urgente:** casilla por pieza en el registro y la edición (ventas y admin); logística la ve; en `/piezas` y el kanban las urgentes van primero y se filtran con "Solo urgentes"; no cambia el precio.
   - (c) Para enviar una pieza al taller debe estar en la tienda; para entregarla u observarla desde Interno debe haber vuelto del taller.
 
+### P48 · Ubicaciones de la pieza y restauración "Rechazada" (2026-10-06)
+- **Contexto:** al revisar los supuestos de P46 y P47, la Platería corrigió las ubicaciones y el estado general cuando todas las piezas quedan cerradas.
+- **Respuesta (2026-10-06):** ✅
+  - (1) **Cinco ubicaciones**, en orden: **Por WhatsApp** (pieza de una restauración que salió de una cotización de WhatsApp y aún no llega) → **Sin enviar** (en la tienda, aún no enviada al taller) → **En taller** → **En tienda** (volvió del taller) → **Entregada**. Una pieza anulada mantiene la ubicación **Anulada**.
+  - (2) **Se quita la casilla "La pieza ya está en tienda"** (reemplaza P20): toda pieza registrada en oficina nace "Sin enviar"; las de WhatsApp pasan de "Por WhatsApp" a "Sin enviar" con "Marcar llegada".
+  - (3) Se enviará al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
+  - (4) Si todas las piezas quedan cerradas, la restauración queda **Rechazada** si alguna fue rechazada o no tiene arreglo, y **Anulada** solo si todas se anularon (antes quedaba siempre Anulada, lo que parecía un error).
+  - (5) Logística ve las restauraciones **Rechazadas mientras tengan piezas por devolver** al cliente; después pasan a ser pasadas (D24).
+  - (6) Supuesto P46 (a) confirmado: si una pieza copiada se anula, se rechaza o queda sin arreglo, vuelve a quedar pendiente en la cotización. Reemplaza los supuestos P47 (a) y (c).
+
 ---
 
 ## Preguntas para el negocio
@@ -566,6 +577,10 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D44 | Rechazado y No tiene arreglo son finales y no se cobran (como Anulado); las piezas se devuelven al cliente con "Devolver al cliente" | P47 |
 | D45 | La ubicación "Por recibir" pasa a "Sin enviar" (`sin_enviar`) | P47 |
 | D46 | El rechazo del cliente se registra como "Rechazado (cliente)"; Anulado queda para errores y cancelaciones | P47 |
+| D47 | Ubicaciones: Por WhatsApp → Sin enviar → En taller → En tienda (de vuelta del taller) → Entregada; Anulada para las piezas anuladas. Reemplaza D42 y D45 en lo que diga distinto | P48 |
+| D48 | Sin casilla "La pieza ya está en tienda": las piezas de oficina nacen en la tienda; las de WhatsApp se marcan al llegar | P48, reemplaza P20 |
+| D49 | Restauración con todas las piezas cerradas: Rechazada si alguna fue rechazada o sin arreglo; Anulada si todas se anularon | P48 |
+| D50 | Logística ve las restauraciones Rechazadas mientras tengan piezas por devolver | P48, ajusta D24 |
 
 ---
 
@@ -581,4 +596,5 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
+| 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
 | 2026-10-06 | P46, P47 | Cotización sin fotos y con cliente opcional (obligatorio al copiar); nunca en la misma vista que las restauraciones. Estados nuevos de la pieza: Rechazado, No tiene arreglo, Interno, Observación; sin Recibida ni Devuelta; marca Urgente; "Sin enviar" en vez de "Por recibir". |

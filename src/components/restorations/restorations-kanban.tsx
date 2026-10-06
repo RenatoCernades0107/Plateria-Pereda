@@ -12,7 +12,8 @@ import type { RestorationListItem } from "@/server/restorations/queries";
 
 /**
  * Tablero kanban de restauraciones: una columna por estado general. Logística no
- * ve las columnas de restauraciones pasadas (completadas y anuladas, D24) ni montos.
+ * ve las columnas de restauraciones pasadas (completadas y anuladas, D24) ni montos;
+ * las rechazadas sí, mientras tengan piezas por devolver (P48).
  */
 export function RestorationsKanban({
   items,

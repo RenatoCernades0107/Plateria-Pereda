@@ -96,11 +96,6 @@ test.describe("Restauraciones", () => {
       service: "Restauración completa",
       price: "1,200.50",
     });
-    // P20: la casilla viene marcada; esta pieza llega después.
-    await page
-      .getByTestId("pieza-1")
-      .getByLabel("La pieza ya está en tienda")
-      .uncheck();
     await page.getByRole("button", { name: "Duplicar pieza 1" }).click();
     await page
       .getByTestId("pieza-2")
@@ -108,10 +103,6 @@ test.describe("Restauraciones", () => {
       .fill("Fuente gemela");
     await page.getByRole("button", { name: "Agregar pieza" }).click();
     await fillPiece(page, 3, { description: "Cucharita", price: "35" });
-    await page
-      .getByTestId("pieza-3")
-      .getByLabel("La pieza ya está en tienda")
-      .check();
 
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 2,436.00");
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText(
@@ -147,8 +138,9 @@ test.describe("Restauraciones", () => {
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
     expect(code).toMatch(/^RES-\d{5,}$/);
     await expect(page.getByTestId("monto-total")).toContainText("2,436.00");
+    // Las piezas de oficina nacen en la tienda, sin enviar al taller (P48).
     await expect(page.getByTestId(`pieza-${code}-3`)).toContainText(
-      "En tienda",
+      "Sin enviar",
     );
     await expect(page.getByTestId(`pieza-${code}-1`)).toContainText(
       "Sin enviar",

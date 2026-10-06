@@ -12,7 +12,7 @@ import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, ReadyBadge, UrgentBadge } from "./status-badges";
+import { LocationBadge, UrgentBadge } from "./status-badges";
 
 /**
  * Tablero kanban de piezas en curso: una columna por estado (las urgentes primero en
@@ -104,7 +104,6 @@ export function PiecesKanban({
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           {piece.urgent ? <UrgentBadge /> : null}
                           <LocationBadge location={piece.location} />
-                          {piece.readyForDelivery ? <ReadyBadge /> : null}
                           <span className="text-muted-foreground">
                             {piece.workshopName ?? "Sin taller"}
                           </span>

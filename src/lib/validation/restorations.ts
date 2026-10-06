@@ -83,8 +83,6 @@ export const pieceSchema = z
     service: catalogChoice,
     weight,
     price,
-    /** "La pieza ya está en tienda": marca su llegada al registrarla. */
-    arrived: z.boolean(),
     /** Marca "Urgente" (P47): no es un estado. */
     urgent: z.boolean().default(false),
     /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */

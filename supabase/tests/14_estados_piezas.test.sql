@@ -1,6 +1,6 @@
 begin;
 
-select plan(46);
+select plan(51);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000aa1', 'ventas@estados.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -10,8 +10,13 @@ insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
 insert into public.workshops (id, name) values ('00000000-0000-0000-0000-00000000aa10', 'Taller Estados');
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000aa20', 'persona', 'Ana', 'gid://shopify/Customer/aa20');
-insert into public.restorations (id, client_id, payment_type)
-  values ('00000000-0000-0000-0000-00000000aa30', '00000000-0000-0000-0000-00000000aa20', 'contado');
+-- Restauraciones que salieron de una cotización de WhatsApp: sus piezas no llegaron
+-- (Por WhatsApp) hasta que se marca la llegada (P48). Las de oficina nacen en la tienda.
+insert into public.whatsapp_quotes (id, payment_type)
+  values ('00000000-0000-0000-0000-00000000aa90', 'contado');
+insert into public.restorations (id, client_id, payment_type, origin, whatsapp_quote_id)
+  values ('00000000-0000-0000-0000-00000000aa30', '00000000-0000-0000-0000-00000000aa20', 'contado',
+    'whatsapp', '00000000-0000-0000-0000-00000000aa90');
 insert into public.pieces (id, restoration_id, description, price, arrived_at) values
   ('00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa30', 'Fuente', 100, null),
   ('00000000-0000-0000-0000-00000000aa42', '00000000-0000-0000-0000-00000000aa30', 'Bandeja', 50, now());
@@ -57,8 +62,8 @@ select results_eq(
 select results_eq(
   $$ select location::text, approved_at is not null from public.pieces
      where id in ('00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa42') order by id $$,
-  $$ values ('sin_enviar', true), ('en_tienda', true) $$,
-  'la ubicación distingue Sin enviar de En tienda y se fija la aprobación'
+  $$ values ('por_whatsapp', true), ('sin_enviar', true) $$,
+  'la ubicación distingue Por WhatsApp de Sin enviar y se fija la aprobación'
 );
 
 reset role;
@@ -77,7 +82,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select throws_ok(
   $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[],
        'enviada_taller', null, '00000000-0000-0000-0000-00000000aa10') $$,
-  '23514', null, 'al taller solo va lo que está en la tienda'
+  '23514', null, 'al taller solo va lo que está en la tienda (no Por WhatsApp)'
 );
 select results_eq(
   $$ select status::text from public.mark_pieces_arrived(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
@@ -185,8 +190,9 @@ select is(
 );
 
 -- Rechazado, No tiene arreglo y Devolver al cliente (P47).
-insert into public.restorations (id, client_id, payment_type)
-  values ('00000000-0000-0000-0000-00000000aa32', '00000000-0000-0000-0000-00000000aa20', 'contado');
+insert into public.restorations (id, client_id, payment_type, origin, whatsapp_quote_id)
+  values ('00000000-0000-0000-0000-00000000aa32', '00000000-0000-0000-0000-00000000aa20', 'contado',
+    'whatsapp', '00000000-0000-0000-0000-00000000aa90');
 insert into public.pieces (id, restoration_id, description, price, arrived_at, urgent) values
   ('00000000-0000-0000-0000-00000000aa44', '00000000-0000-0000-0000-00000000aa32', 'Copa', 30, now(), false),
   ('00000000-0000-0000-0000-00000000aa45', '00000000-0000-0000-0000-00000000aa32', 'Plato', 40, null, false),
@@ -243,19 +249,8 @@ select throws_ok(
   $$ select * from public.return_pieces_to_client(array['00000000-0000-0000-0000-00000000aa45']::uuid[]) $$,
   '23514', null, 'no se devuelve una pieza que nunca llegó a la tienda'
 );
-select results_eq(
-  $$ select status::text from public.return_pieces_to_client(array['00000000-0000-0000-0000-00000000aa44']::uuid[]) $$,
-  $$ values ('rechazada') $$,
-  'logística devuelve al cliente la pieza rechazada'
-);
-reset role;
-select results_eq(
-  $$ select location::text, returned_at is not null, returned_by::text from public.pieces
-     where id = '00000000-0000-0000-0000-00000000aa44' $$,
-  $$ values ('entregada', true, '00000000-0000-0000-0000-000000000aa2') $$,
-  'la pieza devuelta queda con ubicación Entregada, fecha y quién la devolvió'
-);
-set local role authenticated;
+
+-- La última pieza se anula: todas cerradas y alguna rechazada → Rechazada (P48).
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
 select lives_ok(
   $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa46']::uuid[], 'anulada', 'Registro duplicado') $$,
@@ -264,7 +259,53 @@ select lives_ok(
 reset role;
 select is(
   (select status::text from public.restorations where id = '00000000-0000-0000-0000-00000000aa32'),
-  'anulada', 'si todas las piezas quedan anuladas, rechazadas o sin arreglo, la restauración queda Anulada'
+  'rechazada', 'todas cerradas y alguna rechazada o sin arreglo: la restauración queda Rechazada'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
+select is(
+  (select count(*)::int from public.restorations_operational where id = '00000000-0000-0000-0000-00000000aa32'),
+  1, 'logística ve la restauración rechazada mientras tenga piezas por devolver'
+);
+select results_eq(
+  $$ select status::text from public.return_pieces_to_client(array['00000000-0000-0000-0000-00000000aa44']::uuid[]) $$,
+  $$ values ('rechazada') $$,
+  'logística devuelve al cliente la pieza rechazada'
+);
+select is(
+  (select count(*)::int from public.restorations_operational where id = '00000000-0000-0000-0000-00000000aa32'),
+  0, 'sin piezas por devolver, la restauración rechazada pasa a ser pasada (D24)'
+);
+reset role;
+select results_eq(
+  $$ select location::text, returned_at is not null, returned_by::text from public.pieces
+     where id = '00000000-0000-0000-0000-00000000aa44' $$,
+  $$ values ('entregada', true, '00000000-0000-0000-0000-000000000aa2') $$,
+  'la pieza devuelta queda con ubicación Entregada, fecha y quién la devolvió'
+);
+
+-- Si todas se anularon, la restauración queda Anulada (P48).
+insert into public.restorations (id, client_id, payment_type)
+  values ('00000000-0000-0000-0000-00000000aa33', '00000000-0000-0000-0000-00000000aa20', 'contado');
+insert into public.pieces (id, restoration_id, description, price)
+  values ('00000000-0000-0000-0000-00000000aa47', '00000000-0000-0000-0000-00000000aa33', 'Vaso duplicado', 10);
+select is(
+  (select location::text from public.pieces where id = '00000000-0000-0000-0000-00000000aa47'),
+  'sin_enviar', 'una pieza de oficina nace en la tienda (Sin enviar)'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa47']::uuid[], 'anulada', 'Duplicada') $$,
+  'ventas anula la única pieza'
+);
+reset role;
+select results_eq(
+  $$ select r.status::text, p.location::text from public.restorations r join public.pieces p on p.restoration_id = r.id
+     where r.id = '00000000-0000-0000-0000-00000000aa33' $$,
+  $$ values ('anulada', 'anulada') $$,
+  'si todas se anularon queda Anulada, y la pieza con ubicación Anulada'
 );
 
 -- Métricas con un historial conocido (fechas fijas en Lima).
@@ -291,7 +332,7 @@ select results_eq(
 select is(
   (select count(*)::int from public.pieces p
    where p.location is distinct from public.derive_piece_location(
-     p.status, p.arrived_at, p.last_sent_at, p.last_returned_at, p.returned_at)),
+     p.status, p.arrived_at, p.first_sent_at, p.last_sent_at, p.last_returned_at, p.returned_at)),
   0, 'la columna generada de ubicación coincide con derive_piece_location()'
 );
 

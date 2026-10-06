@@ -1513,6 +1513,7 @@ export type Database = {
       derive_piece_location: {
         Args: {
           p_arrived_at: string;
+          p_first_sent_at?: string;
           p_last_returned_at?: string;
           p_last_sent_at?: string;
           p_returned_at?: string;
@@ -1774,7 +1775,12 @@ export type Database = {
       piece_event:
         "estado" | "llegada" | "vuelta_taller" | "devolucion_cliente";
       piece_location:
-        "sin_enviar" | "en_tienda" | "en_taller" | "entregada" | "anulada";
+        | "por_whatsapp"
+        | "sin_enviar"
+        | "en_tienda"
+        | "en_taller"
+        | "entregada"
+        | "anulada";
       piece_status:
         | "registrada"
         | "en_consulta"
@@ -1795,7 +1801,8 @@ export type Database = {
         | "parcialmente_lista"
         | "lista"
         | "completada"
-        | "anulada";
+        | "anulada"
+        | "rechazada";
       whatsapp_quote_status:
         "cotizada" | "pedida_parcial" | "pedida" | "descartada";
     };
@@ -1932,6 +1939,7 @@ export const Constants = {
       payment_type: ["contado", "a_cuenta", "credito"],
       piece_event: ["estado", "llegada", "vuelta_taller", "devolucion_cliente"],
       piece_location: [
+        "por_whatsapp",
         "sin_enviar",
         "en_tienda",
         "en_taller",
@@ -1960,6 +1968,7 @@ export const Constants = {
         "lista",
         "completada",
         "anulada",
+        "rechazada",
       ],
       whatsapp_quote_status: [
         "cotizada",

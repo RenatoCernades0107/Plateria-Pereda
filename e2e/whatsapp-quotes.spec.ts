@@ -151,6 +151,13 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     );
     await expect(page.getByTestId("origen")).toContainText("WhatsApp");
     await expect(page.getByTestId("origen")).toContainText(/CWA-\d{5,}/);
+    // Las piezas copiadas nacen "Por WhatsApp" hasta que llegan a la tienda (P48).
+    const first = page.locator("[data-testid^='pieza-RES-']").first();
+    await expect(first).toContainText("Por WhatsApp");
+    await first
+      .getByRole("button", { name: "Marcar llegada a tienda" })
+      .click();
+    await expect(first).toContainText("Sin enviar");
 
     await page.goto(quoteUrl);
     await expect(page.getByTestId("estado-cotizacion")).toHaveText(

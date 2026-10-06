@@ -77,7 +77,7 @@ test.describe("Vista de piezas", () => {
     await admin.from("workshops").delete().eq("id", workshopId);
   });
 
-  test("logística filtra En tienda / Aprobada, elige 3 piezas y las envía al taller", async ({
+  test("logística filtra Sin enviar / Aprobada, elige 3 piezas y las envía al taller", async ({
     page,
     loginAs,
   }) => {
@@ -87,11 +87,11 @@ test.describe("Vista de piezas", () => {
     await page.goto("/piezas");
     await page.getByLabel("Código, descripción o cliente").fill(clientName);
     await page.getByLabel("Ubicación").click();
-    await page.getByRole("option", { name: "En tienda" }).click();
+    await page.getByRole("option", { name: "Sin enviar" }).click();
     await page.getByLabel("Estado").click();
     await page.getByRole("option", { name: "Aprobada" }).click();
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page).toHaveURL(/ubicacion=en_tienda&estado=aprobada/);
+    await expect(page).toHaveURL(/ubicacion=sin_enviar&estado=aprobada/);
     await expect(page.getByText("3 piezas · Página 1 de 1")).toBeVisible();
 
     await page.getByLabel("Elegir todas las de esta página").check();
@@ -232,7 +232,7 @@ test.describe("Vista de piezas", () => {
     await page.goto(`/piezas?q=Vuelta&listas=1`);
     await expect(page.getByText("2 piezas · Página 1 de 1")).toBeVisible();
     await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
-      "Lista para entregar",
+      "En tienda",
     );
   });
 

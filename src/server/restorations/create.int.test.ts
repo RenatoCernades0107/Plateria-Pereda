@@ -67,7 +67,6 @@ describe("registro de restauraciones", () => {
           service: { id: null, name: "Limpieza" },
           weight: "820.5",
           price: "0.10",
-          arrived: true,
           notes: "",
         },
         {
@@ -78,7 +77,6 @@ describe("registro de restauraciones", () => {
           service: { id: null, name: "" },
           weight: "",
           price: "0.20",
-          arrived: false,
           notes: "",
         },
       ],

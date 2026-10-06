@@ -57,6 +57,10 @@ function renderPanel(
         location: deriveLocation({
           status,
           arrivedAt: arrivedAt ? new Date(arrivedAt) : null,
+          firstSentAt:
+            status === "enviada_taller"
+              ? new Date("2026-10-05T10:00:00Z")
+              : null,
           lastSentAt: new Date("2026-10-05T10:00:00Z"),
           lastReturnedAt: readyForDelivery
             ? new Date("2026-10-06T10:00:00Z")
@@ -138,7 +142,8 @@ describe("PieceStatusPanel", () => {
       readyForDelivery: true,
     });
     expect(buttons()).toEqual(["No tiene arreglo", "Entregar", "Observar"]);
-    expect(screen.getByText("Lista para entregar")).toBeInTheDocument();
+    // "En tienda" = volvió del taller (P48).
+    expect(screen.getByText("En tienda")).toBeInTheDocument();
     expect(screen.getByText("Interno")).toBeInTheDocument();
   });
 

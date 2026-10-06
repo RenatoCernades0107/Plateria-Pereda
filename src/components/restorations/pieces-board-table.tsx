@@ -11,12 +11,7 @@ import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import {
-  LocationBadge,
-  PieceStatusBadge,
-  ReadyBadge,
-  UrgentBadge,
-} from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
 function Days({ piece }: { piece: BoardPiece }) {
   const long = isLongInWorkshop(piece);
@@ -142,7 +137,6 @@ export function PiecesBoardTable({
                 {piece.urgent ? <UrgentBadge /> : null}
                 <PieceStatusBadge status={piece.status} />
                 <LocationBadge location={piece.location} />
-                {piece.readyForDelivery ? <ReadyBadge /> : null}
               </div>
               <span className="text-muted-foreground text-sm">
                 {piece.workshopName ?? "Sin taller"}

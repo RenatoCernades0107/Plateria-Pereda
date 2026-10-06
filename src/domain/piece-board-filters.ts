@@ -18,9 +18,10 @@ export const WORKSHOP_DAYS_ALERT = 7;
  * rechazadas o sin arreglo solo mientras siguen en la tienda (por devolver, P47).
  */
 export const BOARD_LOCATIONS = [
+  "por_whatsapp",
   "sin_enviar",
-  "en_tienda",
   "en_taller",
+  "en_tienda",
 ] as const satisfies readonly PieceLocation[];
 export const BOARD_STATUSES = [
   "registrada",

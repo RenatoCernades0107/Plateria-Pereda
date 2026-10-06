@@ -67,6 +67,7 @@ describe("consistencia entre TypeScript y la BD", () => {
     async ({
       status,
       arrivedAt,
+      firstSentAt,
       lastSentAt,
       lastReturnedAt,
       returnedAt,
@@ -75,6 +76,7 @@ describe("consistencia entre TypeScript y la BD", () => {
       const { data } = await createAdminClient().rpc("derive_piece_location", {
         p_status: status as never,
         p_arrived_at: arrivedAt as string,
+        p_first_sent_at: firstSentAt as string,
         p_last_sent_at: lastSentAt as string,
         p_last_returned_at: lastReturnedAt as string,
         p_returned_at: returnedAt as string,

@@ -96,7 +96,6 @@ export function PieceFields({
   materials,
   services,
   editable,
-  showArrived = true,
   showWorkshop = true,
   showUrgent = true,
   priceHint,
@@ -107,7 +106,6 @@ export function PieceFields({
   materials: CatalogOption[];
   services: CatalogOption[];
   editable?: readonly PieceEditableField[];
-  showArrived?: boolean;
   /** Las cotizaciones de WhatsApp no llevan taller ni marca urgente (P46). */
   showWorkshop?: boolean;
   showUrgent?: boolean;
@@ -227,27 +225,6 @@ export function PieceFields({
                 />
               </FormControl>
               <FormLabel className="font-normal">Urgente</FormLabel>
-            </FormItem>
-          )}
-        />
-      ) : null}
-      {showArrived ? (
-        <FormField
-          control={form.control}
-          name={path("arrived")}
-          render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
-              <FormControl>
-                <input
-                  type="checkbox"
-                  className="accent-primary size-4"
-                  checked={Boolean(field.value)}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              </FormControl>
-              <FormLabel className="font-normal">
-                La pieza ya está en tienda
-              </FormLabel>
             </FormItem>
           )}
         />

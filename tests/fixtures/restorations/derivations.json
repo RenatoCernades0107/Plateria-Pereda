@@ -376,7 +376,7 @@
       "readyForOrder": true
     },
     {
-      "name": "todas rechazadas, sin arreglo o anuladas",
+      "name": "todas cerradas y alguna rechazada o sin arreglo: Rechazada",
       "pieces": [
         {
           "status": "rechazada",
@@ -397,7 +397,7 @@
           "readyForDelivery": false
         }
       ],
-      "expected": "anulada",
+      "expected": "rechazada",
       "readyForOrder": false
     },
     {
@@ -418,28 +418,35 @@
       ],
       "expected": "lista",
       "readyForOrder": true
+    },
+    {
+      "name": "todas rechazadas",
+      "pieces": [
+        {
+          "status": "rechazada",
+          "approvedAt": null,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        }
+      ],
+      "expected": "rechazada",
+      "readyForOrder": false
     }
   ],
   "location": [
     {
       "status": "registrada",
       "arrivedAt": null,
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
-      "expected": "sin_enviar"
+      "expected": "por_whatsapp"
     },
     {
       "status": "registrada",
       "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "en_tienda"
-    },
-    {
-      "status": "en_consulta",
-      "arrivedAt": null,
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
@@ -448,14 +455,7 @@
     {
       "status": "en_consulta",
       "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "en_tienda"
-    },
-    {
-      "status": "en_espera",
-      "arrivedAt": null,
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
@@ -463,31 +463,35 @@
     },
     {
       "status": "en_espera",
-      "arrivedAt": "2026-10-01T15:00:00Z",
+      "arrivedAt": null,
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
-      "expected": "en_tienda"
+      "expected": "por_whatsapp"
     },
     {
       "status": "aprobada",
       "arrivedAt": null,
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
-      "expected": "sin_enviar"
+      "expected": "por_whatsapp"
     },
     {
       "status": "aprobada",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
-      "expected": "en_tienda"
+      "expected": "sin_enviar"
     },
     {
       "status": "enviada_taller",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": null,
@@ -496,14 +500,25 @@
     {
       "status": "enviada_taller",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
       "expected": "en_tienda"
     },
     {
+      "status": "enviada_taller",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
+      "lastSentAt": "2026-10-06T15:00:00Z",
+      "lastReturnedAt": "2026-10-05T15:00:00Z",
+      "returnedAt": null,
+      "expected": "en_taller"
+    },
+    {
       "status": "observada",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
@@ -512,62 +527,43 @@
     {
       "status": "entregada",
       "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "entregada"
-    },
-    {
-      "status": "anulada",
-      "arrivedAt": null,
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "anulada"
-    },
-    {
-      "status": "anulada",
-      "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "anulada"
-    },
-    {
-      "status": "enviada_taller",
-      "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": "2026-10-06T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
+      "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
-      "expected": "en_taller"
-    },
-    {
-      "status": "rechazada",
-      "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": null,
-      "expected": "en_tienda"
-    },
-    {
-      "status": "rechazada",
-      "arrivedAt": "2026-10-01T15:00:00Z",
-      "lastSentAt": null,
-      "lastReturnedAt": null,
-      "returnedAt": "2026-10-07T15:00:00Z",
       "expected": "entregada"
     },
     {
       "status": "rechazada",
-      "arrivedAt": null,
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
       "expected": "sin_enviar"
     },
     {
+      "status": "rechazada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": "2026-10-07T15:00:00Z",
+      "expected": "entregada"
+    },
+    {
+      "status": "rechazada",
+      "arrivedAt": null,
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "expected": "por_whatsapp"
+    },
+    {
       "status": "sin_arreglo",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": null,
@@ -576,10 +572,29 @@
     {
       "status": "sin_arreglo",
       "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": "2026-10-07T15:00:00Z",
       "expected": "entregada"
+    },
+    {
+      "status": "anulada",
+      "arrivedAt": null,
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "expected": "anulada"
+    },
+    {
+      "status": "anulada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-02T15:00:00Z",
+      "lastSentAt": "2026-10-02T15:00:00Z",
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "expected": "anulada"
     }
   ],
   "daysInWorkshop": [

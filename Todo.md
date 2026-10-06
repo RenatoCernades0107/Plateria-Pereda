@@ -222,29 +222,34 @@ Estados: **Registrada**, **Consulta**, **Espera respuesta cliente**, **Aprobada*
 - "Observación" solo existe después del taller (P17).
 - Qué rol puede ejecutar cada acción: ver la matriz de P42 (consultar, aprobar, rechazar y anular: ventas y admin; enviar al taller y recibir: logística y admin; entregar, observar, sin arreglo desde Interno, marcar llegada, recibir y devolver al cliente: todos).
 
-### 7.2 Ubicación de la pieza (columna generada) ⛔ P21
+### 7.2 Ubicación de la pieza (columna generada) (P48 ✅) ⛔ P21
 
-Se evalúa en este orden:
+Recorrido físico: **Por WhatsApp** → **Sin enviar** → **En taller** → **En tienda** → **Entregada** (P48). Se evalúa en este orden:
 
 1. Anulada → **Anulada**
 2. Entregada → **Entregada**
 3. Rechazada o sin arreglo y devuelta al cliente (`returned_at`) → **Entregada**
-4. Interno → **En taller** si no ha vuelto; **En tienda** si ya volvió (`last_returned_at` ≥ `last_sent_at`: "Lista para entregar")
-5. Cualquier otro estado → **En tienda** si `arrived_at` tiene valor; si no, **Sin enviar** (`sin_enviar`, antes "Por recibir", P47).
+4. Sin `arrived_at` → **Por WhatsApp** (solo piezas de restauraciones que salieron de una cotización de WhatsApp: las de oficina nacen en la tienda)
+5. Interno y aún no vuelve del taller → **En taller**
+6. Fue al taller alguna vez (`first_sent_at`) → **En tienda** (volvió del taller: Interno de vuelta, Observación, sin arreglo desde Interno)
+7. Si no → **Sin enviar** (en la tienda, aún no enviada al taller)
 
-### 7.3 Estado general de la restauración (P19 ✅, P47 ✅)
+- Se envía al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
+
+### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅)
 
 Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa en este orden:
 
-1. Todas las piezas son finales → **Anulada**
+1. Todas las piezas son finales → **Rechazada** si alguna fue rechazada o no tiene arreglo; **Anulada** si todas se anularon (P48)
 2. Todas entregadas → **Completada**
-3. Todas listas para entregar o entregadas → **Lista**
-4. Alguna lista para entregar o entregada → **Parcialmente lista**
+3. Todas de vuelta del taller o entregadas → **Lista**
+4. Alguna de vuelta del taller o entregada → **Parcialmente lista**
 5. Alguna fue enviada al taller al menos una vez (`first_sent_at` con valor) → **En proceso**
 6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
 7. Si no → **Registrada**
 
-- El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Si todas las piezas quedan finales queda Anulada (final).
+- El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Rechazada y Anulada son finales.
+- Logística no ve las restauraciones pasadas (Completada, Anulada, y Rechazada sin piezas por devolver; D24, P48).
 - **Creación de la orden en Shopify:** se dispara cuando todas las piezas no finales fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general. Incluye los pagos registrados al aprobar (adelanto), ver §7.5.
 
 ### 7.4 Fechas y tiempos ⛔ P23
@@ -871,6 +876,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Marcar "Urgente" y filtrar por urgentes.
 - Hecho (2026-10-06): migración `20261006150000_estados_pieza_v2.sql` recrea `piece_status` (convierte `recibida` → `aprobada` y `devuelta_taller` → `enviada_taller` ya de vuelta, con su historial como eventos `llegada` y `vuelta_taller`), renombra la ubicación a `sin_enviar` y agrega `urgent`, `last_sent_at`, `returned_at`, `returned_by` y la columna generada `ready_for_delivery`. RPC `receive_from_workshop()` y `return_pieces_to_client()`; `change_piece_status()` exige la pieza en la tienda para enviarla al taller y de vuelta para entregarla u observarla desde Interno. Total, estado general, orden de Shopify, días de cumplimiento y edición ignoran las piezas finales (anuladas, rechazadas y sin arreglo). Interfaz: colores de la Platería en `PieceStatusBadge`, insignias "Urgente" y "Lista para entregar", acciones "Rechazar", "No tiene arreglo", "Recibir del taller" y "Devolver al cliente" (por pieza y en bloque), eventos en la línea de tiempo, casilla "Urgente" en la pieza y filtros "Solo urgentes", "Listas para entregar" y "Por devolver al cliente" en `/piezas` (urgentes primero). El escenario compartido `derivations.json` cubre los estados nuevos (TS y BD coinciden). **E2E** actualizados pero no corridos en este entorno (sin el servicio de autenticación local).
 - Commit: `feat(piezas): redefine los estados de la pieza y agrega la marca urgente`
+
+#### Paso 8.7 — Ubicaciones y restauración Rechazada (P48 ✅, 2026-10-06)
+- [x] BD: ubicación `por_whatsapp`; "En tienda" = de vuelta del taller; piezas de oficina nacen en la tienda (trigger) y se convierten las existentes; estado general `rechazada`; helper `is_past_restoration()` para que logística vea las rechazadas con piezas por devolver.
+- [x] Dominio e interfaz: etiquetas y regla de ubicación, sin la casilla "La pieza ya está en tienda", sin la insignia "Lista para entregar" (la ubicación ya lo dice), columna Rechazada.
+- **BD:** ubicaciones del recorrido completo; conversión de piezas de oficina sin llegada; Rechazada vs Anulada; logística ve la restauración rechazada mientras haya piezas por devolver.
+- **Unit:** escenarios compartidos de ubicación y estado general (TS = BD).
+- **E2E:** copia de WhatsApp: Por WhatsApp → marcar llegada → Sin enviar; vuelta del taller → En tienda.
+- Commit: `feat(piezas): ajusta ubicaciones y agrega restauración rechazada (P48)`
+- **Hecho (2026-10-06):** pgTAP (346), TS ↔ BD (65), unit (1304), typecheck, lint y build en verde. Los E2E se actualizaron pero no se corrieron aquí (sin servicio de autenticación local).
 
 ### Fase 9 — Orden automática en Shopify
 

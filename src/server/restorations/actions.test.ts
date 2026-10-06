@@ -28,7 +28,6 @@ const piece = {
   service: { id: null, name: "" },
   weight: "820,5",
   price: "1,200.50",
-  arrived: true,
   notes: "",
 };
 
@@ -103,7 +102,6 @@ describe("pieceToRpc", () => {
         service: null,
         weightGrams: 12.5,
         priceCents: 120050,
-        arrived: false,
         urgent: true,
         notes: "",
       }),
@@ -117,7 +115,6 @@ describe("pieceToRpc", () => {
       service_name: "",
       weight_grams: "12.50",
       price: "1200.50",
-      arrived: false,
       urgent: true,
       notes: "",
       quote_item_id: null,

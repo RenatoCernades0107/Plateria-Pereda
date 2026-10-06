@@ -42,7 +42,6 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
         service: { id: item.serviceId, name: item.serviceName },
         weight: item.weightGrams === null ? "" : String(item.weightGrams),
         price: toDecimalString(item.priceCents),
-        arrived: false,
         urgent: false,
         notes: item.notes,
         quoteItemId: null,

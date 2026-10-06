@@ -1,7 +1,7 @@
 import {
   Ban,
-  CircleCheck,
   Hammer,
+  MessageCircle,
   PackageCheck,
   PackageSearch,
   Store,
@@ -85,16 +85,6 @@ export function UrgentBadge({ className }: { className?: string }) {
   );
 }
 
-/** En Interno y ya de vuelta del taller (P47). */
-export function ReadyBadge({ className }: { className?: string }) {
-  return (
-    <Badge variant="secondary" data-ready className={className}>
-      <CircleCheck aria-hidden />
-      Lista para entregar
-    </Badge>
-  );
-}
-
 const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
   registrada: "outline",
   aprobada: "secondary",
@@ -103,6 +93,7 @@ const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
   lista: "default",
   completada: "default",
   anulada: "outline",
+  rechazada: "outline",
 };
 
 export function RestorationStatusBadge({
@@ -116,7 +107,11 @@ export function RestorationStatusBadge({
     <Badge
       variant={RESTORATION_VARIANTS[status]}
       data-status={status}
-      className={cn(status === "anulada" && CANCELLED, className)}
+      className={cn(
+        status === "anulada" && CANCELLED,
+        status === "rechazada" && "border-transparent bg-amber-900 text-white",
+        className,
+      )}
     >
       {RESTORATION_STATUS_LABELS[status]}
     </Badge>
@@ -127,6 +122,7 @@ const LOCATIONS: Record<
   PieceLocation,
   { variant: Variant; icon: typeof Store }
 > = {
+  por_whatsapp: { variant: "outline", icon: MessageCircle },
   sin_enviar: { variant: "outline", icon: PackageSearch },
   en_tienda: { variant: "secondary", icon: Store },
   en_taller: { variant: "default", icon: Hammer },

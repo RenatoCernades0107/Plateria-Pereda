@@ -88,8 +88,6 @@ export const EMPTY_PIECE: PieceFormInput = {
   service: { id: null, name: "" },
   weight: "",
   price: "",
-  // P20: las piezas suelen llegar al registrar la restauración.
-  arrived: true,
   urgent: false,
   notes: "",
 };
@@ -186,7 +184,6 @@ function PieceCard({
           workshops={workshops}
           materials={materials}
           services={services}
-          showArrived={!quoteOnly}
           showWorkshop={!quoteOnly}
           showUrgent={!quoteOnly}
         />
@@ -239,7 +236,6 @@ export type RestorationFormMode =
 /** Pieza cotizada como pieza del formulario de la copia (aún no llegó a la tienda). */
 const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
   ...item.piece,
-  arrived: false,
   quoteItemId: item.id,
 });
 
@@ -271,7 +267,7 @@ function defaultsFor(
     pieces:
       mode.kind === "copia"
         ? q.items.filter((i) => !i.orderedIn).map(copyPiece)
-        : q.items.map((i) => ({ ...i.piece, arrived: false })),
+        : q.items.map((i) => i.piece),
   };
 }
 
@@ -635,12 +631,7 @@ export function RestorationForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
-              pieces.append({
-                ...structuredClone(EMPTY_PIECE),
-                arrived: mode.kind !== "copia",
-              })
-            }
+            onClick={() => pieces.append(structuredClone(EMPTY_PIECE))}
             disabled={pieces.fields.length >= MAX_PIECES}
           >
             <Plus />

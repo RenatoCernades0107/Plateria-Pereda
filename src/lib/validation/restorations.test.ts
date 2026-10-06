@@ -21,7 +21,6 @@ const piece: PieceFormInput = {
   service: { id: null, name: " Limpieza y pulido " },
   weight: "850,5",
   price: "1,250.50",
-  arrived: true,
   notes: "",
 };
 
@@ -57,7 +56,6 @@ describe("pieceSchema", () => {
       service: { id: null, name: "Limpieza y pulido" },
       weightGrams: 850.5,
       priceCents: 125_050,
-      arrived: true,
       urgent: false,
       notes: "",
     });
@@ -73,7 +71,6 @@ describe("pieceSchema", () => {
         service: { id: null, name: "" },
         weight: "",
         price: "0",
-        arrived: false,
         notes: "",
       }),
     ).toEqual({
@@ -84,7 +81,6 @@ describe("pieceSchema", () => {
       service: null,
       weightGrams: null,
       priceCents: 0,
-      arrived: false,
       urgent: false,
       notes: "",
     });

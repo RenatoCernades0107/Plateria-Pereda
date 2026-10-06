@@ -53,7 +53,6 @@ const piece = {
   service: { id: null, name: "" },
   weight: "",
   price: "1,300",
-  arrived: true,
   notes: "",
 };
 
@@ -116,15 +115,12 @@ describe("edición de restauraciones", () => {
     });
   });
 
-  it("addPiece agrega la pieza con su llegada a tienda", async () => {
+  it("addPiece agrega la pieza (la llegada la fija la BD según el origen, P48)", async () => {
     expect(await addPiece("r1", piece)).toEqual({ ok: true });
     expect(mocks.insert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        restoration_id: "r1",
-        price: 1300,
-        arrived_at: expect.any(String),
-      }),
+      expect.objectContaining({ restoration_id: "r1", price: 1300 }),
     );
+    expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("arrived_at");
     mocks.insertError = {
       code: "23514",
       message: "No se agregan piezas a una restauración completada o anulada",
