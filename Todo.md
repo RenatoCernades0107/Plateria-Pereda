@@ -173,10 +173,12 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
 - `materials`, `services` — catálogos editables; la pieza guarda el id del catálogo o un texto libre (P22).
 - `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
-- `restorations` — código `RES-00001`, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
-- `pieces` — restoration_id, código `RES-00001-1`, workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `received_at`, `first_sent_at`, `last_returned_at`, `delivered_at`, `cancelled_at`), notas.
+- `restorations` — código `RES-00001`, origen (`oficina`, `whatsapp`, P46) y cotización de origen, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
+- `pieces` — restoration_id, código `RES-00001-1`, pieza de la cotización de origen (P46), marca `urgent` (P47), workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `first_sent_at`, `last_sent_at`, `last_returned_at`, `delivered_at`, `returned_at`, `cancelled_at`), `ready_for_delivery` (generada), notas.
 - `piece_status_transitions` — from, to, roles permitidos, requiere nota, requiere taller. **Fuente de verdad** de la máquina de estados.
-- `piece_status_history` — piece_id, from, to, nota, actor, fecha.
+- `piece_status_history` — piece_id, evento (`estado`, `llegada`, `vuelta_taller`, `devolucion_cliente`), from, to, nota, actor, fecha.
+- `whatsapp_quotes` — código `CWA-00001`, cliente y contacto opcionales, nombre y teléfono libres, tipo y % de adelanto, notas, total, estado (`cotizada`, `pedida_parcial`, `pedida`, `descartada`), motivo de descarte (P46).
+- `whatsapp_quote_items` — cotización, número, descripción, medida, material, servicio, peso, precio, notas (sin taller, llegada ni fotos).
 - `restoration_files` — restoration_id, piece_id (vacío = foto general de todas las piezas), ruta en Storage, tipo (`antes`, `despues`, `documento`, `otro`), mime, tamaño, subido por.
 - `payments` — **registro de pagos del sistema**: restoration_id, tipo (`pago`, `reembolso`), monto, método, fecha, registrado por, origen (`sistema`, `shopify`), id de transacción en Shopify (único cuando existe), estado de envío a Shopify (`enviado`, `pendiente`, `error`), payload crudo.
 - `shopify_sync_jobs` — tipo, entidad, payload, estado (`pendiente`, `procesando`, `ok`, `error`), intentos, próximo intento, último error.
@@ -191,28 +193,34 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 
 ## 7. Reglas de negocio (borrador a validar)
 
-### 7.1 Transiciones de estado de la pieza
+### 7.1 Transiciones de estado de la pieza (P47 ✅)
+
+Estados: **Registrada**, **Consulta**, **Espera respuesta cliente**, **Aprobada**, **Interno** (en el taller), **Observación**, **Entregada** y los finales **Rechazado (cliente)**, **No tiene arreglo** y **Anulado**. "Recibida" y "Devuelta por el taller" ya no existen (P47): la llegada y la vuelta del taller son cambios de ubicación. "Urgente" es una marca por pieza, no un estado.
 
 | Desde | Hacia | Requisitos / efectos |
 |---|---|---|
-| Registrada | En consulta | Opcional: piezas en condiciones especiales o complicadas. Nota obligatoria (motivo de la consulta) |
-| Registrada | Aprobada | El cliente acepta en el momento. Si la pieza ya llegó a tienda, pasa directo a **Recibida** |
-| En consulta | En espera de respuesta del cliente | Al enviarle el mensaje de WhatsApp al cliente. Nota (propuesta enviada; puede ajustar el precio) |
-| En espera de respuesta | Aprobada | El cliente acepta; lo hace el asesor (→ Recibida si ya llegó) |
-| En espera de respuesta | Anulada | El cliente no acepta. Nota (motivo) obligatoria |
-| Aprobada | Recibida | Al marcar la llegada a tienda |
-| Recibida | Enviada al taller | Taller asignado obligatorio |
-| Enviada al taller | Devuelta por el taller | |
-| Devuelta por el taller | Entregada | |
-| Devuelta por el taller | Observada | Nota obligatoria |
-| Observada | Enviada al taller | Tras resolver la observación; taller obligatorio |
-| Entregada | Observada | Reclamo posterior a la entrega (propuesta P41 b) |
-| Cualquiera excepto Entregada | Anulada | Nota (motivo) obligatoria; estado final (propuestas P41 c y d) |
+| Registrada | Consulta | Opcional: piezas en condiciones especiales o complicadas. Nota obligatoria |
+| Registrada | Aprobada | El cliente acepta en el momento |
+| Consulta | Espera respuesta cliente | Al enviarle el mensaje de WhatsApp al cliente |
+| Espera respuesta cliente | Aprobada | El cliente acepta; lo hace el asesor |
+| Registrada / Consulta / Espera respuesta | Rechazado (cliente) | El cliente o la tienda no aceptan. Nota obligatoria; final |
+| Consulta | No tiene arreglo | Lo decide la tienda al revisar la pieza. Nota obligatoria; final |
+| Aprobada | Interno | "Enviar al taller": taller obligatorio y la pieza debe estar en la tienda |
+| Interno | No tiene arreglo | Lo avisa el taller. Nota obligatoria; final |
+| Interno (ya de vuelta) | Entregada | Debe haber vuelto del taller ("Lista para entregar"); saldo (P45) |
+| Interno (ya de vuelta) | Observación | Nota obligatoria |
+| Entregada | Observación | Reclamo posterior a la entrega. Nota obligatoria |
+| Observación | Interno | Se reenvía al taller; taller obligatorio |
+| Observación | Entregada | Se resolvió en la tienda |
+| Cualquiera excepto Entregada y los finales | Anulado | Errores o cancelaciones. Nota obligatoria; final (en Interno solo el admin) |
 
-- **Flujo de consulta (P41):** la consulta es opcional. Cuando se le envía el mensaje al cliente por WhatsApp, la pieza pasa a "En espera de respuesta del cliente"; si el cliente acepta se aprueba y si no, se anula. El rechazo no se registra como estado. "Observada" solo existe después del taller (P17).
-- Las propuestas de P41 (b), (c), (d) y (f) se aplican mientras no se diga lo contrario.
-- Acción aparte **"Marcar llegada a tienda"** (registra `arrived_at`): disponible mientras la pieza está en Registrada, En consulta, En espera o Aprobada. Si está Aprobada, pasa a Recibida.
-- Qué rol puede ejecutar cada transición: ver la matriz de P42 (consultar, aprobar y anular: ventas y admin).
+- **Acciones que no cambian el estado:**
+  - **Marcar llegada a tienda** (`arrived_at`): mientras la pieza no se ha enviado al taller.
+  - **Recibir del taller** (`last_returned_at`): en Interno; la pieza queda "Lista para entregar".
+  - **Devolver al cliente** (`returned_at`): en piezas rechazadas o sin arreglo que están en la tienda; no toca Shopify ni pide el saldo.
+- Rechazado, No tiene arreglo y Anulado **no se cobran**: salen del total, del mensaje de WhatsApp y de la orden de Shopify.
+- "Observación" solo existe después del taller (P17).
+- Qué rol puede ejecutar cada acción: ver la matriz de P42 (consultar, aprobar, rechazar y anular: ventas y admin; enviar al taller y recibir: logística y admin; entregar, observar, sin arreglo desde Interno, marcar llegada, recibir y devolver al cliente: todos).
 
 ### 7.2 Ubicación de la pieza (columna generada) ⛔ P21
 
@@ -220,30 +228,29 @@ Se evalúa en este orden:
 
 1. Anulada → **Anulada**
 2. Entregada → **Entregada**
-3. Enviada al taller → **En taller**
-4. Cualquier otro estado → **En tienda** si `arrived_at` tiene valor; si no, **Por recibir**.
+3. Rechazada o sin arreglo y devuelta al cliente (`returned_at`) → **Entregada**
+4. Interno → **En taller** si no ha vuelto; **En tienda** si ya volvió (`last_returned_at` ≥ `last_sent_at`: "Lista para entregar")
+5. Cualquier otro estado → **En tienda** si `arrived_at` tiene valor; si no, **Sin enviar** (`sin_enviar`, antes "Por recibir", P47).
 
-(Al pasar a Recibida siempre se completa `arrived_at`.)
+### 7.3 Estado general de la restauración (P19 ✅, P47 ✅)
 
-### 7.3 Estado general de la restauración (P19 ✅)
+Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa en este orden:
 
-Se ignoran las piezas anuladas y se evalúa en este orden:
-
-1. Todas las piezas anuladas → **Anulada**
+1. Todas las piezas son finales → **Anulada**
 2. Todas entregadas → **Completada**
-3. Todas devueltas por el taller o entregadas → **Lista**
-4. Alguna devuelta o entregada → **Parcialmente lista**
+3. Todas listas para entregar o entregadas → **Lista**
+4. Alguna lista para entregar o entregada → **Parcialmente lista**
 5. Alguna fue enviada al taller al menos una vez (`first_sent_at` con valor) → **En proceso**
 6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
 7. Si no → **Registrada**
 
-- El estado **solo avanza** (P19, 2026-10-05): si una pieza devuelta se observa y vuelve al taller, la restauración conserva el estado alcanzado. Si se anulan todas las piezas queda Anulada (final).
-- **Creación de la orden en Shopify:** se dispara cuando todas las piezas no anuladas fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general. Incluye los pagos registrados al aprobar (adelanto), ver §7.5.
+- El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Si todas las piezas quedan finales queda Anulada (final).
+- **Creación de la orden en Shopify:** se dispara cuando todas las piezas no finales fueron aprobadas (y hay al menos una) y aún no existe orden, sin importar la etiqueta del estado general. Incluye los pagos registrados al aprobar (adelanto), ver §7.5.
 
 ### 7.4 Fechas y tiempos ⛔ P23
 
-- Cada transición fija automáticamente su fecha (`approved_at`, `received_at`, `first_sent_at`, `last_returned_at`, `delivered_at`, `cancelled_at`) y queda en el historial con usuario y nota.
-- **Días en taller** = suma de los intervalos entre cada "Enviada al taller" y la siguiente salida de ese estado (incluye reenvíos por observación). Si la pieza sigue en el taller se cuenta hasta hoy y se muestra como "en curso".
+- Cada transición y cada acción fija automáticamente su fecha (`approved_at`, `first_sent_at`, `last_sent_at`, `last_returned_at`, `delivered_at`, `returned_at`, `cancelled_at`) y queda en el historial con usuario y nota.
+- **Días en taller** = suma de los intervalos entre cada envío al taller ("Interno") y su "Recibir del taller" (incluye reenvíos por observación; P47). Si la pieza sigue en el taller se cuenta hasta hoy y se muestra como "en curso".
 - **Días de cumplimiento** = desde el registro hasta la entrega (propuesta). Días calendario en zona `America/Lima`.
 
 ### 7.5 Pagos ⛔ P28 ⛔ P29
@@ -731,6 +738,42 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-04): `editableFields(ctx, piece)` (`src/domain/restoration-edit.ts`) decide por rol, orden y estado: logística nada; pieza anulada nada; entregada solo notas; antes de la orden todo; con la orden, los campos libres de P12 y el precio sale de la edición directa (solo admin lo cambiará por el flujo de la orden en 9.2, con motivo). En el detalle: "Editar" (contacto, tipo y % de adelanto, notas), "Editar" por pieza (campos bloqueados deshabilitados con explicación) y "Agregar pieza" (entra Registrada; llega a Shopify al aprobarse). Los campos de la pieza son un componente común (`PieceFields`) del registro y los diálogos; ahora sí muestran las sugerencias del catálogo (`<datalist>`). La BD lo exige con el trigger `guard_piece_edit` (anulada, entregada y precio con orden salvo `app.shopify_order_edit = 'on'`, que usará 9.2) y `guard_piece_insert` (no se agregan piezas a restauraciones completadas o anuladas); el cliente ya era inmutable por privilegios (7.1). Todo queda en la auditoría. **Pendiente para 9.2:** el motivo de los cambios que tocan Shopify y el E2E del precio con la orden creada (aquí se verifica que el precio queda bloqueado y el material se edita).
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
+### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
+
+Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp, piezas aprobadas), y se puede repetir con las pendientes.
+
+#### Paso 7B.1 — Esquema y RPC
+- [ ] `whatsapp_quotes` y `whatsapp_quote_items` (cliente opcional, nombre y teléfono libres); código `CWA-00001`; estados; RLS solo admin y ventas; auditoría.
+- [ ] `restorations.origin` (`oficina`, `whatsapp`) y `whatsapp_quote_id`; `pieces.whatsapp_quote_item_id` (único mientras la pieza no sea final).
+- [ ] RPC `create_whatsapp_quote`, `update_whatsapp_quote`, `discard_whatsapp_quote`, `reopen_whatsapp_quote`, `create_restoration_from_whatsapp_quote` y `list_whatsapp_quotes`; `list_restorations` con filtro por origen.
+- **BD:**
+  - [ ] Código correlativo; total; estado recalculado al copiar y al anular, rechazar o dejar sin arreglo una pieza copiada.
+  - [ ] Editable solo hasta la primera copia; descartada no se copia; reabrir.
+  - [ ] La copia exige cliente, vincula la cotización, aprueba las piezas y encola la orden.
+  - [ ] Una pieza ya pedida no se vuelve a pedir; logística no lee nada.
+- Commit: `feat(cotizaciones-whatsapp): agrega esquema y funciones`
+
+#### Paso 7B.2 — Dominio y validación
+- [ ] Estados y etiquetas, antigüedad, `canEditQuote`, `canCopyQuote`; esquemas zod de la cotización y de la copia; permiso `cotizaciones-whatsapp.usar`; filtro de origen en restauraciones y su columna en el CSV.
+- **Unit:** estados, antigüedad, validaciones y filtros.
+
+#### Paso 7B.3 — Registro con la casilla "El pedido vino por WhatsApp"
+- [ ] En `/restauraciones/nueva`: con la casilla marcada el cliente es opcional (nombre y teléfono libres), se ocultan llegada y taller y se registra una cotización; abre su detalle con el mensaje de WhatsApp (saludo genérico sin nombre; sin teléfono solo "Copiar").
+- **Unit:** formulario en modo WhatsApp; mensaje sin nombre.
+- **E2E:** registrar una cotización sin cliente.
+
+#### Paso 7B.4 — Detalle y copia
+- [ ] `/cotizaciones-whatsapp/[id]`: datos, piezas con "Pendiente" o "Pedida en RES-…", mensaje, editar (hasta la primera copia), descartar o reabrir, historial.
+- [ ] "Crear restauración" (`/restauraciones/nueva?cotizacion=…`): cliente obligatorio (se crea con los datos anotados), piezas pendientes elegibles y editables, piezas nuevas; la restauración muestra "desde CWA-…".
+- **E2E:** copia parcial y luego la pieza restante; edición bloqueada tras la primera copia; descartar y reabrir.
+
+#### Paso 7B.5 — Listado, cliente y navegación
+- [ ] `/cotizaciones-whatsapp` con filtros y búsqueda por descripción de pieza; menú propio.
+- [ ] Filtro "Origen" en el listado de restauraciones, el kanban y el CSV.
+- [ ] Detalle del cliente con pestañas "Restauraciones" y "Cotizaciones de WhatsApp".
+- **E2E:** buscar por descripción; filtrar por origen; logística no ve el menú ni la ruta; `@mobile` registro y copia.
+- Commit: `feat(cotizaciones-whatsapp): agrega registro, copia y listado`
+
 ### Fase 8 — Estados, ubicación, fechas y tiempos
 
 #### Paso 8.1 — Máquina de estados de la pieza (dominio)
@@ -809,6 +852,23 @@ Objetivo: validar con llamadas reales antes de construir.
 - Avance (2026-10-04): `Timeline` (`src/components/restorations/timeline.tsx`) ordena los eventos de una pieza (estado, fecha, usuario o "Sistema", nota) y muestra los días en taller y de cumplimiento con `piece-days.ts` ("en curso" si siguen abiertos); unit de eventos y días en curso hechos. Faltan el resumen por restauración, la vista reducida de logística y el E2E.
 - Hecho (2026-10-05): cada pieza tiene una "Línea de tiempo" plegable (`Timeline`: estado, fecha, usuario o "Sistema", nota; días en taller y de cumplimiento, "en curso" si siguen abiertos) a partir de `piece_status_history`; la pestaña Historial suma "Cambios de estado" de todas las piezas (del más reciente al más antiguo) sobre la auditoría. Logística no ve la línea de tiempo: en cada pieza ve los días en taller y la nota de la última observación (`piece_logistics_info()`).
 - Commit: `feat(piezas): agrega línea de tiempo de estados`
+
+#### Paso 8.6 — Estados nuevos de la pieza y marca "Urgente" (P47 ✅, pedido del 2026-10-06)
+- [ ] BD: `piece_status` sin `recibida` ni `devuelta_taller` y con `rechazada` y `sin_arreglo`; transiciones de §7.1; `piece_location` con `sin_enviar` en vez de `por_recibir`; columnas `urgent`, `last_sent_at`, `returned_at`, `returned_by` y `ready_for_delivery`; evento en `piece_status_history`; RPC `receive_from_workshop()` y `return_pieces_to_client()`; total, estado general, orden de Shopify y edición ignoran las piezas finales.
+- [ ] Dominio (TS) igual a la BD: estados, transiciones, ubicación, estado general, días en taller por eventos, filtros de `/piezas` (urgentes, listas para entregar, por devolver).
+- [ ] Interfaz: colores de la Platería, acciones "Rechazar", "No tiene arreglo", "Recibir del taller" y "Devolver al cliente"; casilla "Urgente"; urgentes primero en `/piezas` y el kanban.
+- **Unit:**
+  - [ ] Transiciones, ubicación, estado general y días en taller con los estados nuevos.
+  - [ ] Total y mensaje de WhatsApp sin las piezas finales.
+- **BD:**
+  - [ ] Transiciones permitidas y prohibidas; enviar al taller exige la pieza en la tienda; entregar u observar desde Interno exige que haya vuelto.
+  - [ ] Rechazar y sin arreglo sacan la pieza del total; devolver al cliente cambia la ubicación.
+  - [ ] Urgentes primero en la vista de piezas.
+- **E2E:**
+  - [ ] Aprobar → marcar llegada → enviar a Interno → recibir del taller → entregar.
+  - [ ] Rechazar desde "Espera respuesta"; "No tiene arreglo" desde Interno; devolver al cliente.
+  - [ ] Marcar "Urgente" y filtrar por urgentes.
+- Commits: `feat(piezas): redefine los estados de la pieza` y `feat(piezas): agrega la marca urgente`
 
 ### Fase 9 — Orden automática en Shopify
 
@@ -981,6 +1041,8 @@ Objetivo: validar con llamadas reales antes de construir.
   - [ ] Respetan los permisos por rol.
 - **E2E:** se cubre en 13.2.
 - Commit: `feat(dashboard): agrega funciones de métricas`
+
+- [ ] Por origen (oficina o WhatsApp) y conversión de cotizaciones de WhatsApp (piezas cotizadas vs. pedidas) (P46).
 
 #### Paso 13.2 — Interfaz del dashboard
 - [ ] KPIs en tarjetas; gráficos (barras por estado, línea de ventas, barras de días por taller); selector de rango de fechas; accesos rápidos (piezas con más de N días en taller, restauraciones listas para entregar); solo admin y ventas (logística no tiene dashboard, P42).
