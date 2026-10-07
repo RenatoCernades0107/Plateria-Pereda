@@ -58,6 +58,13 @@ export function LogisticsPieceSummary({ info }: { info: LogisticsPieceInfo }) {
   );
 }
 
+/** Acciones que no cambian el estado (P47). */
+const EVENT_SUMMARY = {
+  llegada: "Llegó a la tienda",
+  vuelta_taller: "Volvió del taller",
+  devolucion_cliente: "Devuelta al cliente",
+} as const;
+
 /** Resumen por restauración: todos los cambios de estado, del más reciente al más antiguo. */
 export function RestorationStatusSummary({
   pieces,
@@ -79,9 +86,11 @@ export function RestorationStatusSummary({
         <li key={i} className="space-y-0.5 p-3 text-sm">
           <p>
             <span className="font-medium">{code.get(e.pieceId)}</span>:{" "}
-            {e.fromStatus
-              ? `${PIECE_STATUS_LABELS[e.fromStatus]} → ${PIECE_STATUS_LABELS[e.toStatus]}`
-              : `Registrada`}
+            {e.event !== "estado"
+              ? EVENT_SUMMARY[e.event]
+              : e.fromStatus
+                ? `${PIECE_STATUS_LABELS[e.fromStatus]} → ${PIECE_STATUS_LABELS[e.toStatus]}`
+                : `Registrada`}
           </p>
           <p className="text-muted-foreground text-xs">
             <time dateTime={e.at}>{formatDateTime(new Date(e.at))}</time> ·{" "}

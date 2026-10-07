@@ -30,6 +30,8 @@ import {
 import {
   RESTORATION_STATUS_LABELS,
   RESTORATION_STATUSES,
+  RESTORATION_ORIGIN_LABELS,
+  RESTORATION_ORIGINS,
 } from "@/domain/restoration-status";
 
 const ALL = "todos";
@@ -150,6 +152,16 @@ export function RestorationsFiltersForm({
           label: PAYMENT_TYPE_LABELS[t],
         }))}
         onChange={(paymentType) => set({ paymentType })}
+      />
+      <FilterSelect
+        id="filtro-origen"
+        label="Origen"
+        value={state.origin}
+        options={RESTORATION_ORIGINS.map((o) => ({
+          value: o,
+          label: RESTORATION_ORIGIN_LABELS[o],
+        }))}
+        onChange={(origin) => set({ origin })}
       />
       <div className="space-y-1.5">
         <Label htmlFor="filtro-cliente">Cliente</Label>

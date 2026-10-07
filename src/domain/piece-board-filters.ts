@@ -13,21 +13,25 @@ export const PIECES_KANBAN_LIMIT = 200;
  */
 export const WORKSHOP_DAYS_ALERT = 7;
 
-/** La vista solo muestra piezas en curso (P42): sin entregadas ni anuladas. */
+/**
+ * La vista solo muestra piezas en curso (P42): sin entregadas ni anuladas; las
+ * rechazadas o sin arreglo solo mientras siguen en la tienda (por devolver, P47).
+ */
 export const BOARD_LOCATIONS = [
-  "por_recibir",
-  "en_tienda",
+  "por_whatsapp",
+  "sin_enviar",
   "en_taller",
+  "en_tienda",
 ] as const satisfies readonly PieceLocation[];
 export const BOARD_STATUSES = [
   "registrada",
   "en_consulta",
   "en_espera",
   "aprobada",
-  "recibida",
   "enviada_taller",
-  "devuelta_taller",
   "observada",
+  "rechazada",
+  "sin_arreglo",
 ] as const satisfies readonly PieceStatus[];
 
 export type PieceBoardFilters = {
@@ -38,6 +42,12 @@ export type PieceBoardFilters = {
   workshopId: string | null;
   /** Solo piezas con al menos estos días en el taller. */
   minDays: number | null;
+  /** Solo urgentes (P47). */
+  urgent: boolean;
+  /** Solo las que volvieron del taller ("Lista para entregar"). */
+  ready: boolean;
+  /** Solo rechazadas o sin arreglo que siguen en la tienda. */
+  toReturn: boolean;
   page: number;
   /** Tabla paginada o tablero kanban por estado. */
   view: "tabla" | "kanban";
@@ -65,6 +75,9 @@ export function parsePieceBoardFilters(
     status: oneOf(BOARD_STATUSES, first(params.estado)),
     workshopId: UUID.test(workshop) ? workshop.toLowerCase() : null,
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
+    urgent: first(params.urgentes) === "1",
+    ready: first(params.listas) === "1",
+    toReturn: first(params.devolver) === "1",
     page: Number.isFinite(page) && page > 0 ? page : 1,
     view: first(params.vista) === "kanban" ? "kanban" : "tabla",
   };
@@ -81,6 +94,9 @@ export function pieceBoardHref(
   if (next.status) params.set("estado", next.status);
   if (next.workshopId) params.set("taller", next.workshopId);
   if (next.minDays) params.set("dias", String(next.minDays));
+  if (next.urgent) params.set("urgentes", "1");
+  if (next.ready) params.set("listas", "1");
+  if (next.toReturn) params.set("devolver", "1");
   if (next.page > 1 && next.view === "tabla")
     params.set("pagina", String(next.page));
   if (next.view === "kanban") params.set("vista", "kanban");
@@ -95,6 +111,9 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
     p_status: filters.status ?? undefined,
     p_workshop_id: filters.workshopId ?? undefined,
     p_min_workshop_days: filters.minDays ?? undefined,
+    p_urgent: filters.urgent || undefined,
+    p_ready: filters.ready || undefined,
+    p_to_return: filters.toReturn || undefined,
     p_limit: filters.view === "kanban" ? PIECES_KANBAN_LIMIT : PIECES_PAGE_SIZE,
     p_offset:
       filters.view === "kanban" ? 0 : (filters.page - 1) * PIECES_PAGE_SIZE,

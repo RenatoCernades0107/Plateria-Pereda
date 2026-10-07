@@ -126,6 +126,7 @@ function pieceColumns(input: PieceFormInput) {
       weight_grams: p.weightGrams,
       price: Number(toDecimalString(p.priceCents)),
       notes: p.notes,
+      urgent: p.urgent,
     },
   };
 }
@@ -165,7 +166,6 @@ export async function addPiece(
   const row = {
     restoration_id: restorationId,
     ...parsed.columns,
-    arrived_at: parsed.piece.arrived ? new Date().toISOString() : null,
   } as TablesInsert<"pieces">;
   const { error } = await supabase.from("pieces").insert(row);
   if (error) return { error: editError(error, "No se pudo agregar la pieza.") };

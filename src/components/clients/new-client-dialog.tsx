@@ -45,6 +45,22 @@ import { createClient } from "@/server/clients/actions";
 
 import { DocumentTypeField, TextField } from "./form-fields";
 
+/** Datos ya anotados (p. ej., en una cotización de WhatsApp) para no volver a escribirlos. */
+export type ClientPrefill = { name: string; phone: string };
+
+/** Separa "Ana María Pérez" en nombres ("Ana María") y apellido ("Pérez"). */
+export function splitName(name: string): {
+  firstName: string;
+  lastName: string;
+} {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length <= 1) return { firstName: words[0] ?? "", lastName: "" };
+  return {
+    firstName: words.slice(0, -1).join(" "),
+    lastName: words.at(-1)!,
+  };
+}
+
 export type CreatedClient = {
   id: string;
   displayName: string;
@@ -246,12 +262,15 @@ export function NewClientDialog({
   onCreated,
   open: controlledOpen,
   onOpenChange,
+  prefill,
 }: {
   /** Botón que abre el diálogo; `null` para abrirlo solo desde afuera (`open`). */
   trigger?: React.ReactNode | null;
   onCreated?: (client: CreatedClient) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Nombre y teléfono ya anotados: se proponen en el formulario. */
+  prefill?: ClientPrefill | null;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -299,10 +318,32 @@ export function NewClientDialog({
             <TabsTrigger value="empresa">Empresa</TabsTrigger>
           </TabsList>
           <TabsContent value="persona">
-            <PersonForm save={save} />
+            <PersonForm
+              save={save}
+              defaults={
+                prefill
+                  ? {
+                      ...PERSON_DEFAULTS,
+                      ...splitName(prefill.name),
+                      phone: prefill.phone,
+                    }
+                  : undefined
+              }
+            />
           </TabsContent>
           <TabsContent value="empresa">
-            <CompanyForm save={save} />
+            <CompanyForm
+              save={save}
+              defaults={
+                prefill
+                  ? {
+                      ...COMPANY_DEFAULTS,
+                      legalName: prefill.name.trim(),
+                      phone: prefill.phone,
+                    }
+                  : undefined
+              }
+            />
           </TabsContent>
         </Tabs>
       </DialogContent>

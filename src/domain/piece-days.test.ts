@@ -7,11 +7,12 @@ import {
   daysInWorkshop,
   fulfillmentDays,
 } from "./piece-days";
-import type { PieceStatus } from "./piece-state-machine";
+import type { PieceEvent, PieceStatus } from "./piece-state-machine";
 
 describe("daysInWorkshop (escenarios compartidos con la BD)", () => {
   it.each(scenarios.daysInWorkshop)("$name", ({ history, now, expected }) => {
     const entries = history.map((h) => ({
+      event: h.event as PieceEvent,
       from: h.from as PieceStatus | null,
       to: h.to as PieceStatus,
       at: new Date(h.at),
@@ -23,6 +24,7 @@ describe("daysInWorkshop (escenarios compartidos con la BD)", () => {
     for (const { history, now, expected } of scenarios.daysInWorkshop) {
       const entries = history
         .map((h) => ({
+          event: h.event as PieceEvent,
           from: h.from as PieceStatus | null,
           to: h.to as PieceStatus,
           at: new Date(h.at),

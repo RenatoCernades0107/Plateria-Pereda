@@ -4,6 +4,7 @@ import {
   MAX_PIECES,
   pieceSchema,
   restorationSchema,
+  whatsappQuoteSchema,
   type PieceFormInput,
 } from "./restorations";
 
@@ -20,7 +21,6 @@ const piece: PieceFormInput = {
   service: { id: null, name: " Limpieza y pulido " },
   weight: "850,5",
   price: "1,250.50",
-  arrived: true,
   notes: "",
 };
 
@@ -34,7 +34,8 @@ const restoration = {
 };
 
 const errorsOf = (
-  schema: typeof pieceSchema | typeof restorationSchema,
+  schema:
+    typeof pieceSchema | typeof restorationSchema | typeof whatsappQuoteSchema,
   input: unknown,
 ) => {
   const result = schema.safeParse(input);
@@ -55,7 +56,7 @@ describe("pieceSchema", () => {
       service: { id: null, name: "Limpieza y pulido" },
       weightGrams: 850.5,
       priceCents: 125_050,
-      arrived: true,
+      urgent: false,
       notes: "",
     });
   });
@@ -70,7 +71,6 @@ describe("pieceSchema", () => {
         service: { id: null, name: "" },
         weight: "",
         price: "0",
-        arrived: false,
         notes: "",
       }),
     ).toEqual({
@@ -81,7 +81,7 @@ describe("pieceSchema", () => {
       service: null,
       weightGrams: null,
       priceCents: 0,
-      arrived: false,
+      urgent: false,
       notes: "",
     });
   });
@@ -241,5 +241,49 @@ describe("restorationSchema", () => {
       restorationSchema.safeParse({ ...restoration, paymentType: "trueque" })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("whatsappQuoteSchema (P46)", () => {
+  const quote = {
+    clientId: "",
+    contactId: null,
+    customerName: "  Ana   Pérez ",
+    customerPhone: "",
+    paymentType: "contado" as const,
+    depositPercent: "",
+    notes: "",
+    pieces: [piece],
+  };
+
+  it("el cliente, el nombre y el teléfono son opcionales", () => {
+    expect(whatsappQuoteSchema.parse(quote)).toMatchObject({
+      clientId: null,
+      customerName: "Ana Pérez",
+      customerPhone: "",
+      depositPercent: null,
+    });
+    expect(
+      whatsappQuoteSchema.parse({ ...quote, customerName: "" }).customerName,
+    ).toBe("");
+  });
+
+  it("acepta un cliente y valida el teléfono anotado", () => {
+    expect(
+      whatsappQuoteSchema.parse({ ...quote, clientId: CLIENT }).clientId,
+    ).toBe(CLIENT);
+    expect(
+      errorsOf(whatsappQuoteSchema, { ...quote, customerPhone: "abc" }),
+    ).toEqual({ customerPhone: "Ingresa un teléfono válido" });
+    expect(
+      whatsappQuoteSchema.parse({ ...quote, customerPhone: "+51 999 888 777" })
+        .customerPhone,
+    ).toBe("+51 999 888 777");
+  });
+
+  it("exige al menos una pieza", () => {
+    expect(errorsOf(whatsappQuoteSchema, { ...quote, pieces: [] })).toEqual({
+      pieces: "Agrega al menos una pieza",
+    });
   });
 });

@@ -7,7 +7,7 @@ import {
   type PaymentType,
 } from "./money";
 import { normalizePhone } from "./phone";
-import type { PieceStatus } from "./piece-state-machine";
+import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 import {
   renderWhatsAppTemplate,
   type WhatsAppPlaceholder,
@@ -28,12 +28,13 @@ export type QuotePiece = {
 };
 
 export type QuoteMessageData = {
-  /** Código de la restauración (RES-00001). */
+  /** Código de la restauración (RES-00001) o de la cotización de WhatsApp (CWA-00001). */
   code: string;
+  /** Vacío si la cotización no tiene cliente ni nombre: el saludo queda genérico (P46). */
   clientName: string;
   /** Contacto de la restauración; si hay, el saludo va a su nombre. */
   contactName?: string | null;
-  /** En el orden en que se muestran; las anuladas se omiten. */
+  /** En el orden en que se muestran; las anuladas, rechazadas y sin arreglo se omiten. */
   pieces: readonly QuotePiece[];
   paymentType: PaymentType;
   /** % de adelanto; solo se usa "A cuenta". */
@@ -51,12 +52,14 @@ function percent(value: number): string {
   return String(Number(value.toFixed(2)));
 }
 
-/** Total y adelanto de la cotización, sin las piezas anuladas. */
+/** Total y adelanto de la cotización, sin las piezas que no se cobran. */
 export function quoteAmounts(
   data: Pick<QuoteMessageData, "pieces" | "paymentType" | "depositPercent">,
 ): { totalCents: Cents; depositCents: Cents } {
   const totalCents = sumCents(
-    data.pieces.filter((p) => p.status !== "anulada").map((p) => p.priceCents),
+    data.pieces
+      .filter((p) => !isClosedStatus(p.status))
+      .map((p) => p.priceCents),
   );
   return {
     totalCents,
@@ -90,7 +93,7 @@ export function quoteValues(
 ): Record<WhatsAppPlaceholder, string> {
   const { totalCents, depositCents } = quoteAmounts(data);
   const piezas = data.pieces
-    .filter((p) => p.status !== "anulada")
+    .filter((p) => !isClosedStatus(p.status))
     .map((p, i) => {
       const service = p.service?.trim();
       const name = service
@@ -122,7 +125,9 @@ export function buildQuoteMessage(
   template: string,
   data: QuoteMessageData,
 ): string {
-  return renderWhatsAppTemplate(template, quoteValues(data));
+  const text = renderWhatsAppTemplate(template, quoteValues(data));
+  // Sin nombre, "Hola {cliente}, …" queda "Hola, …" (saludo genérico, P46).
+  return text.replace(/^(Hola)\s+,/, "$1,");
 }
 
 /**

@@ -25,6 +25,7 @@ test.describe("Permisos por rol", () => {
     "/usuarios",
     "/configuracion",
     "/cotizaciones",
+    "/cotizaciones-whatsapp",
     "/auditoria",
   ]) {
     test(`logística recibe 403 en ${ruta}`, async ({ page, loginAs }) => {
@@ -47,6 +48,7 @@ test.describe("Permisos por rol", () => {
       "Dashboard",
       "Restauraciones",
       "Piezas",
+      "Cotizaciones de WhatsApp",
       "Clientes",
       "Cotizaciones",
     ]);

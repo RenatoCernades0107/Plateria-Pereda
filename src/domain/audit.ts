@@ -7,9 +7,15 @@ import {
 } from "@/domain/piece-state-machine";
 import { PERU_REGIONS } from "@/domain/regions";
 import {
+  RESTORATION_ORIGIN_LABELS,
   RESTORATION_STATUS_LABELS,
+  type RestorationOrigin,
   type RestorationStatus,
 } from "@/domain/restoration-status";
+import {
+  WHATSAPP_QUOTE_STATUS_LABELS,
+  type WhatsappQuoteStatus,
+} from "@/domain/whatsapp-quotes";
 import { formatMoney } from "@/lib/format";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 
@@ -181,6 +187,55 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       notes: { label: "Notas" },
       shopify_order_id: { label: "Orden en Shopify" },
       shopify_order_name: { label: "Número de orden en Shopify" },
+      origin: {
+        label: "Origen",
+        format: (value) =>
+          RESTORATION_ORIGIN_LABELS[value as RestorationOrigin] ??
+          formatValue(value),
+      },
+      whatsapp_quote_id: { label: "Cotización de WhatsApp" },
+    },
+  },
+  whatsapp_quotes: {
+    label: "Cotización de WhatsApp",
+    fields: {
+      code: { label: "Código" },
+      client_id: { label: "Cliente" },
+      contact_id: { label: "Contacto" },
+      customer_name: { label: "Nombre anotado" },
+      customer_phone: {
+        label: "Teléfono anotado",
+        format: (value) => (value ? formatPhone(String(value)) : "—"),
+      },
+      status: {
+        label: "Estado",
+        format: (value) =>
+          WHATSAPP_QUOTE_STATUS_LABELS[value as WhatsappQuoteStatus] ??
+          formatValue(value),
+      },
+      payment_type: {
+        label: "Tipo de pago",
+        format: (value) =>
+          PAYMENT_TYPE_LABELS[value as PaymentType] ?? formatValue(value),
+      },
+      deposit_percent: { label: "Adelanto (%)" },
+      total: { label: "Total", format: (value) => formatMoney(Number(value)) },
+      notes: { label: "Notas" },
+      discarded_at: { label: "Descartada" },
+      discard_reason: { label: "Motivo del descarte" },
+    },
+  },
+  whatsapp_quote_items: {
+    label: "Pieza cotizada por WhatsApp",
+    fields: {
+      number: { label: "Número" },
+      description: { label: "Descripción" },
+      measure: { label: "Medida" },
+      material_name: { label: "Material" },
+      service_name: { label: "Servicio" },
+      weight_grams: { label: "Peso (g)" },
+      price: { label: "Precio", format: (value) => formatMoney(Number(value)) },
+      notes: { label: "Notas" },
     },
   },
   pieces: {
@@ -206,11 +261,14 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       notes: { label: "Notas" },
       arrived_at: { label: "Llegada a tienda" },
       approved_at: { label: "Aprobada" },
-      received_at: { label: "Recibida" },
+      urgent: { label: "Urgente" },
       first_sent_at: { label: "Primer envío al taller" },
-      last_returned_at: { label: "Última devolución del taller" },
+      last_sent_at: { label: "Último envío al taller" },
+      last_returned_at: { label: "Última vuelta del taller" },
       delivered_at: { label: "Entregada" },
-      cancelled_at: { label: "Anulada" },
+      returned_at: { label: "Devuelta al cliente" },
+      returned_by: { label: "Devuelta por" },
+      cancelled_at: { label: "Anulada, rechazada o sin arreglo" },
       shopify_line_item_id: { label: "Línea en Shopify" },
     },
   },

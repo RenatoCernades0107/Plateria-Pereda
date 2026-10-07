@@ -60,6 +60,11 @@ function Payment({ item }: { item: RestorationListItem }) {
       <span className="text-muted-foreground text-xs">
         {PAYMENT_TYPE_LABELS[item.paymentType]}
       </span>
+      {item.origin === "whatsapp" ? (
+        <Badge variant="secondary" data-origin="whatsapp">
+          WhatsApp
+        </Badge>
+      ) : null}
     </span>
   );
 }

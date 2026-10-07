@@ -2,9 +2,10 @@ import "server-only";
 
 import type { PaymentType } from "@/domain/money";
 import { toCents, type Cents } from "@/domain/money";
-import type { PieceStatus } from "@/domain/piece-state-machine";
+import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
 import type {
   PieceLocation,
+  RestorationOrigin,
   RestorationStatus,
 } from "@/domain/restoration-status";
 import {
@@ -25,6 +26,10 @@ export type PieceDetail = {
   code: string;
   status: PieceStatus;
   location: PieceLocation;
+  /** Marca "Urgente" (P47). */
+  urgent: boolean;
+  /** En Interno y ya de vuelta del taller. */
+  readyForDelivery: boolean;
   description: string;
   measure: string;
   materialName: string;
@@ -38,6 +43,8 @@ export type PieceDetail = {
   arrivedAt: string | null;
   createdAt: string;
   deliveredAt: string | null;
+  /** Devuelta al cliente (rechazada o sin arreglo, P47). */
+  returnedAt: string | null;
   /** null si quien mira no ve montos (logística, P42). */
   priceCents: Cents | null;
 };
@@ -57,6 +64,9 @@ export type RestorationDetail = {
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
+  /** Oficina o WhatsApp; con WhatsApp, la cotización de la que salió (P46). */
+  origin: RestorationOrigin;
+  whatsappQuoteId: string | null;
   /** La orden de Shopify ya existe (cambia lo editable, P12). */
   hasOrder: boolean;
   createdAt: string;
@@ -139,6 +149,8 @@ export async function getRestorationDetail(
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
+    origin: r.origin ?? "oficina",
+    whatsappQuoteId: r.whatsapp_quote_id,
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
     createdAt: r.created_at!,
     client: {
@@ -160,6 +172,8 @@ export async function getRestorationDetail(
       code: p.code!,
       status: p.status!,
       location: p.location!,
+      urgent: p.urgent ?? false,
+      readyForDelivery: p.ready_for_delivery ?? false,
       description: p.description ?? "",
       measure: p.measure ?? "",
       materialName: p.material_name ?? "",
@@ -175,6 +189,7 @@ export async function getRestorationDetail(
       arrivedAt: p.arrived_at,
       createdAt: p.created_at!,
       deliveredAt: p.delivered_at,
+      returnedAt: p.returned_at,
       priceCents: withMoney ? (priceOf.get(p.id!) ?? null) : null,
     })),
     money: money.data
@@ -194,6 +209,8 @@ export async function getRestorationDetail(
 
 export type PieceTimelineEvent = {
   pieceId: string;
+  /** Cambio de estado, llegada, vuelta del taller o devolución al cliente (P47). */
+  event: PieceEvent;
   at: string;
   fromStatus: PieceStatus | null;
   toStatus: PieceStatus;
@@ -208,13 +225,16 @@ export async function getStatusHistory(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("piece_status_history")
-    .select("piece_id, occurred_at, from_status, to_status, actor_name, note")
+    .select(
+      "piece_id, event, occurred_at, from_status, to_status, actor_name, note",
+    )
     .eq("restoration_id", restorationId)
     .order("occurred_at")
     .order("id");
   if (error) throw error;
   return data.map((h) => ({
     pieceId: h.piece_id,
+    event: h.event,
     at: h.occurred_at,
     fromStatus: h.from_status,
     toStatus: h.to_status,
@@ -266,6 +286,7 @@ export type RestorationListItem = {
   paidCents: Cents | null;
   balanceCents: Cents | null;
   createdAt: string;
+  origin: RestorationOrigin;
 };
 
 export type RestorationsPage = {
@@ -280,7 +301,7 @@ const centsOrNull = (value: number | null) =>
 /** Listado con filtros, orden y paginación en la BD (`list_restorations`). */
 export async function listRestorations(
   filters: RestorationFilters,
-  options: { all?: boolean } = {},
+  options: { all?: boolean; limit?: number } = {},
 ): Promise<RestorationsPage> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(
@@ -307,6 +328,7 @@ export async function listRestorations(
       paidCents: centsOrNull(r.paid),
       balanceCents: centsOrNull(r.balance),
       createdAt: r.created_at,
+      origin: r.origin,
     })),
   };
 }
@@ -320,6 +342,10 @@ export type BoardPiece = {
   description: string;
   status: PieceStatus;
   location: PieceLocation;
+  urgent: boolean;
+  readyForDelivery: boolean;
+  /** Siempre null: las piezas ya devueltas al cliente no salen en la vista. */
+  returnedAt: null;
   workshopId: string | null;
   workshopName: string | null;
   arrivedAt: string | null;
@@ -351,6 +377,9 @@ export async function listPiecesBoard(
       description: p.description,
       status: p.status,
       location: p.location,
+      urgent: p.urgent,
+      readyForDelivery: p.ready_for_delivery,
+      returnedAt: null,
       workshopId: p.workshop_id,
       workshopName: p.workshop_name,
       arrivedAt: p.arrived_at,

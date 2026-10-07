@@ -69,6 +69,36 @@ export async function markPiecesArrived(
   return { ok: true };
 }
 
+/** "Recibir del taller" (admin y logística): la pieza sigue en Interno, ya en la tienda. */
+export async function receiveFromWorkshop(
+  restorationId: string | null,
+  pieceIds: string[],
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.enviar-recibir-taller");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("receive_from_workshop", {
+    p_piece_ids: pieceIds,
+  });
+  if (error) return fail(error, "No se pudo recibir la pieza del taller.");
+  refresh(restorationId);
+  return { ok: true };
+}
+
+/** "Devolver al cliente": piezas rechazadas o sin arreglo que siguen en la tienda (P47). */
+export async function returnPiecesToClient(
+  restorationId: string | null,
+  pieceIds: string[],
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.marcar-llegada");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("return_pieces_to_client", {
+    p_piece_ids: pieceIds,
+  });
+  if (error) return fail(error, "No se pudo registrar la devolución.");
+  refresh(restorationId);
+  return { ok: true };
+}
+
 /** Asigna o cambia el taller de las piezas (queda en la auditoría). */
 export async function assignWorkshop(
   restorationId: string | null,

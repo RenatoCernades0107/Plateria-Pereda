@@ -11,7 +11,7 @@ import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, PieceStatusBadge } from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
 function Days({ piece }: { piece: BoardPiece }) {
   const long = isLongInWorkshop(piece);
@@ -38,8 +38,8 @@ function Days({ piece }: { piece: BoardPiece }) {
 /**
  * Vista operativa de piezas (12.2): piezas en curso de varias restauraciones, sin
  * precios, con selección para acciones masivas (enviar al taller, recibir del
- * taller, marcar llegada, asignar taller). Resalta las que llevan muchos días en el
- * taller.
+ * taller, marcar llegada, devolver al cliente, asignar taller). Las urgentes van
+ * primero; resalta las que llevan muchos días en el taller.
  */
 export function PiecesBoardTable({
   pieces,
@@ -134,6 +134,7 @@ export function PiecesBoardTable({
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-col sm:items-end">
               <div className="flex flex-wrap gap-2">
+                {piece.urgent ? <UrgentBadge /> : null}
                 <PieceStatusBadge status={piece.status} />
                 <LocationBadge location={piece.location} />
               </div>

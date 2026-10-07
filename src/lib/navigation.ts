@@ -3,6 +3,7 @@ import {
   FileText,
   Gem,
   LayoutDashboard,
+  MessageCircle,
   Settings,
   ShieldCheck,
   UserCog,
@@ -38,6 +39,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/piezas",
     icon: Gem,
     permission: "restauraciones.ver",
+  },
+  {
+    title: "Cotizaciones de WhatsApp",
+    href: "/cotizaciones-whatsapp",
+    icon: MessageCircle,
+    permission: "cotizaciones-whatsapp.usar",
   },
   {
     title: "Clientes",

@@ -31,8 +31,8 @@ select results_eq(
 select results_eq(
   $$ select p.code = c.code || '-' || p.number, p.service_name, p.weight_grams, p.arrived_at is not null
      from public.pieces p join created c on c.id = p.restoration_id order by p.number $$,
-  $$ values (true, 'Limpieza', 820.50::numeric, true), (true, '', null::numeric, false) $$,
-  'crea las piezas con sus códigos, datos y llegada a tienda'
+  $$ values (true, 'Limpieza', 820.50::numeric, true), (true, '', null::numeric, true) $$,
+  'crea las piezas con sus códigos y datos; las de oficina ya están en la tienda (P48)'
 );
 select is(
   (select count(*)::int from public.audit_log a join created c on a.record_id = c.id::text

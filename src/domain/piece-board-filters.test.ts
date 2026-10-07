@@ -15,6 +15,9 @@ describe("filtros de la vista de piezas", () => {
       status: null,
       workshopId: null,
       minDays: null,
+      urgent: false,
+      ready: false,
+      toReturn: false,
       page: 1,
       view: "tabla",
     });
@@ -22,23 +25,29 @@ describe("filtros de la vista de piezas", () => {
       parsePieceBoardFilters({
         q: " RES-1 ",
         ubicacion: "en_tienda",
-        estado: "recibida",
+        estado: "rechazada",
         taller: "00000000-0000-0000-0000-0000000000AA",
         dias: "10",
+        urgentes: "1",
+        listas: "1",
+        devolver: "1",
         pagina: "2",
       }),
     ).toEqual({
       q: "RES-1",
       location: "en_tienda",
-      status: "recibida",
+      status: "rechazada",
       workshopId: "00000000-0000-0000-0000-0000000000aa",
       minDays: 10,
+      urgent: true,
+      ready: true,
+      toReturn: true,
       page: 2,
       view: "tabla",
     });
     const closed = parsePieceBoardFilters({
       ubicacion: "entregada",
-      estado: "anulada",
+      estado: "recibida",
       dias: "-3",
     });
     expect([closed.location, closed.status, closed.minDays]).toEqual([

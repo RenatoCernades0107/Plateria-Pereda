@@ -26,19 +26,24 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   availableTransitions,
   canMarkArrived,
+  canReceiveFromWorkshop,
+  canReturnToClient,
+  isClosedStatus,
   PIECE_STATUS_LABELS,
   type PieceStatus,
   type PieceTransition,
 } from "@/domain/piece-state-machine";
-import { deriveLocation } from "@/domain/restoration-status";
+import type { PieceLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 import {
   changePieceStatus,
   markPiecesArrived,
+  receiveFromWorkshop,
+  returnPiecesToClient,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import { LocationBadge, PieceStatusBadge } from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
 export const ACTION_LABELS: Record<PieceStatus, string> = {
@@ -46,11 +51,11 @@ export const ACTION_LABELS: Record<PieceStatus, string> = {
   en_consulta: "Poner en consulta",
   en_espera: "Esperar respuesta",
   aprobada: "Aprobar",
-  recibida: "Recibir",
   enviada_taller: "Enviar al taller",
-  devuelta_taller: "Recibir del taller",
   observada: "Observar",
   entregada: "Entregar",
+  rechazada: "Rechazar",
+  sin_arreglo: "No tiene arreglo",
   anulada: "Anular",
 };
 
@@ -58,9 +63,22 @@ export type StatusPiece = {
   id: string;
   code: string;
   status: PieceStatus;
+  location: PieceLocation;
   arrivedAt: string | null;
   workshopId: string | null;
+  /** En Interno y ya de vuelta del taller (P47). */
+  readyForDelivery: boolean;
+  returnedAt: string | null;
+  urgent: boolean;
 };
+
+/** Lo que la máquina de estados necesita de una pieza de la interfaz. */
+export const snapshotOf = (piece: StatusPiece) => ({
+  status: piece.status,
+  arrivedAt: piece.arrivedAt ? new Date(piece.arrivedAt) : null,
+  readyForDelivery: piece.readyForDelivery,
+  returnedAt: piece.returnedAt ? new Date(piece.returnedAt) : null,
+});
 
 export type PendingChange = {
   to: PieceStatus;
@@ -80,9 +98,9 @@ export function requirementsFor(
   };
 }
 
-/** Necesita diálogo: nota, taller o una acción que no se deshace (anular). */
+/** Necesita diálogo: nota, taller o una acción que no se deshace (estados finales). */
 export const needsDialog = (change: PendingChange) =>
-  change.requiresNote || change.requiresWorkshop || change.to === "anulada";
+  change.requiresNote || change.requiresWorkshop || isClosedStatus(change.to);
 
 const NONE = "ninguno";
 
@@ -148,8 +166,8 @@ export function StatusChangeDialog({
           </DialogTitle>
           <DialogDescription>
             Pasa a «{PIECE_STATUS_LABELS[change.to]}».
-            {change.to === "anulada"
-              ? " Una pieza anulada no se puede reactivar."
+            {isClosedStatus(change.to)
+              ? " Es un estado final: la pieza no se puede reactivar ni se cobra."
               : ""}
           </DialogDescription>
         </DialogHeader>
@@ -191,7 +209,7 @@ export function StatusChangeDialog({
         </div>
         <DialogFooter>
           <Button
-            variant={change.to === "anulada" ? "destructive" : "default"}
+            variant={isClosedStatus(change.to) ? "destructive" : "default"}
             onClick={submit}
             disabled={pending}
           >
@@ -204,9 +222,10 @@ export function StatusChangeDialog({
 }
 
 /**
- * Estado, ubicación y acciones de una pieza (Paso 8.4). Solo muestra las
- * transiciones que el rol puede hacer; el cambio se ve al instante (optimista) y
- * vuelve atrás si la BD lo rechaza.
+ * Estado, ubicación y acciones de una pieza (Pasos 8.4 y 8.6). Solo muestra lo que
+ * el rol puede hacer; el cambio se ve al instante (optimista) y vuelve atrás si la
+ * BD lo rechaza. Llegada, vuelta del taller y devolución no cambian el estado: solo
+ * la ubicación (P47).
  */
 export function PieceStatusPanel({
   restorationId,
@@ -220,20 +239,17 @@ export function PieceStatusPanel({
   workshops: WorkshopOption[];
 }) {
   const [optimistic, setOptimistic] = useOptimistic(
-    { status: piece.status, arrivedAt: piece.arrivedAt },
-    (_state, next: { status: PieceStatus; arrivedAt: string | null }) => next,
+    piece,
+    (state, changes: Partial<StatusPiece>) => ({ ...state, ...changes }),
   );
   const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<PendingChange | null>(null);
 
-  const transitions = availableTransitions(piece, role);
-  const arrival = canMarkArrived(
-    {
-      status: piece.status,
-      arrivedAt: piece.arrivedAt ? new Date(piece.arrivedAt) : null,
-    },
-    role,
-  );
+  const snapshot = snapshotOf(piece);
+  const transitions = availableTransitions(snapshot, role);
+  const arrival = canMarkArrived(snapshot, role);
+  const receive = canReceiveFromWorkshop(snapshot, role);
+  const giveBack = canReturnToClient(snapshot, role);
 
   const run = (
     change: PendingChange,
@@ -242,11 +258,16 @@ export function PieceStatusPanel({
     new Promise<string | null>((resolve) => {
       startTransition(async () => {
         setOptimistic({
-          status:
-            change.to === "aprobada" && piece.arrivedAt
-              ? "recibida"
-              : change.to,
-          arrivedAt: piece.arrivedAt,
+          status: change.to,
+          location:
+            change.to === "enviada_taller"
+              ? "en_taller"
+              : change.to === "entregada"
+                ? "entregada"
+                : change.to === "anulada"
+                  ? "anulada"
+                  : piece.location,
+          readyForDelivery: false,
         });
         const result = await changePieceStatus(
           restorationId,
@@ -265,27 +286,25 @@ export function PieceStatusPanel({
       });
     });
 
-  const arrive = () =>
+  /** Acción que no cambia el estado: optimista y con aviso. */
+  const act = (
+    changes: Partial<StatusPiece>,
+    call: () => Promise<{ ok: true } | { error: string }>,
+    message: string,
+  ) =>
     startTransition(async () => {
-      setOptimistic({
-        status: piece.status === "aprobada" ? "recibida" : piece.status,
-        arrivedAt: new Date().toISOString(),
-      });
-      const result = await markPiecesArrived(restorationId, [piece.id]);
+      setOptimistic(changes);
+      const result = await call();
       if ("error" in result) toast.error(result.error);
-      else toast.success(`${piece.code}: llegó a la tienda.`);
+      else toast.success(`${piece.code}: ${message}`);
     });
-
-  const location = deriveLocation({
-    status: optimistic.status,
-    arrivedAt: optimistic.arrivedAt ? new Date(optimistic.arrivedAt) : null,
-  });
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
         <PieceStatusBadge status={optimistic.status} />
-        <LocationBadge location={location} />
+        <LocationBadge location={optimistic.location} />
+        {optimistic.urgent ? <UrgentBadge /> : null}
         {pending ? (
           <Loader2
             className="text-muted-foreground size-4 animate-spin"
@@ -293,7 +312,7 @@ export function PieceStatusPanel({
           />
         ) : null}
       </div>
-      {transitions.length > 0 || arrival ? (
+      {transitions.length > 0 || arrival || receive || giveBack ? (
         <div
           className="flex flex-wrap gap-2"
           aria-label={`Acciones de ${piece.code}`}
@@ -304,19 +323,64 @@ export function PieceStatusPanel({
               size="sm"
               variant="outline"
               disabled={pending}
-              onClick={arrive}
+              onClick={() =>
+                act(
+                  {
+                    arrivedAt: new Date().toISOString(),
+                    location: "sin_enviar",
+                  },
+                  () => markPiecesArrived(restorationId, [piece.id]),
+                  "llegó a la tienda.",
+                )
+              }
             >
               Marcar llegada a tienda
             </Button>
           ) : null}
+          {receive ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                act(
+                  { readyForDelivery: true, location: "en_tienda" },
+                  () => receiveFromWorkshop(restorationId, [piece.id]),
+                  "volvió del taller.",
+                )
+              }
+            >
+              Recibir del taller
+            </Button>
+          ) : null}
+          {giveBack ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                act(
+                  {
+                    returnedAt: new Date().toISOString(),
+                    location: "entregada",
+                  },
+                  () => returnPiecesToClient(restorationId, [piece.id]),
+                  "devuelta al cliente.",
+                )
+              }
+            >
+              Devolver al cliente
+            </Button>
+          ) : null}
           {transitions.map((t) => {
             const change = requirementsFor([t])!;
+            const closing = isClosedStatus(t.to);
             return (
               <Button
                 key={t.to}
                 size="sm"
-                variant={t.to === "anulada" ? "ghost" : "outline"}
-                className={t.to === "anulada" ? "text-destructive" : undefined}
+                variant={closing ? "ghost" : "outline"}
+                className={closing ? "text-destructive" : undefined}
                 disabled={pending}
                 onClick={() =>
                   needsDialog(change) ? setDialog(change) : void run(change)

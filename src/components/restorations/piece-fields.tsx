@@ -96,7 +96,8 @@ export function PieceFields({
   materials,
   services,
   editable,
-  showArrived = true,
+  showWorkshop = true,
+  showUrgent = true,
   priceHint,
 }: {
   form: AnyForm;
@@ -105,7 +106,9 @@ export function PieceFields({
   materials: CatalogOption[];
   services: CatalogOption[];
   editable?: readonly PieceEditableField[];
-  showArrived?: boolean;
+  /** Las cotizaciones de WhatsApp no llevan taller ni marca urgente (P46). */
+  showWorkshop?: boolean;
+  showUrgent?: boolean;
   /** Explicación cuando el precio no se puede editar aquí. */
   priceHint?: string;
 }) {
@@ -174,40 +177,42 @@ export function PieceFields({
           inputMode="numeric"
           disabled={off("weight")}
         />
-        <FormField
-          control={form.control}
-          name={path("workshopId")}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Taller</FormLabel>
-              <Select
-                value={field.value ?? NONE}
-                onValueChange={(v) => field.onChange(v === NONE ? null : v)}
-                disabled={off("workshopId")}
-              >
-                <FormControl>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value={NONE}>Sin asignar</SelectItem>
-                  {workshops.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {showWorkshop ? (
+          <FormField
+            control={form.control}
+            name={path("workshopId")}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Taller</FormLabel>
+                <Select
+                  value={field.value ?? NONE}
+                  onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                  disabled={off("workshopId")}
+                >
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Sin asignar</SelectItem>
+                    {workshops.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
       </div>
-      {showArrived ? (
+      {showUrgent ? (
         <FormField
           control={form.control}
-          name={path("arrived")}
+          name={path("urgent")}
           render={({ field }) => (
             <FormItem className="flex items-center gap-2">
               <FormControl>
@@ -215,12 +220,11 @@ export function PieceFields({
                   type="checkbox"
                   className="accent-primary size-4"
                   checked={Boolean(field.value)}
+                  disabled={off("urgent")}
                   onChange={(e) => field.onChange(e.target.checked)}
                 />
               </FormControl>
-              <FormLabel className="font-normal">
-                La pieza ya está en tienda
-              </FormLabel>
+              <FormLabel className="font-normal">Urgente</FormLabel>
             </FormItem>
           )}
         />

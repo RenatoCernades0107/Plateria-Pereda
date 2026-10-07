@@ -4,7 +4,7 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-03
+**Última actualización:** 2026-10-06
 
 ## Resumen de pendientes
 
@@ -12,8 +12,9 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, N1, N2 |
 | Respondidas en parte | P13 (falta el efecto de "no incluye IGV"), P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
+| Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
 > 1. En el plan Grow, los **pagos parciales** solo se pueden registrar en el **POS**. En el panel de Shopify y por API son exclusivos de Shopify Plus. Esto corrige lo anotado el 2026-09-30 en P07 y N1 → nueva propuesta de pagos en **P43**.
@@ -223,6 +224,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Contexto:** si llega antes de aprobarse, debe pasar a "Recibida" apenas se apruebe; hay que saber que ya está físicamente en la tienda.
 - **Propuesta:** en el registro, casilla "La pieza ya está en tienda" marcada por defecto; para las que llegan después, un botón "Marcar llegada" (lo usan logística y ventas).
 - **Respuesta (2026-10-05):** ✅ **Sí, suelen llegar al registrar.** La casilla "La pieza ya está en tienda" viene marcada por defecto (se desmarca para las que llegan después).
+- **Reemplazada (2026-10-06, P48):** se quita la casilla. Toda pieza registrada en oficina ya está en la tienda ("Sin enviar"); solo las que vienen de una cotización de WhatsApp empiezan "Por WhatsApp".
 
 ### P21 · ¿Hay una sola tienda física?
 - **Contexto:** si hay varias sedes, la ubicación "En tienda" debería indicar en cuál está la pieza.
@@ -381,6 +383,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 ### P41 · Transiciones pendientes de la pieza — Bloqueante (Fase 8)
 - (a') Si el cliente **rechaza** la propuesta de la consulta, ¿qué pasa?
   - **Respuesta:** ✅ El rechazo **no se registra** en el sistema como estado propio; el asesor coordina con el cliente por WhatsApp.
+  - **Actualizado (2026-10-06, P47):** el rechazo ahora **sí se registra** como "Rechazado (cliente)".
   - **Supuesto:** si el cliente finalmente no acepta, la pieza se anula con un motivo.
 - (g) ¿Seguimos usando el estado "En espera de respuesta del cliente"? Por lo que describes, "En consulta" ya cubre el tiempo en que se coordina con el cliente. — **Propuesta:** quitarlo (En consulta → Aprobada), salvo que les sirva para distinguir "estamos revisando la pieza" de "ya le enviamos la propuesta al cliente".
 - (b) ¿Se puede "Observar" una pieza ya **entregada** (reclamo posterior)? Ya estuvo en el taller, así que encaja con la regla de P17. — **Propuesta:** sí.
@@ -389,6 +392,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - (e) ¿Se puede pasar de "Registrada" directo a "Aprobada" sin consulta? — **Propuesta:** sí.
 - (f) ¿Una pieza "Devuelta por el taller" puede volver al taller sin pasar por "Observada"? — **Propuesta:** no.
 - **Respuesta (b)–(g):** ✅ (g) **Se mantiene** "En espera de respuesta del cliente". Flujo: la consulta es opcional (para piezas en condiciones especiales o complicadas; si el cliente acepta en el momento, pasa directo a "Aprobada"). Cuando se le envía el mensaje al cliente por WhatsApp, la pieza pasa a "En espera de respuesta del cliente"; si el cliente acepta, se aprueba; si no, se anula. (e) Sí: de "Registrada" a "Aprobada" directo. (b), (c), (d) y (f): no hubo comentarios, así que se aplican las propuestas mientras no se diga lo contrario.
+- **Actualizado (2026-10-06, P47):** se quitan Recibida y Devuelta por el taller; (f) ahora es: una pieza que volvió del taller (Interno · Lista para entregar) vuelve al taller solo pasando por "Observación".
 
 ### P42 · ¿Validan el resto de la matriz de permisos (P30)? — Bloqueante (Fase 2)
 - **Respuesta:** ✅ "Por ahora está bien", con estos cambios para **logística**: no ve precios, pagos, métricas ni el historial; no crea restauraciones; de los datos de la restauración solo edita las **fotos**: antes y después de cada pieza y una **foto general** de todas las piezas.
@@ -448,6 +452,49 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Propuesta:** si la restauración tiene saldo pendiente (y no es "Al crédito"), el sistema no deja marcar "Entregada" y muestra "Falta cobrar el saldo", sin montos. Ventas y admin pueden entregar igual confirmándolo, para casos especiales (entregas parciales, clientes de confianza).
 - **Respuesta:** ✅ De acuerdo con la propuesta.
 
+### P46 · Cotizaciones de restauración por WhatsApp (pedido del 2026-10-05)
+- **Contexto:** piden distinguir si un pedido llega **por WhatsApp o por oficina**. Lo que llega por WhatsApp es en realidad una **cotización**: el cliente manda fotos, se le cotizan varias piezas y al final suele pedir solo algunas. Quieren conservar la cotización completa porque el cliente puede volver a preguntar por una pieza ya cotizada. Si fuera una restauración más, ensuciaría los listados, la vista de logística, el dashboard, la numeración `RES-` y la creación de la orden de Shopify.
+- **Respuesta (2026-10-05 y 2026-10-06):** ✅ opción A, con estas reglas:
+  - (1) La casilla **"El pedido vino por WhatsApp"** del registro crea una **cotización** con código propio `CWA-00001`, no una restauración. Queda fija, nunca va a Shopify y **no lleva fotos** (las fotos solo van en las restauraciones reales).
+  - (2) **"Crear restauración"** copia las piezas elegidas a una restauración normal (`RES-`, origen WhatsApp). Se hace cuando el cliente confirma, y las piezas entran **Aprobadas** y con ubicación "Sin enviar". Siempre se copia, aunque pida todas las piezas.
+  - (3) Se puede copiar **varias veces**: cada pieza de la cotización muestra en qué restauración se pidió, y una ya pedida no se vuelve a elegir. En la copia se pueden cambiar precios y agregar piezas; el precio original queda en la cotización como referencia.
+  - (4) **Cliente opcional** en la cotización: sin cliente se pueden anotar nombre y teléfono, ninguno obligatorio, y no se crea nada en Shopify. Al pasar a restauración el cliente es **obligatorio** y la cotización queda vinculada a él. Sin nombre, el saludo del mensaje es genérico; sin teléfono, solo hay "Copiar".
+  - (5) Estados de la cotización: **Cotizada**, **Pedida en parte**, **Pedida completa** y **Descartada** (con motivo). Sin vencimiento automático: se muestra la antigüedad. Solo se edita hasta la primera copia.
+  - (6) **Nunca se mezclan con las restauraciones en una misma vista:** tienen su propio menú y listado (con búsqueda por descripción de pieza), y en el detalle del cliente van en una pestaña aparte. El listado de restauraciones suma un filtro "Origen" (oficina o WhatsApp) y el dashboard medirá por origen.
+  - (7) El origen no se cambia después de registrar; las restauraciones de oficina no tienen copia. Solo ventas y admin ven las cotizaciones. No se cruza con el cotizador `COT-`.
+- **Supuestos (confirmar):**
+  - (a) Si una pieza de la restauración copiada se anula, se rechaza o queda sin arreglo, su pieza vuelve a quedar pendiente en la cotización.
+  - (b) Una cotización descartada no se copia; ventas o admin pueden **reabrirla**.
+  - (c) La copia encola la orden de Shopify en cuanto todas sus piezas quedan aprobadas, igual que al aprobar una restauración completa. El adelanto al aprobar llega con la Fase 11.
+
+### P47 · Nuevos estados de la pieza (pedido del 2026-10-06)
+- **Contexto:** la Platería envió su lista de estados con colores: Consulta, Espera respuesta cliente, Aprobada, No tiene arreglo, Rechazado (cliente), Anulado, Interno, Aprobado urgente y Observación.
+- **Respuesta (2026-10-06):** ✅
+  - (1) **"Aprobado urgente" no es un estado:** es una marca aparte, "Urgente", por pieza.
+  - (2) **"Interno"** es el nuevo nombre de "Enviada al taller".
+  - (3) **Se quitan "Recibida" y "Devuelta por el taller".** La llegada a la tienda y la vuelta del taller pasan a ser cambios de **ubicación**: "Marcar llegada" y "Recibir del taller" ya no cambian el estado. Una pieza en Interno que volvió del taller queda "En tienda · Lista para entregar"; los días en taller y los estados Lista y Parcialmente lista de la restauración se mantienen.
+  - (4) **Rechazado (cliente):** el cliente o la tienda no aceptan el trabajo antes de aprobarlo. Se llega desde Registrada, Consulta o Espera respuesta, con nota; es final. Reemplaza a "En espera → Anulada" (cambia D21).
+  - (5) **Anulado** queda para errores de registro, duplicados o cancelaciones después de aprobar.
+  - (6) **No tiene arreglo:** desde Consulta (lo decide la tienda) o desde Interno (lo avisa el taller), con nota; es final.
+  - (7) **Rechazado y No tiene arreglo no se cobran**, igual que Anulado: salen del total, del mensaje y de la orden de Shopify.
+  - (8) **"Devolver al cliente":** para piezas rechazadas o sin arreglo que están en la tienda. Guarda la fecha y la ubicación pasa a "Entregada", sin tocar Shopify ni pedir el saldo.
+  - (9) **Observación:** desde Interno (ya de vuelta del taller) o desde Entregada (reclamo); vuelve a Interno (reenvío al taller) o pasa a Entregada si se resolvió en la tienda.
+  - (10) La ubicación "Por recibir" pasa a llamarse **"Sin enviar"**, también en la BD.
+- **Supuestos (confirmar):**
+  - (a) Si todas las piezas quedan anuladas, rechazadas o sin arreglo, la restauración queda **Anulada**.
+  - (b) **Urgente:** casilla por pieza en el registro y la edición (ventas y admin); logística la ve; en `/piezas` y el kanban las urgentes van primero y se filtran con "Solo urgentes"; no cambia el precio.
+  - (c) Para enviar una pieza al taller debe estar en la tienda; para entregarla u observarla desde Interno debe haber vuelto del taller.
+
+### P48 · Ubicaciones de la pieza y restauración "Rechazada" (2026-10-06)
+- **Contexto:** al revisar los supuestos de P46 y P47, la Platería corrigió las ubicaciones y el estado general cuando todas las piezas quedan cerradas.
+- **Respuesta (2026-10-06):** ✅
+  - (1) **Cinco ubicaciones**, en orden: **Por WhatsApp** (pieza de una restauración que salió de una cotización de WhatsApp y aún no llega) → **Sin enviar** (en la tienda, aún no enviada al taller) → **En taller** → **En tienda** (volvió del taller) → **Entregada**. Una pieza anulada mantiene la ubicación **Anulada**.
+  - (2) **Se quita la casilla "La pieza ya está en tienda"** (reemplaza P20): toda pieza registrada en oficina nace "Sin enviar"; las de WhatsApp pasan de "Por WhatsApp" a "Sin enviar" con "Marcar llegada".
+  - (3) Se enviará al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
+  - (4) Si todas las piezas quedan cerradas, la restauración queda **Rechazada** si alguna fue rechazada o no tiene arreglo, y **Anulada** solo si todas se anularon (antes quedaba siempre Anulada, lo que parecía un error).
+  - (5) Logística ve las restauraciones **Rechazadas mientras tengan piezas por devolver** al cliente; después pasan a ser pasadas (D24).
+  - (6) Supuesto P46 (a) confirmado: si una pieza copiada se anula, se rechaza o queda sin arreglo, vuelve a quedar pendiente en la cotización. Reemplaza los supuestos P47 (a) y (c).
+
 ---
 
 ## Preguntas para el negocio
@@ -495,7 +542,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D10 | Plan Grow: sin pagos parciales ni depósitos en el panel ni por API (solo Plus); los perfiles de empresa sí están disponibles desde abril de 2026 | P07 |
 | D11 | El adelanto se cobra después de aprobar: 50 % del total por defecto, editable por restauración | P10, N2 |
 | D12 | Una línea personalizada (custom sale) por pieza en la orden | P11 |
-| D13 | "Observada" solo es posible después de que la pieza estuvo en el taller | P17 |
+| D13 | "Observada" (ahora "Observación") solo es posible después de que la pieza estuvo en el taller | P17, P47 |
 | D14 | Se puede enviar una pieza al taller aunque otras sigan en consulta | P18 |
 | D15 | Material y servicio: lista + texto libre | P22 |
 | D16 | Logística no ve precios, pagos, métricas ni la pestaña "Historial"; no registra restauraciones; sube y edita fotos (por pieza y foto general) | P30, P42 |
@@ -503,9 +550,9 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D18 | Pruebas en una tienda de desarrollo de la organización del desarrollador; la tienda real no se usa para pruebas | P08 |
 | D19 | Apps de Shopify creadas en el Dev Dashboard (token de 24 h que el sistema renueva); la de producción, en la organización de la Platería | P07 |
 | D20 | Los pagos se registran desde nuestro sistema (efectivo, tarjeta, Yape, Plin), siempre en la misma orden | N1 |
-| D21 | El rechazo del cliente no se registra: la pieza sigue "En consulta" hasta que el asesor la aprueba | P41 |
+| D21 | ~~El rechazo del cliente no se registra~~ → reemplazada por D46: el rechazo es el estado "Rechazado (cliente)" | P41, P47 |
 | D22 | Toda edición queda en la auditoría (quién, cuándo, antes → después) | P12 |
-| D23 | Se mantiene "En espera de respuesta del cliente": consulta (opcional) → en espera → aprobada o anulada | P41 |
+| D23 | Se mantiene "En espera de respuesta del cliente" (ahora "Espera respuesta cliente"): consulta (opcional) → en espera → aprobada o rechazada | P41, P47 |
 | D24 | Logística no ve restauraciones pasadas (entregadas o anuladas); sí ve la última observación y los días en taller | P42 |
 | D25 | El cliente de una restauración no se cambia en el sistema; solo desde Shopify | P12 |
 | D26 | Cambios de precio (admin), piezas agregadas o anuladas se reflejan automáticamente en la orden; correcciones de pagos con reembolso | P12 |
@@ -517,6 +564,23 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D32 | Códigos `RES-00001` y pieza `RES-00001-1` | P24 |
 | D33 | Las empresas son Companies de Shopify; sus contactos son contactos de la Company y las órdenes van a nombre de la empresa | P14 |
 | D34 | El pago del saldo se registra en Shopify como "manual", salvo que el método exista en la tienda (Visa, Mastercard, transferencia bancaria, PagoEfectivo): entonces va con ese nombre. El adelanto (incluido al crear la orden) sí lleva el nombre real (Yape, Plin, etc.). El sistema siempre guarda el método real | Spike 4.1 |
+
+| D35 | Lo que llega por WhatsApp se registra como **cotización** (`CWA-00001`): no es una restauración, no va a Shopify y no lleva fotos | P46 |
+| D36 | "Crear restauración" copia las piezas elegidas a una restauración con origen WhatsApp; entran Aprobadas. Se puede repetir con las pendientes | P46 |
+| D37 | Cliente opcional en la cotización (nombre y teléfono libres, opcionales); obligatorio al copiarla, y la cotización queda vinculada a él | P46 |
+| D38 | Estados de la cotización: Cotizada, Pedida en parte, Pedida completa, Descartada. Se edita solo hasta la primera copia | P46 |
+| D39 | Cotizaciones y restauraciones nunca en la misma vista: menú propio, pestañas separadas en el cliente; filtro "Origen" en restauraciones | P46 |
+| D40 | Solo ventas y admin ven las cotizaciones de WhatsApp; no se cruzan con el cotizador `COT-` | P46 |
+| D41 | Estados de la pieza: Registrada, Consulta, Espera respuesta cliente, Aprobada, Interno, Observación, Entregada, Rechazado (cliente), No tiene arreglo y Anulado | P47 |
+| D42 | Se quitan Recibida y Devuelta por el taller: la llegada y la vuelta del taller son cambios de ubicación ("Lista para entregar") | P47 |
+| D43 | "Urgente" es una marca por pieza, no un estado | P47 |
+| D44 | Rechazado y No tiene arreglo son finales y no se cobran (como Anulado); las piezas se devuelven al cliente con "Devolver al cliente" | P47 |
+| D45 | La ubicación "Por recibir" pasa a "Sin enviar" (`sin_enviar`) | P47 |
+| D46 | El rechazo del cliente se registra como "Rechazado (cliente)"; Anulado queda para errores y cancelaciones | P47 |
+| D47 | Ubicaciones: Por WhatsApp → Sin enviar → En taller → En tienda (de vuelta del taller) → Entregada; Anulada para las piezas anuladas. Reemplaza D42 y D45 en lo que diga distinto | P48 |
+| D48 | Sin casilla "La pieza ya está en tienda": las piezas de oficina nacen en la tienda; las de WhatsApp se marcan al llegar | P48, reemplaza P20 |
+| D49 | Restauración con todas las piezas cerradas: Rechazada si alguna fue rechazada o sin arreglo; Anulada si todas se anularon | P48 |
+| D50 | Logística ve las restauraciones Rechazadas mientras tengan piezas por devolver | P48, ajusta D24 |
 
 ---
 
@@ -531,3 +595,6 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-03 | P12 (cierre), P24 | Título de la línea solo con el código; el cambio de cliente hecho en Shopify se refleja en el sistema; códigos `RES-00001`. No quedan preguntas bloqueantes. |
 | 2026-10-04 | P14 | Empresas como Companies de Shopify (opción b). |
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
+| 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
+| 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
+| 2026-10-06 | P46, P47 | Cotización sin fotos y con cliente opcional (obligatorio al copiar); nunca en la misma vista que las restauraciones. Estados nuevos de la pieza: Rechazado, No tiene arreglo, Interno, Observación; sin Recibida ni Devuelta; marca Urgente; "Sin enviar" en vez de "Por recibir". |

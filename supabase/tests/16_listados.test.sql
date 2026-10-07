@@ -1,6 +1,6 @@
 begin;
 
-select plan(12);
+select plan(15);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ca1', 'ventas@listados.test', '{"role":"ventas"}', '{}'),
@@ -27,8 +27,21 @@ update public.pieces set status = 'entregada' where id = '00000000-0000-0000-000
 update public.pieces set status = 'enviada_taller' where id = '00000000-0000-0000-0000-00000000ca41';
 delete from public.piece_status_history where piece_id = '00000000-0000-0000-0000-00000000ca41';
 insert into public.piece_status_history (piece_id, restoration_id, from_status, to_status, occurred_at) values
-  ('00000000-0000-0000-0000-00000000ca41', '00000000-0000-0000-0000-00000000ca31', 'recibida', 'enviada_taller', now() - interval '10 days'),
-  ('00000000-0000-0000-0000-00000000ca42', '00000000-0000-0000-0000-00000000ca32', 'devuelta_taller', 'observada', now());
+  ('00000000-0000-0000-0000-00000000ca41', '00000000-0000-0000-0000-00000000ca31', 'aprobada', 'enviada_taller', now() - interval '10 days'),
+  ('00000000-0000-0000-0000-00000000ca42', '00000000-0000-0000-0000-00000000ca32', 'enviada_taller', 'observada', now());
+-- Una urgente y una rechazada que sigue en la tienda (por devolver, P47).
+insert into public.clients (id, kind, first_name, shopify_customer_id)
+  values ('00000000-0000-0000-0000-00000000ca22', 'persona', 'Otra', 'gid://shopify/Customer/ca22');
+insert into public.restorations (id, client_id, payment_type)
+  values ('00000000-0000-0000-0000-00000000ca34', '00000000-0000-0000-0000-00000000ca22', 'contado');
+insert into public.pieces (id, restoration_id, description, price, urgent, arrived_at) values
+  ('00000000-0000-0000-0000-00000000ca46', '00000000-0000-0000-0000-00000000ca34', 'Plato normal', 20, false, null),
+  ('00000000-0000-0000-0000-00000000ca44', '00000000-0000-0000-0000-00000000ca34', 'Copa urgente', 20, true, null),
+  ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca34', 'Vaso por devolver', 10, false, now()),
+  ('00000000-0000-0000-0000-00000000ca47', '00000000-0000-0000-0000-00000000ca34', 'Taza ya devuelta', 10, false, now());
+update public.pieces set status = 'rechazada'
+  where id in ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca47');
+update public.pieces set returned_at = now() where id = '00000000-0000-0000-0000-00000000ca47';
 update public.piece_status_history set note = 'Falta brillo'
   where piece_id = '00000000-0000-0000-0000-00000000ca42' and to_status = 'observada';
 
@@ -83,6 +96,21 @@ select results_eq(
 select is(
   (select count(*)::int from public.list_pieces_board(p_query => 'Jarra entregada')),
   0, 'no muestra piezas entregadas ni de restauraciones pasadas'
+);
+select results_eq(
+  $$ select description, urgent from public.list_pieces_board(p_query => 'Otra') $$,
+  $$ values ('Copa urgente', true), ('Plato normal', false), ('Vaso por devolver', false) $$,
+  'las urgentes van primero; las rechazadas que siguen en la tienda aparecen (las devueltas no)'
+);
+select results_eq(
+  $$ select description from public.list_pieces_board(p_query => 'Otra', p_urgent => true) $$,
+  $$ values ('Copa urgente') $$,
+  'filtra solo las urgentes'
+);
+select results_eq(
+  $$ select description from public.list_pieces_board(p_query => 'Otra', p_to_return => true) $$,
+  $$ values ('Vaso por devolver') $$,
+  'filtra las piezas por devolver'
 );
 select results_eq(
   $$ select description from public.list_pieces_board(p_query => 'listada', p_min_workshop_days => 7) $$,

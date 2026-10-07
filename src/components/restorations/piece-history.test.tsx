@@ -48,6 +48,7 @@ describe("RestorationStatusSummary", () => {
         events={[
           {
             pieceId: "p1",
+            event: "estado",
             at: "2026-10-01T15:00:00Z",
             fromStatus: null,
             toStatus: "registrada",
@@ -56,6 +57,7 @@ describe("RestorationStatusSummary", () => {
           },
           {
             pieceId: "p1",
+            event: "estado",
             at: "2026-10-02T15:00:00Z",
             fromStatus: "registrada",
             toStatus: "aprobada",

@@ -64,8 +64,8 @@ select results_eq(
 select results_eq(
   $$ select location::text from public.pieces
      where restoration_id = '00000000-0000-0000-0000-00000000c701' order by number $$,
-  $$ values ('por_recibir'), ('por_recibir'), ('en_tienda') $$,
-  'la ubicación depende de la llegada a tienda'
+  $$ values ('sin_enviar'), ('sin_enviar'), ('sin_enviar') $$,
+  'las piezas de oficina nacen en la tienda: Sin enviar (P48)'
 );
 
 update public.pieces set price = 200.10

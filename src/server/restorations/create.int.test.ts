@@ -67,7 +67,6 @@ describe("registro de restauraciones", () => {
           service: { id: null, name: "Limpieza" },
           weight: "820.5",
           price: "0.10",
-          arrived: true,
           notes: "",
         },
         {
@@ -78,7 +77,6 @@ describe("registro de restauraciones", () => {
           service: { id: null, name: "" },
           weight: "",
           price: "0.20",
-          arrived: false,
           notes: "",
         },
       ],
@@ -109,13 +107,14 @@ describe("registro de restauraciones", () => {
         code: `${result.code}-1`,
         material_name: "Plata 950",
         price: 0.1,
-        location: "en_tienda",
+        // Las piezas de oficina nacen en la tienda, sin enviar al taller (P48).
+        location: "sin_enviar",
       },
       {
         code: `${result.code}-2`,
         material_name: "",
         price: 0.2,
-        location: "por_recibir",
+        location: "sin_enviar",
       },
     ]);
 

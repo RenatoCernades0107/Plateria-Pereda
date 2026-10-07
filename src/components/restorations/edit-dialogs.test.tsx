@@ -34,8 +34,10 @@ const piece: PieceDetail = {
   id: "p1",
   number: 1,
   code: "RES-00001-1",
-  status: "recibida",
+  status: "aprobada",
   location: "en_tienda",
+  urgent: false,
+  readyForDelivery: false,
   description: "Fuente",
   measure: "40 cm",
   materialName: "Plata",
@@ -49,6 +51,7 @@ const piece: PieceDetail = {
   arrivedAt: "2026-10-04T10:00:00Z",
   createdAt: "2026-10-04T10:00:00Z",
   deliveredAt: null,
+  returnedAt: null,
   priceCents: 120050,
 };
 
@@ -81,9 +84,6 @@ describe("PieceDialog", () => {
     expect(
       within(dialog).getByText("Solo el administrador cambia el precio."),
     ).toBeVisible();
-    expect(
-      within(dialog).queryByLabelText("La pieza ya está en tienda"),
-    ).toBeNull();
 
     await user.clear(within(dialog).getByLabelText("Material"));
     await user.type(within(dialog).getByLabelText("Material"), "Plata 925");

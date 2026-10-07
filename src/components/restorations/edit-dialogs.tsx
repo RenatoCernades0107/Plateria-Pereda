@@ -221,7 +221,7 @@ function pieceDefaults(piece: PieceDetail): PieceFormInput {
     service: { id: piece.serviceId, name: piece.serviceName },
     weight: piece.weightGrams === null ? "" : String(piece.weightGrams),
     price: piece.priceCents === null ? "" : toDecimalString(piece.priceCents),
-    arrived: piece.arrivedAt !== null,
+    urgent: piece.urgent,
     notes: piece.notes,
   };
 }
@@ -306,7 +306,6 @@ export function PieceDialog({
               materials={materials}
               services={services}
               editable={editable}
-              showArrived={!piece}
               priceHint={priceHint}
             />
             <DialogFooter>

@@ -18,12 +18,13 @@ describe("restorationsCsv", () => {
         paidCents: 61725,
         balanceCents: 61725,
         createdAt: "2026-10-01T03:00:00Z",
+        origin: "whatsapp",
       },
     ]);
     expect(csv.startsWith("﻿Código,Fecha,Cliente")).toBe(true);
     const [, row] = csv.slice(1).split("\r\n");
     expect(row).toBe(
-      'RES-00001,2026-09-30,"Joyería ""Andina"", S.A.C.",20100047218,,En proceso,Pago parcial,A cuenta,3,1234.50,617.25,617.25',
+      'RES-00001,2026-09-30,"Joyería ""Andina"", S.A.C.",20100047218,,En proceso,Pago parcial,A cuenta,3,1234.50,617.25,617.25,WhatsApp',
     );
   });
 
@@ -42,10 +43,11 @@ describe("restorationsCsv", () => {
         paidCents: null,
         balanceCents: null,
         createdAt: "2026-10-01T15:00:00Z",
+        origin: "oficina",
       },
     ]);
     expect(csv).toContain(
-      "RES-00002,2026-10-01,Ana,,Luis,Registrada,,Al contado,1,,,",
+      "RES-00002,2026-10-01,Ana,,Luis,Registrada,,Al contado,1,,,,Oficina",
     );
   });
 });

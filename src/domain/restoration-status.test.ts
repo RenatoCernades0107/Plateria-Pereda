@@ -22,6 +22,7 @@ const restorationCases = scenarios.restorationStatus.map((s) => ({
     status: p.status as PieceStatus,
     approvedAt: date(p.approvedAt),
     firstSentAt: date(p.firstSentAt),
+    readyForDelivery: p.readyForDelivery,
   })),
 }));
 
@@ -65,12 +66,24 @@ describe("isReadyForShopifyOrder (escenarios compartidos con la BD)", () => {
 
 describe("deriveLocation (escenarios compartidos con la BD)", () => {
   it.each(scenarios.location)(
-    "$status (llegada: $arrivedAt) → $expected",
-    ({ status, arrivedAt, expected }) => {
+    "$status (llegada: $arrivedAt, vuelta: $lastReturnedAt, devuelta: $returnedAt) → $expected",
+    ({
+      status,
+      arrivedAt,
+      firstSentAt,
+      lastSentAt,
+      lastReturnedAt,
+      returnedAt,
+      expected,
+    }) => {
       expect(
         deriveLocation({
           status: status as PieceStatus,
           arrivedAt: date(arrivedAt),
+          firstSentAt: date(firstSentAt),
+          lastSentAt: date(lastSentAt),
+          lastReturnedAt: date(lastReturnedAt),
+          returnedAt: date(returnedAt),
         }),
       ).toBe(expected);
     },
@@ -105,7 +118,7 @@ describe("advanceRestorationStatus (P19: solo avanza)", () => {
     expect(advanceRestorationStatus("lista", "completada")).toBe("completada");
   });
 
-  it("no retrocede si una pieza se observa y vuelve al taller", () => {
+  it("no retrocede si una pieza lista se observa y vuelve al taller", () => {
     expect(advanceRestorationStatus("lista", "en_proceso")).toBe("lista");
     expect(advanceRestorationStatus("completada", "parcialmente_lista")).toBe(
       "completada",

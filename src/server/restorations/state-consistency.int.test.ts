@@ -7,6 +7,7 @@ import {
   isReadyForShopifyOrder,
   RESTORATION_STATUSES,
 } from "@/domain/restoration-status";
+import { deriveWhatsappQuoteStatus } from "@/domain/whatsapp-quotes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import fixture from "../../../tests/fixtures/restorations/derivations.json";
 
@@ -52,6 +53,7 @@ describe("consistencia entre TypeScript y la BD", () => {
         status: p.status as never,
         approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
         firstSentAt: p.firstSentAt ? new Date(p.firstSentAt) : null,
+        readyForDelivery: p.readyForDelivery,
       }));
       expect(status.data).toBe(expected);
       expect(deriveRestorationStatus(parsed)).toBe(expected);
@@ -61,11 +63,23 @@ describe("consistencia entre TypeScript y la BD", () => {
   );
 
   it.each(fixture.location)(
-    "ubicación: $status con llegada $arrivedAt",
-    async ({ status, arrivedAt, expected }) => {
+    "ubicación: $status con llegada $arrivedAt, vuelta $lastReturnedAt y devolución $returnedAt",
+    async ({
+      status,
+      arrivedAt,
+      firstSentAt,
+      lastSentAt,
+      lastReturnedAt,
+      returnedAt,
+      expected,
+    }) => {
       const { data } = await createAdminClient().rpc("derive_piece_location", {
         p_status: status as never,
         p_arrived_at: arrivedAt as string,
+        p_first_sent_at: firstSentAt as string,
+        p_last_sent_at: lastSentAt as string,
+        p_last_returned_at: lastReturnedAt as string,
+        p_returned_at: returnedAt as string,
       });
       expect(data).toBe(expected);
     },
@@ -95,6 +109,23 @@ describe("consistencia entre TypeScript y la BD", () => {
       expect(data).toEqual(expected);
     },
   );
+
+  it("el estado de la cotización de WhatsApp es igual en TypeScript y en la BD (P46)", async () => {
+    const admin = createAdminClient();
+    for (const items of [1, 2, 3]) {
+      for (let ordered = 0; ordered <= items; ordered++) {
+        const { data } = await admin.rpc("derive_whatsapp_quote_status", {
+          p_items: items,
+          p_ordered: ordered,
+        });
+        expect([items, ordered, data]).toEqual([
+          items,
+          ordered,
+          deriveWhatsappQuoteStatus(items, ordered),
+        ]);
+      }
+    }
+  });
 
   it("el estado general solo avanza igual en TypeScript y en la BD (P19)", async () => {
     const admin = createAdminClient();
