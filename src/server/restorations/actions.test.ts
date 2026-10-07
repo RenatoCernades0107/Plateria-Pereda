@@ -118,6 +118,29 @@ describe("pieceToRpc", () => {
       urgent: true,
       notes: "",
       quote_item_id: null,
+      status: null,
+      status_note: "",
+    });
+  });
+
+  it("pasa el estado inicial y su nota de la copia desde WhatsApp (P49)", () => {
+    expect(
+      pieceToRpc({
+        workshopId: null,
+        description: "Fuente",
+        measure: "",
+        material: null,
+        service: null,
+        weightGrams: null,
+        priceCents: 1000,
+        urgent: false,
+        notes: "",
+        initialStatus: "en_consulta",
+        statusNote: "Consultar al taller",
+      }),
+    ).toMatchObject({
+      status: "en_consulta",
+      status_note: "Consultar al taller",
     });
   });
 });

@@ -4,7 +4,7 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-06
+**Última actualización:** 2026-10-07
 
 ## Resumen de pendientes
 
@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, N1, N2 |
 | Respondidas en parte | P13 (falta el efecto de "no incluye IGV"), P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -456,7 +456,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Contexto:** piden distinguir si un pedido llega **por WhatsApp o por oficina**. Lo que llega por WhatsApp es en realidad una **cotización**: el cliente manda fotos, se le cotizan varias piezas y al final suele pedir solo algunas. Quieren conservar la cotización completa porque el cliente puede volver a preguntar por una pieza ya cotizada. Si fuera una restauración más, ensuciaría los listados, la vista de logística, el dashboard, la numeración `RES-` y la creación de la orden de Shopify.
 - **Respuesta (2026-10-05 y 2026-10-06):** ✅ opción A, con estas reglas:
   - (1) La casilla **"El pedido vino por WhatsApp"** del registro crea una **cotización** con código propio `CWA-00001`, no una restauración. Queda fija, nunca va a Shopify y **no lleva fotos** (las fotos solo van en las restauraciones reales).
-  - (2) **"Crear restauración"** copia las piezas elegidas a una restauración normal (`RES-`, origen WhatsApp). Se hace cuando el cliente confirma, y las piezas entran **Aprobadas** y con ubicación "Sin enviar". Siempre se copia, aunque pida todas las piezas.
+  - (2) **"Crear restauración"** copia las piezas elegidas a una restauración normal (`RES-`, origen WhatsApp). Se hace cuando el cliente confirma, y las piezas entran **Aprobadas** y con ubicación "Sin enviar". Siempre se copia, aunque pida todas las piezas. _(Cambiado en P49: las piezas ya no se aprueban solas; cada una pasa al estado que elige el usuario. La ubicación inicial es "Por WhatsApp", según P48.)_
   - (3) Se puede copiar **varias veces**: cada pieza de la cotización muestra en qué restauración se pidió, y una ya pedida no se vuelve a elegir. En la copia se pueden cambiar precios y agregar piezas; el precio original queda en la cotización como referencia.
   - (4) **Cliente opcional** en la cotización: sin cliente se pueden anotar nombre y teléfono, ninguno obligatorio, y no se crea nada en Shopify. Al pasar a restauración el cliente es **obligatorio** y la cotización queda vinculada a él. Sin nombre, el saludo del mensaje es genérico; sin teléfono, solo hay "Copiar".
   - (5) Estados de la cotización: **Cotizada**, **Pedida en parte**, **Pedida completa** y **Descartada** (con motivo). Sin vencimiento automático: se muestra la antigüedad. Solo se edita hasta la primera copia.
@@ -465,7 +465,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Supuestos (confirmar):**
   - (a) Si una pieza de la restauración copiada se anula, se rechaza o queda sin arreglo, su pieza vuelve a quedar pendiente en la cotización.
   - (b) Una cotización descartada no se copia; ventas o admin pueden **reabrirla**.
-  - (c) La copia encola la orden de Shopify en cuanto todas sus piezas quedan aprobadas, igual que al aprobar una restauración completa. El adelanto al aprobar llega con la Fase 11.
+  - (c) La copia encola la orden de Shopify en cuanto todas sus piezas quedan aprobadas, igual que al aprobar una restauración completa. El adelanto al aprobar llega con la Fase 11. _(Con P49 esto ocurre al copiar solo si todas las piezas se eligen Aprobadas; si no, cuando se aprueben después.)_
 
 ### P47 · Nuevos estados de la pieza (pedido del 2026-10-06)
 - **Contexto:** la Platería envió su lista de estados con colores: Consulta, Espera respuesta cliente, Aprobada, No tiene arreglo, Rechazado (cliente), Anulado, Interno, Aprobado urgente y Observación.
@@ -494,6 +494,15 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (4) Si todas las piezas quedan cerradas, la restauración queda **Rechazada** si alguna fue rechazada o no tiene arreglo, y **Anulada** solo si todas se anularon (antes quedaba siempre Anulada, lo que parecía un error).
   - (5) Logística ve las restauraciones **Rechazadas mientras tengan piezas por devolver** al cliente; después pasan a ser pasadas (D24).
   - (6) Supuesto P46 (a) confirmado: si una pieza copiada se anula, se rechaza o queda sin arreglo, vuelve a quedar pendiente en la cotización. Reemplaza los supuestos P47 (a) y (c).
+
+### P49 · Estado inicial de las piezas al pasar una cotización de WhatsApp a restauración (2026-10-07)
+- **Contexto:** al pasar una cotización a restauración, las piezas se aprobaban solas y la restauración nacía Aprobada (con la orden de Shopify encolada). No siempre es así: el cliente puede pedir piezas que aún hay que consultar.
+- **Respuesta (2026-10-07):** ✅
+  - (1) Ni las piezas ni la restauración se aprueban solas: las piezas nacen **Registradas** y cada una pasa al **estado inicial** que elige el usuario en "Crear restauración".
+  - (2) Opciones por pieza: **Consulta** o **Aprobada**; por defecto **Consulta**. También las piezas nuevas que se agregan en la copia.
+  - (3) Consulta lleva **nota obligatoria por pieza**. No se puede saltar a "Espera respuesta cliente": la pieza sigue el flujo de siempre, Consulta → Espera respuesta cliente → Aprobada, con las acciones normales.
+  - (4) El estado general de la restauración **se calcula como en oficina**: nace Registrada y pasa a Aprobada (y encola la orden de Shopify) cuando todas sus piezas activas están aprobadas. Si todas se eligen Aprobadas, queda Aprobada al copiar.
+  - (5) Una pieza en Consulta ya cuenta como **pedida** en la cotización.
 
 ---
 
@@ -566,7 +575,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D34 | El pago del saldo se registra en Shopify como "manual", salvo que el método exista en la tienda (Visa, Mastercard, transferencia bancaria, PagoEfectivo): entonces va con ese nombre. El adelanto (incluido al crear la orden) sí lleva el nombre real (Yape, Plin, etc.). El sistema siempre guarda el método real | Spike 4.1 |
 
 | D35 | Lo que llega por WhatsApp se registra como **cotización** (`CWA-00001`): no es una restauración, no va a Shopify y no lleva fotos | P46 |
-| D36 | "Crear restauración" copia las piezas elegidas a una restauración con origen WhatsApp; entran Aprobadas. Se puede repetir con las pendientes | P46 |
+| D36 | "Crear restauración" copia las piezas elegidas a una restauración con origen WhatsApp; ~~entran Aprobadas~~ → pasan al estado inicial elegido (D51). Se puede repetir con las pendientes | P46, P49 |
 | D37 | Cliente opcional en la cotización (nombre y teléfono libres, opcionales); obligatorio al copiarla, y la cotización queda vinculada a él | P46 |
 | D38 | Estados de la cotización: Cotizada, Pedida en parte, Pedida completa, Descartada. Se edita solo hasta la primera copia | P46 |
 | D39 | Cotizaciones y restauraciones nunca en la misma vista: menú propio, pestañas separadas en el cliente; filtro "Origen" en restauraciones | P46 |
@@ -581,6 +590,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D48 | Sin casilla "La pieza ya está en tienda": las piezas de oficina nacen en la tienda; las de WhatsApp se marcan al llegar | P48, reemplaza P20 |
 | D49 | Restauración con todas las piezas cerradas: Rechazada si alguna fue rechazada o sin arreglo; Anulada si todas se anularon | P48 |
 | D50 | Logística ve las restauraciones Rechazadas mientras tengan piezas por devolver | P48, ajusta D24 |
+| D51 | Al pasar una cotización de WhatsApp a restauración nada se aprueba solo: cada pieza elige Consulta (por defecto, con nota; luego sigue a Espera respuesta cliente → Aprobada) o Aprobada; la restauración nace Registrada y su estado se calcula como en oficina | P49, reemplaza D36 en lo del estado |
 
 ---
 
@@ -597,4 +607,5 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
+| 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |
 | 2026-10-06 | P46, P47 | Cotización sin fotos y con cliente opcional (obligatorio al copiar); nunca en la misma vista que las restauraciones. Estados nuevos de la pieza: Rechazado, No tiene arreglo, Interno, Observación; sin Recibida ni Devuelta; marca Urgente; "Sin enviar" en vez de "Por recibir". |

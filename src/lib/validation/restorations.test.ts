@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  copyRestorationSchema,
   MAX_PIECES,
   pieceSchema,
   restorationSchema,
@@ -35,7 +36,10 @@ const restoration = {
 
 const errorsOf = (
   schema:
-    typeof pieceSchema | typeof restorationSchema | typeof whatsappQuoteSchema,
+    | typeof pieceSchema
+    | typeof restorationSchema
+    | typeof whatsappQuoteSchema
+    | typeof copyRestorationSchema,
   input: unknown,
 ) => {
   const result = schema.safeParse(input);
@@ -295,5 +299,50 @@ describe("whatsappQuoteSchema (P46)", () => {
     expect(errorsOf(whatsappQuoteSchema, { ...quote, pieces: [] })).toEqual({
       pieces: "Agrega al menos una pieza",
     });
+  });
+});
+
+describe("copyRestorationSchema (P49)", () => {
+  const copy = (extra: Partial<PieceFormInput>) => ({
+    ...restoration,
+    pieces: [{ ...piece, ...extra }],
+  });
+
+  it("exige el estado inicial de cada pieza", () => {
+    expect(errorsOf(copyRestorationSchema, copy({}))).toEqual({
+      "pieces.0.initialStatus": "Elige el estado inicial",
+    });
+  });
+
+  it("Consulta exige nota; Aprobada no", () => {
+    expect(
+      errorsOf(
+        copyRestorationSchema,
+        copy({ initialStatus: "en_consulta", statusNote: "   " }),
+      ),
+    ).toEqual({ "pieces.0.statusNote": "Escribe una nota para la consulta" });
+    expect(
+      copyRestorationSchema.parse(
+        copy({ initialStatus: "en_consulta", statusNote: " Consultar " }),
+      ).pieces[0],
+    ).toMatchObject({ initialStatus: "en_consulta", statusNote: "Consultar" });
+    expect(
+      copyRestorationSchema.parse(copy({ initialStatus: "aprobada" })).pieces[0]
+        ?.initialStatus,
+    ).toBe("aprobada");
+  });
+
+  it("no acepta otros estados (ni saltar a Espera respuesta cliente)", () => {
+    for (const initialStatus of ["registrada", "en_espera"]) {
+      expect(
+        copyRestorationSchema.safeParse(
+          copy({ initialStatus: initialStatus as never, statusNote: "x" }),
+        ).success,
+      ).toBe(false);
+    }
+  });
+
+  it("el registro en oficina no pide estado inicial", () => {
+    expect(restorationSchema.safeParse(restoration).success).toBe(true);
   });
 });
