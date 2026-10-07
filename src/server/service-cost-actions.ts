@@ -30,7 +30,8 @@ export async function setPieceServiceCost(
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_piece_service_cost", {
     p_piece_id: pieceId,
-    p_cost: cost,
+    // El tipo generado no admite null, pero la función sí (deja el costo sin definir).
+    p_cost: cost as number,
   });
   if (error) {
     return {
