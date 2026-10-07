@@ -262,7 +262,7 @@ function defaultsFor(
     customerName: q.customerName,
     customerPhone: q.customerPhone,
     paymentType: q.paymentType,
-    depositPercent: String(q.depositPercent ?? defaultDepositPercent),
+    depositPercent: q.depositPercent === null ? "" : String(q.depositPercent),
     notes: mode.kind === "copia" ? "" : q.notes,
     pieces:
       mode.kind === "copia"
@@ -320,9 +320,14 @@ export function RestorationForm({
   const paymentType = values.paymentType ?? "a_cuenta";
   const percent = Number(values.depositPercent);
   const deposit =
-    paymentType === "a_cuenta" && !(percent >= 1 && percent <= 100)
+    paymentType === "a_cuenta" &&
+    (values.depositPercent ?? "").trim() !== "" &&
+    !(percent >= 1 && percent <= 100)
       ? null
-      : expectedDeposit(total, paymentType, percent);
+      : paymentType === "a_cuenta" &&
+          (values.depositPercent ?? "").trim() === ""
+        ? 0
+        : expectedDeposit(total, paymentType, percent);
 
   // Contactos de la empresa ya vinculada (al editar o copiar una cotización).
   useEffect(() => {
@@ -387,6 +392,11 @@ export function RestorationForm({
     if (pending) return;
     setError(null);
     const input = form.getValues();
+    // La cotización no lleva pago: sin tipo elegido ni adelanto.
+    if (viaWhatsapp) {
+      input.paymentType = "a_cuenta";
+      input.depositPercent = "";
+    }
     startTransition(async () => {
       if (mode.kind === "copia") {
         const result = await createRestorationFromQuote(
@@ -639,46 +649,55 @@ export function RestorationForm({
           </Button>
         </section>
 
-        <section className="space-y-4" aria-labelledby="pago">
-          <h2 id="pago" className="text-heading text-lg font-semibold">
-            Pago
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="paymentType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo de pago</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {PAYMENT_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {PAYMENT_TYPE_LABELS[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {paymentType === "a_cuenta" ? (
-              <TextField
-                form={form}
-                name="depositPercent"
-                label="Adelanto (%)"
-                inputMode="numeric"
+        {viaWhatsapp ? (
+          <section className="space-y-4" aria-labelledby="notas">
+            <h2 id="notas" className="sr-only">
+              Notas
+            </h2>
+            <TextField form={form} name="notes" label="Notas" multiline />
+          </section>
+        ) : (
+          <section className="space-y-4" aria-labelledby="pago">
+            <h2 id="pago" className="text-heading text-lg font-semibold">
+              Pago
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="paymentType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de pago</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {PAYMENT_TYPE_LABELS[t]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            ) : null}
-          </div>
-          <TextField form={form} name="notes" label="Notas" multiline />
-        </section>
+              {paymentType === "a_cuenta" ? (
+                <TextField
+                  form={form}
+                  name="depositPercent"
+                  label="Adelanto (%) (opcional)"
+                  inputMode="numeric"
+                />
+              ) : null}
+            </div>
+            <TextField form={form} name="notes" label="Notas" multiline />
+          </section>
+        )}
 
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
           <dl className="flex gap-6">
@@ -691,12 +710,14 @@ export function RestorationForm({
                 {formatCents(total)}
               </dd>
             </div>
-            <div>
-              <dt className="text-muted-foreground text-xs">Adelanto</dt>
-              <dd className="tabular-nums" data-testid="adelanto-en-vivo">
-                {deposit === null ? "—" : formatCents(deposit)}
-              </dd>
-            </div>
+            {viaWhatsapp ? null : (
+              <div>
+                <dt className="text-muted-foreground text-xs">Adelanto</dt>
+                <dd className="tabular-nums" data-testid="adelanto-en-vivo">
+                  {deposit === null ? "—" : formatCents(deposit)}
+                </dd>
+              </div>
+            )}
           </dl>
           <Button type="submit" disabled={pending}>
             {pending ? "Guardando…" : submitLabel}

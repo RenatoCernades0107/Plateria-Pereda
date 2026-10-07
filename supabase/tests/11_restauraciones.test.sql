@@ -1,6 +1,6 @@
 begin;
 
-select plan(25);
+select plan(26);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000007a1', 'ventas@res.test', '{"role":"ventas"}', '{}'),
@@ -99,10 +99,15 @@ select results_eq(
 );
 
 -- Reglas de integridad
-select throws_ok(
-  $$ insert into public.restorations (client_id, payment_type)
-     values ('00000000-0000-0000-0000-00000000b701', 'a_cuenta') $$,
-  '23514', null, 'A cuenta exige el % de adelanto'
+select lives_ok(
+  $$ insert into public.restorations (id, client_id, payment_type)
+     values ('00000000-0000-0000-0000-00000000b7f1', '00000000-0000-0000-0000-00000000b701', 'a_cuenta') $$,
+  'A cuenta admite el % de adelanto vacío (sin adelanto)'
+);
+select is(
+  (select expected_deposit from public.restorations where id = '00000000-0000-0000-0000-00000000b7f1'),
+  0.00::numeric,
+  'sin % de adelanto el adelanto esperado es 0'
 );
 select throws_ok(
   $$ insert into public.restorations (client_id, payment_type, deposit_percent)

@@ -145,7 +145,7 @@ describe("RestorationForm", () => {
   it("el % de adelanto solo se pide en A cuenta", async () => {
     const user = userEvent.setup();
     renderForm();
-    expect(screen.getByLabelText("Adelanto (%)")).toHaveValue("50");
+    expect(screen.getByLabelText("Adelanto (%) (opcional)")).toHaveValue("50");
     await user.type(
       within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
       "80",
@@ -153,7 +153,7 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "Al crédito" }));
-    expect(screen.queryByLabelText("Adelanto (%)")).toBeNull();
+    expect(screen.queryByLabelText("Adelanto (%) (opcional)")).toBeNull();
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("S/ 0.00");
 
     await user.click(screen.getByLabelText("Tipo de pago"));
@@ -164,10 +164,14 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "A cuenta" }));
-    const percent = screen.getByLabelText("Adelanto (%)");
+    const percent = screen.getByLabelText("Adelanto (%) (opcional)");
     await user.clear(percent);
     await user.type(percent, "0");
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
+
+    // El adelanto es opcional: vacío = sin adelanto.
+    await user.clear(percent);
+    expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("S/ 0.00");
   });
 });
 
@@ -238,6 +242,9 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     await user.click(screen.getByLabelText(/El pedido vino por WhatsApp/));
     expect(within(piece).queryByLabelText("Taller")).toBeNull();
     expect(screen.getByText("Cliente (opcional)")).toBeInTheDocument();
+    // La cotización no lleva pago.
+    expect(screen.queryByLabelText("Tipo de pago")).toBeNull();
+    expect(screen.queryByTestId("adelanto-en-vivo")).toBeNull();
 
     await user.type(screen.getByLabelText("Nombre (opcional)"), "Ana Pérez");
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
@@ -248,7 +255,12 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
 
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.createQuote).toHaveBeenCalledWith(
-      expect.objectContaining({ clientId: "", customerName: "Ana Pérez" }),
+      expect.objectContaining({
+        clientId: "",
+        customerName: "Ana Pérez",
+        paymentType: "a_cuenta",
+        depositPercent: "",
+      }),
     );
     expect(mocks.push).toHaveBeenCalledWith(
       "/cotizaciones-whatsapp/q1?registrada=1",
