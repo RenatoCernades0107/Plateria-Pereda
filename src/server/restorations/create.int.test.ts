@@ -107,7 +107,8 @@ describe("registro de restauraciones", () => {
         code: `${result.code}-1`,
         material_name: "Plata 950",
         price: 0.1,
-        location: "en_tienda",
+        // Las piezas de oficina nacen en la tienda, sin enviar al taller (P48).
+        location: "sin_enviar",
       },
       {
         code: `${result.code}-2`,
