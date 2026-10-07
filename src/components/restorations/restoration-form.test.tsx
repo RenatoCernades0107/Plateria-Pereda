@@ -84,6 +84,10 @@ describe("RestorationForm", () => {
       "100",
     );
     expect(total).toHaveTextContent("S/ 100.00");
+    expect(deposit).toHaveTextContent("—");
+
+    await user.click(screen.getByLabelText("Tipo de pago"));
+    await user.click(await screen.findByRole("option", { name: "A cuenta" }));
     expect(deposit).toHaveTextContent("S/ 50.00");
 
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
@@ -145,7 +149,12 @@ describe("RestorationForm", () => {
   it("el % de adelanto solo se pide en A cuenta", async () => {
     const user = userEvent.setup();
     renderForm();
-    expect(screen.getByLabelText("Adelanto (%) (opcional)")).toHaveValue("50");
+    // Por defecto el tipo de pago está por definir: sin adelanto ni %.
+    expect(screen.getByLabelText("Tipo de pago")).toHaveTextContent(
+      "Por definir",
+    );
+    expect(screen.queryByLabelText("Adelanto (%) (opcional)")).toBeNull();
+    expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
     await user.type(
       within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
       "80",
@@ -165,6 +174,7 @@ describe("RestorationForm", () => {
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "A cuenta" }));
     const percent = screen.getByLabelText("Adelanto (%) (opcional)");
+    expect(percent).toHaveValue("50");
     await user.clear(percent);
     await user.type(percent, "0");
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
@@ -258,7 +268,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
       expect.objectContaining({
         clientId: "",
         customerName: "Ana Pérez",
-        paymentType: "a_cuenta",
+        paymentType: "sin_definir",
         depositPercent: "",
       }),
     );
@@ -324,6 +334,12 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     });
     expect(screen.getByTestId("cliente-fijo")).toHaveTextContent("Ana Pérez");
     await user.click(screen.getByLabelText("Pedir Fuente"));
+    await user.type(
+      within(screen.getByTestId("pieza-1")).getByLabelText(
+        "Nota de la consulta (obligatoria)",
+      ),
+      "Consultar al taller",
+    );
     await user.click(
       screen.getByRole("button", { name: "Crear restauración" }),
     );
@@ -335,10 +351,110 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
           expect.objectContaining({
             description: "Jarra",
             quoteItemId: "00000000-0000-0000-0000-0000000000d2",
+            initialStatus: "en_consulta",
+            statusNote: "Consultar al taller",
           }),
         ],
       }),
     );
     expect(mocks.push).toHaveBeenCalledWith("/restauraciones/r1?registrada=1");
+  });
+});
+
+describe("RestorationForm · estado inicial al copiar (P49)", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(mocks)) fn.mockReset();
+  });
+
+  const linkedQuote: QuoteForForm = {
+    ...QUOTE,
+    client: {
+      source: "local",
+      kind: "persona",
+      clientId: "00000000-0000-0000-0000-0000000000e1",
+      name: "Ana Pérez",
+      documentType: null,
+      documentNumber: null,
+      phone: null,
+      email: null,
+      shopifyCustomerId: null,
+    },
+  };
+
+  it("cada pieza nace en Consulta y la nota es obligatoria", async () => {
+    const user = userEvent.setup();
+    renderForm({ kind: "copia", quote: linkedQuote });
+    const piece = screen.getByTestId("pieza-1");
+    expect(within(piece).getByLabelText("Estado inicial")).toHaveTextContent(
+      "Consulta",
+    );
+    expect(within(piece).getByText("Pasa a Consulta")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Crear restauración" }),
+    );
+    expect(
+      screen.getAllByText("Escribe una nota para la consulta"),
+    ).toHaveLength(2);
+    expect(mocks.copy).not.toHaveBeenCalled();
+  });
+
+  it("solo ofrece Consulta o Aprobada, y Aprobada no pide nota", async () => {
+    mocks.copy.mockResolvedValue({ ok: true, id: "r1", code: "RES-00010" });
+    const user = userEvent.setup();
+    renderForm({ kind: "copia", quote: linkedQuote });
+    const fuente = screen.getByTestId("pieza-1");
+    const jarra = screen.getByTestId("pieza-2");
+
+    await user.click(within(fuente).getByLabelText("Estado inicial"));
+    // Espera respuesta cliente se alcanza después, desde Consulta.
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Consulta",
+      "Aprobada",
+    ]);
+    await user.click(screen.getByRole("option", { name: "Aprobada" }));
+    expect(
+      within(fuente).queryByLabelText("Nota de la consulta (obligatoria)"),
+    ).toBeNull();
+
+    await user.type(
+      within(jarra).getByLabelText("Nota de la consulta (obligatoria)"),
+      "Preguntar si quiere grabado",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Crear restauración" }),
+    );
+    expect(mocks.copy).toHaveBeenCalledWith(
+      QUOTE.id,
+      expect.objectContaining({
+        pieces: [
+          expect.objectContaining({
+            description: "Fuente",
+            initialStatus: "aprobada",
+          }),
+          expect.objectContaining({
+            description: "Jarra",
+            initialStatus: "en_consulta",
+            statusNote: "Preguntar si quiere grabado",
+          }),
+        ],
+      }),
+    );
+  });
+
+  it("las piezas nuevas también eligen estado inicial", async () => {
+    const user = userEvent.setup();
+    renderForm({ kind: "copia", quote: linkedQuote });
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    expect(
+      within(screen.getByTestId("pieza-3")).getByLabelText("Estado inicial"),
+    ).toHaveTextContent("Consulta");
+  });
+
+  it("el registro en oficina no muestra el estado inicial", () => {
+    renderForm();
+    expect(
+      within(screen.getByTestId("pieza-1")).queryByLabelText("Estado inicial"),
+    ).toBeNull();
   });
 });

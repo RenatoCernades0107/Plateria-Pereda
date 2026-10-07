@@ -25,6 +25,9 @@ export function pieceToRpc(piece: PieceInput) {
     urgent: piece.urgent,
     notes: piece.notes,
     quote_item_id: piece.quoteItemId ?? null,
+    // Estado inicial de la copia desde WhatsApp (P49); las demás RPC lo ignoran.
+    status: piece.initialStatus ?? null,
+    status_note: piece.statusNote ?? "",
   };
 }
 

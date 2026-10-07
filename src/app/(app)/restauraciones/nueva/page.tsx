@@ -51,7 +51,7 @@ export default async function NuevaRestauracionPage({
         }
         description={
           quote
-            ? "Elige las piezas que el cliente confirmó: entran aprobadas."
+            ? "Elige las piezas que el cliente pidió y el estado al que pasa cada una."
             : "Registra las piezas que deja el cliente y genera la cotización."
         }
       />

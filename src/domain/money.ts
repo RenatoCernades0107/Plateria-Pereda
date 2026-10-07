@@ -69,10 +69,16 @@ export function parseMoney(text: string): Cents | null {
   return cents <= MAX_CENTS ? cents : null;
 }
 
-export const PAYMENT_TYPES = ["contado", "a_cuenta", "credito"] as const;
+export const PAYMENT_TYPES = [
+  "sin_definir",
+  "contado",
+  "a_cuenta",
+  "credito",
+] as const;
 export type PaymentType = (typeof PAYMENT_TYPES)[number];
 
 export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
+  sin_definir: "Por definir",
   contado: "Al contado",
   a_cuenta: "A cuenta",
   credito: "Al crédito",
@@ -99,7 +105,7 @@ export const DEFAULT_DEPOSIT_PERCENT = 50;
 
 /**
  * Adelanto esperado según el tipo de pago (§7.5): el total al contado, el % del
- * total a cuenta y nada al crédito.
+ * total a cuenta y nada al crédito ni mientras el tipo está por definir.
  */
 export function expectedDeposit(
   total: Cents,
@@ -111,6 +117,7 @@ export function expectedDeposit(
       return total;
     case "a_cuenta":
       return percentOf(total, depositPercent);
+    case "sin_definir":
     case "credito":
       return 0;
   }
