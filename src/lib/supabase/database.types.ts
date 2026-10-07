@@ -376,6 +376,7 @@ export type Database = {
           restoration_id: string;
           returned_at: string | null;
           returned_by: string | null;
+          service_cost: number | null;
           service_id: string | null;
           service_name: string;
           shopify_line_item_id: string | null;
@@ -410,6 +411,7 @@ export type Database = {
           restoration_id: string;
           returned_at?: string | null;
           returned_by?: string | null;
+          service_cost?: number | null;
           service_id?: string | null;
           service_name?: string;
           shopify_line_item_id?: string | null;
@@ -444,6 +446,7 @@ export type Database = {
           restoration_id?: string;
           returned_at?: string | null;
           returned_by?: string | null;
+          service_cost?: number | null;
           service_id?: string | null;
           service_name?: string;
           shopify_line_item_id?: string | null;
@@ -1627,6 +1630,24 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      list_workshop_pieces: {
+        Args: { p_limit?: number; p_offset?: number; p_workshop_id: string };
+        Returns: {
+          code: string;
+          description: string;
+          id: string;
+          material_name: string;
+          measure: string;
+          restoration_code: string;
+          restoration_id: string;
+          service_cost: number | null;
+          service_name: string;
+          status: Database["public"]["Enums"]["piece_status"];
+          total_cost: number;
+          total_count: number;
+          weight_grams: number;
+        }[];
+      };
       list_restorations: {
         Args: {
           p_client_id?: string;
@@ -1725,6 +1746,10 @@ export type Database = {
       save_quote: {
         Args: { p_id: string; p_items: Json; p_quote: Json };
         Returns: string;
+      };
+      set_piece_service_cost: {
+        Args: { p_cost: number | null; p_piece_id: string };
+        Returns: undefined;
       };
       shopify_sync_status: {
         Args: { p_entity_ids: string[]; p_entity_table: string };
