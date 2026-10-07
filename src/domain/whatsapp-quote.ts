@@ -85,6 +85,8 @@ function paymentLine(
       return `Forma de pago: ${label} (adelanto del ${percent(depositPercent)} %: S/ ${amount(depositCents)})`;
     case "credito":
       return `Forma de pago: ${label} (sin adelanto)`;
+    case "sin_definir":
+      return `Forma de pago: ${label}`;
   }
 }
 

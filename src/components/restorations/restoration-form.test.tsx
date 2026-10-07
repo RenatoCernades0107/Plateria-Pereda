@@ -84,6 +84,10 @@ describe("RestorationForm", () => {
       "100",
     );
     expect(total).toHaveTextContent("S/ 100.00");
+    expect(deposit).toHaveTextContent("—");
+
+    await user.click(screen.getByLabelText("Tipo de pago"));
+    await user.click(await screen.findByRole("option", { name: "A cuenta" }));
     expect(deposit).toHaveTextContent("S/ 50.00");
 
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
@@ -145,7 +149,12 @@ describe("RestorationForm", () => {
   it("el % de adelanto solo se pide en A cuenta", async () => {
     const user = userEvent.setup();
     renderForm();
-    expect(screen.getByLabelText("Adelanto (%) (opcional)")).toHaveValue("50");
+    // Por defecto el tipo de pago está por definir: sin adelanto ni %.
+    expect(screen.getByLabelText("Tipo de pago")).toHaveTextContent(
+      "Por definir",
+    );
+    expect(screen.queryByLabelText("Adelanto (%) (opcional)")).toBeNull();
+    expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
     await user.type(
       within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
       "80",
@@ -165,6 +174,7 @@ describe("RestorationForm", () => {
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "A cuenta" }));
     const percent = screen.getByLabelText("Adelanto (%) (opcional)");
+    expect(percent).toHaveValue("50");
     await user.clear(percent);
     await user.type(percent, "0");
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
@@ -258,7 +268,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
       expect.objectContaining({
         clientId: "",
         customerName: "Ana Pérez",
-        paymentType: "a_cuenta",
+        paymentType: "sin_definir",
         depositPercent: "",
       }),
     );

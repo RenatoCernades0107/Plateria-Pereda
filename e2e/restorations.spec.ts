@@ -105,6 +105,10 @@ test.describe("Restauraciones", () => {
     await fillPiece(page, 3, { description: "Cucharita", price: "35" });
 
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 2,436.00");
+    // El tipo de pago parte "Por definir": sin adelanto hasta elegir uno.
+    await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("—");
+    await page.getByLabel("Tipo de pago").click();
+    await page.getByRole("option", { name: "A cuenta" }).click();
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText(
       "S/ 1,218.00",
     );

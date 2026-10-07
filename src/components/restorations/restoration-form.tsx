@@ -325,7 +325,7 @@ function defaultsFor(
       contactId: null,
       customerName: "",
       customerPhone: "",
-      paymentType: "a_cuenta",
+      paymentType: "sin_definir",
       depositPercent: String(defaultDepositPercent),
       notes: "",
       pieces: [EMPTY_PIECE],
@@ -398,17 +398,19 @@ export function RestorationForm({
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
   const total = liveTotal(values.pieces ?? []);
-  const paymentType = values.paymentType ?? "a_cuenta";
+  const paymentType = values.paymentType ?? "sin_definir";
   const percent = Number(values.depositPercent);
   const deposit =
-    paymentType === "a_cuenta" &&
-    (values.depositPercent ?? "").trim() !== "" &&
-    !(percent >= 1 && percent <= 100)
+    paymentType === "sin_definir"
       ? null
       : paymentType === "a_cuenta" &&
-          (values.depositPercent ?? "").trim() === ""
-        ? 0
-        : expectedDeposit(total, paymentType, percent);
+          (values.depositPercent ?? "").trim() !== "" &&
+          !(percent >= 1 && percent <= 100)
+        ? null
+        : paymentType === "a_cuenta" &&
+            (values.depositPercent ?? "").trim() === ""
+          ? 0
+          : expectedDeposit(total, paymentType, percent);
 
   // Contactos de la empresa ya vinculada (al editar o copiar una cotización).
   useEffect(() => {
@@ -475,7 +477,7 @@ export function RestorationForm({
     const input = form.getValues();
     // La cotización no lleva pago: sin tipo elegido ni adelanto.
     if (viaWhatsapp) {
-      input.paymentType = "a_cuenta";
+      input.paymentType = "sin_definir";
       input.depositPercent = "";
     }
     startTransition(async () => {
