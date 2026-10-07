@@ -180,7 +180,17 @@ describe("restorationSchema", () => {
     ).toEqual({ depositPercent: "Máximo dos decimales" });
   });
 
-  it.each(["0", "101", "", "abc"])("rechaza el %% %j", (depositPercent) => {
+  it.each(["", "  "])(
+    "acepta el adelanto vacío (%j) como sin adelanto",
+    (depositPercent) => {
+      expect(
+        restorationSchema.parse({ ...restoration, depositPercent })
+          .depositPercent,
+      ).toBeNull();
+    },
+  );
+
+  it.each(["0", "101", "abc"])("rechaza el %% %j", (depositPercent) => {
     expect(
       errorsOf(restorationSchema, { ...restoration, depositPercent }),
     ).toEqual({ depositPercent: "El adelanto debe estar entre 1 y 100 %" });

@@ -99,7 +99,12 @@ export function EditRestorationDialog({
     defaultValues: {
       contactId: initial.contactId,
       paymentType: initial.paymentType,
-      depositPercent: String(initial.depositPercent ?? DEFAULT_DEPOSIT_PERCENT),
+      depositPercent:
+        initial.depositPercent === null
+          ? initial.paymentType === "a_cuenta"
+            ? ""
+            : String(DEFAULT_DEPOSIT_PERCENT)
+          : String(initial.depositPercent),
       notes: initial.notes,
     },
   });
@@ -194,7 +199,7 @@ export function EditRestorationDialog({
                 <TextField
                   form={form}
                   name="depositPercent"
-                  label="Adelanto (%)"
+                  label="Adelanto (%) (opcional)"
                   inputMode="numeric"
                 />
               ) : null}

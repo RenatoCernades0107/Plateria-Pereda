@@ -144,14 +144,18 @@ describe("EditRestorationDialog", () => {
     );
     await user.click(screen.getByRole("button", { name: "Editar" }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Adelanto (%)")).toHaveValue("30");
+    expect(
+      within(dialog).getByLabelText("Adelanto (%) (opcional)"),
+    ).toHaveValue("30");
     expect(within(dialog).getByLabelText("Contacto")).toHaveTextContent(
       "Luis Rojas",
     );
 
     await user.click(within(dialog).getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "Al contado" }));
-    expect(within(dialog).queryByLabelText("Adelanto (%)")).toBeNull();
+    expect(
+      within(dialog).queryByLabelText("Adelanto (%) (opcional)"),
+    ).toBeNull();
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),
     );
