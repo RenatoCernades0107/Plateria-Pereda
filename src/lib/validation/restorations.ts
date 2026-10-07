@@ -115,7 +115,7 @@ export type PieceInput = z.output<typeof pieceSchema>;
 
 const PERCENT_ERROR = "El adelanto debe estar entre 1 y 100 %";
 
-const depositPercent = z.coerce
+const depositPercentValue = z.coerce
   .number<string | number>({ error: PERCENT_ERROR })
   .min(1, PERCENT_ERROR)
   .max(100, PERCENT_ERROR)
@@ -123,6 +123,12 @@ const depositPercent = z.coerce
     (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-9,
     "Máximo dos decimales",
   );
+
+/** El adelanto es opcional: vacío (o sin definir) = sin adelanto, se guarda null. */
+const depositPercent = z.preprocess(
+  (v) => (v == null || (typeof v === "string" && v.trim() === "") ? null : v),
+  depositPercentValue.nullable(),
+);
 
 const restorationFields = {
   clientId: z.guid({ error: "Elige un cliente" }),
@@ -135,7 +141,7 @@ const restorationFields = {
 };
 
 /**
- * El % de adelanto solo se valida y se guarda si el pago es "A cuenta"; en los
+ * El % de adelanto (opcional) solo se valida y se guarda si el pago es "A cuenta"; en los
  * demás tipos el campo se oculta y queda en null.
  */
 export const restorationSchema = z.discriminatedUnion("paymentType", [

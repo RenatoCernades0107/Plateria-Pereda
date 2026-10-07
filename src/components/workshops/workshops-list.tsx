@@ -1,6 +1,7 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { Pencil, Table2 } from "lucide-react";
+import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +49,15 @@ function WorkshopActions({ workshop }: { workshop: WorkshopRow }) {
           </Button>
         }
       />
+      <Button asChild variant="outline" size="sm">
+        <Link
+          href={`/talleres/${workshop.id}/piezas`}
+          aria-label={`Ver piezas de ${workshop.name}`}
+        >
+          <Table2 />
+          Piezas
+        </Link>
+      </Button>
       <Button
         variant={workshop.active ? "outline" : "default"}
         size="sm"

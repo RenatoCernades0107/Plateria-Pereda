@@ -12,6 +12,8 @@ const PERMISSIONS = {
   "piezas.marcar-llegada": ["admin", "ventas", "logistica"],
   "piezas.enviar-recibir-taller": ["admin", "logistica"],
   "piezas.asignar-taller": ["admin", "ventas", "logistica"],
+  /** Costo de servicio de la pieza: lo que cobra el taller (solo admin y logística). */
+  "piezas.costo-servicio": ["admin", "logistica"],
   "piezas.entregar-observar": ["admin", "ventas", "logistica"],
   "fotos.subir": ["admin", "ventas", "logistica"],
   "fotos.eliminar-ajenas": ["admin"],

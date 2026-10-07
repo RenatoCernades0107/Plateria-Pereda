@@ -81,6 +81,7 @@ function paymentLine(
     case "contado":
       return `Forma de pago: ${label} (S/ ${amount(depositCents)})`;
     case "a_cuenta":
+      if (!depositPercent) return `Forma de pago: ${label} (sin adelanto)`;
       return `Forma de pago: ${label} (adelanto del ${percent(depositPercent)} %: S/ ${amount(depositCents)})`;
     case "credito":
       return `Forma de pago: ${label} (sin adelanto)`;

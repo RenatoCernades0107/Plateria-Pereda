@@ -132,3 +132,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Impresión / "Guardar como PDF" (p. ej. la tabla de piezas de un taller): solo el contenido. */
+@media print {
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  header {
+    display: none !important;
+  }
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+}
