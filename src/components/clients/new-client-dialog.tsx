@@ -44,6 +44,7 @@ import {
 import { createClient } from "@/server/clients/actions";
 
 import { DocumentTypeField, TextField } from "./form-fields";
+import { PhoneField } from "./phone-field";
 
 /** Datos ya anotados (p. ej., en una cotización de WhatsApp) para no volver a escribirlos. */
 export type ClientPrefill = { name: string; phone: string };
@@ -153,13 +154,7 @@ export function PersonForm({
             name="document.documentNumber"
             label="Número de documento"
           />
-          <TextField
-            form={form}
-            name="phone"
-            label="Teléfono"
-            type="tel"
-            inputMode="tel"
-          />
+          <PhoneField form={form} name="phone" />
           <TextField
             form={form}
             name="email"
@@ -201,13 +196,7 @@ export function CompanyForm({
             <TextField form={form} name="legalName" label="Razón social" />
           </div>
           <TextField form={form} name="ruc" label="RUC" inputMode="numeric" />
-          <TextField
-            form={form}
-            name="phone"
-            label="Teléfono"
-            type="tel"
-            inputMode="tel"
-          />
+          <PhoneField form={form} name="phone" />
           <TextField
             form={form}
             name="email"

@@ -99,9 +99,7 @@ describe("EditClientDialog", () => {
     await user.click(screen.getByRole("button", { name: "Editar" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("RUC")).toHaveValue("20100047218");
-    expect(within(dialog).getByLabelText("Teléfono")).toHaveValue(
-      "+51 1 234 5678",
-    );
+    expect(within(dialog).getByLabelText("Teléfono")).toHaveValue("12345678");
     const name = within(dialog).getByLabelText("Razón social");
     await user.clear(name);
     await user.type(name, "Andina del Sur S.A.C.");
@@ -202,7 +200,7 @@ describe("ContactsSection", () => {
     );
     expect(mocks.createContact).toHaveBeenCalledWith(
       "c2",
-      expect.objectContaining({ firstName: "Pedro", phone: "977666555" }),
+      expect.objectContaining({ firstName: "Pedro", phone: "+51 977666555" }),
     );
     expect(mocks.success).toHaveBeenCalledWith(
       "Se agregó a Pedro Soto como contacto. Se está enviando a Shopify.",

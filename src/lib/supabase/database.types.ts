@@ -1637,14 +1637,14 @@ export type Database = {
           p_from?: string;
           p_limit?: number;
           p_offset?: number;
-          p_origin?: Database["public"]["Enums"]["restoration_origin"];
-          p_payment_status?: Database["public"]["Enums"]["payment_status"];
-          p_payment_type?: Database["public"]["Enums"]["payment_type"];
+          p_origin?: Database["public"]["Enums"]["restoration_origin"][];
+          p_payment_status?: Database["public"]["Enums"]["payment_status"][];
+          p_payment_type?: Database["public"]["Enums"]["payment_type"][];
           p_query?: string;
           p_sort?: string;
-          p_status?: Database["public"]["Enums"]["restoration_status"];
+          p_status?: Database["public"]["Enums"]["restoration_status"][];
           p_to?: string;
-          p_workshop_id?: string;
+          p_workshop_ids?: string[];
         };
         Returns: {
           balance: number;

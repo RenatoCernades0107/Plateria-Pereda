@@ -337,13 +337,14 @@ test.describe("Estados de las piezas", () => {
     ]);
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await page.getByLabel(`Elegir ${r.code}-1`).check();
-    await page.getByLabel(`Elegir ${r.code}-2`).check();
+    // Todas las piezas vienen elegidas por defecto.
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
     await expect(bar).toContainText("2 piezas elegidas");
-    await bar.getByRole("button", { name: "Anular" }).click();
+    await bar.getByLabel("Cambiar estado a…").click();
+    await page.getByRole("option", { name: "Anular" }).click();
+    await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("Desistió");
     await dialog.getByRole("button", { name: "Confirmar: Anular" }).click();
@@ -359,12 +360,12 @@ test.describe("Estados de las piezas", () => {
     ]);
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
-    await page.getByLabel(`Elegir ${r.code}-1`).check();
-    await page.getByLabel(`Elegir ${r.code}-2`).check();
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    await bar.getByRole("button", { name: "Enviar al taller" }).click();
+    await bar.getByLabel("Cambiar estado a…").click();
+    await page.getByRole("option", { name: "Enviar al taller" }).click();
+    await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();

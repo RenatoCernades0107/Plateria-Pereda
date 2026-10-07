@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -8,13 +8,7 @@ import { ClientPicker } from "@/components/clients/client-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import type { ClientOption } from "@/domain/client-search";
 import {
   PAYMENT_STATUS_LABELS,
@@ -34,9 +28,7 @@ import {
   RESTORATION_ORIGINS,
 } from "@/domain/restoration-status";
 
-const ALL = "todos";
-
-function FilterSelect<T extends string>({
+function FilterMulti<T extends string>({
   id,
   label,
   value,
@@ -45,29 +37,19 @@ function FilterSelect<T extends string>({
 }: {
   id: string;
   label: string;
-  value: T | null;
+  value: T[];
   options: { value: T; label: string }[];
-  onChange: (value: T | null) => void;
+  onChange: (value: T[]) => void;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <Select
-        value={value ?? ALL}
-        onValueChange={(v) => onChange(v === ALL ? null : (v as T))}
-      >
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>Todos</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <MultiSelect
+        id={id}
+        options={options}
+        value={value}
+        onChange={onChange}
+      />
     </div>
   );
 }
@@ -92,6 +74,15 @@ export function RestorationsFiltersForm({
       ? { id: filters.clientId, name: clientName }
       : null,
   );
+  // Los filtros secundarios se ocultan, salvo que alguno ya esté aplicado.
+  const hiddenActive = [
+    filters.paymentType.length > 0,
+    filters.origin.length > 0,
+    filters.workshopIds.length > 0,
+    filters.from !== null,
+    filters.to !== null,
+  ].filter(Boolean).length;
+  const [showMore, setShowMore] = useState(hiddenActive > 0);
   const set = (patch: Partial<RestorationFilters>) =>
     setState((s) => ({ ...s, ...patch }));
 
@@ -102,120 +93,133 @@ export function RestorationsFiltersForm({
     set({ clientId: option.clientId });
   };
 
+  const statusOptions = RESTORATION_STATUSES.map((s) => ({
+    value: s,
+    label: RESTORATION_STATUS_LABELS[s],
+  }));
+
   return (
     <form
       aria-label="Filtros de restauraciones"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
         router.push(restorationFiltersHref(state, { page: 1 }));
       }}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-texto">Código, cliente o documento</Label>
-        <Input
-          id="filtro-texto"
-          type="search"
-          value={state.q}
-          maxLength={100}
-          onChange={(e) => set({ q: e.target.value })}
-        />
-      </div>
-      <FilterSelect
-        id="filtro-estado"
-        label="Estado"
-        value={state.status}
-        options={RESTORATION_STATUSES.map((s) => ({
-          value: s,
-          label: RESTORATION_STATUS_LABELS[s],
-        }))}
-        onChange={(status) => set({ status })}
-      />
-      {showMoney ? (
-        <FilterSelect
-          id="filtro-pago"
-          label="Estado de pago"
-          value={state.paymentStatus}
-          options={PAYMENT_STATUSES.map((s) => ({
-            value: s,
-            label: PAYMENT_STATUS_LABELS[s],
-          }))}
-          onChange={(paymentStatus) => set({ paymentStatus })}
-        />
-      ) : null}
-      <FilterSelect
-        id="filtro-tipo"
-        label="Tipo de pago"
-        value={state.paymentType}
-        options={PAYMENT_TYPES.map((t) => ({
-          value: t,
-          label: PAYMENT_TYPE_LABELS[t],
-        }))}
-        onChange={(paymentType) => set({ paymentType })}
-      />
-      <FilterSelect
-        id="filtro-origen"
-        label="Origen"
-        value={state.origin}
-        options={RESTORATION_ORIGINS.map((o) => ({
-          value: o,
-          label: RESTORATION_ORIGIN_LABELS[o],
-        }))}
-        onChange={(origin) => set({ origin })}
-      />
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-cliente">Cliente</Label>
-        {client ? (
-          <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
-            <span className="min-w-0 flex-1 truncate">{client.name}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Quitar filtro de cliente"
-              onClick={() => {
-                setClient(null);
-                set({ clientId: null });
-              }}
-            >
-              <X aria-hidden />
-            </Button>
-          </div>
-        ) : (
-          <ClientPicker
-            id="filtro-cliente"
-            placeholder="Todos los clientes"
-            onSelect={chooseClient}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="filtro-texto">Código, cliente o documento</Label>
+          <Input
+            id="filtro-texto"
+            type="search"
+            value={state.q}
+            maxLength={100}
+            onChange={(e) => set({ q: e.target.value })}
           />
-        )}
-      </div>
-      <FilterSelect
-        id="filtro-taller"
-        label="Taller"
-        value={state.workshopId}
-        options={workshops.map((w) => ({ value: w.id, label: w.name }))}
-        onChange={(workshopId) => set({ workshopId })}
-      />
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-desde">Desde</Label>
-        <Input
-          id="filtro-desde"
-          type="date"
-          value={state.from ?? ""}
-          onChange={(e) => set({ from: e.target.value || null })}
+        </div>
+        <FilterMulti
+          id="filtro-estado"
+          label="Estado"
+          value={state.status}
+          options={statusOptions}
+          onChange={(status) => set({ status })}
         />
+        {showMoney ? (
+          <FilterMulti
+            id="filtro-pago"
+            label="Estado de pago"
+            value={state.paymentStatus}
+            options={PAYMENT_STATUSES.map((s) => ({
+              value: s,
+              label: PAYMENT_STATUS_LABELS[s],
+            }))}
+            onChange={(paymentStatus) => set({ paymentStatus })}
+          />
+        ) : null}
+        <div className="space-y-1.5">
+          <Label htmlFor="filtro-cliente">Cliente</Label>
+          {client ? (
+            <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
+              <span className="min-w-0 flex-1 truncate">{client.name}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Quitar filtro de cliente"
+                onClick={() => {
+                  setClient(null);
+                  set({ clientId: null });
+                }}
+              >
+                <X aria-hidden />
+              </Button>
+            </div>
+          ) : (
+            <ClientPicker
+              id="filtro-cliente"
+              placeholder="Todos los clientes"
+              onSelect={chooseClient}
+            />
+          )}
+        </div>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-hasta">Hasta</Label>
-        <Input
-          id="filtro-hasta"
-          type="date"
-          value={state.to ?? ""}
-          onChange={(e) => set({ to: e.target.value || null })}
-        />
-      </div>
-      <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+
+      {showMore ? (
+        <div
+          id="filtros-adicionales"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <FilterMulti
+            id="filtro-tipo"
+            label="Tipo de pago"
+            value={state.paymentType}
+            options={PAYMENT_TYPES.map((t) => ({
+              value: t,
+              label: PAYMENT_TYPE_LABELS[t],
+            }))}
+            onChange={(paymentType) => set({ paymentType })}
+          />
+          <FilterMulti
+            id="filtro-origen"
+            label="Origen"
+            value={state.origin}
+            options={RESTORATION_ORIGINS.map((o) => ({
+              value: o,
+              label: RESTORATION_ORIGIN_LABELS[o],
+            }))}
+            onChange={(origin) => set({ origin })}
+          />
+          <FilterMulti
+            id="filtro-taller"
+            label="Taller"
+            value={state.workshopIds}
+            options={workshops.map((w) => ({ value: w.id, label: w.name }))}
+            onChange={(workshopIds) => set({ workshopIds })}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor="filtro-desde">Desde</Label>
+            <Input
+              id="filtro-desde"
+              type="date"
+              value={state.from ?? ""}
+              onChange={(e) => set({ from: e.target.value || null })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="filtro-hasta">Hasta</Label>
+            <Input
+              id="filtro-hasta"
+              type="date"
+              value={state.to ?? ""}
+              onChange={(e) => set({ to: e.target.value || null })}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
         <Button type="submit">Filtrar</Button>
         <Button
           type="button"
@@ -229,6 +233,20 @@ export function RestorationsFiltersForm({
           }
         >
           Limpiar
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={showMore}
+          aria-controls="filtros-adicionales"
+          onClick={() => setShowMore((open) => !open)}
+        >
+          {showMore ? "Menos filtros" : "Más filtros"}
+          {!showMore && hiddenActive > 0 ? ` (${hiddenActive})` : ""}
+          <ChevronDown
+            aria-hidden
+            className={showMore ? "rotate-180" : undefined}
+          />
         </Button>
       </div>
     </form>

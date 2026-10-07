@@ -117,13 +117,23 @@ export function PiecesBulkBar({
   role,
   workshops,
   onDone,
+  statusPicker = false,
+  total = chosen.length,
 }: {
   restorationId: string | null;
   chosen: StatusPiece[];
   role: AppRole;
   workshops: WorkshopOption[];
   onDone: () => void;
+  /**
+   * Cambio de estado con un selector ("Cambiar estado a…" + Aplicar) en lugar de un
+   * botón por estado, y barra siempre visible (detalle de la restauración).
+   */
+  statusPicker?: boolean;
+  /** Piezas que se pueden elegir, para el contador "N de M". */
+  total?: number;
 }) {
+  const [target, setTarget] = useState<PieceStatus | null>(null);
   const [dialog, setDialog] = useState<PendingChange | null>(null);
   const [bulkWorkshop, setBulkWorkshop] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -142,6 +152,7 @@ export function PiecesBulkBar({
 
   const done = (message: string) => {
     toast.success(message);
+    setTarget(null);
     onDone();
   };
   const count = chosen.length === 1 ? "1 pieza" : `${chosen.length} piezas`;
@@ -171,7 +182,19 @@ export function PiecesBulkBar({
     return null;
   };
 
-  if (chosen.length === 0) return null;
+  const runChange = (change: PendingChange) =>
+    needsDialog(change)
+      ? setDialog(change)
+      : startTransition(async () => {
+          const message = await applyBulk(change, {
+            note: null,
+            workshopId: null,
+          });
+          if (message) toast.error(message);
+        });
+  const picked = bulk.find((c) => c.to === target) ?? null;
+
+  if (chosen.length === 0 && !statusPicker) return null;
 
   return (
     <div
@@ -183,6 +206,12 @@ export function PiecesBulkBar({
         {chosen.length === 1
           ? "1 pieza elegida"
           : `${chosen.length} piezas elegidas`}
+        {statusPicker && total > 0 ? (
+          <span className="text-muted-foreground font-normal">
+            {" "}
+            (de {total})
+          </span>
+        ) : null}
       </p>
       {bulkArrival ? (
         <Button
@@ -229,28 +258,67 @@ export function PiecesBulkBar({
           Devolver al cliente
         </Button>
       ) : null}
-      {bulk.map((change) => (
-        <Button
-          key={change.to}
-          size="sm"
-          variant={isClosedStatus(change.to) ? "ghost" : "outline"}
-          className={isClosedStatus(change.to) ? "text-destructive" : undefined}
-          disabled={pending}
-          onClick={() =>
-            needsDialog(change)
-              ? setDialog(change)
-              : startTransition(async () => {
-                  const message = await applyBulk(change, {
-                    note: null,
-                    workshopId: null,
-                  });
-                  if (message) toast.error(message);
-                })
-          }
-        >
-          {ACTION_LABELS[change.to]}
-        </Button>
-      ))}
+      {statusPicker ? (
+        <div className="flex items-end gap-2">
+          <div className="space-y-1">
+            <Label htmlFor="cambio-masivo" className="text-xs">
+              Cambiar estado a…
+            </Label>
+            <Select
+              value={picked?.to ?? ""}
+              onValueChange={(v) => setTarget(v as PieceStatus)}
+              disabled={pending || bulk.length === 0}
+            >
+              <SelectTrigger id="cambio-masivo" size="sm" className="w-48">
+                <SelectValue
+                  placeholder={
+                    chosen.length === 0
+                      ? "Elige piezas"
+                      : bulk.length === 0
+                        ? "Sin cambio común"
+                        : "Elige un estado"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {bulk.map((change) => (
+                  <SelectItem key={change.to} value={change.to}>
+                    {ACTION_LABELS[change.to]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            size="sm"
+            disabled={pending || picked === null}
+            onClick={() => picked && runChange(picked)}
+          >
+            Aplicar a {count}
+          </Button>
+        </div>
+      ) : (
+        bulk.map((change) => (
+          <Button
+            key={change.to}
+            size="sm"
+            variant={isClosedStatus(change.to) ? "ghost" : "outline"}
+            className={
+              isClosedStatus(change.to) ? "text-destructive" : undefined
+            }
+            disabled={pending}
+            onClick={() => runChange(change)}
+          >
+            {ACTION_LABELS[change.to]}
+          </Button>
+        ))
+      )}
+      {statusPicker && chosen.length > 1 && bulk.length === 0 ? (
+        <p className="text-muted-foreground w-full text-xs">
+          Las piezas elegidas no comparten un cambio de estado posible; desmarca
+          las que no correspondan.
+        </p>
+      ) : null}
       {bulkAssign ? (
         <div className="flex items-end gap-2">
           <div className="space-y-1">
@@ -294,9 +362,11 @@ export function PiecesBulkBar({
           </Button>
         </div>
       ) : null}
-      <Button size="sm" variant="ghost" onClick={onDone}>
-        Quitar selección
-      </Button>
+      {statusPicker ? null : (
+        <Button size="sm" variant="ghost" onClick={onDone}>
+          Quitar selección
+        </Button>
+      )}
       <StatusChangeDialog
         key={dialog?.to ?? "cerrado"}
         open={dialog !== null}
