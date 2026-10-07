@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { parseMoney, PAYMENT_TYPES } from "@/domain/money";
+import type { PieceStatus } from "@/domain/piece-state-machine";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
@@ -10,6 +11,17 @@ import { parseMoney, PAYMENT_TYPES } from "@/domain/money";
  */
 
 export const MAX_PIECES = 100;
+
+/**
+ * Estados a los que puede pasar una pieza al crear la restauración desde una
+ * cotización de WhatsApp (P49). Consulta y Espera llevan nota obligatoria.
+ */
+export const COPY_INITIAL_STATUSES = [
+  "en_consulta",
+  "en_espera",
+  "aprobada",
+] as const satisfies readonly PieceStatus[];
+export type CopyInitialStatus = (typeof COPY_INITIAL_STATUSES)[number];
 
 /** Recorta y colapsa espacios repetidos. */
 const line = (max: number) =>
@@ -88,6 +100,9 @@ export const pieceSchema = z
     /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */
     quoteItemId: optionalId.optional(),
     notes: notes(1000),
+    /** Solo en "Crear restauración" desde una cotización (P49). */
+    initialStatus: z.enum(COPY_INITIAL_STATUSES).optional(),
+    statusNote: notes(1000).optional(),
   })
   .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
     ...rest,
@@ -138,6 +153,48 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
 
 export type RestorationFormInput = z.input<typeof restorationSchema>;
 export type RestorationInput = z.output<typeof restorationSchema>;
+
+/** Pieza de la copia: el estado inicial es obligatorio y Consulta o Espera piden nota (P49). */
+const copyPieceSchema = pieceSchema.superRefine((piece, ctx) => {
+  if (!piece.initialStatus) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["initialStatus"],
+      message: "Elige el estado inicial",
+    });
+  } else if (piece.initialStatus !== "aprobada" && !piece.statusNote) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["statusNote"],
+      message: "Escribe una nota para la consulta",
+    });
+  }
+});
+
+const copyFields = {
+  ...restorationFields,
+  pieces: z
+    .array(copyPieceSchema)
+    .min(1, "Agrega al menos una pieza")
+    .max(MAX_PIECES, `Máximo ${MAX_PIECES} piezas por restauración`),
+};
+
+/**
+ * "Crear restauración" desde una cotización de WhatsApp (P46 y P49): como el
+ * registro, más el estado inicial de cada pieza.
+ */
+export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
+  z.object({
+    ...copyFields,
+    paymentType: z.literal("a_cuenta"),
+    depositPercent,
+  }),
+  z.object({
+    ...copyFields,
+    paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
+    depositPercent: z.unknown().transform(() => null),
+  }),
+]);
 
 const editFields = {
   contactId: restorationFields.contactId,

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 import {
-  restorationSchema,
+  copyRestorationSchema,
   whatsappQuoteSchema,
   type RestorationFormInput,
   type WhatsappQuoteFormInput,
@@ -108,15 +108,16 @@ export async function reopenWhatsappQuote(
 }
 
 /**
- * "Crear restauración" desde la cotización (P46): cliente obligatorio, piezas
- * elegidas (y nuevas) que entran Aprobadas.
+ * "Crear restauración" desde la cotización (P46 y P49): cliente obligatorio y piezas
+ * elegidas (y nuevas) que nacen Registradas y pasan al estado inicial elegido
+ * (Consulta o Espera con nota, o Aprobada).
  */
 export async function createRestorationFromQuote(
   quoteId: string,
   input: RestorationFormInput,
 ): Promise<CreatedResult> {
   await requirePermission("restauraciones.editar");
-  const parsed = restorationSchema.safeParse(input);
+  const parsed = copyRestorationSchema.safeParse(input);
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
   const v = parsed.data;
   const supabase = await createClient();

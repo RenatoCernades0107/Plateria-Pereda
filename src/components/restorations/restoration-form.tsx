@@ -42,8 +42,11 @@ import {
   sumCents,
   type PaymentType,
 } from "@/domain/money";
+import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { cn } from "@/lib/utils";
 import {
+  COPY_INITIAL_STATUSES,
+  copyRestorationSchema,
   MAX_PIECES,
   restorationSchema,
   whatsappQuoteSchema,
@@ -92,6 +95,13 @@ export const EMPTY_PIECE: PieceFormInput = {
   notes: "",
 };
 
+/** Pieza nueva en la copia: también elige estado inicial, por defecto Consulta (P49). */
+const EMPTY_COPY_PIECE: PieceFormInput = {
+  ...EMPTY_PIECE,
+  initialStatus: "en_consulta",
+  statusNote: "",
+};
+
 /** Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0). */
 export function liveTotal(pieces: readonly { price?: string }[]) {
   return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
@@ -105,6 +115,7 @@ function PieceCard({
   materials,
   services,
   quoteOnly,
+  showInitialStatus,
   onDuplicate,
   onRemove,
 }: {
@@ -116,6 +127,8 @@ function PieceCard({
   services: CatalogOption[];
   /** Cotización de WhatsApp: sin taller, llegada ni marca urgente (P46). */
   quoteOnly: boolean;
+  /** "Crear restauración" desde una cotización: estado inicial y nota (P49). */
+  showInitialStatus: boolean;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -151,6 +164,11 @@ function PieceCard({
             <span className="text-heading block truncate font-medium">
               {title}
             </span>
+            {showInitialStatus && piece?.initialStatus ? (
+              <span className="text-muted-foreground block text-xs">
+                Pasa a {PIECE_STATUS_LABELS[piece.initialStatus]}
+              </span>
+            ) : null}
           </span>
         </button>
         <span className="text-sm tabular-nums">
@@ -177,7 +195,10 @@ function PieceCard({
           <Trash2 />
         </Button>
       </div>
-      <div className={cn("border-t p-3", !open && "hidden")}>
+      <div className={cn("space-y-4 border-t p-3", !open && "hidden")}>
+        {showInitialStatus ? (
+          <InitialStatusFields form={form} index={index} />
+        ) : null}
         <PieceFields
           form={form as unknown as UseFormReturn<FieldValues>}
           prefix={`pieces.${index}.`}
@@ -189,6 +210,59 @@ function PieceCard({
         />
       </div>
     </li>
+  );
+}
+
+/**
+ * Estado al que pasa la pieza al crear la restauración desde la cotización (P49):
+ * Consulta o Espera con nota obligatoria, o Aprobada.
+ */
+function InitialStatusFields({
+  form,
+  index,
+}: {
+  form: UseFormReturn<FormValues>;
+  index: number;
+}) {
+  const status = useWatch({
+    control: form.control,
+    name: `pieces.${index}.initialStatus`,
+  });
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <FormField
+        control={form.control}
+        name={`pieces.${index}.initialStatus`}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Estado inicial</FormLabel>
+            <Select value={field.value ?? ""} onValueChange={field.onChange}>
+              <FormControl>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Elige el estado" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {COPY_INITIAL_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {PIECE_STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      {status && status !== "aprobada" ? (
+        <TextField
+          form={form}
+          name={`pieces.${index}.statusNote`}
+          label="Nota de la consulta (obligatoria)"
+          multiline
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -237,6 +311,8 @@ export type RestorationFormMode =
 const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
   ...item.piece,
   quoteItemId: item.id,
+  initialStatus: "en_consulta",
+  statusNote: "",
 });
 
 function defaultsFor(
@@ -307,10 +383,15 @@ export function RestorationForm({
   const quoteMode = useRef(viaWhatsapp);
 
   const form = useForm<FormValues>({
-    // El esquema depende de la casilla: la cotización no exige cliente.
+    // El esquema depende de la casilla: la cotización no exige cliente; la copia
+    // exige el estado inicial de cada pieza (P49).
     resolver: (values, context, options) =>
       zodResolver(
-        (quoteMode.current ? whatsappQuoteSchema : restorationSchema) as never,
+        (quoteMode.current
+          ? whatsappQuoteSchema
+          : mode.kind === "copia"
+            ? copyRestorationSchema
+            : restorationSchema) as never,
       )(values, context, options as never) as never,
     defaultValues: defaultsFor(mode, defaultDepositPercent),
   });
@@ -562,8 +643,9 @@ export function RestorationForm({
               Piezas de la cotización {mode.quote.code}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Elige las que el cliente confirmó. Entran aprobadas; puedes
-              ajustar el precio o agregar piezas nuevas abajo.
+              Elige las que el cliente pidió y, en cada pieza, si pasa a
+              Consulta, Espera respuesta cliente o Aprobada. Puedes ajustar el
+              precio o agregar piezas nuevas abajo.
             </p>
             <ul className="divide-y rounded-lg border">
               {mode.quote.items.map((item) => (
@@ -618,6 +700,7 @@ export function RestorationForm({
                 materials={materials}
                 services={services}
                 quoteOnly={viaWhatsapp}
+                showInitialStatus={mode.kind === "copia"}
                 onDuplicate={() =>
                   pieces.insert(index + 1, {
                     ...structuredClone(form.getValues(`pieces.${index}`)),
@@ -631,7 +714,13 @@ export function RestorationForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() => pieces.append(structuredClone(EMPTY_PIECE))}
+            onClick={() =>
+              pieces.append(
+                structuredClone(
+                  mode.kind === "copia" ? EMPTY_COPY_PIECE : EMPTY_PIECE,
+                ),
+              )
+            }
             disabled={pieces.fields.length >= MAX_PIECES}
           >
             <Plus />

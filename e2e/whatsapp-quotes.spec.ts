@@ -140,14 +140,26 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(page.getByText("Elige un cliente")).toBeVisible();
     await pickClient(page, clientName);
+    // Cada pieza elige su estado inicial (P49): nacen en Consulta y piden nota.
+    await page.getByRole("button", { name: "Crear restauración" }).click();
+    await expect(
+      page.getByText("Escribe una nota para la consulta").first(),
+    ).toBeVisible();
+    await page.getByTestId("pieza-1").getByLabel("Estado inicial").click();
+    await page.getByRole("option", { name: "Aprobada" }).click();
+    await page
+      .getByTestId("pieza-2")
+      .getByLabel("Nota de la consulta (obligatoria)")
+      .fill("Consultar al taller si se puede soldar");
     await page.getByRole("button", { name: "Crear restauración" }).click();
 
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
       timeout: 30_000,
     });
     await page.keyboard.press("Escape");
+    // Con una pieza en consulta no se aprueba sola.
     await expect(page.getByTestId("estado-restauracion")).toHaveText(
-      "Aprobada",
+      "Registrada",
     );
     await expect(page.getByTestId("origen")).toContainText("WhatsApp");
     await expect(page.getByTestId("origen")).toContainText(/CWA-\d{5,}/);
@@ -172,6 +184,10 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.getByRole("link", { name: "Crear restauración" }).click();
     await expect(page.getByTestId("cliente-fijo")).toContainText(clientName);
     await expect(page.getByLabel("Pedir Jarra")).toBeDisabled();
+    await page
+      .getByTestId("pieza-1")
+      .getByLabel("Nota de la consulta (obligatoria)")
+      .fill("Preguntar si quiere grabado");
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
       timeout: 30_000,
