@@ -745,7 +745,7 @@ Objetivo: validar con llamadas reales antes de construir.
 
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 
-Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp, piezas aprobadas), y se puede repetir con las pendientes.
+Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp; cada pieza pasa al estado inicial elegido, P49), y se puede repetir con las pendientes.
 
 #### Paso 7B.1 — Esquema y RPC
 - [x] `whatsapp_quotes` y `whatsapp_quote_items` (cliente opcional, nombre y teléfono libres); código `CWA-00001`; estados; RLS solo admin y ventas; auditoría.
@@ -754,7 +754,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - **BD:**
   - [x] Código correlativo; total; estado recalculado al copiar y al anular, rechazar o dejar sin arreglo una pieza copiada.
   - [x] Editable solo hasta la primera copia; descartada no se copia; reabrir.
-  - [x] La copia exige cliente, vincula la cotización, aprueba las piezas y encola la orden.
+  - [x] La copia exige cliente, vincula la cotización y pasa cada pieza al estado inicial elegido (P49: Consulta o Espera con nota, o Aprobada); la orden se encola cuando todas quedan aprobadas.
   - [x] Una pieza ya pedida no se vuelve a pedir; logística no lee nada.
 - Commit: `feat(cotizaciones-whatsapp): agrega esquema y funciones`
 
@@ -779,6 +779,8 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - **E2E:** buscar por descripción; filtrar por origen; logística no ve el menú ni la ruta; `@mobile` registro y copia.
 - Hecho (2026-10-06): migración `20261006170000_cotizaciones_whatsapp.sql` (tablas, RPC con control de rol, estado calculado por trigger, `list_restorations` con `p_origin`, vista operativa con el origen) y pgTAP `17_cotizaciones_whatsapp.test.sql`. Dominio `src/domain/whatsapp-quotes.ts` (estados, antigüedad, filtros), esquema `whatsappQuoteSchema`, acciones y consultas en `src/server/whatsapp-quotes/`. `RestorationForm` con tres modos: nueva (casilla "El pedido vino por WhatsApp": cliente opcional con nombre y teléfono, sin llegada, taller ni urgente), editar cotización y copia (`/restauraciones/nueva?cotizacion=…`: cliente obligatorio, "Crear nuevo cliente" con los datos anotados, piezas pendientes elegibles). Páginas `/cotizaciones-whatsapp`, su detalle (piezas con "Pendiente" o "Pedida en RES-…", mensaje con saludo genérico si no hay nombre, descartar y reabrir, historial) y su edición; menú propio; pestañas en el detalle del cliente; filtro y columna "Origen" en restauraciones, kanban y CSV; el detalle de la restauración enlaza "desde CWA-…". **E2E** escritos (`e2e/whatsapp-quotes.spec.ts`) pero no corridos en este entorno (sin el servicio de autenticación local).
 - Commit: `feat(cotizaciones-whatsapp): agrega cotizaciones por WhatsApp con copia a restauraciones`
+- Hecho (2026-10-07, P49): migración `20261007180000_copia_whatsapp_estado_inicial.sql` redefine `create_restoration_from_whatsapp_quote`: cada pieza trae `status` (`en_consulta`, `en_espera` o `aprobada`) y `status_note`; las piezas nacen Registradas y pasan por `change_piece_status` (Espera pasa por Consulta con la nota). `copyRestorationSchema` exige el estado inicial y la nota; el formulario de la copia muestra "Estado inicial" (por defecto Consulta) y "Nota de la consulta (obligatoria)" en cada pieza, también en las nuevas. pgTAP, unit y E2E (`e2e/whatsapp-quotes.spec.ts`, corrido en local) actualizados.
+- Commit: `feat(cotizaciones-whatsapp): elige el estado inicial de cada pieza al crear la restauración`
 
 ### Fase 8 — Estados, ubicación, fechas y tiempos
 
