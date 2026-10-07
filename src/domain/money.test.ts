@@ -119,3 +119,10 @@ describe("adelanto esperado", () => {
     );
   });
 });
+
+describe("tipo de pago por definir", () => {
+  it("no espera adelanto", () => {
+    expect(expectedDeposit(20_000, "sin_definir")).toBe(0);
+    expect(expectedDeposit(20_000, "sin_definir", 50)).toBe(0);
+  });
+});
