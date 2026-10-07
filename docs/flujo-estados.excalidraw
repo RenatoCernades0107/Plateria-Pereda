@@ -1276,9 +1276,9 @@
     {
       "id": "w4_t",
       "type": "text",
-      "x": 1448.0,
+      "x": 1478.8,
       "y": 330.0,
-      "width": 264.0,
+      "width": 202.4,
       "height": 60.0,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -1299,13 +1299,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "Piezas: estado elegido\n(Consulta · Espera · Aprobada)\nubicación: Por WhatsApp",
+      "text": "Piezas: estado elegido\n(Consulta o Aprobada)\nubicación: Por WhatsApp",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "w4",
-      "originalText": "Piezas: estado elegido\n(Consulta · Espera · Aprobada)\nubicación: Por WhatsApp",
+      "originalText": "Piezas: estado elegido\n(Consulta o Aprobada)\nubicación: Por WhatsApp",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -1552,9 +1552,9 @@
     {
       "id": "w3w4_t",
       "type": "text",
-      "x": 1204.9,
+      "x": 1212.05,
       "y": 343.75,
-      "width": 200.20000000000002,
+      "width": 185.9,
       "height": 32.5,
       "angle": 0,
       "strokeColor": "#6741d9",
@@ -1575,13 +1575,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "cada pieza elige su estado\n(Consulta y Espera con nota)",
+      "text": "cada pieza elige su estado\n(Consulta lleva nota)",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "w3w4",
-      "originalText": "cada pieza elige su estado\n(Consulta y Espera con nota)",
+      "originalText": "cada pieza elige su estado\n(Consulta lleva nota)",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -2839,13 +2839,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "• «Crear restauración» copia las piezas elegidas a una restauración\n  normal (RES-, origen WhatsApp); se puede repetir con las pendientes.\n• Nada se aprueba solo (P49): cada pieza elige su estado inicial,\n  Consulta (por defecto), Espera respuesta cliente o Aprobada; las dos\n  primeras con nota obligatoria. Las piezas nuevas también eligen.\n• Al copiar, el cliente es obligatorio y la cotización queda vinculada.\n• Lo cotizado queda fijo: se edita solo hasta la primera copia.\n• Si una pieza copiada se anula, se rechaza o queda sin arreglo,\n  vuelve a estar pendiente (puede volver a Pedida en parte o Cotizada).\n• Descartada no se copia: hay que reabrirla (vuelve a su estado calculado).\n• Pedida completa ya no se descarta.\n• Solo ventas y admin ven las cotizaciones; no tienen vencimiento.",
+      "text": "• «Crear restauración» copia las piezas elegidas a una restauración\n  normal (RES-, origen WhatsApp); se puede repetir con las pendientes.\n• Nada se aprueba solo (P49): cada pieza elige su estado inicial,\n  Consulta (por defecto, con nota obligatoria) o Aprobada. Las piezas\n  nuevas también eligen. Luego siguen el flujo normal de la pieza.\n• Al copiar, el cliente es obligatorio y la cotización queda vinculada.\n• Lo cotizado queda fijo: se edita solo hasta la primera copia.\n• Si una pieza copiada se anula, se rechaza o queda sin arreglo,\n  vuelve a estar pendiente (puede volver a Pedida en parte o Cotizada).\n• Descartada no se copia: hay que reabrirla (vuelve a su estado calculado).\n• Pedida completa ya no se descarta.\n• Solo ventas y admin ven las cotizaciones; no tienen vencimiento.",
       "fontSize": 14,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": "a_note",
-      "originalText": "• «Crear restauración» copia las piezas elegidas a una restauración\n  normal (RES-, origen WhatsApp); se puede repetir con las pendientes.\n• Nada se aprueba solo (P49): cada pieza elige su estado inicial,\n  Consulta (por defecto), Espera respuesta cliente o Aprobada; las dos\n  primeras con nota obligatoria. Las piezas nuevas también eligen.\n• Al copiar, el cliente es obligatorio y la cotización queda vinculada.\n• Lo cotizado queda fijo: se edita solo hasta la primera copia.\n• Si una pieza copiada se anula, se rechaza o queda sin arreglo,\n  vuelve a estar pendiente (puede volver a Pedida en parte o Cotizada).\n• Descartada no se copia: hay que reabrirla (vuelve a su estado calculado).\n• Pedida completa ya no se descarta.\n• Solo ventas y admin ven las cotizaciones; no tienen vencimiento.",
+      "originalText": "• «Crear restauración» copia las piezas elegidas a una restauración\n  normal (RES-, origen WhatsApp); se puede repetir con las pendientes.\n• Nada se aprueba solo (P49): cada pieza elige su estado inicial,\n  Consulta (por defecto, con nota obligatoria) o Aprobada. Las piezas\n  nuevas también eligen. Luego siguen el flujo normal de la pieza.\n• Al copiar, el cliente es obligatorio y la cotización queda vinculada.\n• Lo cotizado queda fijo: se edita solo hasta la primera copia.\n• Si una pieza copiada se anula, se rechaza o queda sin arreglo,\n  vuelve a estar pendiente (puede volver a Pedida en parte o Cotizada).\n• Descartada no se copia: hay que reabrirla (vuelve a su estado calculado).\n• Pedida completa ya no se descarta.\n• Solo ventas y admin ven las cotizaciones; no tienen vencimiento.",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -4881,10 +4881,6 @@
           "type": "arrow"
         },
         {
-          "id": "c_in_w_a2",
-          "type": "arrow"
-        },
-        {
           "id": "c_in_w_a3",
           "type": "arrow"
         }
@@ -5125,10 +5121,6 @@
         {
           "id": "c_esp_t",
           "type": "text"
-        },
-        {
-          "id": "c_in_w_a2",
-          "type": "arrow"
         },
         {
           "id": "c2",
@@ -5634,65 +5626,6 @@
       "elbowed": false
     },
     {
-      "id": "c_in_w_a2",
-      "type": "arrow",
-      "x": 740,
-      "y": 1419,
-      "width": 35,
-      "height": 181,
-      "angle": 0,
-      "strokeColor": "#6741d9",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 2,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "roundness": null,
-      "seed": 1942080813,
-      "version": 1,
-      "versionNonce": 119682499,
-      "isDeleted": false,
-      "boundElements": [],
-      "updated": 1,
-      "link": null,
-      "locked": false,
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          21
-        ],
-        [
-          35,
-          21
-        ],
-        [
-          35,
-          181
-        ]
-      ],
-      "lastCommittedPoint": null,
-      "startBinding": {
-        "elementId": "c_in_w",
-        "focus": 0,
-        "gap": 4
-      },
-      "endBinding": {
-        "elementId": "c_esp",
-        "focus": 0,
-        "gap": 4
-      },
-      "startArrowhead": null,
-      "endArrowhead": "arrow",
-      "elbowed": false
-    },
-    {
       "id": "c_in_w_a3",
       "type": "arrow",
       "x": 740,
@@ -5710,9 +5643,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 272167094,
+      "seed": 1942080813,
       "version": 1,
-      "versionNonce": 1903737355,
+      "versionNonce": 119682499,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -5769,9 +5702,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1398499908,
+      "seed": 272167094,
       "version": 1,
-      "versionNonce": 856430244,
+      "versionNonce": 1903737355,
       "isDeleted": false,
       "boundElements": [
         {
@@ -5825,9 +5758,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1190502837,
+      "seed": 1398499908,
       "version": 1,
-      "versionNonce": 1942810372,
+      "versionNonce": 856430244,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -5861,9 +5794,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 2053150340,
+      "seed": 1190502837,
       "version": 1,
-      "versionNonce": 1063673567,
+      "versionNonce": 1942810372,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -5912,9 +5845,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1114940396,
+      "seed": 2053150340,
       "version": 1,
-      "versionNonce": 870111104,
+      "versionNonce": 1063673567,
       "isDeleted": false,
       "boundElements": [
         {
@@ -5968,9 +5901,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1922119102,
+      "seed": 1114940396,
       "version": 1,
-      "versionNonce": 588987925,
+      "versionNonce": 870111104,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6004,9 +5937,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1789442529,
+      "seed": 1922119102,
       "version": 1,
-      "versionNonce": 522362321,
+      "versionNonce": 588987925,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6068,9 +6001,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1685192165,
+      "seed": 1789442529,
       "version": 1,
-      "versionNonce": 1898882740,
+      "versionNonce": 522362321,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6104,9 +6037,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1357122901,
+      "seed": 1685192165,
       "version": 1,
-      "versionNonce": 311583110,
+      "versionNonce": 1898882740,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6160,9 +6093,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1033535610,
+      "seed": 1357122901,
       "version": 1,
-      "versionNonce": 1839700616,
+      "versionNonce": 311583110,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6196,9 +6129,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 314051310,
+      "seed": 1033535610,
       "version": 1,
-      "versionNonce": 913495727,
+      "versionNonce": 1839700616,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6252,9 +6185,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1300430509,
+      "seed": 314051310,
       "version": 1,
-      "versionNonce": 525488742,
+      "versionNonce": 913495727,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6288,9 +6221,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 663343194,
+      "seed": 1300430509,
       "version": 1,
-      "versionNonce": 1572745252,
+      "versionNonce": 525488742,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6344,9 +6277,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 614090117,
+      "seed": 663343194,
       "version": 1,
-      "versionNonce": 1087089873,
+      "versionNonce": 1572745252,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6380,9 +6313,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 589504031,
+      "seed": 614090117,
       "version": 1,
-      "versionNonce": 2008910112,
+      "versionNonce": 1087089873,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6436,9 +6369,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 943122534,
+      "seed": 589504031,
       "version": 1,
-      "versionNonce": 404265717,
+      "versionNonce": 2008910112,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6472,9 +6405,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1710500231,
+      "seed": 943122534,
       "version": 1,
-      "versionNonce": 2092769115,
+      "versionNonce": 404265717,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6532,9 +6465,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 699199910,
+      "seed": 1710500231,
       "version": 1,
-      "versionNonce": 960836460,
+      "versionNonce": 2092769115,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6568,9 +6501,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 693491441,
+      "seed": 699199910,
       "version": 1,
-      "versionNonce": 1853372069,
+      "versionNonce": 960836460,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6628,9 +6561,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1734349672,
+      "seed": 693491441,
       "version": 1,
-      "versionNonce": 1456492750,
+      "versionNonce": 1853372069,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6666,9 +6599,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1809368695,
+      "seed": 1734349672,
       "version": 1,
-      "versionNonce": 840716951,
+      "versionNonce": 1456492750,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6702,9 +6635,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1531648886,
+      "seed": 1809368695,
       "version": 1,
-      "versionNonce": 1368056915,
+      "versionNonce": 840716951,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6740,9 +6673,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 395970335,
+      "seed": 1531648886,
       "version": 1,
-      "versionNonce": 1571754094,
+      "versionNonce": 1368056915,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6780,9 +6713,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 83678550,
+      "seed": 395970335,
       "version": 1,
-      "versionNonce": 1451611685,
+      "versionNonce": 1571754094,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6818,9 +6751,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1969975946,
+      "seed": 83678550,
       "version": 1,
-      "versionNonce": 1891753122,
+      "versionNonce": 1451611685,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6854,9 +6787,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 77661512,
+      "seed": 1969975946,
       "version": 1,
-      "versionNonce": 1650747323,
+      "versionNonce": 1891753122,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6890,9 +6823,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1423772582,
+      "seed": 77661512,
       "version": 1,
-      "versionNonce": 1268965730,
+      "versionNonce": 1650747323,
       "isDeleted": false,
       "boundElements": [
         {
@@ -6946,9 +6879,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 276126872,
+      "seed": 1423772582,
       "version": 1,
-      "versionNonce": 484686861,
+      "versionNonce": 1268965730,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -6982,9 +6915,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 981631322,
+      "seed": 276126872,
       "version": 1,
-      "versionNonce": 450024946,
+      "versionNonce": 484686861,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7038,9 +6971,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 361040388,
+      "seed": 981631322,
       "version": 1,
-      "versionNonce": 1140589864,
+      "versionNonce": 450024946,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7074,9 +7007,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1167889501,
+      "seed": 361040388,
       "version": 1,
-      "versionNonce": 170029958,
+      "versionNonce": 1140589864,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7130,9 +7063,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 779757290,
+      "seed": 1167889501,
       "version": 1,
-      "versionNonce": 1161557138,
+      "versionNonce": 170029958,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7166,9 +7099,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 556436892,
+      "seed": 779757290,
       "version": 1,
-      "versionNonce": 1813567875,
+      "versionNonce": 1161557138,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7222,9 +7155,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1110717269,
+      "seed": 556436892,
       "version": 1,
-      "versionNonce": 1743532651,
+      "versionNonce": 1813567875,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7260,9 +7193,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 641530463,
+      "seed": 1110717269,
       "version": 1,
-      "versionNonce": 2124342558,
+      "versionNonce": 1743532651,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7292,9 +7225,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1404662648,
+      "seed": 641530463,
       "version": 1,
-      "versionNonce": 384237252,
+      "versionNonce": 2124342558,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7330,9 +7263,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1198563464,
+      "seed": 1404662648,
       "version": 1,
-      "versionNonce": 247074473,
+      "versionNonce": 384237252,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7362,21 +7295,21 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 787456634,
+      "seed": 1198563464,
       "version": 1,
-      "versionNonce": 1826722755,
+      "versionNonce": 247074473,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp, Espera pasa por Consulta\n  (con la nota) y el historial lo muestra.",
+      "text": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
       "fontSize": 14,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": "c_note",
-      "originalText": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp, Espera pasa por Consulta\n  (con la nota) y el historial lo muestra.",
+      "originalText": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -7400,9 +7333,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 311016187,
+      "seed": 787456634,
       "version": 1,
-      "versionNonce": 1155017300,
+      "versionNonce": 1826722755,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7427,9 +7360,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 72291701,
+      "seed": 311016187,
       "version": 1,
-      "versionNonce": 380387730,
+      "versionNonce": 1155017300,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7465,9 +7398,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1119061846,
+      "seed": 72291701,
       "version": 1,
-      "versionNonce": 359671404,
+      "versionNonce": 380387730,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7501,9 +7434,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 955235052,
+      "seed": 1119061846,
       "version": 1,
-      "versionNonce": 286141623,
+      "versionNonce": 359671404,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7539,9 +7472,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1135808359,
+      "seed": 955235052,
       "version": 1,
-      "versionNonce": 522601131,
+      "versionNonce": 286141623,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7575,9 +7508,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1948942436,
+      "seed": 1135808359,
       "version": 1,
-      "versionNonce": 49591107,
+      "versionNonce": 522601131,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7613,9 +7546,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1456645773,
+      "seed": 1948942436,
       "version": 1,
-      "versionNonce": 1794266953,
+      "versionNonce": 49591107,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7653,9 +7586,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1150448851,
+      "seed": 1456645773,
       "version": 1,
-      "versionNonce": 555016297,
+      "versionNonce": 1794266953,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7691,9 +7624,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 185567036,
+      "seed": 1150448851,
       "version": 1,
-      "versionNonce": 1024075532,
+      "versionNonce": 555016297,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7739,9 +7672,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 470090439,
+      "seed": 185567036,
       "version": 1,
-      "versionNonce": 693418589,
+      "versionNonce": 1024075532,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7777,9 +7710,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1124831726,
+      "seed": 470090439,
       "version": 1,
-      "versionNonce": 216379242,
+      "versionNonce": 693418589,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7821,9 +7754,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 778016013,
+      "seed": 1124831726,
       "version": 1,
-      "versionNonce": 866588009,
+      "versionNonce": 216379242,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7859,9 +7792,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1339997165,
+      "seed": 778016013,
       "version": 1,
-      "versionNonce": 1309988210,
+      "versionNonce": 866588009,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7907,9 +7840,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 884211553,
+      "seed": 1339997165,
       "version": 1,
-      "versionNonce": 1245372314,
+      "versionNonce": 1309988210,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -7945,9 +7878,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 1914210560,
+      "seed": 884211553,
       "version": 1,
-      "versionNonce": 764074177,
+      "versionNonce": 1245372314,
       "isDeleted": false,
       "boundElements": [
         {
@@ -7989,9 +7922,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1161884711,
+      "seed": 1914210560,
       "version": 1,
-      "versionNonce": 1490358044,
+      "versionNonce": 764074177,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8027,9 +7960,9 @@
       "roundness": {
         "type": 3
       },
-      "seed": 78009938,
+      "seed": 1161884711,
       "version": 1,
-      "versionNonce": 1075669244,
+      "versionNonce": 1490358044,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8059,9 +7992,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 158696257,
+      "seed": 78009938,
       "version": 1,
-      "versionNonce": 65911073,
+      "versionNonce": 1075669244,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8095,9 +8028,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 79172990,
+      "seed": 158696257,
       "version": 1,
-      "versionNonce": 813709450,
+      "versionNonce": 65911073,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8146,9 +8079,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 2039081425,
+      "seed": 79172990,
       "version": 1,
-      "versionNonce": 1055185499,
+      "versionNonce": 813709450,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8197,9 +8130,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1920088989,
+      "seed": 2039081425,
       "version": 1,
-      "versionNonce": 456474908,
+      "versionNonce": 1055185499,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8253,9 +8186,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1856188578,
+      "seed": 1920088989,
       "version": 1,
-      "versionNonce": 2126015576,
+      "versionNonce": 456474908,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8289,9 +8222,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1688291830,
+      "seed": 1856188578,
       "version": 1,
-      "versionNonce": 1321918115,
+      "versionNonce": 2126015576,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8345,9 +8278,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 924195863,
+      "seed": 1688291830,
       "version": 1,
-      "versionNonce": 985979547,
+      "versionNonce": 1321918115,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8381,9 +8314,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1471905176,
+      "seed": 924195863,
       "version": 1,
-      "versionNonce": 853085646,
+      "versionNonce": 985979547,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8437,9 +8370,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 600087727,
+      "seed": 1471905176,
       "version": 1,
-      "versionNonce": 1738163422,
+      "versionNonce": 853085646,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8473,9 +8406,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1492725227,
+      "seed": 600087727,
       "version": 1,
-      "versionNonce": 233596964,
+      "versionNonce": 1738163422,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8529,9 +8462,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 557566592,
+      "seed": 1492725227,
       "version": 1,
-      "versionNonce": 61225319,
+      "versionNonce": 233596964,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8565,9 +8498,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 303752167,
+      "seed": 557566592,
       "version": 1,
-      "versionNonce": 1097767345,
+      "versionNonce": 61225319,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8629,9 +8562,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1850017270,
+      "seed": 303752167,
       "version": 1,
-      "versionNonce": 701138478,
+      "versionNonce": 1097767345,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8665,9 +8598,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 237945867,
+      "seed": 1850017270,
       "version": 1,
-      "versionNonce": 362859751,
+      "versionNonce": 701138478,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8729,9 +8662,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1635874816,
+      "seed": 237945867,
       "version": 1,
-      "versionNonce": 1210894223,
+      "versionNonce": 362859751,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8765,9 +8698,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1040296615,
+      "seed": 1635874816,
       "version": 1,
-      "versionNonce": 1258676655,
+      "versionNonce": 1210894223,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,

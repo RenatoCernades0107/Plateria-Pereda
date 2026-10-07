@@ -304,35 +304,32 @@ describe("copyRestorationSchema (P49)", () => {
     });
   });
 
-  it("Consulta y Espera respuesta exigen nota; Aprobada no", () => {
-    for (const initialStatus of ["en_consulta", "en_espera"] as const) {
-      expect(
-        errorsOf(
-          copyRestorationSchema,
-          copy({ initialStatus, statusNote: "   " }),
-        ),
-      ).toEqual({ "pieces.0.statusNote": "Escribe una nota para la consulta" });
-    }
+  it("Consulta exige nota; Aprobada no", () => {
+    expect(
+      errorsOf(
+        copyRestorationSchema,
+        copy({ initialStatus: "en_consulta", statusNote: "   " }),
+      ),
+    ).toEqual({ "pieces.0.statusNote": "Escribe una nota para la consulta" });
     expect(
       copyRestorationSchema.parse(
-        copy({ initialStatus: "en_espera", statusNote: " Precio enviado " }),
+        copy({ initialStatus: "en_consulta", statusNote: " Consultar " }),
       ).pieces[0],
-    ).toMatchObject({
-      initialStatus: "en_espera",
-      statusNote: "Precio enviado",
-    });
+    ).toMatchObject({ initialStatus: "en_consulta", statusNote: "Consultar" });
     expect(
       copyRestorationSchema.parse(copy({ initialStatus: "aprobada" })).pieces[0]
-        .initialStatus,
+        ?.initialStatus,
     ).toBe("aprobada");
   });
 
-  it("no acepta otros estados", () => {
-    expect(
-      copyRestorationSchema.safeParse(
-        copy({ initialStatus: "registrada" as never }),
-      ).success,
-    ).toBe(false);
+  it("no acepta otros estados (ni saltar a Espera respuesta cliente)", () => {
+    for (const initialStatus of ["registrada", "en_espera"]) {
+      expect(
+        copyRestorationSchema.safeParse(
+          copy({ initialStatus: initialStatus as never, statusNote: "x" }),
+        ).success,
+      ).toBe(false);
+    }
   });
 
   it("el registro en oficina no pide estado inicial", () => {

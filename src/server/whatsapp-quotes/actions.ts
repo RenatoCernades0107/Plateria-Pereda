@@ -110,7 +110,7 @@ export async function reopenWhatsappQuote(
 /**
  * "Crear restauración" desde la cotización (P46 y P49): cliente obligatorio y piezas
  * elegidas (y nuevas) que nacen Registradas y pasan al estado inicial elegido
- * (Consulta o Espera con nota, o Aprobada).
+ * (Consulta con nota, o Aprobada).
  */
 export async function createRestorationFromQuote(
   quoteId: string,

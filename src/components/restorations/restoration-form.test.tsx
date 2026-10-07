@@ -377,7 +377,7 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     expect(mocks.copy).not.toHaveBeenCalled();
   });
 
-  it("Aprobada no pide nota y Espera respuesta sí", async () => {
+  it("solo ofrece Consulta o Aprobada, y Aprobada no pide nota", async () => {
     mocks.copy.mockResolvedValue({ ok: true, id: "r1", code: "RES-00010" });
     const user = userEvent.setup();
     renderForm({ kind: "copia", quote: linkedQuote });
@@ -385,18 +385,19 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     const jarra = screen.getByTestId("pieza-2");
 
     await user.click(within(fuente).getByLabelText("Estado inicial"));
+    // Espera respuesta cliente se alcanza después, desde Consulta.
+    expect(screen.getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Consulta",
+      "Aprobada",
+    ]);
     await user.click(screen.getByRole("option", { name: "Aprobada" }));
     expect(
       within(fuente).queryByLabelText("Nota de la consulta (obligatoria)"),
     ).toBeNull();
 
-    await user.click(within(jarra).getByLabelText("Estado inicial"));
-    await user.click(
-      screen.getByRole("option", { name: "Espera respuesta cliente" }),
-    );
     await user.type(
       within(jarra).getByLabelText("Nota de la consulta (obligatoria)"),
-      "Se le envió el precio",
+      "Preguntar si quiere grabado",
     );
     await user.click(
       screen.getByRole("button", { name: "Crear restauración" }),
@@ -411,8 +412,8 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
           }),
           expect.objectContaining({
             description: "Jarra",
-            initialStatus: "en_espera",
-            statusNote: "Se le envió el precio",
+            initialStatus: "en_consulta",
+            statusNote: "Preguntar si quiere grabado",
           }),
         ],
       }),

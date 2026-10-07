@@ -1,9 +1,8 @@
 -- "Crear restauración" desde una cotización de WhatsApp (P49): las piezas ya no se
 -- aprueban solas. Nacen Registradas y cada una pasa al estado inicial que elige el
 -- usuario:
---   * "en_consulta": con nota obligatoria;
---   * "en_espera": pasa por Consulta (con la nota) y luego a Espera respuesta cliente,
---     porque la máquina de estados no tiene registrada → en_espera;
+--   * "en_consulta": con nota obligatoria; después sigue el flujo normal
+--     (Espera respuesta cliente → Aprobada);
 --   * "aprobada": sin nota.
 -- La restauración nace Registrada y su estado general se calcula como en oficina:
 -- queda Aprobada (y encola la orden de Shopify) cuando todas sus piezas activas
@@ -90,13 +89,13 @@ begin
     if jsonb_typeof(v_piece) <> 'object' then
       raise exception 'Pieza inválida' using errcode = '22023';
     end if;
-    -- Estado inicial elegido por pieza (P49); la consulta y la espera exigen nota.
+    -- Estado inicial elegido por pieza (P49): Consulta (con nota) o Aprobada.
     v_status := v_piece ->> 'status';
-    if v_status is null or v_status not in ('en_consulta', 'en_espera', 'aprobada') then
+    if v_status is null or v_status not in ('en_consulta', 'aprobada') then
       raise exception 'Elige el estado inicial de cada pieza.' using errcode = '23514';
     end if;
     v_note := nullif(trim(coalesce(v_piece ->> 'status_note', '')), '');
-    if v_status <> 'aprobada' and v_note is null then
+    if v_status = 'en_consulta' and v_note is null then
       raise exception 'Escribe una nota para este cambio de estado.' using errcode = '23514';
     end if;
     v_item := nullif(v_piece ->> 'quote_item_id', '')::uuid;
@@ -140,7 +139,7 @@ begin
     if v_status = 'aprobada' then
       v_approved := v_approved || v_new;
     else
-      v_consult := v_consult || jsonb_build_object('id', v_new, 'status', v_status, 'note', v_note);
+      v_consult := v_consult || jsonb_build_object('id', v_new, 'note', v_note);
     end if;
   end loop;
 
@@ -154,9 +153,6 @@ begin
     perform public.change_piece_status(
       array[(v_step ->> 'id')::uuid], 'en_consulta', v_step ->> 'note'
     );
-    if v_step ->> 'status' = 'en_espera' then
-      perform public.change_piece_status(array[(v_step ->> 'id')::uuid], 'en_espera');
-    end if;
   end loop;
 
   return query select v_restoration.id, v_restoration.code;

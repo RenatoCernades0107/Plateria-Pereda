@@ -499,10 +499,10 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Contexto:** al pasar una cotización a restauración, las piezas se aprobaban solas y la restauración nacía Aprobada (con la orden de Shopify encolada). No siempre es así: el cliente puede pedir piezas que aún hay que consultar.
 - **Respuesta (2026-10-07):** ✅
   - (1) Ni las piezas ni la restauración se aprueban solas: las piezas nacen **Registradas** y cada una pasa al **estado inicial** que elige el usuario en "Crear restauración".
-  - (2) Opciones por pieza: **Consulta**, **Espera respuesta cliente** o **Aprobada**; por defecto **Consulta**. También las piezas nuevas que se agregan en la copia.
-  - (3) Consulta lleva **nota obligatoria por pieza**. Como no existe el paso Registrada → Espera, "Espera respuesta cliente" pasa por Consulta con la misma nota (obligatoria) y luego a Espera; el historial muestra ambos pasos.
+  - (2) Opciones por pieza: **Consulta** o **Aprobada**; por defecto **Consulta**. También las piezas nuevas que se agregan en la copia.
+  - (3) Consulta lleva **nota obligatoria por pieza**. No se puede saltar a "Espera respuesta cliente": la pieza sigue el flujo de siempre, Consulta → Espera respuesta cliente → Aprobada, con las acciones normales.
   - (4) El estado general de la restauración **se calcula como en oficina**: nace Registrada y pasa a Aprobada (y encola la orden de Shopify) cuando todas sus piezas activas están aprobadas. Si todas se eligen Aprobadas, queda Aprobada al copiar.
-  - (5) Una pieza en Consulta o Espera ya cuenta como **pedida** en la cotización.
+  - (5) Una pieza en Consulta ya cuenta como **pedida** en la cotización.
 
 ---
 
@@ -590,7 +590,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D48 | Sin casilla "La pieza ya está en tienda": las piezas de oficina nacen en la tienda; las de WhatsApp se marcan al llegar | P48, reemplaza P20 |
 | D49 | Restauración con todas las piezas cerradas: Rechazada si alguna fue rechazada o sin arreglo; Anulada si todas se anularon | P48 |
 | D50 | Logística ve las restauraciones Rechazadas mientras tengan piezas por devolver | P48, ajusta D24 |
-| D51 | Al pasar una cotización de WhatsApp a restauración nada se aprueba solo: cada pieza elige Consulta (por defecto), Espera respuesta cliente (ambas con nota) o Aprobada; la restauración nace Registrada y su estado se calcula como en oficina | P49, reemplaza D36 en lo del estado |
+| D51 | Al pasar una cotización de WhatsApp a restauración nada se aprueba solo: cada pieza elige Consulta (por defecto, con nota; luego sigue a Espera respuesta cliente → Aprobada) o Aprobada; la restauración nace Registrada y su estado se calcula como en oficina | P49, reemplaza D36 en lo del estado |
 
 ---
 
@@ -607,5 +607,5 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
-| 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto), Espera respuesta cliente o Aprobada, con nota por pieza en las dos primeras; la restauración nace Registrada y se aprueba como en oficina. |
+| 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |
 | 2026-10-06 | P46, P47 | Cotización sin fotos y con cliente opcional (obligatorio al copiar); nunca en la misma vista que las restauraciones. Estados nuevos de la pieza: Rechazado, No tiene arreglo, Interno, Observación; sin Recibida ni Devuelta; marca Urgente; "Sin enviar" en vez de "Por recibir". |

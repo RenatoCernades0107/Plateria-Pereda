@@ -215,7 +215,7 @@ function PieceCard({
 
 /**
  * Estado al que pasa la pieza al crear la restauración desde la cotización (P49):
- * Consulta o Espera con nota obligatoria, o Aprobada.
+ * Consulta con nota obligatoria, o Aprobada.
  */
 function InitialStatusFields({
   form,
@@ -254,7 +254,7 @@ function InitialStatusFields({
           </FormItem>
         )}
       />
-      {status && status !== "aprobada" ? (
+      {status === "en_consulta" ? (
         <TextField
           form={form}
           name={`pieces.${index}.statusNote`}
@@ -644,8 +644,8 @@ export function RestorationForm({
             </h2>
             <p className="text-muted-foreground text-sm">
               Elige las que el cliente pidió y, en cada pieza, si pasa a
-              Consulta, Espera respuesta cliente o Aprobada. Puedes ajustar el
-              precio o agregar piezas nuevas abajo.
+              Consulta o Aprobada. Puedes ajustar el precio o agregar piezas
+              nuevas abajo.
             </p>
             <ul className="divide-y rounded-lg border">
               {mode.quote.items.map((item) => (

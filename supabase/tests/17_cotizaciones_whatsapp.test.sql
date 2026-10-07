@@ -1,6 +1,6 @@
 begin;
 
-select plan(46);
+select plan(47);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ea1', 'ventas@cwa.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -240,6 +240,12 @@ select throws_ok(
     (select id from q2), '00000000-0000-0000-0000-00000000ea21'),
   '23514', 'Escribe una nota para este cambio de estado.', 'Consulta exige nota'
 );
+select throws_ok(
+  format($$ select * from public.create_restoration_from_whatsapp_quote(%L, %L, null, 'contado', null, '',
+    jsonb_build_array(jsonb_build_object('description', 'X', 'price', '1', 'status', 'en_espera', 'status_note', 'x'))) $$,
+    (select id from q2), '00000000-0000-0000-0000-00000000ea21'),
+  '23514', 'Elige el estado inicial de cada pieza.', 'no se salta a Espera respuesta cliente: solo Consulta o Aprobada'
+);
 create temporary table r3 as
   select * from public.create_restoration_from_whatsapp_quote(
     (select id from q2), '00000000-0000-0000-0000-00000000ea21', null, 'contado', null, '',
@@ -247,7 +253,7 @@ create temporary table r3 as
        jsonb_build_object('quote_item_id', i1.id, 'description', 'Bandeja', 'price', '80',
          'status', 'en_consulta', 'status_note', 'Consultar al taller si se puede soldar'),
        jsonb_build_object('quote_item_id', i2.id, 'description', 'Azucarera', 'price', '30',
-         'status', 'en_espera', 'status_note', 'Se le envió el precio'),
+         'status', 'en_consulta', 'status_note', 'Preguntar si quiere grabado'),
        jsonb_build_object('description', 'Cucharita', 'price', '10', 'status', 'aprobada'))
      from public.whatsapp_quote_items i1, public.whatsapp_quote_items i2
      where i1.quote_id = (select id from q2) and i1.number = 1
@@ -260,16 +266,15 @@ select is(
 );
 select results_eq(
   $$ select status::text, location::text from public.pieces where restoration_id = (select id from r3) order by number $$,
-  $$ values ('en_consulta', 'por_whatsapp'), ('en_espera', 'por_whatsapp'), ('aprobada', 'por_whatsapp') $$,
+  $$ values ('en_consulta', 'por_whatsapp'), ('en_consulta', 'por_whatsapp'), ('aprobada', 'por_whatsapp') $$,
   'cada pieza pasa al estado elegido'
 );
 select results_eq(
   $$ select h.from_status::text, h.to_status::text, h.note from public.piece_status_history h
      join public.pieces p on p.id = h.piece_id
      where p.restoration_id = (select id from r3) and p.number = 2 order by h.id $$,
-  $$ values (null, 'registrada', null), ('registrada', 'en_consulta', 'Se le envió el precio'),
-            ('en_consulta', 'en_espera', null) $$,
-  'Espera respuesta pasa por Consulta con la nota y queda en el historial'
+  $$ values (null, 'registrada', null), ('registrada', 'en_consulta', 'Preguntar si quiere grabado') $$,
+  'la nota de la consulta queda en el historial'
 );
 select is(
   (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r3)),
@@ -283,12 +288,13 @@ select results_eq(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);
 select lives_ok(
-  format($$ select * from public.change_piece_status(array[%L]::uuid[], 'en_espera');
+  format($$ select * from public.change_piece_status(array[%L, %L]::uuid[], 'en_espera');
             select * from public.change_piece_status(array[%L, %L]::uuid[], 'aprobada') $$,
     (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 1),
+    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 2),
     (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 1),
     (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 2)),
-  'ventas aprueba después las piezas en consulta y en espera'
+  'después siguen el flujo normal: Consulta → Espera respuesta cliente → Aprobada'
 );
 reset role;
 select is(

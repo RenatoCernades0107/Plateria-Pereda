@@ -14,11 +14,11 @@ export const MAX_PIECES = 100;
 
 /**
  * Estados a los que puede pasar una pieza al crear la restauración desde una
- * cotización de WhatsApp (P49). Consulta y Espera llevan nota obligatoria.
+ * cotización de WhatsApp (P49). Consulta lleva nota obligatoria y después sigue el
+ * flujo normal (Espera respuesta cliente → Aprobada).
  */
 export const COPY_INITIAL_STATUSES = [
   "en_consulta",
-  "en_espera",
   "aprobada",
 ] as const satisfies readonly PieceStatus[];
 export type CopyInitialStatus = (typeof COPY_INITIAL_STATUSES)[number];
@@ -154,7 +154,7 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
 export type RestorationFormInput = z.input<typeof restorationSchema>;
 export type RestorationInput = z.output<typeof restorationSchema>;
 
-/** Pieza de la copia: el estado inicial es obligatorio y Consulta o Espera piden nota (P49). */
+/** Pieza de la copia: el estado inicial es obligatorio y Consulta pide nota (P49). */
 const copyPieceSchema = pieceSchema.superRefine((piece, ctx) => {
   if (!piece.initialStatus) {
     ctx.addIssue({
@@ -162,7 +162,7 @@ const copyPieceSchema = pieceSchema.superRefine((piece, ctx) => {
       path: ["initialStatus"],
       message: "Elige el estado inicial",
     });
-  } else if (piece.initialStatus !== "aprobada" && !piece.statusNote) {
+  } else if (piece.initialStatus === "en_consulta" && !piece.statusNote) {
     ctx.addIssue({
       code: "custom",
       path: ["statusNote"],
