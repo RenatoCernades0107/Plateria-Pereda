@@ -10,16 +10,15 @@ test.describe("Navegación", () => {
     await page.goto("/dashboard");
     const nav = page.getByRole("list", { name: "Navegación principal" });
 
+    // exact: "Cotizaciones" no debe coincidir con "Cotizaciones de WhatsApp".
     for (const item of NAV_ITEMS) {
-      await nav.getByRole("link", { name: item.title }).click();
+      const link = nav.getByRole("link", { name: item.title, exact: true });
+      await link.click();
       await expect(page).toHaveURL(new RegExp(`${item.href}$`));
       await expect(
-        page.getByRole("heading", { level: 1, name: item.title }),
+        page.getByRole("heading", { level: 1, name: item.title, exact: true }),
       ).toBeVisible();
-      await expect(nav.getByRole("link", { name: item.title })).toHaveAttribute(
-        "data-active",
-        "true",
-      );
+      await expect(link).toHaveAttribute("data-active", "true");
     }
   });
 
