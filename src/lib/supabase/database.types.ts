@@ -1796,7 +1796,7 @@ export type Database = {
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
-      payment_type: "sin_definir" | "contado" | "a_cuenta" | "credito";
+      payment_type: "contado" | "a_cuenta" | "credito" | "sin_definir";
       piece_event:
         "estado" | "llegada" | "vuelta_taller" | "devolucion_cliente";
       piece_location:
@@ -1961,7 +1961,7 @@ export const Constants = {
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
-      payment_type: ["sin_definir", "contado", "a_cuenta", "credito"],
+      payment_type: ["contado", "a_cuenta", "credito", "sin_definir"],
       piece_event: ["estado", "llegada", "vuelta_taller", "devolucion_cliente"],
       piece_location: [
         "por_whatsapp",
