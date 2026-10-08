@@ -4,7 +4,7 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
  * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
  * avanza; P21 con su propuesta; P47: sin "Recibida" ni "Devuelta por el taller";
  * P48: ubicaciones Por WhatsApp → Sin enviar → En taller → En tienda → Entregada y
- * restauración Rechazada).
+ * restauración Rechazada; P50: Observación queda Sin enviar).
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -84,8 +84,9 @@ export function isBackFromWorkshop(piece: PieceForLocation): boolean {
 
 /**
  * Ubicación física de la pieza (§7.2, P48), evaluada en este orden: Por WhatsApp
- * (aún no llega) → Sin enviar (en la tienda, nunca fue al taller) → En taller → En
- * tienda (volvió del taller) → Entregada; Anulada aparte.
+ * (aún no llega) → Sin enviar (en la tienda, por enviar al taller: nunca fue o está
+ * en Observación y hay que reenviarla, P50) → En taller → En tienda (volvió del
+ * taller) → Entregada; Anulada aparte.
  */
 export function deriveLocation(piece: PieceForLocation): PieceLocation {
   if (piece.status === "anulada") return "anulada";
@@ -96,6 +97,7 @@ export function deriveLocation(piece: PieceForLocation): PieceLocation {
   )
     return "entregada";
   if (!piece.arrivedAt) return "por_whatsapp";
+  if (piece.status === "observada") return "sin_enviar";
   if (piece.status === "enviada_taller" && !isBackFromWorkshop(piece))
     return "en_taller";
   return piece.firstSentAt ? "en_tienda" : "sin_enviar";

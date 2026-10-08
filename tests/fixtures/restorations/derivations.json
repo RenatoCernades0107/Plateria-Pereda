@@ -522,7 +522,7 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
-      "expected": "en_tienda"
+      "expected": "sin_enviar"
     },
     {
       "status": "entregada",

@@ -30,8 +30,6 @@ const ESPERADO: Record<string, { roles: string; requires?: "N" | "T" }> = {
   "registrada→aprobada": { roles: "AV" },
   "en_consulta→en_espera": { roles: "AV" },
   "en_espera→aprobada": { roles: "AV" },
-  "registrada→rechazada": { roles: "AV", requires: "N" },
-  "en_consulta→rechazada": { roles: "AV", requires: "N" },
   "en_espera→rechazada": { roles: "AV", requires: "N" },
   "en_consulta→sin_arreglo": { roles: "AV", requires: "N" },
   "aprobada→enviada_taller": { roles: "AL", requires: "T" },
@@ -167,13 +165,11 @@ describe("availableTransitions", () => {
     expect(destinos("registrada", "ventas")).toEqual([
       "en_consulta",
       "aprobada",
-      "rechazada",
       "anulada",
     ]);
     expect(destinos("registrada", "logistica")).toEqual([]);
     expect(destinos("en_consulta", "ventas")).toEqual([
       "en_espera",
-      "rechazada",
       "sin_arreglo",
       "anulada",
     ]);
@@ -410,11 +406,11 @@ describe("applyTransition", () => {
     ).toEqual({ ok: false, error: "transicion_invalida" });
   });
 
-  it("el rechazo solo es posible antes de aprobar (P47)", () => {
+  it("el cliente rechaza solo desde Espera respuesta cliente (P47, P50)", () => {
     const origenes = PIECE_TRANSITIONS.filter((t) => t.to === "rechazada").map(
       (t) => t.from,
     );
-    expect(origenes.sort()).toEqual(["en_consulta", "en_espera", "registrada"]);
+    expect(origenes).toEqual(["en_espera"]);
   });
 
   it("una pieza de vuelta del taller vuelve a ir solo pasando por Observación (P41 f)", () => {

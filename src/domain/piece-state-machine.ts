@@ -94,12 +94,11 @@ const CANCELLABLE_FROM: readonly PieceStatus[] = [
   "observada",
 ];
 
-/** Antes de aprobarse, el cliente o la tienda pueden rechazar la pieza (P47). */
-const REJECTABLE_FROM: readonly PieceStatus[] = [
-  "registrada",
-  "en_consulta",
-  "en_espera",
-];
+/**
+ * El cliente rechaza la pieza cuando responde a la cotización: solo desde "Espera
+ * respuesta cliente", donde se aprueba o se rechaza (P47, P50). Antes, se anula.
+ */
+const REJECTABLE_FROM: readonly PieceStatus[] = ["en_espera"];
 
 export const PIECE_TRANSITIONS: readonly PieceTransition[] = [
   transition("registrada", "en_consulta", CONSULTAR_APROBAR_ANULAR, {

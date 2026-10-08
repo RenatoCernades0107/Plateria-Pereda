@@ -1,6 +1,6 @@
 begin;
 
-select plan(51);
+select plan(59);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000aa1', 'ventas@estados.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -189,6 +189,32 @@ select is(
   1, 'la orden se encola una sola vez'
 );
 
+-- Observación: la pieza queda Sin enviar hasta que se reenvía al taller (P50).
+select is(
+  (select location::text from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
+  'sin_enviar', 'en Observación la pieza queda Sin enviar (por reenviar al taller)'
+);
+select is(
+  (select location from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
+  (select public.derive_piece_location(p.status, p.arrived_at, p.first_sent_at, p.last_sent_at,
+     p.last_returned_at, p.returned_at) from public.pieces p where p.id = '00000000-0000-0000-0000-00000000aa41'),
+  'la columna y la función coinciden para una pieza observada'
+);
+-- Todo el test corre en una transacción (now() fijo): la vuelta del taller se fecha antes.
+update public.pieces set last_returned_at = last_returned_at - interval '1 hour'
+where id = '00000000-0000-0000-0000-00000000aa41';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'enviada_taller') $$,
+  'logística reenvía al taller la pieza observada'
+);
+reset role;
+select is(
+  (select location::text from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
+  'en_taller', 'al reenviarla vuelve a En taller'
+);
+
 -- Rechazado, No tiene arreglo y Devolver al cliente (P47).
 insert into public.restorations (id, client_id, payment_type, origin, whatsapp_quote_id)
   values ('00000000-0000-0000-0000-00000000aa32', '00000000-0000-0000-0000-00000000aa20', 'contado',
@@ -201,6 +227,24 @@ insert into public.pieces (id, restoration_id, description, price, arrived_at, u
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa1","role":"authenticated"}', true);
 select throws_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[],
+       'rechazada', 'El cliente no acepta el precio') $$,
+  '23514', null, 'una pieza Registrada no se rechaza: el cliente responde en Espera (P50)'
+);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[], 'en_consulta', 'Cotizar el baño de plata') $$,
+  'ventas consulta la Copa'
+);
+select throws_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[],
+       'rechazada', 'El cliente no acepta el precio') $$,
+  '23514', null, 'tampoco se rechaza desde Consulta'
+);
+select lives_ok(
+  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[], 'en_espera') $$,
+  'se le envía el precio al cliente: Espera respuesta cliente'
+);
+select throws_ok(
   $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[], 'rechazada') $$,
   '23514', 'Escribe una nota para este cambio de estado.', 'rechazar exige nota'
 );
@@ -208,7 +252,7 @@ select results_eq(
   $$ select status::text from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa44']::uuid[],
        'rechazada', 'El cliente no acepta el precio') $$,
   $$ values ('rechazada') $$,
-  'ventas rechaza una pieza registrada'
+  'desde Espera respuesta cliente, ventas registra el rechazo'
 );
 select lives_ok(
   $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa45']::uuid[], 'en_consulta', 'Revisar soldadura') $$,
