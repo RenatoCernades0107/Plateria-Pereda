@@ -98,9 +98,14 @@ describe("PieceStatusPanel", () => {
       "Marcar llegada a tienda",
       "Poner en consulta",
       "Aprobar",
-      "Rechazar",
       "Anular",
     ]);
+  });
+
+  it("Rechazar solo aparece en Espera respuesta cliente (P50)", () => {
+    renderPanel("en_espera", "ventas");
+    expect(buttons()).toContain("Rechazar");
+    expect(buttons()).toContain("Aprobar");
   });
 
   it("logística no consulta, aprueba ni anula", () => {

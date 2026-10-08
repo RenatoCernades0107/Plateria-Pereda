@@ -4727,12 +4727,7 @@
       "version": 1,
       "versionNonce": 669638768,
       "isDeleted": false,
-      "boundElements": [
-        {
-          "id": "c11",
-          "type": "arrow"
-        }
-      ],
+      "boundElements": [],
       "updated": 1,
       "link": null,
       "locked": false
@@ -4742,7 +4737,7 @@
       "type": "text",
       "x": 205,
       "y": 1555,
-      "width": 257.40000000000003,
+      "width": 114.4,
       "height": 16.25,
       "angle": 0,
       "strokeColor": "#1971c2",
@@ -4763,13 +4758,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "antes de aprobar · se puede rechazar",
+      "text": "antes de aprobar",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "antes de aprobar · se puede rechazar",
+      "originalText": "antes de aprobar",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -5128,6 +5123,10 @@
         },
         {
           "id": "c3",
+          "type": "arrow"
+        },
+        {
+          "id": "c11",
           "type": "arrow"
         }
       ],
@@ -6580,9 +6579,9 @@
       "autoResize": true
     },
     {
-      "id": "c_rech",
+      "id": "c_sin",
       "type": "rectangle",
-      "x": 240,
+      "x": 390,
       "y": 2000,
       "width": 190,
       "height": 70,
@@ -6605,11 +6604,15 @@
       "isDeleted": false,
       "boundElements": [
         {
-          "id": "c_rech_t",
+          "id": "c_sin_t",
           "type": "text"
         },
         {
-          "id": "c11",
+          "id": "c12",
+          "type": "arrow"
+        },
+        {
+          "id": "c13",
           "type": "arrow"
         }
       ],
@@ -6618,11 +6621,11 @@
       "locked": false
     },
     {
-      "id": "c_rech_t",
+      "id": "c_sin_t",
       "type": "text",
-      "x": 251.39999999999998,
+      "x": 414.6,
       "y": 2025.0,
-      "width": 167.20000000000002,
+      "width": 140.8,
       "height": 20.0,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -6643,20 +6646,20 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "Rechazado (cliente)",
+      "text": "No tiene arreglo",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
-      "containerId": "c_rech",
-      "originalText": "Rechazado (cliente)",
+      "containerId": "c_sin",
+      "originalText": "No tiene arreglo",
       "lineHeight": 1.25,
       "autoResize": true
     },
     {
-      "id": "c_sin",
+      "id": "c_rech",
       "type": "rectangle",
-      "x": 740,
+      "x": 680,
       "y": 2000,
       "width": 190,
       "height": 70,
@@ -6679,15 +6682,11 @@
       "isDeleted": false,
       "boundElements": [
         {
-          "id": "c_sin_t",
+          "id": "c_rech_t",
           "type": "text"
         },
         {
-          "id": "c12",
-          "type": "arrow"
-        },
-        {
-          "id": "c13",
+          "id": "c11",
           "type": "arrow"
         }
       ],
@@ -6696,11 +6695,11 @@
       "locked": false
     },
     {
-      "id": "c_sin_t",
+      "id": "c_rech_t",
       "type": "text",
-      "x": 764.6,
+      "x": 691.4,
       "y": 2025.0,
-      "width": 140.8,
+      "width": 167.20000000000002,
       "height": 20.0,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -6721,13 +6720,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "No tiene arreglo",
+      "text": "Rechazado (cliente)",
       "fontSize": 16,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
-      "containerId": "c_sin",
-      "originalText": "No tiene arreglo",
+      "containerId": "c_rech",
+      "originalText": "Rechazado (cliente)",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -6808,10 +6807,10 @@
     {
       "id": "c11",
       "type": "arrow",
-      "x": 335,
-      "y": 1690,
+      "x": 775,
+      "y": 1670,
       "width": 0,
-      "height": 310,
+      "height": 330,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -6843,12 +6842,12 @@
         ],
         [
           0,
-          310
+          330
         ]
       ],
       "lastCommittedPoint": null,
       "startBinding": {
-        "elementId": "c_in",
+        "elementId": "c_esp",
         "focus": 0,
         "gap": 4
       },
@@ -6864,9 +6863,9 @@
     {
       "id": "c11_t",
       "type": "text",
-      "x": 306.4,
-      "y": 1828.75,
-      "width": 57.2,
+      "x": 724.95,
+      "y": 1818.75,
+      "width": 100.10000000000001,
       "height": 32.5,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -6887,22 +6886,22 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "rechazar\n(nota)",
+      "text": "el cliente\nrechaza (nota)",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "c11",
-      "originalText": "rechazar\n(nota)",
+      "originalText": "el cliente\nrechaza (nota)",
       "lineHeight": 1.25,
       "autoResize": true
     },
     {
       "id": "c12",
       "type": "arrow",
-      "x": 560,
+      "x": 485,
       "y": 1670,
-      "width": 230,
+      "width": 0,
       "height": 330,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -6934,7 +6933,7 @@
           0
         ],
         [
-          230,
+          0,
           330
         ]
       ],
@@ -6956,7 +6955,7 @@
     {
       "id": "c12_t",
       "type": "text",
-      "x": 628.525,
+      "x": 438.525,
       "y": 1818.75,
       "width": 92.95,
       "height": 32.5,
@@ -6994,7 +6993,7 @@
       "type": "arrow",
       "x": 1275,
       "y": 1670,
-      "width": 375,
+      "width": 705,
       "height": 330,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -7026,7 +7025,7 @@
           0
         ],
         [
-          -375,
+          -705,
           330
         ]
       ],
@@ -7048,7 +7047,7 @@
     {
       "id": "c13_t",
       "type": "text",
-      "x": 1041.025,
+      "x": 876.025,
       "y": 1818.75,
       "width": 92.95,
       "height": 32.5,
@@ -7176,7 +7175,7 @@
     {
       "id": "c_dev",
       "type": "rectangle",
-      "x": 240,
+      "x": 390,
       "y": 2110,
       "width": 560,
       "height": 70,
@@ -7210,7 +7209,7 @@
     {
       "id": "c_dev_t",
       "type": "text",
-      "x": 250,
+      "x": 400,
       "y": 2118,
       "width": 592.9000000000001,
       "height": 35.0,
@@ -7247,9 +7246,9 @@
       "id": "c_note",
       "type": "rectangle",
       "x": 1500,
-      "y": 1940,
+      "y": 1930,
       "width": 380,
-      "height": 250,
+      "height": 275,
       "angle": 0,
       "strokeColor": "#868e96",
       "backgroundColor": "#fff9db",
@@ -7281,9 +7280,9 @@
       "id": "c_note_t",
       "type": "text",
       "x": 1510,
-      "y": 1948,
+      "y": 1938,
       "width": 323.40000000000003,
-      "height": 192.5,
+      "height": 227.5,
       "angle": 0,
       "strokeColor": "#343a40",
       "backgroundColor": "transparent",
@@ -7303,13 +7302,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
+      "text": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• El cliente rechaza solo desde Espera\n  respuesta cliente; antes se anula.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
       "fontSize": 14,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": "c_note",
-      "originalText": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
+      "originalText": "• Al taller solo va lo que está en la\n  tienda (con taller elegido).\n• Desde Interno solo se entrega u observa\n  cuando ya volvió («Recibir del taller»).\n• Rechazado, No tiene arreglo y Anulado\n  son finales y no se cobran.\n• Con saldo pendiente no se entrega\n  (salvo Crédito o confirmándolo).\n• «Urgente» es una marca, no un estado.\n• El cliente rechaza solo desde Espera\n  respuesta cliente; antes se anula.\n• Desde WhatsApp se elige Consulta (con\n  nota) o Aprobada; no se salta a Espera.",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -7457,7 +7456,7 @@
       "type": "rectangle",
       "x": 410,
       "y": 2318,
-      "width": 190,
+      "width": 150,
       "height": 34,
       "angle": 0,
       "strokeColor": "#0c8599",
@@ -7493,7 +7492,7 @@
     {
       "id": "d_in_t_t",
       "type": "text",
-      "x": 444.225,
+      "x": 424.225,
       "y": 2326.875,
       "width": 121.55000000000001,
       "height": 16.25,
@@ -7646,6 +7645,14 @@
           "type": "arrow"
         },
         {
+          "id": "d_back",
+          "type": "arrow"
+        },
+        {
+          "id": "d_back2",
+          "type": "arrow"
+        },
+        {
           "id": "d_dev1",
           "type": "arrow"
         }
@@ -7725,10 +7732,6 @@
         },
         {
           "id": "d2",
-          "type": "arrow"
-        },
-        {
-          "id": "d_back",
           "type": "arrow"
         }
       ],
@@ -7889,6 +7892,10 @@
         },
         {
           "id": "d3",
+          "type": "arrow"
+        },
+        {
+          "id": "d_back2",
           "type": "arrow"
         },
         {
@@ -8064,7 +8071,7 @@
     {
       "id": "d_in_t_a",
       "type": "arrow",
-      "x": 505,
+      "x": 470,
       "y": 2352,
       "width": 0,
       "height": 48,
@@ -8263,9 +8270,9 @@
     {
       "id": "d1_t",
       "type": "text",
-      "x": 627.825,
+      "x": 624.25,
       "y": 2418.75,
-      "width": 64.35000000000001,
+      "width": 71.5,
       "height": 32.5,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -8286,13 +8293,13 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "enviar al\ntaller",
+      "text": "(re)enviar\nal taller",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "d1",
-      "originalText": "enviar al\ntaller",
+      "originalText": "(re)enviar\nal taller",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -8485,8 +8492,8 @@
       "type": "arrow",
       "x": 1080,
       "y": 2400,
-      "width": 220,
-      "height": 38,
+      "width": 515,
+      "height": 32,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -8518,14 +8525,14 @@
         ],
         [
           0,
-          -38
+          -32
         ],
         [
-          -220,
-          -38
+          -515,
+          -32
         ],
         [
-          -220,
+          -515,
           0
         ]
       ],
@@ -8536,7 +8543,7 @@
         "gap": 4
       },
       "endBinding": {
-        "elementId": "d_et",
+        "elementId": "d_se",
         "focus": 0,
         "gap": 4
       },
@@ -8547,9 +8554,9 @@
     {
       "id": "d_back_t",
       "type": "text",
-      "x": 894.925,
-      "y": 2353.875,
-      "width": 150.15,
+      "x": 783.175,
+      "y": 2359.875,
+      "width": 78.65,
       "height": 16.25,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -8570,13 +8577,113 @@
       "updated": 1,
       "link": null,
       "locked": false,
-      "text": "observación → reenvío",
+      "text": "observación",
       "fontSize": 13,
       "fontFamily": 2,
       "textAlign": "center",
       "verticalAlign": "middle",
       "containerId": "d_back",
-      "originalText": "observación → reenvío",
+      "originalText": "observación",
+      "lineHeight": 1.25,
+      "autoResize": true
+    },
+    {
+      "id": "d_back2",
+      "type": "arrow",
+      "x": 1435,
+      "y": 2400,
+      "width": 845,
+      "height": 65,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 1850017270,
+      "version": 1,
+      "versionNonce": 701138478,
+      "isDeleted": false,
+      "boundElements": [
+        {
+          "id": "d_back2_t",
+          "type": "text"
+        }
+      ],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -65
+        ],
+        [
+          -845,
+          -65
+        ],
+        [
+          -845,
+          0
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "d_en",
+        "focus": 0,
+        "gap": 4
+      },
+      "endBinding": {
+        "elementId": "d_se",
+        "focus": 0,
+        "gap": 4
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false
+    },
+    {
+      "id": "d_back2_t",
+      "type": "text",
+      "x": 937.425,
+      "y": 2326.875,
+      "width": 150.15,
+      "height": 16.25,
+      "angle": 0,
+      "strokeColor": "#1e1e1e",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 1,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "seed": 237945867,
+      "version": 1,
+      "versionNonce": 362859751,
+      "isDeleted": false,
+      "boundElements": [],
+      "updated": 1,
+      "link": null,
+      "locked": false,
+      "text": "reclamo → observación",
+      "fontSize": 13,
+      "fontFamily": 2,
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "containerId": "d_back2",
+      "originalText": "reclamo → observación",
       "lineHeight": 1.25,
       "autoResize": true
     },
@@ -8598,9 +8705,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1850017270,
+      "seed": 1635874816,
       "version": 1,
-      "versionNonce": 701138478,
+      "versionNonce": 1210894223,
       "isDeleted": false,
       "boundElements": [
         {
@@ -8662,9 +8769,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 237945867,
+      "seed": 1040296615,
       "version": 1,
-      "versionNonce": 362859751,
+      "versionNonce": 1258676655,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,
@@ -8698,9 +8805,9 @@
       "groupIds": [],
       "frameId": null,
       "roundness": null,
-      "seed": 1635874816,
+      "seed": 194293563,
       "version": 1,
-      "versionNonce": 1210894223,
+      "versionNonce": 1973335386,
       "isDeleted": false,
       "boundElements": [],
       "updated": 1,

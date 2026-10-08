@@ -233,6 +233,8 @@ test.describe("Estados de las piezas", () => {
     await dialog.getByLabel("Nota (obligatoria)").fill("Falta pulir el borde");
     await dialog.getByRole("button", { name: "Confirmar: Observar" }).click();
     await expect(card(page, code)).toContainText("Observación");
+    // Queda en la tienda por reenviar al taller (P50).
+    await expect(card(page, code)).toContainText("Sin enviar");
 
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
@@ -400,12 +402,13 @@ test.describe("Estados de las piezas", () => {
     ).toHaveCount(0);
   });
 
-  test("rechazo, sin arreglo desde Interno y devolución al cliente (P47)", async ({
+  test("rechazo, sin arreglo desde Interno y devolución al cliente (P47, P50)", async ({
     page,
     loginAs,
   }) => {
     const r = await seedRestoration([
-      { description: "Copa rechazada", arrived: true },
+      // El cliente rechaza cuando responde a la cotización (P50).
+      { description: "Copa rechazada", arrived: true, status: "en_espera" },
       {
         description: "Fuente sin arreglo",
         arrived: true,

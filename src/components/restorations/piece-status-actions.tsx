@@ -266,7 +266,9 @@ export function PieceStatusPanel({
                 ? "entregada"
                 : change.to === "anulada"
                   ? "anulada"
-                  : piece.location,
+                  : change.to === "observada"
+                    ? "sin_enviar"
+                    : piece.location,
           readyForDelivery: false,
         });
         const result = await changePieceStatus(
