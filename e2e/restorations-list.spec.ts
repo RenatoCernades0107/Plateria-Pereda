@@ -66,6 +66,7 @@ test.describe("Listado de restauraciones", () => {
     await page.getByLabel("Código, cliente o documento").fill(clientName);
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("option", { name: "En proceso" }).click();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/estado=en_proceso/);
     await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
@@ -74,9 +75,11 @@ test.describe("Listado de restauraciones", () => {
     ).toBeVisible();
 
     await page.getByLabel("Estado", { exact: true }).click();
-    await page.getByRole("option", { name: "Todos" }).click();
+    await page.getByRole("button", { name: "Limpiar selección" }).click();
+    await page.keyboard.press("Escape");
     await page.getByLabel("Estado de pago").click();
     await page.getByRole("option", { name: "Pagado" }).click();
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/pago=pagado/);
     await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
@@ -89,6 +92,31 @@ test.describe("Listado de restauraciones", () => {
       clientName,
     );
     await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
+  });
+
+  test("permite elegir varios estados en el mismo filtro y desplegar más filtros", async ({
+    page,
+  }) => {
+    await page.goto("/restauraciones");
+    await expect(page.getByLabel("Taller")).toHaveCount(0);
+    await page.getByRole("button", { name: "Más filtros" }).click();
+    await expect(page.getByLabel("Taller")).toBeVisible();
+
+    await page.getByLabel("Código, cliente o documento").fill(clientName);
+    await page.getByLabel("Estado", { exact: true }).click();
+    await page.getByRole("option", { name: "En proceso" }).click();
+    await page.getByRole("option", { name: "Lista", exact: true }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByLabel("Estado", { exact: true })).toContainText(
+      "2 seleccionados",
+    );
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page).toHaveURL(/estado=en_proceso&estado=lista/);
+    await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
+    await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
+    await expect(
+      page.getByText("2 restauraciones · Página 1 de 1"),
+    ).toBeVisible();
   });
 
   test("busca por código", async ({ page }) => {

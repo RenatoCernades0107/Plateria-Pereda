@@ -58,7 +58,7 @@ export function PhoneField<T extends FieldValues>({
               >
                 <SelectTrigger
                   className="w-28 shrink-0"
-                  aria-label="País del teléfono"
+                  aria-label="Código de país"
                 >
                   <SelectValue>
                     {flagOf(country.iso)} +{country.dial}
