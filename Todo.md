@@ -203,7 +203,7 @@ Estados: **Registrada**, **Consulta**, **Espera respuesta cliente**, **Aprobada*
 | Registrada | Aprobada | El cliente acepta en el momento |
 | Consulta | Espera respuesta cliente | Al enviarle el mensaje de WhatsApp al cliente |
 | Espera respuesta cliente | Aprobada | El cliente acepta; lo hace el asesor |
-| Registrada / Consulta / Espera respuesta | Rechazado (cliente) | El cliente o la tienda no aceptan. Nota obligatoria; final |
+| Espera respuesta | Rechazado (cliente) | El cliente no acepta la cotización (P50: solo desde Espera). Nota obligatoria; final |
 | Consulta | No tiene arreglo | Lo decide la tienda al revisar la pieza. Nota obligatoria; final |
 | Aprobada | Interno | "Enviar al taller": taller obligatorio y la pieza debe estar en la tienda |
 | Interno | No tiene arreglo | Lo avisa el taller. Nota obligatoria; final |
@@ -230,9 +230,10 @@ Recorrido físico: **Por WhatsApp** → **Sin enviar** → **En taller** → **E
 2. Entregada → **Entregada**
 3. Rechazada o sin arreglo y devuelta al cliente (`returned_at`) → **Entregada**
 4. Sin `arrived_at` → **Por WhatsApp** (solo piezas de restauraciones que salieron de una cotización de WhatsApp: las de oficina nacen en la tienda)
-5. Interno y aún no vuelve del taller → **En taller**
-6. Fue al taller alguna vez (`first_sent_at`) → **En tienda** (volvió del taller: Interno de vuelta, Observación, sin arreglo desde Interno)
-7. Si no → **Sin enviar** (en la tienda, aún no enviada al taller)
+5. Observación → **Sin enviar** (en la tienda, por reenviar al taller; P50)
+6. Interno y aún no vuelve del taller → **En taller**
+7. Fue al taller alguna vez (`first_sent_at`) → **En tienda** (volvió del taller: Interno de vuelta, sin arreglo desde Interno)
+8. Si no → **Sin enviar** (en la tienda, aún no enviada al taller)
 
 - Se envía al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
 
