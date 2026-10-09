@@ -91,13 +91,13 @@ export function PiecesBoard({
         </label>
       ) : null}
 
-      <ul className="grid gap-3 md:grid-cols-2">
+      <ul className="divide-y rounded-lg border">
         {pieces.map((piece) => {
           const editable = editing?.editable[piece.id] ?? [];
           return (
             <li
               key={piece.id}
-              className="space-y-2 rounded-lg border p-4"
+              className="space-y-2 p-4"
               data-testid={`pieza-${piece.code}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
