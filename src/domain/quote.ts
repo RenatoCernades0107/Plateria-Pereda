@@ -1,13 +1,14 @@
-import { igvBreakdown, IGV_PERCENT } from "./igv";
+import { igvTotals } from "./igv";
 import { percentOf, sumCents, type Cents } from "./money";
 
-export { igvBreakdown, IGV_PERCENT };
+export { igvBreakdown, IGV_PERCENT } from "./igv";
 
 /**
  * Cálculos de la cotización (Fase 14). Mismas reglas que la BD (migración
  * `cotizaciones`): subtotal de la línea = cantidad × precio; descuento opcional por
  * línea en monto o % (P35, propuesta) redondeado a céntimos; total = suma de las
- * líneas. Los precios incluyen IGV (P13, propuesta): el desglose solo se informa.
+ * líneas. Si los precios incluyen IGV (P13) el desglose solo se informa; si no, cada
+ * línea (con su descuento) se cobra + 18 % y el total es la suma de esas líneas.
  */
 
 export const QUOTE_STATUSES = [
@@ -89,18 +90,25 @@ export type QuoteTotals = {
   subtotal: Cents;
   /** Suma de los descuentos por línea. */
   discount: Cents;
-  /** Lo que paga el cliente (incluye IGV). */
+  /** Lo que paga el cliente (con IGV). */
   total: Cents;
   /** Operación gravada (total sin IGV). */
   taxableBase: Cents;
   igv: Cents;
 };
 
-export function quoteTotals(lines: readonly QuoteLineAmounts[]): QuoteTotals {
+/** Subtotal y descuentos sin IGV agregado; total y desglose según P13. */
+export function quoteTotals(
+  lines: readonly QuoteLineAmounts[],
+  pricesIncludeIgv = true,
+): QuoteTotals {
   const subtotal = sumCents(lines.map(lineGross));
   const discount = sumCents(lines.map(lineDiscount));
-  const total = subtotal - discount;
-  return { subtotal, discount, total, ...igvBreakdown(total) };
+  return {
+    subtotal,
+    discount,
+    ...igvTotals(lines.map(lineTotal), pricesIncludeIgv),
+  };
 }
 
 // --- Vigencia (fechas calendario en Lima, como `private.lima_today()` de la BD) ---

@@ -31,6 +31,7 @@ export default async function NuevaCotizacionPage() {
         initial={{
           client: null,
           validityDays: String(settings.quoteValidityDays),
+          pricesIncludeIgv: "",
           notes: "",
           terms: settings.terms,
           lines: [],

@@ -60,6 +60,7 @@ const KEY_2 = "22222222-2222-4222-8222-222222222222";
 const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   client: ana,
   validityDays: "15",
+  pricesIncludeIgv: "si",
   notes: "",
   terms: "Pago al contado.",
   lines: [
@@ -108,6 +109,22 @@ describe("QuoteForm", () => {
       within(lineGroup(1)).getByLabelText("Precio unitario (S/)"),
     );
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 500.00");
+  });
+
+  it("pregunta si el precio incluye IGV y lo suma si no (P13)", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm initial={values({ pricesIncludeIgv: "" })} />);
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+    expect(
+      screen.getByText("Indica si el precio incluye IGV"),
+    ).toBeInTheDocument();
+    expect(mocks.save).not.toHaveBeenCalled();
+
+    await user.click(screen.getByLabelText(/No, se suma el IGV/));
+    // 840.00 sin IGV: 300.00 → 354.00 y 540.00 → 637.20
+    expect(screen.getByTestId("igv")).toHaveTextContent("+ S/ 151.20");
+    expect(screen.getByTestId("total")).toHaveTextContent("S/ 991.20");
+    expect(screen.queryByText("Indica si el precio incluye IGV")).toBeNull();
   });
 
   it("muestra la fecha de vencimiento según la vigencia", async () => {

@@ -122,6 +122,10 @@ export const quoteSchema = z.object({
     }
     return days;
   }),
+  /** "¿El precio incluye IGV?" (P13): se responde siempre. */
+  pricesIncludeIgv: z
+    .enum(["si", "no"], { error: "Indica si el precio incluye IGV" })
+    .transform((v) => v === "si"),
   notes: text(2000),
   terms: text(5000),
   lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
@@ -131,6 +135,8 @@ export type QuoteFormInput = {
   clientId: string;
   contactId: string | null;
   validityDays: string;
+  /** "si", "no" o "" (sin responder). */
+  pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -145,6 +151,7 @@ export function quoteRpcArgs(v: QuoteInput) {
       client_id: v.clientId,
       contact_id: v.contactId,
       validity_days: v.validityDays,
+      prices_include_igv: v.pricesIncludeIgv,
       notes: v.notes,
       terms: v.terms,
     },
@@ -166,6 +173,7 @@ export function quoteRpcArgs(v: QuoteInput) {
 export type QuoteFormErrors = {
   clientId?: string;
   validityDays?: string;
+  pricesIncludeIgv?: string;
   notes?: string;
   terms?: string;
   lines?: string;
@@ -198,6 +206,7 @@ export function quoteFormErrors(input: QuoteFormInput): QuoteFormErrors | null {
     } else if (
       first === "clientId" ||
       first === "validityDays" ||
+      first === "pricesIncludeIgv" ||
       first === "notes" ||
       first === "terms"
     ) {

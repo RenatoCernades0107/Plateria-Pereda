@@ -647,6 +647,7 @@ export type Database = {
           issued_at: string | null;
           notes: string;
           number: number;
+          prices_include_igv: boolean;
           status: Database["public"]["Enums"]["quote_status"];
           subtotal: number;
           terms: string;
@@ -679,6 +680,7 @@ export type Database = {
           issued_at?: string | null;
           notes?: string;
           number?: never;
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           terms?: string;
@@ -710,6 +712,7 @@ export type Database = {
           issued_at?: string | null;
           notes?: string;
           number?: never;
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           terms?: string;
