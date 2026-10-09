@@ -41,7 +41,7 @@ describe("/api/restauraciones/exportar", () => {
       /attachment; filename="restauraciones-\d{4}-\d{2}-\d{2}\.csv"/,
     );
     expect(mocks.list).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "lista", page: 3 }),
+      expect.objectContaining({ status: ["lista"], page: 3 }),
       { all: true },
     );
     expect(await response.text()).toContain("Código,Fecha,Cliente");

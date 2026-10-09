@@ -24,6 +24,7 @@ import { createContact, updateContact } from "@/server/clients/actions";
 import type { ContactDetail } from "@/server/clients/queries";
 
 import { DocumentTypeField, TextField } from "./form-fields";
+import { PhoneField } from "./phone-field";
 
 export type SavedContact = { id: string; displayName: string };
 
@@ -98,13 +99,7 @@ function ContactForm({
             name="document.documentNumber"
             label="Número de documento"
           />
-          <TextField
-            form={form}
-            name="phone"
-            label="Teléfono"
-            type="tel"
-            inputMode="tel"
-          />
+          <PhoneField form={form} name="phone" />
           <TextField
             form={form}
             name="email"

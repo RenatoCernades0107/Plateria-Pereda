@@ -53,10 +53,14 @@ export function PiecesBoard({
   /** Contenido adicional por pieza (p. ej. línea de tiempo o datos de logística). */
   extra?: Record<string, React.ReactNode>;
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
-  const chosen = pieces.filter((p) => selected.includes(p.id));
+  // Por defecto están elegidas todas las piezas que admiten acciones: se guardan las
+  // que la persona desmarca, así lo elegido sigue válido tras refrescar la página.
+  const [unchecked, setUnchecked] = useState<string[]>([]);
+  const selectable = pieces.filter((p) => isSelectable(p, role));
+  const chosen = selectable.filter((p) => !unchecked.includes(p.id));
   const toggle = (id: string, on: boolean) =>
-    setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
+    setUnchecked((u) => (on ? u.filter((x) => x !== id) : [...u, id]));
+  const allChosen = chosen.length === selectable.length;
 
   return (
     <div className="space-y-3">
@@ -65,8 +69,27 @@ export function PiecesBoard({
         chosen={chosen}
         role={role}
         workshops={workshops}
-        onDone={() => setSelected([])}
+        onDone={() => setUnchecked([])}
+        statusPicker
+        total={selectable.length}
       />
+
+      {selectable.length > 1 ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="accent-primary size-4"
+            checked={allChosen}
+            ref={(el) => {
+              if (el) el.indeterminate = !allChosen && chosen.length > 0;
+            }}
+            onChange={(e) =>
+              setUnchecked(e.target.checked ? [] : selectable.map((p) => p.id))
+            }
+          />
+          Elegir todas las piezas
+        </label>
+      ) : null}
 
       <ul className="grid gap-3 md:grid-cols-2">
         {pieces.map((piece) => {
@@ -84,7 +107,7 @@ export function PiecesBoard({
                       type="checkbox"
                       className="accent-primary mt-1 size-4"
                       aria-label={`Elegir ${piece.code}`}
-                      checked={selected.includes(piece.id)}
+                      checked={!unchecked.includes(piece.id)}
                       onChange={(e) => toggle(piece.id, e.target.checked)}
                     />
                   ) : null}

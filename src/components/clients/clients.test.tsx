@@ -53,7 +53,7 @@ describe("NewClientDialog", () => {
         kind: "persona",
         firstName: "Ana",
         document: { documentType: "dni", documentNumber: "45678912" },
-        phone: "999 888 777",
+        phone: "+51 999888777",
       }),
     );
     expect(onCreated).toHaveBeenCalledWith({

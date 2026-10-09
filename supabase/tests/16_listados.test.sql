@@ -1,6 +1,6 @@
 begin;
 
-select plan(15);
+select plan(16);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ca1', 'ventas@listados.test', '{"role":"ventas"}', '{}'),
@@ -59,11 +59,16 @@ select results_eq(
   'busca por documento del cliente'
 );
 select is(
-  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_payment_status => 'pagado')),
+  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_payment_status => array['pagado']::public.payment_status[])),
   1, 'filtra por estado de pago'
 );
 select is(
-  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_workshop_id => '00000000-0000-0000-0000-00000000ca10')),
+  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_payment_status => array['pagado', 'pendiente', 'parcial']::public.payment_status[])),
+  (select count(*)::int from public.list_restorations(p_query => 'Listada')),
+  'acepta varios estados de pago a la vez (cualquiera de)'
+);
+select is(
+  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_workshop_ids => array['00000000-0000-0000-0000-00000000ca10']::uuid[])),
   1, 'filtra por taller de alguna pieza'
 );
 select is(
@@ -84,7 +89,7 @@ select results_eq(
   'logística no ve restauraciones pasadas ni montos (P42, D24)'
 );
 select is(
-  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_payment_status => 'pagado')),
+  (select count(*)::int from public.list_restorations(p_query => 'Listada', p_payment_status => array['pagado']::public.payment_status[])),
   0, 'logística no filtra por dinero'
 );
 

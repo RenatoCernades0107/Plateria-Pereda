@@ -13,12 +13,12 @@ describe("filtros del listado de restauraciones", () => {
   it("lee la URL con valores por defecto", () => {
     expect(parseRestorationFilters({})).toEqual({
       q: "",
-      status: null,
-      paymentStatus: null,
-      paymentType: null,
-      origin: null,
+      status: [],
+      paymentStatus: [],
+      paymentType: [],
+      origin: [],
       clientId: null,
-      workshopId: null,
+      workshopIds: [],
       from: null,
       to: null,
       sort: "created_at",
@@ -46,12 +46,12 @@ describe("filtros del listado de restauraciones", () => {
       }),
     ).toEqual({
       q: "RES-0001",
-      status: "en_proceso",
-      paymentStatus: "parcial",
-      paymentType: "a_cuenta",
-      origin: "whatsapp",
+      status: ["en_proceso"],
+      paymentStatus: ["parcial"],
+      paymentType: ["a_cuenta"],
+      origin: ["whatsapp"],
       clientId: UUID.toLowerCase(),
-      workshopId: null,
+      workshopIds: [],
       from: "2026-09-01",
       to: null,
       sort: "total",
@@ -64,7 +64,7 @@ describe("filtros del listado de restauraciones", () => {
       orden: "precio",
       pagina: "-1",
     });
-    expect([bad.status, bad.sort, bad.page]).toEqual([null, "created_at", 1]);
+    expect([bad.status, bad.sort, bad.page]).toEqual([[], "created_at", 1]);
   });
 
   it("la URL ida y vuelta conserva los filtros y omite los valores por defecto", () => {
@@ -72,8 +72,8 @@ describe("filtros del listado de restauraciones", () => {
     expect(restorationFiltersHref(base)).toBe("/restauraciones");
     const href = restorationFiltersHref(base, {
       q: "Ana",
-      status: "lista",
-      paymentStatus: "pendiente",
+      status: ["lista"],
+      paymentStatus: ["pendiente"],
       sort: "code",
       dir: "asc",
       page: 2,
@@ -84,6 +84,36 @@ describe("filtros del listado de restauraciones", () => {
     );
     const params = Object.fromEntries(new URL(href, "http://x").searchParams);
     expect(restorationFiltersHref(parseRestorationFilters(params))).toBe(href);
+  });
+
+  it("admite varios valores por filtro, sin repetir ni inválidos, y mantiene enlaces viejos", () => {
+    const filters = parseRestorationFilters({
+      estado: ["lista", "x", "aprobada", "lista"],
+      taller: [UUID, "no-es-uuid", UUID.toLowerCase()],
+      pago: "pagado",
+    });
+    expect(filters.status).toEqual(["aprobada", "lista"]);
+    expect(filters.workshopIds).toEqual([UUID.toLowerCase()]);
+    expect(filters.paymentStatus).toEqual(["pagado"]);
+    const href = restorationFiltersHref(filters);
+    expect(href).toBe(
+      `/restauraciones?estado=aprobada&estado=lista&pago=pagado&taller=${UUID.toLowerCase()}`,
+    );
+    expect(
+      parseRestorationFilters(
+        Object.fromEntries(
+          [...new URL(href, "http://x").searchParams.keys()].map((k) => [
+            k,
+            new URL(href, "http://x").searchParams.getAll(k),
+          ]),
+        ),
+      ),
+    ).toEqual(filters);
+    expect(listRestorationsArgs(filters)).toMatchObject({
+      p_status: ["aprobada", "lista"],
+      p_payment_status: ["pagado"],
+      p_workshop_ids: [UUID.toLowerCase()],
+    });
   });
 
   it("ordenar por la misma columna invierte; por otra vuelve a la primera página", () => {
@@ -113,11 +143,11 @@ describe("filtros del listado de restauraciones", () => {
     });
     expect(listRestorationsArgs(filters)).toEqual({
       p_query: "Ana",
-      p_status: "lista",
+      p_status: ["lista"],
       p_payment_status: undefined,
       p_payment_type: undefined,
       p_client_id: undefined,
-      p_workshop_id: undefined,
+      p_workshop_ids: undefined,
       p_from: undefined,
       p_to: undefined,
       p_sort: "created_at",

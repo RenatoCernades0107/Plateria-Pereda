@@ -213,12 +213,12 @@ select results_eq(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);
 select results_eq(
-  $$ select count(*)::int from public.list_restorations(p_origin => 'whatsapp') $$,
+  $$ select count(*)::int from public.list_restorations(p_origin => array['whatsapp']::public.restoration_origin[]) $$,
   $$ values (2) $$,
   'el listado de restauraciones filtra por origen WhatsApp'
 );
 select is(
-  (select count(*)::int from public.list_restorations(p_origin => 'oficina')
+  (select count(*)::int from public.list_restorations(p_origin => array['oficina']::public.restoration_origin[])
    where client_id = '00000000-0000-0000-0000-00000000ea20'),
   0, 'y por origen oficina'
 );

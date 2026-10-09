@@ -35,13 +35,14 @@ export type SortDir = "asc" | "desc";
 export type RestorationFilters = {
   /** Código, cliente, documento o contacto. */
   q: string;
-  status: RestorationStatus | null;
-  paymentStatus: PaymentStatus | null;
-  paymentType: PaymentType | null;
+  /** Filtros de selección múltiple: `[]` = sin filtro, varios valores = "cualquiera de". */
+  status: RestorationStatus[];
+  paymentStatus: PaymentStatus[];
+  paymentType: PaymentType[];
   /** Oficina o WhatsApp (P46): solo restauraciones, nunca cotizaciones. */
-  origin: RestorationOrigin | null;
+  origin: RestorationOrigin[];
   clientId: string | null;
-  workshopId: string | null;
+  workshopIds: string[];
   /** Fecha de registro en Lima, "AAAA-MM-DD" (inclusive). */
   from: string | null;
   to: string | null;
@@ -56,7 +57,23 @@ type SearchParams = Record<string, string | string[] | undefined>;
 const first = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? "";
 
+const list = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value : value ? [value] : [];
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Valores válidos y sin repetir, en el orden de `options`. */
+const manyOf = <T extends string>(
+  options: readonly T[],
+  value: string | string[] | undefined,
+) => {
+  const wanted = new Set(list(value));
+  return options.filter((o) => wanted.has(o));
+};
+
+const uuids = (value: string | string[] | undefined) => [
+  ...new Set(list(value).flatMap((v) => uuid(v) ?? [])),
+];
 
 const oneOf = <T extends string>(options: readonly T[], value: string) =>
   (options as readonly string[]).includes(value) ? (value as T) : null;
@@ -79,12 +96,12 @@ export function parseRestorationFilters(
   const page = Number.parseInt(first(params.pagina), 10);
   return {
     q: first(params.q).trim().slice(0, 100),
-    status: oneOf(RESTORATION_STATUSES, first(params.estado)),
-    paymentStatus: oneOf(PAYMENT_STATUSES, first(params.pago)),
-    paymentType: oneOf(PAYMENT_TYPES, first(params.tipo)),
-    origin: oneOf(RESTORATION_ORIGINS, first(params.origen)),
+    status: manyOf(RESTORATION_STATUSES, params.estado),
+    paymentStatus: manyOf(PAYMENT_STATUSES, params.pago),
+    paymentType: manyOf(PAYMENT_TYPES, params.tipo),
+    origin: manyOf(RESTORATION_ORIGINS, params.origen),
     clientId: uuid(first(params.cliente)),
-    workshopId: uuid(first(params.taller)),
+    workshopIds: uuids(params.taller),
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
     sort: oneOf(RESTORATION_SORTS, first(params.orden)) ?? "created_at",
@@ -102,12 +119,12 @@ export function restorationFiltersQuery(
   const next = { ...filters, ...changes };
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
-  if (next.status) params.set("estado", next.status);
-  if (next.paymentStatus) params.set("pago", next.paymentStatus);
-  if (next.paymentType) params.set("tipo", next.paymentType);
-  if (next.origin) params.set("origen", next.origin);
+  next.status.forEach((v) => params.append("estado", v));
+  next.paymentStatus.forEach((v) => params.append("pago", v));
+  next.paymentType.forEach((v) => params.append("tipo", v));
+  next.origin.forEach((v) => params.append("origen", v));
   if (next.clientId) params.set("cliente", next.clientId);
-  if (next.workshopId) params.set("taller", next.workshopId);
+  next.workshopIds.forEach((v) => params.append("taller", v));
   if (next.from) params.set("desde", next.from);
   if (next.to) params.set("hasta", next.to);
   if (next.sort !== "created_at") params.set("orden", next.sort);
@@ -152,12 +169,18 @@ export function listRestorationsArgs(
 ) {
   return {
     p_query: filters.q || undefined,
-    p_status: filters.status ?? undefined,
-    p_payment_status: filters.paymentStatus ?? undefined,
-    p_payment_type: filters.paymentType ?? undefined,
-    p_origin: filters.origin ?? undefined,
+    p_status: filters.status.length ? filters.status : undefined,
+    p_payment_status: filters.paymentStatus.length
+      ? filters.paymentStatus
+      : undefined,
+    p_payment_type: filters.paymentType.length
+      ? filters.paymentType
+      : undefined,
+    p_origin: filters.origin.length ? filters.origin : undefined,
     p_client_id: filters.clientId ?? undefined,
-    p_workshop_id: filters.workshopId ?? undefined,
+    p_workshop_ids: filters.workshopIds.length
+      ? filters.workshopIds
+      : undefined,
     p_from: filters.from ?? undefined,
     p_to: filters.to ?? undefined,
     p_sort: filters.sort,
