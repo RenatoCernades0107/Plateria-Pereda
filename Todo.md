@@ -1,7 +1,7 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
 > **Estado:** planificación (todavía no se desarrolla).
-> **Última actualización:** 2026-10-03
+> **Última actualización:** 2026-10-09
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
 
@@ -891,7 +891,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 9 — Orden automática en Shopify
 
-#### Paso 9.1 — Creación de la orden al aprobar ⛔ P13
+#### Paso 9.1 — Creación de la orden al aprobar (P13 ✅)
 - [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
 - [ ] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
