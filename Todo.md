@@ -908,18 +908,19 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 ### Fase 9 — Orden automática en Shopify
 
 #### Paso 9.1 — Creación de la orden al aprobar (P13 ✅)
-- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
-- [ ] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
+- [x] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
+- [x] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
-  - [ ] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
-  - [ ] Idempotencia: si ya existe una orden con la etiqueta, no crea otra.
+  - [x] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
+  - [x] Idempotencia: si ya existe una orden con la etiqueta, no crea otra.
 - **Integración:**
-  - [ ] Aprobar la última pieza → job → orden en el fake → ids guardados.
+  - [x] Aprobar la última pieza → job → orden en el fake → ids guardados.
 - **E2E:**
-  - [ ] Aprobar todas las piezas → aparece "Orden #xxxx"; el fake recibió líneas y total correctos.
-  - [ ] Aprobación parcial → no se crea orden.
-  - [ ] Error de Shopify → "Reintentar" → la orden se crea una sola vez.
+  - [x] Aprobar todas las piezas → aparece "Orden #xxxx"; el fake recibió líneas y total correctos.
+  - [x] Aprobación parcial → no se crea orden.
+  - [x] Error de Shopify → "Reintentar" → la orden se crea una sola vez.
   - [ ] `@shopify-live` (manual) el mismo flujo contra la tienda de desarrollo.
+- Hecho (2026-10-09): handler `order.create` en `src/server/restorations/shopify-order.ts` (registrado en el outbox): si la restauración ya tiene orden no hace nada; si dejó de estar lista (se agregó una pieza antes de procesarlo) termina como omitido (`{"skipped": true}`) y la BD vuelve a encolarla cuando todas las piezas que se cobran estén aprobadas (migración `20261009130000_orden_shopify.sql`); antes de crearla la busca por la etiqueta del código. Comprador: la persona, o la empresa (ubicación de la Company) con el contacto de la restauración o, si no eligieron uno, su primer contacto activo; si la empresa no tiene contactos queda en error pidiendo agregar uno; si el cliente, la empresa o el contacto aún no están en Shopify, reintenta. Líneas con el precio con IGV (P13: + 18 % por pieza si no lo incluye) y `taxable`; se guarda el id de la línea de cada pieza (`pieces.shopify_line_item_id`, para 9.2 y 9.3). Cambiar estados de piezas y crear la restauración desde una cotización procesan el outbox enseguida (`after()`). En el detalle: "Orden #1001" con enlace a `https://<tienda>/admin/orders/<id>` (sin enlace en modo fake), `SyncStatus` con "Reintentar" y refresco automático mientras está pendiente; logística ve solo el número. **Pendiente (manual, tienda de desarrollo):** confirmar que la orden con las líneas con IGV no suma impuestos aparte (hoy `orderCreate` no envía `taxLines`; si la tienda está configurada con precios con impuestos incluidos, el total coincide con el del sistema).
 - Commit: `feat(shopify): crea orden de venta al aprobar la restauración`
 
 #### Paso 9.2 — Cambios posteriores a la orden

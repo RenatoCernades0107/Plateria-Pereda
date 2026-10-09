@@ -66,6 +66,8 @@ export type RestorationDetail = {
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
+  /** Id de la orden (solo admin y ventas), para enlazar al admin de Shopify. */
+  shopifyOrderId: string | null;
   /** Oficina o WhatsApp; con WhatsApp, la cotización de la que salió (P46). */
   origin: RestorationOrigin;
   whatsappQuoteId: string | null;
@@ -151,6 +153,7 @@ export async function getRestorationDetail(
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
+    shopifyOrderId: money.data?.shopify_order_id ?? null,
     origin: r.origin ?? "oficina",
     whatsappQuoteId: r.whatsapp_quote_id,
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),

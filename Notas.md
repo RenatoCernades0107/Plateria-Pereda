@@ -606,6 +606,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D52 | "Rechazado (cliente)" solo desde "Espera respuesta cliente"; antes se anula | P50, ajusta P47 (4) y D46 |
 | D53 | Una pieza en Observación queda en la ubicación "Sin enviar" hasta reenviarla al taller o entregarla | P50, ajusta P48 (1) y D47 |
 | D54 | Cada restauración y cada cotización indican si el precio incluye IGV; si no lo incluye, se cobra el precio + 18 % (por pieza o línea, redondeado a céntimos) | P13 |
+| D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
 
 ---
 

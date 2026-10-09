@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PieceStatus } from "@/domain/piece-state-machine";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type StatusActionResult = { ok: true } | { error: string };
 
@@ -50,6 +51,8 @@ export async function changePieceStatus(
     p_workshop_id: workshopId ?? undefined,
   });
   if (error) return fail(error, "No se pudo cambiar el estado.");
+  // Aprobar la última pieza (o cerrar la que faltaba) encola la orden de Shopify (9.1).
+  scheduleShopifySync();
   refresh(restorationId);
   return { ok: true };
 }

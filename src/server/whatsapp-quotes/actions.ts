@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
 import { pieceToRpc } from "@/server/restorations/create";
+import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
 export type CreatedResult =
@@ -135,6 +136,8 @@ export async function createRestorationFromQuote(
     })
     .single();
   if (error) return fail(error, "No se pudo crear la restauración.");
+  // Con todas las piezas Aprobadas se encola la orden de Shopify (9.1).
+  scheduleShopifySync();
   revalidatePath(`/cotizaciones-whatsapp/${quoteId}`);
   revalidatePath("/restauraciones");
   return { ok: true, id: data.id, code: data.code };
