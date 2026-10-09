@@ -131,8 +131,10 @@ describe("EditRestorationDialog", () => {
           contactId: "00000000-0000-0000-0000-0000000000c1",
           paymentType: "a_cuenta",
           depositPercent: 30,
+          pricesIncludeIgv: true,
           notes: "",
         }}
+        hasOrder={false}
         contacts={[
           {
             id: "00000000-0000-0000-0000-0000000000c1",

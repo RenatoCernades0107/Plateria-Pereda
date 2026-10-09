@@ -36,6 +36,7 @@ const input = {
   contactId: null,
   paymentType: "a_cuenta" as const,
   depositPercent: "50",
+  pricesIncludeIgv: "no" as const,
   notes: "",
   pieces: [piece],
 };
@@ -58,6 +59,7 @@ describe("createRestoration", () => {
       expect.objectContaining({
         paymentType: "a_cuenta",
         depositPercent: 50,
+        pricesIncludeIgv: false,
         pieces: [
           expect.objectContaining({ priceCents: 120050, weightGrams: 820.5 }),
         ],

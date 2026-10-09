@@ -261,6 +261,7 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 
 ### 7.5 Pagos ⛔ P28 ⛔ P29
 
+- **IGV (P13):** cada restauración indica si el precio incluye IGV; si no, cada pieza se cobra a su precio + 18 % y el total, el adelanto y la orden de Shopify usan ese monto.
 - Tipo de pago: **Al contado** (paga el total), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
@@ -743,6 +744,21 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] El cambio aparece en el historial.
 - Hecho (2026-10-04): `editableFields(ctx, piece)` (`src/domain/restoration-edit.ts`) decide por rol, orden y estado: logística nada; pieza anulada nada; entregada solo notas; antes de la orden todo; con la orden, los campos libres de P12 y el precio sale de la edición directa (solo admin lo cambiará por el flujo de la orden en 9.2, con motivo). En el detalle: "Editar" (contacto, tipo y % de adelanto, notas), "Editar" por pieza (campos bloqueados deshabilitados con explicación) y "Agregar pieza" (entra Registrada; llega a Shopify al aprobarse). Los campos de la pieza son un componente común (`PieceFields`) del registro y los diálogos; ahora sí muestran las sugerencias del catálogo (`<datalist>`). La BD lo exige con el trigger `guard_piece_edit` (anulada, entregada y precio con orden salvo `app.shopify_order_edit = 'on'`, que usará 9.2) y `guard_piece_insert` (no se agregan piezas a restauraciones completadas o anuladas); el cliente ya era inmutable por privilegios (7.1). Todo queda en la auditoría. **Pendiente para 9.2:** el motivo de los cambios que tocan Shopify y el E2E del precio con la orden creada (aquí se verifica que el precio queda bloqueado y el material se edita).
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
+
+#### Paso 7.8 — IGV en restauraciones y cotizaciones de WhatsApp (P13 ✅, 2026-10-09)
+- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto) al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
+- [x] Si no incluye IGV, cada pieza se cobra a su precio + 18 % redondeado a céntimos: total, adelanto, saldo y (9.1) líneas de la orden de Shopify. El mensaje de WhatsApp muestra el subtotal sin IGV y el IGV debajo de las piezas.
+- [x] Se cambia desde "Editar" mientras no exista la orden de Shopify (la BD lo exige).
+- **Unit:**
+  - [x] `priceWithIgv` e `igvTotals` (redondeo por pieza, empates lejos del cero); total en vivo; mensaje con desglose; validación obligatoria.
+- **BD:**
+  - [x] `price_with_igv` igual a TypeScript; total y adelanto con IGV; las piezas cerradas no suman; cambiar la respuesta recalcula; con la orden creada no se cambia; cotización de WhatsApp con la misma regla.
+- **Integración:** registro sin IGV → total y adelanto de la BD = `igvTotals()`.
+- **E2E:**
+  - [x] Registrar sin IGV → total S/ 118.00, mensaje con desglose, insignia "+ IGV (18 %)"; editar a "Incluye IGV" → S/ 100.00.
+  - [x] La validación pide responder la pregunta.
+- Hecho (2026-10-09): migración `20261009120000_igv.sql` (`prices_include_igv` en `restorations` y `whatsapp_quotes`, las filas existentes quedan con IGV incluido; `public.price_with_igv()`; triggers que recalculan el total; `create_restoration`, `create_restoration_from_whatsapp_quote`, `create_whatsapp_quote` y `update_whatsapp_quote` con `p_prices_include_igv`). Dominio en `src/domain/igv.ts` (el cotizador `COT-` reutiliza `IGV_PERCENT` e `igvBreakdown`). Campo `IgvField` en el registro y en "Editar"; insignia en los detalles.
+- Commit: `feat(restauraciones): pregunta si el precio incluye IGV y lo suma al cobro (P13)`
 
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 

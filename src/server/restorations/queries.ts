@@ -54,6 +54,8 @@ export type RestorationMoney = {
   paidCents: Cents;
   expectedDepositCents: Cents;
   depositPercent: number | null;
+  /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
+  pricesIncludeIgv: boolean;
   paymentStatus: "pendiente" | "parcial" | "pagado" | "reembolsado";
 };
 
@@ -117,7 +119,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("restorations")
           .select(
-            "total, paid, expected_deposit, deposit_percent, payment_status, shopify_order_id",
+            "total, paid, expected_deposit, deposit_percent, prices_include_igv, payment_status, shopify_order_id",
           )
           .eq("id", id)
           .single()
@@ -201,6 +203,7 @@ export async function getRestorationDetail(
             money.data.deposit_percent === null
               ? null
               : Number(money.data.deposit_percent),
+          pricesIncludeIgv: money.data.prices_include_igv,
           paymentStatus: money.data.payment_status,
         }
       : null,

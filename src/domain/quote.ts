@@ -1,4 +1,7 @@
+import { igvBreakdown, IGV_PERCENT } from "./igv";
 import { percentOf, sumCents, type Cents } from "./money";
+
+export { igvBreakdown, IGV_PERCENT };
 
 /**
  * Cálculos de la cotización (Fase 14). Mismas reglas que la BD (migración
@@ -45,8 +48,6 @@ export function canChangeQuoteStatus(
   return TRANSITIONS[from].includes(to);
 }
 
-/** Tasa del IGV en %. */
-export const IGV_PERCENT = 18;
 export const MAX_QUOTE_QUANTITY = 100_000;
 /** Vigencia si la configuración no tiene otra (P36, propuesta). */
 export const DEFAULT_QUOTE_VALIDITY_DAYS = 15;
@@ -94,12 +95,6 @@ export type QuoteTotals = {
   taxableBase: Cents;
   igv: Cents;
 };
-
-/** Desglose de un total con IGV incluido: base = total / 1.18 redondeada; IGV = el resto. */
-export function igvBreakdown(total: Cents): { taxableBase: Cents; igv: Cents } {
-  const taxableBase = Math.round((total * 100) / (100 + IGV_PERCENT));
-  return { taxableBase, igv: total - taxableBase };
-}
 
 export function quoteTotals(lines: readonly QuoteLineAmounts[]): QuoteTotals {
   const subtotal = sumCents(lines.map(lineGross));

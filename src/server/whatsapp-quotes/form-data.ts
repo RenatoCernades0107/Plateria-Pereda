@@ -28,6 +28,7 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
     customerPhone: quote.customerPhone,
     paymentType: quote.paymentType,
     depositPercent: quote.depositPercent,
+    pricesIncludeIgv: quote.pricesIncludeIgv,
     notes: quote.notes,
     items: quote.items.map((item) => ({
       id: item.id,

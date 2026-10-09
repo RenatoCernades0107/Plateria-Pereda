@@ -13,6 +13,7 @@ import {
 } from "@/components/whatsapp-quotes/quote-actions";
 import { WhatsappQuoteStatusBadge } from "@/components/whatsapp-quotes/status-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
+import { igvLabel } from "@/domain/igv";
 import { formatPhone } from "@/domain/phone";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import {
@@ -61,6 +62,7 @@ export default async function CotizacionWhatsappPage({
       priceCents: i.priceCents,
       status: "registrada",
     })),
+    pricesIncludeIgv: quote.pricesIncludeIgv,
     paymentType: quote.paymentType,
     depositPercent: quote.depositPercent ?? 0,
     terms: settings.terms,
@@ -115,6 +117,9 @@ export default async function CotizacionWhatsappPage({
             <Badge variant="outline">
               {PAYMENT_TYPE_LABELS[quote.paymentType]}
               {quote.depositPercent ? ` (${quote.depositPercent} %)` : ""}
+            </Badge>
+            <Badge variant="outline" data-testid="igv">
+              {igvLabel(quote.pricesIncludeIgv)}
             </Badge>
             <span className="text-muted-foreground text-sm">
               Cotizada {quoteAge(new Date(quote.createdAt), now)} (

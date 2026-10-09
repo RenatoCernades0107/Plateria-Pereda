@@ -26,6 +26,7 @@ import {
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
+import { igvLabel } from "@/domain/igv";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
 import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
@@ -71,6 +72,7 @@ export default async function RestauracionDetallePage({
           priceCents: p.priceCents ?? 0,
           status: p.status,
         })),
+        pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
         depositPercent: restoration.money?.depositPercent ?? 0,
         terms: settings.terms,
@@ -164,6 +166,11 @@ export default async function RestauracionDetallePage({
                 ? ` (${restoration.money.depositPercent} %)`
                 : ""}
             </Badge>
+            {restoration.money ? (
+              <Badge variant="outline" data-testid="igv">
+                {igvLabel(restoration.money.pricesIncludeIgv)}
+              </Badge>
+            ) : null}
             {restoration.shopifyOrderName ? (
               <Badge variant="secondary">
                 Shopify {restoration.shopifyOrderName}
@@ -193,9 +200,11 @@ export default async function RestauracionDetallePage({
                 contactId: restoration.contact?.id ?? null,
                 paymentType: restoration.paymentType,
                 depositPercent: restoration.money?.depositPercent ?? null,
+                pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
                 notes: restoration.notes,
               }}
               contacts={editing.contacts}
+              hasOrder={restoration.hasOrder}
             />
           ) : null}
           {message ? (

@@ -66,6 +66,10 @@ describe("liveTotal", () => {
       ]),
     ).toBe(30);
   });
+
+  it("sin IGV incluido suma el 18 % de cada pieza (P13)", () => {
+    expect(liveTotal([{ price: "0.10" }, { price: "0.20" }], false)).toBe(36);
+  });
 });
 
 describe("RestorationForm", () => {
@@ -102,6 +106,28 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Quitar pieza 1" }));
     expect(total).toHaveTextContent("S/ 51.00");
+  });
+
+  it("pregunta siempre si el precio incluye IGV y lo suma si no (P13)", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const total = screen.getByTestId("total-en-vivo");
+    await user.type(
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      "100",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Registrar restauración" }),
+    );
+    expect(
+      screen.getByText("Indica si el precio incluye IGV"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/No, se suma el IGV/));
+    expect(total).toHaveTextContent("S/ 118.00");
+    expect(screen.getByText("Total (con IGV 18 %)")).toBeInTheDocument();
+    await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
+    expect(total).toHaveTextContent("S/ 100.00");
   });
 
   it("no pregunta si la pieza ya está en tienda: en oficina siempre lo está (P48)", () => {
@@ -219,6 +245,7 @@ const QUOTE: QuoteForForm = {
   customerPhone: "999888777",
   paymentType: "contado",
   depositPercent: null,
+  pricesIncludeIgv: true,
   notes: "",
   items: [
     quoteItem("00000000-0000-0000-0000-0000000000d1", 1, "Fuente", "100.00"),
@@ -259,6 +286,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     await user.type(screen.getByLabelText("Nombre (opcional)"), "Ana Pérez");
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
     await user.type(within(piece).getByLabelText("Precio (S/)"), "100");
+    await user.click(screen.getByLabelText(/No, se suma el IGV/));
     await user.click(
       screen.getByRole("button", { name: "Registrar cotización" }),
     );
@@ -270,6 +298,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
         customerName: "Ana Pérez",
         paymentType: "sin_definir",
         depositPercent: "",
+        pricesIncludeIgv: "no",
       }),
     );
     expect(mocks.push).toHaveBeenCalledWith(

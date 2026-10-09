@@ -43,6 +43,7 @@ function quoteArgs(v: WhatsappQuoteInput) {
     p_deposit_percent: v.depositPercent as number,
     p_notes: v.notes,
     p_items: v.pieces.map(pieceToRpc),
+    p_prices_include_igv: v.pricesIncludeIgv,
   };
 }
 
@@ -130,6 +131,7 @@ export async function createRestorationFromQuote(
       p_deposit_percent: v.depositPercent as number,
       p_notes: v.notes,
       p_pieces: v.pieces.map(pieceToRpc),
+      p_prices_include_igv: v.pricesIncludeIgv,
     })
     .single();
   if (error) return fail(error, "No se pudo crear la restauración.");

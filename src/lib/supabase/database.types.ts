@@ -765,6 +765,7 @@ export type Database = {
           paid: number;
           payment_status: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv: boolean;
           shopify_order_id: string | null;
           shopify_order_name: string | null;
           status: Database["public"]["Enums"]["restoration_status"];
@@ -787,6 +788,7 @@ export type Database = {
           paid?: number;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv?: boolean;
           shopify_order_id?: string | null;
           shopify_order_name?: string | null;
           status?: Database["public"]["Enums"]["restoration_status"];
@@ -809,6 +811,7 @@ export type Database = {
           paid?: number;
           payment_status?: Database["public"]["Enums"]["payment_status"];
           payment_type?: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv?: boolean;
           shopify_order_id?: string | null;
           shopify_order_name?: string | null;
           status?: Database["public"]["Enums"]["restoration_status"];
@@ -1130,6 +1133,7 @@ export type Database = {
           id: string;
           notes: string;
           payment_type: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv: boolean;
           status: Database["public"]["Enums"]["whatsapp_quote_status"];
           total: number;
           updated_at: string;
@@ -1148,6 +1152,7 @@ export type Database = {
           id?: string;
           notes?: string;
           payment_type: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["whatsapp_quote_status"];
           total?: number;
           updated_at?: string;
@@ -1166,6 +1171,7 @@ export type Database = {
           id?: string;
           notes?: string;
           payment_type?: Database["public"]["Enums"]["payment_type"];
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["whatsapp_quote_status"];
           total?: number;
           updated_at?: string;
@@ -1476,6 +1482,7 @@ export type Database = {
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
           p_pieces: Json;
+          p_prices_include_igv?: boolean;
         };
         Returns: {
           code: string;
@@ -1490,6 +1497,7 @@ export type Database = {
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
           p_pieces: Json;
+          p_prices_include_igv?: boolean;
           p_quote_id: string;
         };
         Returns: {
@@ -1507,6 +1515,7 @@ export type Database = {
           p_items: Json;
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
+          p_prices_include_igv?: boolean;
         };
         Returns: {
           code: string;
@@ -1725,6 +1734,10 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      price_with_igv: {
+        Args: { p_include: boolean; p_price: number };
+        Returns: number;
+      };
       receive_from_workshop: {
         Args: { p_piece_ids: string[] };
         Returns: {
@@ -1771,6 +1784,7 @@ export type Database = {
           p_items: Json;
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
+          p_prices_include_igv?: boolean;
         };
         Returns: undefined;
       };

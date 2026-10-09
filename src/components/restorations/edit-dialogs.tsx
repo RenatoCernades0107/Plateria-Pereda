@@ -47,6 +47,7 @@ import {
 } from "@/domain/money";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import {
+  igvChoice,
   pieceSchema,
   restorationEditSchema,
   type PieceFormInput,
@@ -59,6 +60,7 @@ import {
 } from "@/server/restorations/actions";
 import type { PieceDetail } from "@/server/restorations/queries";
 
+import { IgvField } from "./igv-field";
 import { EMPTY_PIECE } from "./restoration-form";
 import {
   PieceFields,
@@ -72,24 +74,32 @@ type RestorationValues = {
   contactId: string | null;
   paymentType: PaymentType;
   depositPercent: string;
+  pricesIncludeIgv: "si" | "no";
   notes: string;
 };
 
-/** Edición de contacto, tipo y % de adelanto y notas (no tocan Shopify, P12). */
+/**
+ * Edición de contacto, tipo y % de adelanto, IGV y notas (no tocan Shopify, P12). Si
+ * el precio incluye IGV solo se cambia antes de crear la orden (P13).
+ */
 export function EditRestorationDialog({
   restorationId,
   initial,
   contacts,
+  hasOrder,
 }: {
   restorationId: string;
   initial: {
     contactId: string | null;
     paymentType: PaymentType;
     depositPercent: number | null;
+    pricesIncludeIgv: boolean;
     notes: string;
   };
   /** Contactos de la empresa; null si el cliente es una persona. */
   contacts: ContactChoice[] | null;
+  /** La orden de Shopify ya existe: el IGV ya no se cambia. */
+  hasOrder: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +115,7 @@ export function EditRestorationDialog({
             ? ""
             : String(DEFAULT_DEPOSIT_PERCENT)
           : String(initial.depositPercent),
+      pricesIncludeIgv: igvChoice(initial.pricesIncludeIgv),
       notes: initial.notes,
     },
   });
@@ -204,6 +215,16 @@ export function EditRestorationDialog({
                 />
               ) : null}
             </div>
+            <IgvField
+              form={form}
+              name="pricesIncludeIgv"
+              disabled={hasOrder}
+              hint={
+                hasOrder
+                  ? "La orden de Shopify ya se creó con estos precios."
+                  : undefined
+              }
+            />
             <TextField form={form} name="notes" label="Notas" multiline />
             <DialogFooter>
               <Button type="submit" disabled={pending}>
