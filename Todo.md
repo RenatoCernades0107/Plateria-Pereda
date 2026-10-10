@@ -891,39 +891,42 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 9 — Orden automática en Shopify
 
-#### Paso 9.1 — Creación de la orden al aprobar ⛔ P13
-- [ ] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
-- [ ] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
+#### Paso 9.1 — Creación de la orden al aprobar (P13 🟡: ver nota)
+- [x] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
+- [x] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
-  - [ ] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
-  - [ ] Idempotencia: si ya existe una orden con la etiqueta, no crea otra.
+  - [x] Mapeo restauración → input de orden (líneas, precios, cliente, etiquetas, impuestos según P13).
+  - [x] Idempotencia: si ya existe una orden con la etiqueta, no crea otra.
 - **Integración:**
-  - [ ] Aprobar la última pieza → job → orden en el fake → ids guardados.
+  - [x] Aprobar la última pieza → job → orden en el fake → ids guardados.
 - **E2E:**
-  - [ ] Aprobar todas las piezas → aparece "Orden #xxxx"; el fake recibió líneas y total correctos.
-  - [ ] Aprobación parcial → no se crea orden.
-  - [ ] Error de Shopify → "Reintentar" → la orden se crea una sola vez.
+  - [x] Aprobar todas las piezas → aparece "Orden #xxxx"; el fake recibió líneas y total correctos.
+  - [x] Aprobación parcial → no se crea orden.
+  - [x] Error de Shopify → "Reintentar" → la orden se crea una sola vez.
   - [ ] `@shopify-live` (manual) el mismo flujo contra la tienda de desarrollo.
+- Hecho (2026-10-10): handler `order.create` (`src/server/restorations/shopify-order-sync.ts`) con su repositorio (`order-sync-repository.ts`, clave secreta). Busca primero la orden por la etiqueta del código (un corte no la duplica) y si no existe la crea con `orderCreate`: cliente (persona, o contacto + `companyLocationId` de la empresa), una línea personalizada por pieza aprobada que se cobra (`Restauración RES-00001-1`, D30), etiquetas `restauracion` + código y nota con el enlace al sistema; guarda `shopify_order_id`, `shopify_order_name` y `shopify_line_item_id` por pieza. Si la orden se crea tarde, prepara las piezas ya entregadas. Cliente aún sin sincronizar → se reintenta; empresa sin contacto → error sin reintento. Dominio puro en `src/domain/shopify-order.ts`. El detalle muestra "Orden #xxxx" (con enlace al admin si hay tienda configurada), el estado de sincronización con "Reintentar" y se refresca mientras está pendiente. Cambiar el estado de piezas (y copiar una cotización con piezas aprobadas) procesa el outbox al terminar la respuesta. **P13 sigue abierta:** los precios se envían tal cual, con líneas gravables, y la configuración de impuestos de la tienda decide; no hay campo de IGV en la restauración. **Pendiente:** `@shopify-live` manual.
 - Commit: `feat(shopify): crea orden de venta al aprobar la restauración`
 
 #### Paso 9.2 — Cambios posteriores a la orden
-- [ ] Según P12: anular una pieza (con motivo; alerta de reembolso si ya pagó más que el nuevo total), cambiar un precio (solo admin, con motivo) o agregar una pieza (cuando se aprueba) → edición automática de la orden vía Order Editing (encolado). Todo queda en la auditoría.
+- [x] Según P12: anular una pieza (con motivo; alerta de reembolso si ya pagó más que el nuevo total), cambiar un precio (solo admin, con motivo) o agregar una pieza (cuando se aprueba) → edición automática de la orden vía Order Editing (encolado). Todo queda en la auditoría.
 - **Unit:**
-  - [ ] Cálculo del cambio (líneas a quitar o ajustar).
+  - [x] Cálculo del cambio (líneas a quitar o ajustar).
 - **Integración:**
-  - [ ] Anular pieza → job `order_edit` → total actualizado en el fake.
+  - [x] Anular pieza → job `order_edit` → total actualizado en el fake.
 - **E2E:**
-  - [ ] Anular una pieza de una restauración aprobada → total y orden actualizados (o aviso, según la decisión).
+  - [x] Anular una pieza de una restauración aprobada → total y orden actualizados (o aviso, según la decisión).
+- Hecho (2026-10-10): migración `20261010120100_orden_shopify.sql`: trigger `pieces_enqueue_order_changes` que, con la orden creada, encola `order.edit` cuando una pieza entra o sale de lo que se cobra (aprobar una pieza agregada, anular, rechazar, sin arreglo) o cambia su precio, y `order.fulfill` al entregarla. Un job pendiente por restauración y tipo basta (el handler lee el estado al procesarse); si hay uno en curso se encola otro para no perder el cambio. `order.edit` concilia la orden con las piezas por el título de la línea (Order Editing cambia el id al cambiar el precio): quita, ajusta precios y agrega; las líneas agregadas a mano en Shopify no se tocan; repetirlo no cambia nada. Cambio de precio con la orden creada: RPC `change_piece_price` (solo admin, con motivo; evento `cambio_precio` en el historial con el motivo y el precio en la auditoría) y botón "Cambiar precio" en la pieza. Aviso de reembolso en el detalle si lo pagado supera el nuevo total (los pagos llegan en la Fase 11).
 - Commit: `feat(shopify): sincroniza cambios de piezas con la orden`
 
 #### Paso 9.3 — Entregas como "Preparado" en Shopify
-- [ ] Al pasar una pieza a "Entregada" se encola `fulfill_lines`, que marca su línea como preparada en Shopify (P44).
+- [x] Al pasar una pieza a "Entregada" se encola `fulfill_lines`, que marca su línea como preparada en Shopify (P44).
 - **Unit:**
-  - [ ] Mapeo pieza → línea de la orden de preparación.
+  - [x] Mapeo pieza → línea de la orden de preparación.
 - **Integración:**
-  - [ ] Entregar una pieza → job → línea preparada en el fake.
+  - [x] Entregar una pieza → job → línea preparada en el fake.
 - **E2E:**
-  - [ ] Entregar todas las piezas → la orden del fake queda "Preparada".
+  - [x] Entregar todas las piezas → la orden del fake queda "Preparada".
+- Hecho (2026-10-10): handler `order.fulfill`: marca como preparadas solo las líneas de piezas entregadas que aún no lo están (`fulfillLines` no es idempotente). La job kind usa punto (`order.edit`, `order.fulfill`) por el CHECK de `shopify_sync_jobs.kind`. Pruebas: pgTAP `23_orden_shopify`, unit (`shopify-order.test.ts`, `shopify-order-sync.test.ts`), integración (`shopify-order-sync.int.test.ts`) y E2E (`e2e/shopify-order.spec.ts`).
 - Commit: `feat(shopify): marca como preparadas las piezas entregadas`
 
 ### Fase 10 — Fotos y archivos
