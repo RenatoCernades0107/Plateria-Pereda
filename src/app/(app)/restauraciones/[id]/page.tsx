@@ -17,6 +17,8 @@ import {
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
+import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
+import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,10 +31,13 @@ import { can } from "@/domain/permissions";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
 import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
+import { shopifyAdminOrderUrl } from "@/domain/shopify-admin";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
+import { getSyncStates } from "@/server/clients/queries";
 import {
   getLogisticsInfo,
   getRestorationDetail,
@@ -89,6 +94,22 @@ export default async function RestauracionDetallePage({
     : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
+
+  // Orden de Shopify (Fase 9): estado del último job de la restauración (crear, editar
+  // o preparar), con "Reintentar" si falló. Solo admin y ventas.
+  const sync = canSeeMoney
+    ? ((await getSyncStates("restorations", [restoration.id])).get(
+        restoration.id,
+      ) ?? null)
+    : null;
+  const orderUrl = shopifyAdminOrderUrl(
+    serverEnv().SHOPIFY_STORE_DOMAIN,
+    restoration.money?.shopifyOrderId ?? null,
+  );
+  const refundDue =
+    restoration.money && restoration.hasOrder
+      ? restoration.money.paidCents - restoration.money.totalCents
+      : 0;
 
   // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
   // en taller y la última observación (P42).
@@ -165,9 +186,28 @@ export default async function RestauracionDetallePage({
                 : ""}
             </Badge>
             {restoration.shopifyOrderName ? (
-              <Badge variant="secondary">
-                Shopify {restoration.shopifyOrderName}
+              <Badge variant="secondary" data-testid="orden-shopify">
+                {orderUrl ? (
+                  <a
+                    href={orderUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline-offset-4 hover:underline"
+                  >
+                    Orden {restoration.shopifyOrderName}
+                  </a>
+                ) : (
+                  <>Orden {restoration.shopifyOrderName}</>
+                )}
               </Badge>
+            ) : null}
+            {sync ? (
+              <SyncStatus
+                jobId={sync.jobId}
+                status={sync.status}
+                lastError={sync.lastError}
+                canRetry={canSeeMoney}
+              />
             ) : null}
             <Badge variant="outline" data-testid="origen">
               {RESTORATION_ORIGIN_LABELS[restoration.origin]}
@@ -223,6 +263,16 @@ export default async function RestauracionDetallePage({
         </div>
       ) : null}
 
+      {refundDue > 0 ? (
+        <p
+          role="alert"
+          className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
+        >
+          El cliente pagó {formatCents(refundDue)} más que el nuevo total:
+          registra el reembolso (P12).
+        </p>
+      ) : null}
+
       {restoration.notes ? (
         <p className="rounded-md border p-3 text-sm whitespace-pre-line">
           {restoration.notes}
@@ -266,8 +316,14 @@ export default async function RestauracionDetallePage({
                     ),
                     priceHint:
                       user.role === "admin"
-                        ? "Con la orden de Shopify creada, el precio se cambia desde la orden (con motivo)."
+                        ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
                         : "Con la orden de Shopify creada, solo el administrador cambia el precio.",
+                    priceChange: Object.fromEntries(
+                      restoration.pieces.map((piece) => [
+                        piece.id,
+                        editableFields(ctx, piece).priceNeedsOrderFlow,
+                      ]),
+                    ),
                     materials: editing.materials,
                     services: editing.services,
                   }
@@ -305,6 +361,9 @@ export default async function RestauracionDetallePage({
           </TabsContent>
         ) : null}
       </Tabs>
+      <RefreshWhilePending
+        pending={sync?.status === "pending" || sync?.status === "processing"}
+      />
     </div>
   );
 }

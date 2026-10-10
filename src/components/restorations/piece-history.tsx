@@ -63,6 +63,7 @@ const EVENT_SUMMARY = {
   llegada: "Llegó a la tienda",
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
+  cambio_precio: "Cambio de precio",
 } as const;
 
 /** Resumen por restauración: todos los cambios de estado, del más reciente al más antiguo. */

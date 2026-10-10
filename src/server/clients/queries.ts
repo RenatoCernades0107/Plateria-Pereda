@@ -38,7 +38,7 @@ const SYNCED: SyncState = { jobId: null, status: "ok", lastError: null };
 
 /** Estado de sincronización con Shopify de varios registros de una tabla. */
 export async function getSyncStates(
-  table: "clients" | "contacts",
+  table: "clients" | "contacts" | "restorations",
   ids: string[],
 ): Promise<Map<string, SyncState>> {
   if (ids.length === 0) return new Map();

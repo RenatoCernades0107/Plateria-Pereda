@@ -55,6 +55,8 @@ export type RestorationMoney = {
   expectedDepositCents: Cents;
   depositPercent: number | null;
   paymentStatus: "pendiente" | "parcial" | "pagado" | "reembolsado";
+  /** Id de la orden de Shopify (Fase 9), para el enlace al admin. */
+  shopifyOrderId: string | null;
 };
 
 export type RestorationDetail = {
@@ -202,6 +204,7 @@ export async function getRestorationDetail(
               ? null
               : Number(money.data.deposit_percent),
           paymentStatus: money.data.payment_status,
+          shopifyOrderId: money.data.shopify_order_id,
         }
       : null,
   };

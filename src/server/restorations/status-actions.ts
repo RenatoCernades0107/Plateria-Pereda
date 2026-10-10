@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PieceStatus } from "@/domain/piece-state-machine";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type StatusActionResult = { ok: true } | { error: string };
 
@@ -50,6 +51,35 @@ export async function changePieceStatus(
     p_workshop_id: workshopId ?? undefined,
   });
   if (error) return fail(error, "No se pudo cambiar el estado.");
+  // Aprobar, anular o entregar puede crear, editar o preparar la orden (Fase 9).
+  scheduleShopifySync();
+  refresh(restorationId);
+  return { ok: true };
+}
+
+/**
+ * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): solo
+ * admin, con motivo. La BD encola la edición de la orden.
+ */
+export async function changePiecePrice(
+  restorationId: string,
+  pieceId: string,
+  priceCents: number,
+  reason: string,
+): Promise<StatusActionResult> {
+  await requirePermission("restauraciones.editar");
+  if (!reason.trim())
+    return { error: "Escribe el motivo del cambio de precio." };
+  if (!Number.isInteger(priceCents) || priceCents < 0)
+    return { error: "Ingresa un precio válido." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("change_piece_price", {
+    p_piece_id: pieceId,
+    p_price: priceCents / 100,
+    p_reason: reason,
+  });
+  if (error) return fail(error, "No se pudo cambiar el precio.");
+  scheduleShopifySync();
   refresh(restorationId);
   return { ok: true };
 }

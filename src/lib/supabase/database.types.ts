@@ -1428,6 +1428,10 @@ export type Database = {
         Args: { p_piece_ids: string[]; p_workshop_id: string };
         Returns: number;
       };
+      change_piece_price: {
+        Args: { p_piece_id: string; p_price: number; p_reason: string };
+        Returns: undefined;
+      };
       change_piece_status: {
         Args: {
           p_note?: string;
@@ -1798,7 +1802,11 @@ export type Database = {
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
       payment_type: "contado" | "a_cuenta" | "credito" | "sin_definir";
       piece_event:
-        "estado" | "llegada" | "vuelta_taller" | "devolucion_cliente";
+        | "estado"
+        | "llegada"
+        | "vuelta_taller"
+        | "devolucion_cliente"
+        | "cambio_precio";
       piece_location:
         | "por_whatsapp"
         | "sin_enviar"
@@ -1962,7 +1970,13 @@ export const Constants = {
       document_type: ["dni", "ce", "pasaporte", "ruc"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
       payment_type: ["contado", "a_cuenta", "credito", "sin_definir"],
-      piece_event: ["estado", "llegada", "vuelta_taller", "devolucion_cliente"],
+      piece_event: [
+        "estado",
+        "llegada",
+        "vuelta_taller",
+        "devolucion_cliente",
+        "cambio_precio",
+      ],
       piece_location: [
         "por_whatsapp",
         "sin_enviar",
