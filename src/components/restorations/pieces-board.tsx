@@ -10,6 +10,7 @@ import type { PieceDetail } from "@/server/restorations/queries";
 import { PieceDialog } from "./edit-dialogs";
 import type { CatalogOption, WorkshopOption } from "./piece-fields";
 import { PieceStatusPanel } from "./piece-status-actions";
+import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 
 export { commonTransitions } from "./pieces-bulk-bar";
@@ -17,6 +18,8 @@ export { commonTransitions } from "./pieces-bulk-bar";
 export type PieceEditing = {
   editable: Record<string, readonly PieceEditableField[]>;
   priceHint: string;
+  /** Piezas cuyo precio cambia el admin con motivo (orden de Shopify creada, 9.2). */
+  priceChange?: Record<string, boolean>;
   materials: CatalogOption[];
   services: CatalogOption[];
 };
@@ -91,13 +94,13 @@ export function PiecesBoard({
         </label>
       ) : null}
 
-      <ul className="grid gap-3 md:grid-cols-2">
+      <ul className="divide-y rounded-lg border">
         {pieces.map((piece) => {
           const editable = editing?.editable[piece.id] ?? [];
           return (
             <li
               key={piece.id}
-              className="space-y-2 rounded-lg border p-4"
+              className="space-y-2 p-4"
               data-testid={`pieza-${piece.code}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -138,7 +141,13 @@ export function PiecesBoard({
               ) : null}
               {extra?.[piece.id]}
               {editing && editable.length > 0 ? (
-                <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  {editing.priceChange?.[piece.id] ? (
+                    <PriceChangeDialog
+                      restorationId={restorationId}
+                      piece={piece}
+                    />
+                  ) : null}
                   <PieceDialog
                     restorationId={restorationId}
                     piece={piece}

@@ -30,6 +30,7 @@ const restoration = {
   contactId: "",
   paymentType: "a_cuenta" as const,
   depositPercent: "50",
+  pricesIncludeIgv: "si" as const,
   notes: "",
   pieces: [piece],
 };
@@ -169,9 +170,20 @@ describe("restorationSchema", () => {
       contactId: null,
       paymentType: "a_cuenta",
       depositPercent: 50,
+      pricesIncludeIgv: true,
       notes: "",
     });
     expect(result.pieces).toHaveLength(1);
+  });
+
+  it("exige responder si el precio incluye IGV (P13)", () => {
+    expect(
+      errorsOf(restorationSchema, { ...restoration, pricesIncludeIgv: "" }),
+    ).toEqual({ pricesIncludeIgv: "Indica si el precio incluye IGV" });
+    expect(
+      restorationSchema.parse({ ...restoration, pricesIncludeIgv: "no" })
+        .pricesIncludeIgv,
+    ).toBe(false);
   });
 
   it("acepta un % con hasta 2 decimales", () => {
@@ -266,6 +278,7 @@ describe("whatsappQuoteSchema (P46)", () => {
     customerPhone: "",
     paymentType: "contado" as const,
     depositPercent: "",
+    pricesIncludeIgv: "no" as const,
     notes: "",
     pieces: [piece],
   };
@@ -276,6 +289,7 @@ describe("whatsappQuoteSchema (P46)", () => {
       customerName: "Ana Pérez",
       customerPhone: "",
       depositPercent: null,
+      pricesIncludeIgv: false,
     });
     expect(
       whatsappQuoteSchema.parse({ ...quote, customerName: "" }).customerName,

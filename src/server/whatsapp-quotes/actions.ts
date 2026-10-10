@@ -12,6 +12,7 @@ import {
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
 import { pieceToRpc } from "@/server/restorations/create";
+import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
 export type CreatedResult =
@@ -43,6 +44,7 @@ function quoteArgs(v: WhatsappQuoteInput) {
     p_deposit_percent: v.depositPercent as number,
     p_notes: v.notes,
     p_items: v.pieces.map(pieceToRpc),
+    p_prices_include_igv: v.pricesIncludeIgv,
   };
 }
 
@@ -130,9 +132,12 @@ export async function createRestorationFromQuote(
       p_deposit_percent: v.depositPercent as number,
       p_notes: v.notes,
       p_pieces: v.pieces.map(pieceToRpc),
+      p_prices_include_igv: v.pricesIncludeIgv,
     })
     .single();
   if (error) return fail(error, "No se pudo crear la restauración.");
+  // Con todas las piezas Aprobadas se encola la orden de Shopify (9.1).
+  scheduleShopifySync();
   revalidatePath(`/cotizaciones-whatsapp/${quoteId}`);
   revalidatePath("/restauraciones");
   return { ok: true, id: data.id, code: data.code };

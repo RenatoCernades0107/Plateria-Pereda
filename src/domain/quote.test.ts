@@ -99,6 +99,28 @@ describe("quoteTotals", () => {
     });
   });
 
+  it("sin IGV incluido suma el 18 % de cada línea con su descuento (P13)", () => {
+    expect(
+      quoteTotals(
+        [
+          { quantity: 2, unitPrice: 50_00 },
+          {
+            quantity: 1,
+            unitPrice: 100_00,
+            discount: { type: "porcentaje", percent: 10 },
+          },
+        ],
+        false,
+      ),
+    ).toEqual({
+      subtotal: 200_00,
+      discount: 10_00,
+      total: 224_20,
+      taxableBase: 190_00,
+      igv: 34_20,
+    });
+  });
+
   it("el desglose del IGV siempre suma el total", () => {
     for (const total of [1, 99, 118_00, 100_00, 333_33, 1_234_567_89]) {
       const { taxableBase, igv } = igvBreakdown(total);

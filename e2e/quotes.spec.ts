@@ -110,6 +110,9 @@ test.describe("Cotizaciones", () => {
     await page.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(page.getByText("Elige un cliente")).toBeVisible();
     await expect(page.getByText("Agrega al menos un producto")).toBeVisible();
+    await expect(
+      page.getByText("Indica si el precio incluye IGV"),
+    ).toBeVisible();
 
     await chooseClient(page, `Cotiza${run}`, new RegExp(shopifyName));
     await expect(
@@ -134,6 +137,7 @@ test.describe("Cotizaciones", () => {
     await expect(page.getByTestId("descuentos")).toHaveText("− S/ 54.00");
     await expect(page.getByTestId("total")).toHaveText("S/ 786.00");
 
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
     await page.getByLabel("Notas").fill("Entrega en 10 días hábiles.");
     const results = await makeAxeBuilder().analyze();
     expect(
@@ -188,10 +192,15 @@ test.describe("Cotizaciones", () => {
     await line(page, 1).getByLabel("Producto").fill("Bandeja grabada a pedido");
     await line(page, 1).getByLabel("Precio unitario (S/)").fill("1250.50");
     await expect(page.getByTestId("total")).toHaveText("S/ 1,250.50");
+    // Sin IGV incluido (P13): 1,250.50 + 18 %.
+    await page.getByLabel(/No, se suma el IGV/).check();
+    await expect(page.getByTestId("igv")).toHaveText("+ S/ 225.09");
+    await expect(page.getByTestId("total")).toHaveText("S/ 1,475.59");
 
     await page.getByRole("button", { name: "Emitir" }).click();
     await expect(page.getByText("Cotización emitida.")).toBeVisible();
     await expect(page.getByTestId("estado-cotizacion")).toHaveText("Emitida");
+    await expect(page.getByTestId("total")).toHaveText("S/ 1,475.59");
     await expect(page.getByTestId("cliente-cotizacion")).toContainText(
       `Atención: ${contactName}`,
     );
@@ -230,6 +239,7 @@ test.describe("Cotizaciones", () => {
     await addProduct(page, "anillo", /Talla 8/);
     await line(page, 1).getByLabel("Personalización").fill("Grabado móvil");
     await expect(page.getByTestId("total")).toHaveText("S/ 165.50");
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
     await page.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(page.getByText("Borrador guardado.")).toBeVisible();
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/);

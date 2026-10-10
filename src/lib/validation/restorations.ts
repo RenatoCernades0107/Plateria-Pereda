@@ -130,8 +130,21 @@ const depositPercent = z.preprocess(
   depositPercentValue.nullable(),
 );
 
+/**
+ * "¿El precio incluye IGV?" (P13): se responde siempre, sin valor por defecto. Si no
+ * lo incluye, cada pieza se cobra con el 18 % encima.
+ */
+export const pricesIncludeIgv = z
+  .enum(["si", "no"], { error: "Indica si el precio incluye IGV" })
+  .transform((v) => v === "si");
+
+/** Valor del formulario a partir de lo guardado. */
+export const igvChoice = (includes: boolean): "si" | "no" =>
+  includes ? "si" : "no";
+
 const restorationFields = {
   clientId: z.guid({ error: "Elige un cliente" }),
+  pricesIncludeIgv,
   contactId: optionalId,
   notes: notes(2000),
   pieces: z
@@ -204,6 +217,7 @@ export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
 
 const editFields = {
   contactId: restorationFields.contactId,
+  pricesIncludeIgv,
   notes: restorationFields.notes,
 };
 
@@ -235,6 +249,7 @@ const quoteFields = {
   contactId: optionalId,
   customerName: line(200),
   customerPhone: optionalPhone,
+  pricesIncludeIgv,
   notes: notes(2000),
   pieces: restorationFields.pieces,
 };

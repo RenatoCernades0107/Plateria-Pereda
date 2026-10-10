@@ -112,6 +112,7 @@ test.describe("Restauraciones", () => {
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText(
       "S/ 1,218.00",
     );
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
 
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(
@@ -168,7 +169,43 @@ test.describe("Restauraciones", () => {
       page.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
     await expect(page.getByText("Ingresa el precio")).toBeVisible();
+    await expect(
+      page.getByText("Indica si el precio incluye IGV"),
+    ).toBeVisible();
     await expect(page).toHaveURL(/\/restauraciones\/nueva$/);
+  });
+
+  test("sin IGV incluido suma el 18 % al cobro y se puede corregir (P13)", async ({
+    page,
+  }) => {
+    await page.goto("/restauraciones/nueva");
+    await pickClient(page, clientName);
+    await fillPiece(page, 1, { description: "Salero", price: "100" });
+    await page.getByLabel(/No, se suma el IGV/).check();
+    await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 118.00");
+    await page.getByLabel("Tipo de pago").click();
+    await page.getByRole("option", { name: "Al contado" }).click();
+    await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 118.00");
+    await page.getByRole("button", { name: "Registrar restauración" }).click();
+    await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
+      timeout: 30_000,
+    });
+
+    const mensaje = page.getByRole("dialog").getByTestId("mensaje-cotizacion");
+    await expect(mensaje).toContainText("Subtotal (sin IGV): S/ 100.00");
+    await expect(mensaje).toContainText("IGV (18 %): S/ 18.00");
+    await expect(mensaje).toContainText("Total: S/ 118.00");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("igv")).toHaveText("+ IGV (18 %)");
+    await expect(page.getByTestId("monto-total")).toContainText("118.00");
+
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel(/Sí, el precio incluye IGV/).check();
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByText("Restauración actualizada.")).toBeVisible();
+    await expect(page.getByTestId("igv")).toHaveText("Incluye IGV");
+    await expect(page.getByTestId("monto-total")).toContainText("100.00");
   });
 
   test("crea un cliente nuevo desde el formulario sin perder lo escrito", async ({
@@ -301,6 +338,7 @@ test.describe("Restauraciones", () => {
     await page.getByLabel("Tipo de pago").click();
     await page.getByRole("option", { name: "Al contado" }).click();
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 45.00");
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
       timeout: 30_000,

@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,6 +17,8 @@ import {
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
+import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
+import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -26,19 +28,23 @@ import {
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
+import { igvLabel } from "@/domain/igv";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
 import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
+import { getSyncStates } from "@/server/clients/queries";
 import {
   getLogisticsInfo,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
+import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
 
 export const metadata: Metadata = { title: "Restauración" };
 
@@ -71,12 +77,28 @@ export default async function RestauracionDetallePage({
           priceCents: p.priceCents ?? 0,
           status: p.status,
         })),
+        pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
         depositPercent: restoration.money?.depositPercent ?? 0,
         terms: settings.terms,
       })
     : null;
   const phone = restoration.contact?.phone ?? restoration.client.phone;
+  // Orden de Shopify (9.1): enlace al admin y estado del último envío (admin y ventas).
+  const orderUrl = shopifyOrderAdminUrl(
+    serverEnv().SHOPIFY_STORE_DOMAIN,
+    restoration.shopifyOrderId,
+  );
+  const lastSync = canSeeMoney
+    ? (await getSyncStates("restorations", [restoration.id])).get(
+        restoration.id,
+      )
+    : undefined;
+  // Un envío "ok" sin orden fue omitido (la restauración dejó de estar lista): no se muestra.
+  const sync =
+    lastSync && (lastSync.status !== "ok" || restoration.shopifyOrderName)
+      ? lastSync
+      : undefined;
   // Cotización de la que salió (P46): solo un enlace, y solo para quien ve cotizaciones.
   const quote =
     restoration.whatsappQuoteId && can(user.role, "cotizaciones-whatsapp.usar")
@@ -117,6 +139,9 @@ export default async function RestauracionDetallePage({
 
   return (
     <div className="space-y-6">
+      <RefreshWhilePending
+        pending={sync?.status === "pending" || sync?.status === "processing"}
+      />
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/restauraciones">
           <ArrowLeft />
@@ -164,10 +189,36 @@ export default async function RestauracionDetallePage({
                 ? ` (${restoration.money.depositPercent} %)`
                 : ""}
             </Badge>
-            {restoration.shopifyOrderName ? (
-              <Badge variant="secondary">
-                Shopify {restoration.shopifyOrderName}
+            {restoration.money ? (
+              <Badge variant="outline" data-testid="igv">
+                {igvLabel(restoration.money.pricesIncludeIgv)}
               </Badge>
+            ) : null}
+            {restoration.shopifyOrderName ? (
+              <Badge variant="secondary" asChild={Boolean(orderUrl)}>
+                {orderUrl ? (
+                  <a
+                    href={orderUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid="orden-shopify"
+                  >
+                    Orden {restoration.shopifyOrderName}
+                    <ExternalLink aria-hidden />
+                  </a>
+                ) : (
+                  <span data-testid="orden-shopify">
+                    Orden {restoration.shopifyOrderName}
+                  </span>
+                )}
+              </Badge>
+            ) : null}
+            {sync ? (
+              <SyncStatus
+                jobId={sync.jobId}
+                status={sync.status}
+                lastError={sync.lastError}
+              />
             ) : null}
             <Badge variant="outline" data-testid="origen">
               {RESTORATION_ORIGIN_LABELS[restoration.origin]}
@@ -193,9 +244,11 @@ export default async function RestauracionDetallePage({
                 contactId: restoration.contact?.id ?? null,
                 paymentType: restoration.paymentType,
                 depositPercent: restoration.money?.depositPercent ?? null,
+                pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
                 notes: restoration.notes,
               }}
               contacts={editing.contacts}
+              hasOrder={restoration.hasOrder}
             />
           ) : null}
           {message ? (
@@ -221,6 +274,21 @@ export default async function RestauracionDetallePage({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {restoration.money &&
+      restoration.hasOrder &&
+      restoration.money.paidCents > restoration.money.totalCents ? (
+        <p
+          role="alert"
+          className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
+        >
+          El cliente pagó{" "}
+          {formatCents(
+            restoration.money.paidCents - restoration.money.totalCents,
+          )}{" "}
+          más que el nuevo total: registra el reembolso (P12).
+        </p>
       ) : null}
 
       {restoration.notes ? (
@@ -266,8 +334,14 @@ export default async function RestauracionDetallePage({
                     ),
                     priceHint:
                       user.role === "admin"
-                        ? "Con la orden de Shopify creada, el precio se cambia desde la orden (con motivo)."
+                        ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
                         : "Con la orden de Shopify creada, solo el administrador cambia el precio.",
+                    priceChange: Object.fromEntries(
+                      restoration.pieces.map((piece) => [
+                        piece.id,
+                        editableFields(ctx, piece).priceNeedsOrderFlow,
+                      ]),
+                    ),
                     materials: editing.materials,
                     services: editing.services,
                   }

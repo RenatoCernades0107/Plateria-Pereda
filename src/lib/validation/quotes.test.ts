@@ -41,6 +41,7 @@ const input = (patch: Partial<QuoteFormInput> = {}): QuoteFormInput => ({
   clientId: CLIENT,
   contactId: null,
   validityDays: "15",
+  pricesIncludeIgv: "si",
   notes: "",
   terms: "",
   lines: [anillo, libre],
@@ -154,6 +155,7 @@ describe("quoteRpcArgs", () => {
       client_id: CLIENT,
       contact_id: null,
       validity_days: 15,
+      prices_include_igv: true,
       notes: "",
       terms: "",
     });

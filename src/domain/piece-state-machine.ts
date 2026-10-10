@@ -198,7 +198,12 @@ export type PieceChanges = {
 
 /** Evento del historial: un cambio de estado o una acción que no lo cambia. */
 export type PieceEvent =
-  "estado" | "llegada" | "vuelta_taller" | "devolucion_cliente";
+  | "estado"
+  | "llegada"
+  | "vuelta_taller"
+  | "devolucion_cliente"
+  /** Cambio de precio con la orden de Shopify creada (Paso 9.2): la nota es el motivo. */
+  | "cambio_precio";
 
 /** Un paso del historial (`piece_status_history`). */
 export type PieceStatusStep = {

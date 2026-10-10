@@ -44,6 +44,7 @@ export async function createRestorationRecord(
       p_deposit_percent: input.depositPercent as number,
       p_notes: input.notes,
       p_pieces: input.pieces.map(pieceToRpc),
+      p_prices_include_igv: input.pricesIncludeIgv,
     })
     .single();
   if (error) throw error;

@@ -103,6 +103,8 @@ export type QuoteDetail = {
   displayStatus: QuoteDisplayStatus;
   client: ClientOption;
   validityDays: number;
+  /** Si es false, cada línea se cobra con el 18 % de IGV encima (P13). */
+  pricesIncludeIgv: boolean;
   issueDate: string | null;
   validUntil: string | null;
   notes: string;
@@ -164,6 +166,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     displayStatus: quoteDisplayStatus(q.status, q.valid_until),
     client,
     validityDays: q.validity_days,
+    pricesIncludeIgv: q.prices_include_igv,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
     notes: q.notes,

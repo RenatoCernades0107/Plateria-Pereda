@@ -33,13 +33,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ClientOption } from "@/domain/client-search";
+import { igvTotals, IGV_PERCENT } from "@/domain/igv";
 import {
   expectedDeposit,
   formatCents,
   parseMoney,
   PAYMENT_TYPE_LABELS,
   PAYMENT_TYPES,
-  sumCents,
   type PaymentType,
 } from "@/domain/money";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
@@ -47,6 +47,7 @@ import { cn } from "@/lib/utils";
 import {
   COPY_INITIAL_STATUSES,
   copyRestorationSchema,
+  igvChoice,
   MAX_PIECES,
   restorationSchema,
   whatsappQuoteSchema,
@@ -65,6 +66,7 @@ import {
   updateWhatsappQuote,
 } from "@/server/whatsapp-quotes/actions";
 
+import { IgvField } from "./igv-field";
 import { PieceFields, type CatalogOption } from "./piece-fields";
 
 export type { CatalogOption };
@@ -77,6 +79,8 @@ type FormValues = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: string;
+  /** "¿El precio incluye IGV?" (P13): "" hasta que se responda. */
+  pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   pieces: PieceFormInput[];
 };
@@ -102,9 +106,18 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
   statusNote: "",
 };
 
-/** Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0). */
-export function liveTotal(pieces: readonly { price?: string }[]) {
-  return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
+/**
+ * Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0) y,
+ * si los precios no incluyen IGV, el 18 % de cada uno (P13).
+ */
+export function liveTotal(
+  pieces: readonly { price?: string }[],
+  pricesIncludeIgv = true,
+) {
+  return igvTotals(
+    pieces.map((p) => parseMoney(p.price ?? "") ?? 0),
+    pricesIncludeIgv,
+  ).total;
 }
 
 function PieceCard({
@@ -292,6 +305,7 @@ export type QuoteForForm = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: number | null;
+  pricesIncludeIgv: boolean;
   notes: string;
   items: QuoteItemForForm[];
 };
@@ -327,6 +341,7 @@ function defaultsFor(
       customerPhone: "",
       paymentType: "sin_definir",
       depositPercent: String(defaultDepositPercent),
+      pricesIncludeIgv: "",
       notes: "",
       pieces: [EMPTY_PIECE],
     };
@@ -339,6 +354,7 @@ function defaultsFor(
     customerPhone: q.customerPhone,
     paymentType: q.paymentType,
     depositPercent: q.depositPercent === null ? "" : String(q.depositPercent),
+    pricesIncludeIgv: igvChoice(q.pricesIncludeIgv),
     notes: mode.kind === "copia" ? "" : q.notes,
     pieces:
       mode.kind === "copia"
@@ -397,7 +413,8 @@ export function RestorationForm({
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
-  const total = liveTotal(values.pieces ?? []);
+  const withoutIgv = values.pricesIncludeIgv === "no";
+  const total = liveTotal(values.pieces ?? [], !withoutIgv);
   const paymentType = values.paymentType ?? "sin_definir";
   const percent = Number(values.depositPercent);
   const deposit =
@@ -745,6 +762,7 @@ export function RestorationForm({
             <h2 id="notas" className="sr-only">
               Notas
             </h2>
+            <IgvField form={form} name="pricesIncludeIgv" />
             <TextField form={form} name="notes" label="Notas" multiline />
           </section>
         ) : (
@@ -786,6 +804,7 @@ export function RestorationForm({
                 />
               ) : null}
             </div>
+            <IgvField form={form} name="pricesIncludeIgv" />
             <TextField form={form} name="notes" label="Notas" multiline />
           </section>
         )}
@@ -793,7 +812,9 @@ export function RestorationForm({
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
           <dl className="flex gap-6">
             <div>
-              <dt className="text-muted-foreground text-xs">Total</dt>
+              <dt className="text-muted-foreground text-xs">
+                {withoutIgv ? `Total (con IGV ${IGV_PERCENT} %)` : "Total"}
+              </dt>
               <dd
                 className="text-heading font-semibold tabular-nums"
                 data-testid="total-en-vivo"

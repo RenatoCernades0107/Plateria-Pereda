@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterAll, describe, expect, it } from "vitest";
 
+import { igvTotals } from "@/domain/igv";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { restorationSchema } from "@/lib/validation/restorations";
@@ -57,6 +58,8 @@ describe("registro de restauraciones", () => {
       contactId: null,
       paymentType: "a_cuenta",
       depositPercent: "50",
+      // Sin IGV (P13): cada pieza + 18 % redondeado, igual que igvTotals().
+      pricesIncludeIgv: "no",
       notes: "Prueba de integración",
       pieces: [
         {
@@ -94,9 +97,11 @@ describe("registro de restauraciones", () => {
       )
       .eq("id", result.id)
       .single();
+    // 0.10 → 0.12 y 0.20 → 0.24
+    expect(igvTotals([10, 20], false).total).toBe(36);
     expect(restoration).toMatchObject({
-      total: 0.3,
-      expected_deposit: 0.15,
+      total: 0.36,
+      expected_deposit: 0.18,
       notes: "Prueba de integración",
     });
     const pieces = restoration!.pieces.sort((a, b) =>
@@ -138,6 +143,7 @@ describe("registro de restauraciones", () => {
         contactId: null,
         paymentType: "contado",
         depositPercent: null,
+        pricesIncludeIgv: true,
         notes: "",
         pieces: [],
       }),

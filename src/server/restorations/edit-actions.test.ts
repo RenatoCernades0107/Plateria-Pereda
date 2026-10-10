@@ -71,6 +71,7 @@ describe("edición de restauraciones", () => {
         contactId: null,
         paymentType: "credito",
         depositPercent: "50",
+        pricesIncludeIgv: "no",
         notes: "Nota",
       }),
     ).toEqual({ ok: true });
@@ -78,6 +79,7 @@ describe("edición de restauraciones", () => {
       contact_id: null,
       payment_type: "credito",
       deposit_percent: null,
+      prices_include_igv: false,
       notes: "Nota",
     });
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones/r1");
@@ -87,6 +89,7 @@ describe("edición de restauraciones", () => {
         contactId: null,
         paymentType: "a_cuenta",
         depositPercent: "0",
+        pricesIncludeIgv: "si",
         notes: "",
       }),
     ).toEqual({ error: "Revisa los datos ingresados." });

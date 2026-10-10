@@ -27,6 +27,7 @@ const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
   llegada: "Llegó a la tienda",
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
+  cambio_precio: "Cambio de precio",
 };
 
 /** Un paso de `piece_status_history`. */
