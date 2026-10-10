@@ -1,7 +1,7 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
 > **Estado:** planificación (todavía no se desarrolla).
-> **Última actualización:** 2026-10-03
+> **Última actualización:** 2026-10-09
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
 
@@ -261,6 +261,7 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 
 ### 7.5 Pagos ⛔ P28 ⛔ P29
 
+- **IGV (P13):** cada restauración indica si el precio incluye IGV; si no, cada pieza se cobra a su precio + 18 % y el total, el adelanto y la orden de Shopify usan ese monto.
 - Tipo de pago: **Al contado** (paga el total), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
@@ -744,6 +745,21 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-04): `editableFields(ctx, piece)` (`src/domain/restoration-edit.ts`) decide por rol, orden y estado: logística nada; pieza anulada nada; entregada solo notas; antes de la orden todo; con la orden, los campos libres de P12 y el precio sale de la edición directa (solo admin lo cambiará por el flujo de la orden en 9.2, con motivo). En el detalle: "Editar" (contacto, tipo y % de adelanto, notas), "Editar" por pieza (campos bloqueados deshabilitados con explicación) y "Agregar pieza" (entra Registrada; llega a Shopify al aprobarse). Los campos de la pieza son un componente común (`PieceFields`) del registro y los diálogos; ahora sí muestran las sugerencias del catálogo (`<datalist>`). La BD lo exige con el trigger `guard_piece_edit` (anulada, entregada y precio con orden salvo `app.shopify_order_edit = 'on'`, que usará 9.2) y `guard_piece_insert` (no se agregan piezas a restauraciones completadas o anuladas); el cliente ya era inmutable por privilegios (7.1). Todo queda en la auditoría. **Pendiente para 9.2:** el motivo de los cambios que tocan Shopify y el E2E del precio con la orden creada (aquí se verifica que el precio queda bloqueado y el material se edita).
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
+#### Paso 7.8 — IGV en restauraciones y cotizaciones de WhatsApp (P13 ✅, 2026-10-09)
+- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto) al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
+- [x] Si no incluye IGV, cada pieza se cobra a su precio + 18 % redondeado a céntimos: total, adelanto, saldo y (9.1) líneas de la orden de Shopify. El mensaje de WhatsApp muestra el subtotal sin IGV y el IGV debajo de las piezas.
+- [x] Se cambia desde "Editar" mientras no exista la orden de Shopify (la BD lo exige).
+- **Unit:**
+  - [x] `priceWithIgv` e `igvTotals` (redondeo por pieza, empates lejos del cero); total en vivo; mensaje con desglose; validación obligatoria.
+- **BD:**
+  - [x] `price_with_igv` igual a TypeScript; total y adelanto con IGV; las piezas cerradas no suman; cambiar la respuesta recalcula; con la orden creada no se cambia; cotización de WhatsApp con la misma regla.
+- **Integración:** registro sin IGV → total y adelanto de la BD = `igvTotals()`.
+- **E2E:**
+  - [x] Registrar sin IGV → total S/ 118.00, mensaje con desglose, insignia "+ IGV (18 %)"; editar a "Incluye IGV" → S/ 100.00.
+  - [x] La validación pide responder la pregunta.
+- Hecho (2026-10-09): migración `20261009120000_igv.sql` (`prices_include_igv` en `restorations` y `whatsapp_quotes`, las filas existentes quedan con IGV incluido; `public.price_with_igv()`; triggers que recalculan el total; `create_restoration`, `create_restoration_from_whatsapp_quote`, `create_whatsapp_quote` y `update_whatsapp_quote` con `p_prices_include_igv`). Dominio en `src/domain/igv.ts` (el cotizador `COT-` reutiliza `IGV_PERCENT` e `igvBreakdown`). Campo `IgvField` en el registro y en "Editar"; insignia en los detalles.
+- Commit: `feat(restauraciones): pregunta si el precio incluye IGV y lo suma al cobro (P13)`
+
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 
 Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp; cada pieza pasa al estado inicial elegido, P49), y se puede repetir con las pendientes.
@@ -891,7 +907,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 9 — Orden automática en Shopify
 
-#### Paso 9.1 — Creación de la orden al aprobar (P13 🟡: ver nota)
+#### Paso 9.1 — Creación de la orden al aprobar (P13 ✅)
 - [x] Handler del job `order_create`: primero busca una orden con la etiqueta única de la restauración (evita duplicados si hubo un corte); crea la orden (método elegido en el spike) con el cliente, una línea personalizada por pieza no anulada (título `Restauración RES-00001-1`), precios, etiquetas (`restauracion`, código) y nota con el enlace al sistema; guarda `shopify_order_id` y `shopify_order_name`. Desde la Fase 11 también incluye los pagos registrados al aprobar (11.2).
 - [x] La restauración muestra el número de orden con enlace al admin de Shopify y su estado de sincronización.
 - **Unit:**
@@ -904,7 +920,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Aprobación parcial → no se crea orden.
   - [x] Error de Shopify → "Reintentar" → la orden se crea una sola vez.
   - [ ] `@shopify-live` (manual) el mismo flujo contra la tienda de desarrollo.
-- Hecho (2026-10-10): handler `order.create` (`src/server/restorations/shopify-order-sync.ts`) con su repositorio (`order-sync-repository.ts`, clave secreta). Busca primero la orden por la etiqueta del código (un corte no la duplica) y si no existe la crea con `orderCreate`: cliente (persona, o contacto + `companyLocationId` de la empresa), una línea personalizada por pieza aprobada que se cobra (`Restauración RES-00001-1`, D30), etiquetas `restauracion` + código y nota con el enlace al sistema; guarda `shopify_order_id`, `shopify_order_name` y `shopify_line_item_id` por pieza. Si la orden se crea tarde, prepara las piezas ya entregadas. Cliente aún sin sincronizar → se reintenta; empresa sin contacto → error sin reintento. Dominio puro en `src/domain/shopify-order.ts`. El detalle muestra "Orden #xxxx" (con enlace al admin si hay tienda configurada), el estado de sincronización con "Reintentar" y se refresca mientras está pendiente. Cambiar el estado de piezas (y copiar una cotización con piezas aprobadas) procesa el outbox al terminar la respuesta. **P13 sigue abierta:** los precios se envían tal cual, con líneas gravables, y la configuración de impuestos de la tienda decide; no hay campo de IGV en la restauración. **Pendiente:** `@shopify-live` manual.
+- Hecho (2026-10-09): handler `order.create` en `src/server/restorations/shopify-order.ts` (registrado en el outbox): si la restauración ya tiene orden no hace nada; si dejó de estar lista (se agregó una pieza antes de procesarlo) termina como omitido (`{"skipped": true}`) y la BD vuelve a encolarla cuando todas las piezas que se cobran estén aprobadas (migración `20261009130000_orden_shopify.sql`); antes de crearla la busca por la etiqueta del código. Comprador: la persona, o la empresa (ubicación de la Company) con el contacto de la restauración o, si no eligieron uno, su primer contacto activo; si la empresa no tiene contactos queda en error pidiendo agregar uno; si el cliente, la empresa o el contacto aún no están en Shopify, reintenta. Líneas con el precio con IGV (P13: + 18 % por pieza si no lo incluye) y `taxable`; se guarda el id de la línea de cada pieza (`pieces.shopify_line_item_id`, para 9.2 y 9.3). Cambiar estados de piezas y crear la restauración desde una cotización procesan el outbox enseguida (`after()`). En el detalle: "Orden #1001" con enlace a `https://<tienda>/admin/orders/<id>` (sin enlace en modo fake), `SyncStatus` con "Reintentar" y refresco automático mientras está pendiente; logística ve solo el número. **Pendiente (manual, tienda de desarrollo):** confirmar que la orden con las líneas con IGV no suma impuestos aparte (hoy `orderCreate` no envía `taxLines`; si la tienda está configurada con precios con impuestos incluidos, el total coincide con el del sistema).
 - Commit: `feat(shopify): crea orden de venta al aprobar la restauración`
 
 #### Paso 9.2 — Cambios posteriores a la orden
@@ -915,7 +931,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Anular pieza → job `order_edit` → total actualizado en el fake.
 - **E2E:**
   - [x] Anular una pieza de una restauración aprobada → total y orden actualizados (o aviso, según la decisión).
-- Hecho (2026-10-10): migración `20261010120100_orden_shopify.sql`: trigger `pieces_enqueue_order_changes` que, con la orden creada, encola `order.edit` cuando una pieza entra o sale de lo que se cobra (aprobar una pieza agregada, anular, rechazar, sin arreglo) o cambia su precio, y `order.fulfill` al entregarla. Un job pendiente por restauración y tipo basta (el handler lee el estado al procesarse); si hay uno en curso se encola otro para no perder el cambio. `order.edit` concilia la orden con las piezas por el título de la línea (Order Editing cambia el id al cambiar el precio): quita, ajusta precios y agrega; las líneas agregadas a mano en Shopify no se tocan; repetirlo no cambia nada. Cambio de precio con la orden creada: RPC `change_piece_price` (solo admin, con motivo; evento `cambio_precio` en el historial con el motivo y el precio en la auditoría) y botón "Cambiar precio" en la pieza. Aviso de reembolso en el detalle si lo pagado supera el nuevo total (los pagos llegan en la Fase 11).
+- Hecho (2026-10-10): migración `20261010120100_cambios_orden_shopify.sql`: con la orden creada, el trigger `pieces_enqueue_order_changes` encola `order.edit` cuando una pieza entra o sale de lo que se cobra (aprobar una pieza agregada, anular, rechazar, sin arreglo) o cambia su precio, y `order.fulfill` al entregarla (los tipos de job llevan punto por el CHECK de `shopify_sync_jobs.kind`). Basta un job pendiente por restauración y tipo (el handler lee el estado al procesarse); si hay uno en curso se encola otro para no perder el cambio. `order.edit` concilia la orden con las piezas por el título de la línea (Order Editing cambia el id al cambiar el precio): quita, ajusta precios (con IGV, P13) y agrega; no toca líneas agregadas a mano en Shopify; repetirlo no cambia nada. Dominio puro en `src/domain/shopify-order.ts`. Cambio de precio con la orden creada: RPC `change_piece_price` (solo admin, con motivo; evento `cambio_precio` en el historial, migración `20261010120000_evento_cambio_precio.sql`; el precio queda en la auditoría) y botón "Cambiar precio" en la pieza. Aviso de reembolso en el detalle si lo pagado supera el nuevo total (los pagos llegan en la Fase 11).
 - Commit: `feat(shopify): sincroniza cambios de piezas con la orden`
 
 #### Paso 9.3 — Entregas como "Preparado" en Shopify
@@ -926,7 +942,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Entregar una pieza → job → línea preparada en el fake.
 - **E2E:**
   - [x] Entregar todas las piezas → la orden del fake queda "Preparada".
-- Hecho (2026-10-10): handler `order.fulfill`: marca como preparadas solo las líneas de piezas entregadas que aún no lo están (`fulfillLines` no es idempotente). La job kind usa punto (`order.edit`, `order.fulfill`) por el CHECK de `shopify_sync_jobs.kind`. Pruebas: pgTAP `23_orden_shopify`, unit (`shopify-order.test.ts`, `shopify-order-sync.test.ts`), integración (`shopify-order-sync.int.test.ts`) y E2E (`e2e/shopify-order.spec.ts`).
+- Hecho (2026-10-10): handler `order.fulfill`: marca como preparadas solo las líneas de piezas entregadas que aún no lo están (`fulfillLines` no es idempotente). Si la orden se crea o se edita con piezas ya entregadas, también las prepara. Pruebas: pgTAP `26_cambios_orden_shopify`, unit (`shopify-order.test.ts` del dominio y del servidor), integración (`shopify-order.int.test.ts`) y E2E (`e2e/shopify-order.spec.ts`).
 - Commit: `feat(shopify): marca como preparadas las piezas entregadas`
 
 ### Fase 10 — Fotos y archivos
@@ -1091,7 +1107,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-10-04): `quotes` (código generado desde un identity que no se escribe a mano; cliente obligatorio y contacto opcional de esa empresa; vigencia por defecto de `settings.quote_validity_days`; `valid_until` = emisión + días) y `quote_items` (producto/variante de Shopify con título, variante, SKU, imagen y precio de catálogo copiados al cotizar, o línea libre; personalización, cantidad entera 1–100 000, precio ≥ 0 y descuento opcional por línea en monto o %; subtotal, descuento y total de la línea como columnas generadas). Un trigger suma las líneas en la cotización y los usuarios no pueden escribir totales, código, snapshot ni fechas de emisión (privilegios por columna). Solo se edita en borrador; estados: borrador → emitida (necesita una línea; fija la fecha de emisión en Lima y refresca los datos del cliente, que desde ahí quedan fijos) → aceptada / rechazada, y de aceptada o rechazada se puede volver a emitida (corrección). "Vencida" = emitida con `valid_until` anterior a hoy en Lima (`effective_status(quotes)`, columna calculada de PostgREST). Solo admin y ventas (cotizador.usar) leen y escriben; nadie borra cotizaciones; auditadas. **P34, P35 y P13 siguen pendientes:** se usó su propuesta (estados con vencida automática; solo soles, descuento por línea y sin descuento global; precios con IGV). Si P34 cambia (p. ej., sin historial de estados) basta con no usar los estados en la interfaz.
 - Commit: `feat(cotizador): agrega esquema de cotizaciones`
 
-#### Paso 14.2 — Dominio de la cotización ⛔ P13 ⛔ P35
+#### Paso 14.2 — Dominio de la cotización (P13 ✅) ⛔ P35
 - [x] `src/domain/quote.ts`: subtotal por línea (cantidad × precio), total, descuentos e IGV según respuestas, fecha de vigencia (emisión + días), `isExpired`.
 - **Unit:**
   - [x] Cálculos con decimales, cantidades grandes y 0.
@@ -1125,7 +1141,9 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-10-04): migración `cotizaciones_edicion` con `save_quote(id, cotización, líneas)` (crea o edita el borrador y deja exactamente las líneas enviadas, en orden, conservando el id de las existentes y rechazando líneas de otra cotización) y `duplicate_quote(id)` (copia cualquier estado como borrador nuevo con `duplicated_from`), ambas security invoker y en una transacción. `/cotizaciones/nueva` y `/cotizaciones/[id]`: `ClientPicker` (persona/empresa del sistema o de Shopify, que se guarda al elegirla, o contacto de una empresa → "Atención:"), líneas del Paso 14.3, subtotal, descuentos, total e IGV incluido en vivo, vigencia (por defecto de la configuración, con la fecha de vencimiento), notas y condiciones (por defecto las de la configuración); "Guardar borrador", "Emitir" (guarda y emite), y en las guardadas "Duplicar cotización" y los cambios de estado (aceptar, rechazar, volver a emitida). Una emitida se muestra sin edición con los datos copiados del cliente. Validación con zod compartida por el formulario y la acción (al menos una línea, cantidad entera 1–100 000, precio ≥ 0, descuento ≤ subtotal o ≤ 100 %, vigencia 1–365). `/cotizaciones`: tabla (tarjetas en el celular) con búsqueda por código o cliente y filtros por estado (incluida "vencida"), cliente (`ClientPicker`) y fechas de creación en Lima; paginado. **P38 sigue pendiente:** se usó su propuesta (lo usan ventas y admin; a un contacto se le cotiza a nombre de su empresa con "Atención: contacto"). **P34/P35/P13** como en 14.1/14.2.
 - Commit: `feat(cotizador): agrega editor y listado de cotizaciones`
 
-#### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38
+- **IGV (P13 ✅, 2026-10-09):** la cotización pregunta siempre "¿El precio incluye IGV?" (Sí / No); si no lo incluye, cada línea (con su descuento) se cobra + 18 % y el total suma esas líneas; subtotal y descuentos quedan sin IGV y el formulario muestra la fila "IGV (18 %)". Se cambia solo en borrador; duplicar la conserva. Migración `20261009140000_igv_cotizaciones.sql` (`quotes.prices_include_igv`, `save_quote` lee `p_quote.prices_include_igv`), `quoteTotals(lines, pricesIncludeIgv)`, pgTAP `25_igv_cotizaciones`, unit y E2E. El PDF (14.5) deberá mostrar el mismo desglose.
+
+#### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38 (IGV según P13)
 - [ ] Plantilla con `@react-pdf/renderer`: logo, datos de la empresa, código, fechas de emisión y vigencia, datos del cliente (y "Atención:" contacto), tabla de productos (imagen, descripción, personalización, cantidad, precio unitario, subtotal), total, condiciones; fuente embebida (tildes y ñ); varias páginas si hay muchas líneas.
 - [ ] Route Handler `/api/cotizaciones/[id]/pdf` (verifica sesión y permiso); nombre de archivo `COT-000001-<cliente>.pdf`.
 - **Unit:**

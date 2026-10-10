@@ -88,6 +88,7 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await fillPiece(page, 2, { description: "Jarra", price: "60" });
     await page.getByRole("button", { name: "Agregar pieza" }).click();
     await fillPiece(page, 3, { description: "Candelabro", price: "40" });
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
     await page.getByRole("button", { name: "Registrar cotización" }).click();
 
     await expect(page).toHaveURL(
@@ -212,6 +213,7 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.goto("/restauraciones/nueva?whatsapp=1");
     await page.getByLabel("Nombre (opcional)").fill(`Descartable ${run}`);
     await fillPiece(page, 1, { description: "Plato", price: "10" });
+    await page.getByLabel(/No, se suma el IGV/).check();
     await page.getByRole("button", { name: "Registrar cotización" }).click();
     await expect(page).toHaveURL(/\/cotizaciones-whatsapp\/[0-9a-f-]{36}/, {
       timeout: 30_000,

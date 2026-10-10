@@ -44,6 +44,7 @@ function quoteArgs(v: WhatsappQuoteInput) {
     p_deposit_percent: v.depositPercent as number,
     p_notes: v.notes,
     p_items: v.pieces.map(pieceToRpc),
+    p_prices_include_igv: v.pricesIncludeIgv,
   };
 }
 
@@ -131,10 +132,11 @@ export async function createRestorationFromQuote(
       p_deposit_percent: v.depositPercent as number,
       p_notes: v.notes,
       p_pieces: v.pieces.map(pieceToRpc),
+      p_prices_include_igv: v.pricesIncludeIgv,
     })
     .single();
   if (error) return fail(error, "No se pudo crear la restauración.");
-  // Si todas las piezas entraron aprobadas, la BD ya encoló la orden (Paso 9.1).
+  // Con todas las piezas Aprobadas se encola la orden de Shopify (9.1).
   scheduleShopifySync();
   revalidatePath(`/cotizaciones-whatsapp/${quoteId}`);
   revalidatePath("/restauraciones");

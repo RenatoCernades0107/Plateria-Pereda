@@ -54,9 +54,9 @@ export type RestorationMoney = {
   paidCents: Cents;
   expectedDepositCents: Cents;
   depositPercent: number | null;
+  /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
+  pricesIncludeIgv: boolean;
   paymentStatus: "pendiente" | "parcial" | "pagado" | "reembolsado";
-  /** Id de la orden de Shopify (Fase 9), para el enlace al admin. */
-  shopifyOrderId: string | null;
 };
 
 export type RestorationDetail = {
@@ -66,6 +66,8 @@ export type RestorationDetail = {
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
+  /** Id de la orden (solo admin y ventas), para enlazar al admin de Shopify. */
+  shopifyOrderId: string | null;
   /** Oficina o WhatsApp; con WhatsApp, la cotización de la que salió (P46). */
   origin: RestorationOrigin;
   whatsappQuoteId: string | null;
@@ -119,7 +121,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("restorations")
           .select(
-            "total, paid, expected_deposit, deposit_percent, payment_status, shopify_order_id",
+            "total, paid, expected_deposit, deposit_percent, prices_include_igv, payment_status, shopify_order_id",
           )
           .eq("id", id)
           .single()
@@ -151,6 +153,7 @@ export async function getRestorationDetail(
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
+    shopifyOrderId: money.data?.shopify_order_id ?? null,
     origin: r.origin ?? "oficina",
     whatsappQuoteId: r.whatsapp_quote_id,
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
@@ -203,8 +206,8 @@ export async function getRestorationDetail(
             money.data.deposit_percent === null
               ? null
               : Number(money.data.deposit_percent),
+          pricesIncludeIgv: money.data.prices_include_igv,
           paymentStatus: money.data.payment_status,
-          shopifyOrderId: money.data.shopify_order_id,
         }
       : null,
   };

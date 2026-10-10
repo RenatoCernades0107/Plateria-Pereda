@@ -72,6 +72,7 @@ export default async function CotizacionPage({
         initial={{
           client: quote.client,
           validityDays: String(quote.validityDays),
+          pricesIncludeIgv: quote.pricesIncludeIgv ? "si" : "no",
           notes: quote.notes,
           terms: quote.terms,
           lines: quote.lines,

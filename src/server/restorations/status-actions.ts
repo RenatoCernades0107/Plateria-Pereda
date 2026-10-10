@@ -51,7 +51,8 @@ export async function changePieceStatus(
     p_workshop_id: workshopId ?? undefined,
   });
   if (error) return fail(error, "No se pudo cambiar el estado.");
-  // Aprobar, anular o entregar puede crear, editar o preparar la orden (Fase 9).
+  // Aprobar la última pieza encola la orden (9.1); con la orden creada, anular o
+  // aprobar una pieza agregada la edita (9.2) y entregar la prepara (9.3).
   scheduleShopifySync();
   refresh(restorationId);
   return { ok: true };

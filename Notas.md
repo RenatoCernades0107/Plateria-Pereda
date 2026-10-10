@@ -4,7 +4,7 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-08
+**Última actualización:** 2026-10-09
 
 ## Resumen de pendientes
 
@@ -12,8 +12,8 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, N1, N2 |
-| Respondidas en parte | P13 (falta el efecto de "no incluye IGV"), P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, N1, N2 |
+| Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
@@ -145,7 +145,12 @@
 ### P13 · ¿Los precios incluyen IGV?
 - **Contexto:** aplica a restauraciones (orden de Shopify y mensaje de WhatsApp) y a cotizaciones (PDF). Depende también de la configuración de impuestos de la tienda.
 - **Propuesta:** todos los precios incluyen IGV; en el PDF se puede mostrar el desglose (op. gravada + IGV 18 %) si lo desean.
-- **Respuesta (2026-10-05):** 🟡 **No asumir: preguntar siempre si el precio incluye IGV** (en cada restauración y en cada cotización). Falta confirmar qué pasa cuando **no** lo incluye (¿se suma el 18 % al total que se cobra o solo se indica "+ IGV"?) y si aplica igual a restauraciones y cotizaciones.
+- **Respuesta (2026-10-05):** ✅ (en parte) **No asumir: preguntar siempre si el precio incluye IGV** (en cada restauración y en cada cotización). Falta confirmar qué pasa cuando **no** lo incluye (¿se suma el 18 % al total que se cobra o solo se indica "+ IGV"?) y si aplica igual a restauraciones y cotizaciones.
+- **Respuesta (2026-10-09):** ✅ **Si el precio no incluye IGV, se suma el 18 % al cobro**, y la regla es la misma para restauraciones, cotizaciones de WhatsApp y cotizaciones de productos (`COT-`).
+  - Al registrar se elige siempre "¿El precio incluye IGV?" (Sí / No, sin valor por defecto).
+  - **No incluye:** cada pieza (o línea) se cobra a su precio + 18 % redondeado a céntimos; el total, el adelanto, la orden de Shopify y el saldo usan ese monto. El mensaje de WhatsApp y el PDF muestran el subtotal sin IGV, el IGV y el total.
+  - **Incluye:** el total es la suma de los precios; el desglose (op. gravada + IGV) solo se informa.
+  - Se puede cambiar mientras no exista la orden de Shopify (restauración) o mientras la cotización se pueda editar.
 
 ### P14 · ¿Cómo registramos a las empresas en Shopify?
 - **Contexto:** desde abril de 2026 el plan Grow incluye perfiles de empresa (Companies), con contactos y ubicaciones.
@@ -600,6 +605,8 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D51 | Al pasar una cotización de WhatsApp a restauración nada se aprueba solo: cada pieza elige Consulta (por defecto, con nota; luego sigue a Espera respuesta cliente → Aprobada) o Aprobada; la restauración nace Registrada y su estado se calcula como en oficina | P49, reemplaza D36 en lo del estado |
 | D52 | "Rechazado (cliente)" solo desde "Espera respuesta cliente"; antes se anula | P50, ajusta P47 (4) y D46 |
 | D53 | Una pieza en Observación queda en la ubicación "Sin enviar" hasta reenviarla al taller o entregarla | P50, ajusta P48 (1) y D47 |
+| D54 | Cada restauración y cada cotización indican si el precio incluye IGV; si no lo incluye, se cobra el precio + 18 % (por pieza o línea, redondeado a céntimos) | P13 |
+| D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
 
 ---
 
@@ -616,6 +623,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
+| 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |
 | 2026-10-06 | P46, P47 | Cotización sin fotos y con cliente opcional (obligatorio al copiar); nunca en la misma vista que las restauraciones. Estados nuevos de la pieza: Rechazado, No tiene arreglo, Interno, Observación; sin Recibida ni Devuelta; marca Urgente; "Sin enviar" en vez de "Por recibir". |

@@ -1,8 +1,8 @@
+import { igvTotals, IGV_PERCENT } from "./igv";
 import {
   expectedDeposit,
   formatCents,
   PAYMENT_TYPE_LABELS,
-  sumCents,
   type Cents,
   type PaymentType,
 } from "./money";
@@ -36,6 +36,8 @@ export type QuoteMessageData = {
   contactName?: string | null;
   /** En el orden en que se muestran; las anuladas, rechazadas y sin arreglo se omiten. */
   pieces: readonly QuotePiece[];
+  /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
+  pricesIncludeIgv: boolean;
   paymentType: PaymentType;
   /** % de adelanto; solo se usa "A cuenta". */
   depositPercent: number;
@@ -52,22 +54,32 @@ function percent(value: number): string {
   return String(Number(value.toFixed(2)));
 }
 
-/** Total y adelanto de la cotización, sin las piezas que no se cobran. */
+/**
+ * Total (con IGV), subtotal sin IGV y adelanto de la cotización, sin las piezas que
+ * no se cobran.
+ */
 export function quoteAmounts(
-  data: Pick<QuoteMessageData, "pieces" | "paymentType" | "depositPercent">,
-): { totalCents: Cents; depositCents: Cents } {
-  const totalCents = sumCents(
+  data: Pick<
+    QuoteMessageData,
+    "pieces" | "pricesIncludeIgv" | "paymentType" | "depositPercent"
+  >,
+): {
+  totalCents: Cents;
+  taxableBaseCents: Cents;
+  igvCents: Cents;
+  depositCents: Cents;
+} {
+  const { total, taxableBase, igv } = igvTotals(
     data.pieces
       .filter((p) => !isClosedStatus(p.status))
       .map((p) => p.priceCents),
+    data.pricesIncludeIgv,
   );
   return {
-    totalCents,
-    depositCents: expectedDeposit(
-      totalCents,
-      data.paymentType,
-      data.depositPercent,
-    ),
+    totalCents: total,
+    taxableBaseCents: taxableBase,
+    igvCents: igv,
+    depositCents: expectedDeposit(total, data.paymentType, data.depositPercent),
   };
 }
 
@@ -94,8 +106,9 @@ function paymentLine(
 export function quoteValues(
   data: QuoteMessageData,
 ): Record<WhatsAppPlaceholder, string> {
-  const { totalCents, depositCents } = quoteAmounts(data);
-  const piezas = data.pieces
+  const { totalCents, taxableBaseCents, igvCents, depositCents } =
+    quoteAmounts(data);
+  const lines = data.pieces
     .filter((p) => !isClosedStatus(p.status))
     .map((p, i) => {
       const service = p.service?.trim();
@@ -103,8 +116,17 @@ export function quoteValues(
         ? `${p.description.trim()} – ${service}`
         : p.description.trim();
       return `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
-    })
-    .join("\n");
+    });
+  // Precios sin IGV (P13): el desglose va debajo de las piezas, así aparece con
+  // cualquier plantilla que use {piezas}.
+  if (!data.pricesIncludeIgv) {
+    lines.push(
+      "",
+      `Subtotal (sin IGV): S/ ${amount(taxableBaseCents)}`,
+      `IGV (${IGV_PERCENT} %): S/ ${amount(igvCents)}`,
+    );
+  }
+  const piezas = lines.join("\n");
   return {
     cliente: (data.contactName?.trim() || data.clientName).trim(),
     codigo: data.code,

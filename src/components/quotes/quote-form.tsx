@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/domain/client-search";
+import { IGV_CHOICE_LABELS, IGV_PERCENT } from "@/domain/igv";
 import { formatCents } from "@/domain/money";
 import {
   addDays,
@@ -31,6 +32,8 @@ import { QuoteLinesEditor } from "./quote-lines-editor";
 export type QuoteFormValues = {
   client: ClientOption | null;
   validityDays: string;
+  /** "¿El precio incluye IGV?" (P13): "" hasta que se responda. */
+  pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -45,6 +48,7 @@ function toInput(values: QuoteFormValues): QuoteFormInput {
         ? client.contactId
         : null,
     validityDays: values.validityDays,
+    pricesIncludeIgv: values.pricesIncludeIgv,
     notes: values.notes,
     terms: values.terms,
     lines: values.lines,
@@ -156,7 +160,8 @@ export function QuoteForm({
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<"save" | "issue" | null>(null);
 
-  const totals = quoteTotals(values.lines.map(draftAmounts));
+  const withoutIgv = values.pricesIncludeIgv === "no";
+  const totals = quoteTotals(values.lines.map(draftAmounts), !withoutIgv);
   const days = Number(values.validityDays);
   const validDays = /^\d{1,3}$/.test(values.validityDays) && days >= 1;
 
@@ -266,6 +271,13 @@ export function QuoteForm({
                 testId="descuentos"
               />
             ) : null}
+            {withoutIgv ? (
+              <TotalRow
+                label={`IGV (${IGV_PERCENT} %)`}
+                value={`+ ${formatCents(totals.igv)}`}
+                testId="igv"
+              />
+            ) : null}
             <TotalRow
               label="Total"
               value={formatCents(totals.total)}
@@ -273,10 +285,39 @@ export function QuoteForm({
               testId="total"
             />
           </dl>
-          <p className="text-muted-foreground text-right text-xs">
-            Precios con IGV incluido (IGV {formatCents(totals.igv)}).
-          </p>
+          {values.pricesIncludeIgv === "si" ? (
+            <p className="text-muted-foreground text-right text-xs">
+              Precios con IGV incluido (IGV {formatCents(totals.igv)}).
+            </p>
+          ) : null}
         </div>
+        <fieldset className="space-y-2" disabled={readOnly}>
+          <legend className="text-sm font-medium">
+            ¿El precio incluye IGV?
+          </legend>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+            {(["si", "no"] as const).map((value) => (
+              <label
+                key={value}
+                className="flex items-center gap-2 text-sm has-[:disabled]:opacity-60"
+              >
+                <input
+                  type="radio"
+                  className="accent-primary size-4"
+                  name="cotizacion-igv"
+                  value={value}
+                  checked={values.pricesIncludeIgv === value}
+                  aria-describedby={
+                    errors?.pricesIncludeIgv ? "igv-error" : undefined
+                  }
+                  onChange={() => set({ pricesIncludeIgv: value })}
+                />
+                {IGV_CHOICE_LABELS[value]}
+              </label>
+            ))}
+          </div>
+          <FormError id="igv-error" message={errors?.pricesIncludeIgv} />
+        </fieldset>
       </Section>
 
       <Section id="seccion-condiciones" title="Vigencia y condiciones">

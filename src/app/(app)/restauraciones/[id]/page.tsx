@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,10 +28,10 @@ import {
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
+import { igvLabel } from "@/domain/igv";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
 import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
-import { shopifyAdminOrderUrl } from "@/domain/shopify-admin";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
@@ -44,6 +44,7 @@ import {
   getStatusHistory,
 } from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
+import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
 
 export const metadata: Metadata = { title: "Restauración" };
 
@@ -76,12 +77,28 @@ export default async function RestauracionDetallePage({
           priceCents: p.priceCents ?? 0,
           status: p.status,
         })),
+        pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
         depositPercent: restoration.money?.depositPercent ?? 0,
         terms: settings.terms,
       })
     : null;
   const phone = restoration.contact?.phone ?? restoration.client.phone;
+  // Orden de Shopify (9.1): enlace al admin y estado del último envío (admin y ventas).
+  const orderUrl = shopifyOrderAdminUrl(
+    serverEnv().SHOPIFY_STORE_DOMAIN,
+    restoration.shopifyOrderId,
+  );
+  const lastSync = canSeeMoney
+    ? (await getSyncStates("restorations", [restoration.id])).get(
+        restoration.id,
+      )
+    : undefined;
+  // Un envío "ok" sin orden fue omitido (la restauración dejó de estar lista): no se muestra.
+  const sync =
+    lastSync && (lastSync.status !== "ok" || restoration.shopifyOrderName)
+      ? lastSync
+      : undefined;
   // Cotización de la que salió (P46): solo un enlace, y solo para quien ve cotizaciones.
   const quote =
     restoration.whatsappQuoteId && can(user.role, "cotizaciones-whatsapp.usar")
@@ -94,22 +111,6 @@ export default async function RestauracionDetallePage({
     : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
-
-  // Orden de Shopify (Fase 9): estado del último job de la restauración (crear, editar
-  // o preparar), con "Reintentar" si falló. Solo admin y ventas.
-  const sync = canSeeMoney
-    ? ((await getSyncStates("restorations", [restoration.id])).get(
-        restoration.id,
-      ) ?? null)
-    : null;
-  const orderUrl = shopifyAdminOrderUrl(
-    serverEnv().SHOPIFY_STORE_DOMAIN,
-    restoration.money?.shopifyOrderId ?? null,
-  );
-  const refundDue =
-    restoration.money && restoration.hasOrder
-      ? restoration.money.paidCents - restoration.money.totalCents
-      : 0;
 
   // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
   // en taller y la última observación (P42).
@@ -138,6 +139,9 @@ export default async function RestauracionDetallePage({
 
   return (
     <div className="space-y-6">
+      <RefreshWhilePending
+        pending={sync?.status === "pending" || sync?.status === "processing"}
+      />
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/restauraciones">
           <ArrowLeft />
@@ -185,19 +189,27 @@ export default async function RestauracionDetallePage({
                 ? ` (${restoration.money.depositPercent} %)`
                 : ""}
             </Badge>
+            {restoration.money ? (
+              <Badge variant="outline" data-testid="igv">
+                {igvLabel(restoration.money.pricesIncludeIgv)}
+              </Badge>
+            ) : null}
             {restoration.shopifyOrderName ? (
-              <Badge variant="secondary" data-testid="orden-shopify">
+              <Badge variant="secondary" asChild={Boolean(orderUrl)}>
                 {orderUrl ? (
                   <a
                     href={orderUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="underline-offset-4 hover:underline"
+                    data-testid="orden-shopify"
                   >
                     Orden {restoration.shopifyOrderName}
+                    <ExternalLink aria-hidden />
                   </a>
                 ) : (
-                  <>Orden {restoration.shopifyOrderName}</>
+                  <span data-testid="orden-shopify">
+                    Orden {restoration.shopifyOrderName}
+                  </span>
                 )}
               </Badge>
             ) : null}
@@ -206,7 +218,6 @@ export default async function RestauracionDetallePage({
                 jobId={sync.jobId}
                 status={sync.status}
                 lastError={sync.lastError}
-                canRetry={canSeeMoney}
               />
             ) : null}
             <Badge variant="outline" data-testid="origen">
@@ -233,9 +244,11 @@ export default async function RestauracionDetallePage({
                 contactId: restoration.contact?.id ?? null,
                 paymentType: restoration.paymentType,
                 depositPercent: restoration.money?.depositPercent ?? null,
+                pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
                 notes: restoration.notes,
               }}
               contacts={editing.contacts}
+              hasOrder={restoration.hasOrder}
             />
           ) : null}
           {message ? (
@@ -263,13 +276,18 @@ export default async function RestauracionDetallePage({
         </div>
       ) : null}
 
-      {refundDue > 0 ? (
+      {restoration.money &&
+      restoration.hasOrder &&
+      restoration.money.paidCents > restoration.money.totalCents ? (
         <p
           role="alert"
           className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
         >
-          El cliente pagó {formatCents(refundDue)} más que el nuevo total:
-          registra el reembolso (P12).
+          El cliente pagó{" "}
+          {formatCents(
+            restoration.money.paidCents - restoration.money.totalCents,
+          )}{" "}
+          más que el nuevo total: registra el reembolso (P12).
         </p>
       ) : null}
 
@@ -361,9 +379,6 @@ export default async function RestauracionDetallePage({
           </TabsContent>
         ) : null}
       </Tabs>
-      <RefreshWhilePending
-        pending={sync?.status === "pending" || sync?.status === "processing"}
-      />
     </div>
   );
 }

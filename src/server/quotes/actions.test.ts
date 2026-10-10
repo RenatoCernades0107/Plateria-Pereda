@@ -54,6 +54,7 @@ const input = {
   clientId: "33333333-3333-4333-8333-333333333333",
   contactId: null,
   validityDays: "15",
+  pricesIncludeIgv: "no" as const,
   notes: "Nota",
   terms: "",
   lines: [
@@ -82,7 +83,11 @@ describe("saveQuote", () => {
       "save_quote",
       expect.objectContaining({
         p_id: null,
-        p_quote: expect.objectContaining({ validity_days: 15, notes: "Nota" }),
+        p_quote: expect.objectContaining({
+          validity_days: 15,
+          prices_include_igv: false,
+          notes: "Nota",
+        }),
         p_items: [
           expect.objectContaining({ title: "Bandeja", unit_price: "100.00" }),
         ],
