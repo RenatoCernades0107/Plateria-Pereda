@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import type { PieceEditableField } from "@/domain/restoration-edit";
+import { pieceAnchor } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import type { PieceDetail } from "@/server/restorations/queries";
 
@@ -118,7 +119,8 @@ export function PiecesBoard({
           return (
             <li
               key={piece.id}
-              className="space-y-2 p-4"
+              id={pieceAnchor(piece.id)}
+              className="scroll-mt-4 space-y-2 p-4"
               data-testid={`pieza-${piece.code}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">

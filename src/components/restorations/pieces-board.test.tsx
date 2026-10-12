@@ -63,6 +63,11 @@ describe("PiecesBoard: cambio de estado masivo", () => {
     expect(screen.getByLabelText("Elegir RES-00001-1")).toBeChecked();
     expect(screen.getByLabelText("Elegir RES-00001-3")).toBeChecked();
     expect(screen.getByLabelText("Elegir todas las piezas")).toBeChecked();
+    // Ancla de cada pieza, a la que lleva el kanban del detalle.
+    expect(screen.getByTestId("pieza-RES-00001-2")).toHaveAttribute(
+      "id",
+      "pieza-p2",
+    );
     expect(within(bar()).getByLabelText("Cambiar estado a…")).toBeEnabled();
     expect(
       within(bar()).getByRole("button", { name: "Aplicar a 3 piezas" }),

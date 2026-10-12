@@ -22,6 +22,7 @@ import {
   RestorationStatusSummary,
 } from "@/components/restorations/piece-history";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
+import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
@@ -29,6 +30,7 @@ import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewToggle } from "@/components/view-toggle";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import {
   formatCents,
@@ -40,6 +42,10 @@ import { igvLabel } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
 import { editableFields, SALE_PRICE_HINT } from "@/domain/restoration-edit";
+import {
+  parseRestorationPiecesView,
+  restorationPiecesHref,
+} from "@/domain/restoration-pieces-view";
 import {
   missingSalePrices,
   RESTORATION_ORIGIN_LABELS,
@@ -79,7 +85,10 @@ export default async function RestauracionDetallePage({
   });
   if (!restoration) notFound();
 
-  const justCreated = (await searchParams).registrada === "1";
+  const query = await searchParams;
+  const justCreated = query.registrada === "1";
+  // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
+  const piecesView = parseRestorationPiecesView(query);
   const settings = canSeeMoney ? await getSettings() : null;
   const message = settings
     ? buildQuoteMessage(settings.whatsappTemplate, {
@@ -394,49 +403,66 @@ export default async function RestauracionDetallePage({
           ) : null}
         </TabsList>
         <TabsContent value="piezas" className="space-y-3">
-          {editing && editableFields(ctx).canAddPieces ? (
-            <PieceDialog
-              restorationId={restoration.id}
-              editable={editableFields(ctx).piece}
-              priceHint={SALE_PRICE_HINT}
-              workshops={workshops}
-              materials={editing.materials}
-              services={editing.services}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ViewToggle
+              view={piecesView === "kanban" ? "kanban" : "tabla"}
+              tableLabel="Lista"
+              tableHref={restorationPiecesHref(restoration.id, "lista")}
+              kanbanHref={restorationPiecesHref(restoration.id, "kanban")}
             />
-          ) : null}
-          <PiecesBoard
-            restorationId={restoration.id}
-            pieces={restoration.pieces}
-            role={user.role}
-            workshops={workshops}
-            extra={extra}
-            approvalPayment={approvalPayment}
-            balanceDue={balanceDue}
-            editing={
-              editing
-                ? {
-                    editable: Object.fromEntries(
-                      restoration.pieces.map((piece) => [
-                        piece.id,
-                        editableFields(ctx, piece).piece,
-                      ]),
-                    ),
-                    priceHint:
-                      user.role === "admin"
-                        ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
-                        : SALE_PRICE_HINT,
-                    priceChange: Object.fromEntries(
-                      restoration.pieces.map((piece) => [
-                        piece.id,
-                        editableFields(ctx, piece).priceNeedsOrderFlow,
-                      ]),
-                    ),
-                    materials: editing.materials,
-                    services: editing.services,
-                  }
-                : null
-            }
-          />
+            {editing && editableFields(ctx).canAddPieces ? (
+              <PieceDialog
+                restorationId={restoration.id}
+                editable={editableFields(ctx).piece}
+                priceHint={SALE_PRICE_HINT}
+                workshops={workshops}
+                materials={editing.materials}
+                services={editing.services}
+              />
+            ) : null}
+          </div>
+          {piecesView === "kanban" ? (
+            <RestorationPiecesKanban
+              restorationId={restoration.id}
+              pieces={restoration.pieces}
+              role={user.role}
+              workshops={workshops}
+            />
+          ) : (
+            <PiecesBoard
+              restorationId={restoration.id}
+              pieces={restoration.pieces}
+              role={user.role}
+              workshops={workshops}
+              extra={extra}
+              approvalPayment={approvalPayment}
+              balanceDue={balanceDue}
+              editing={
+                editing
+                  ? {
+                      editable: Object.fromEntries(
+                        restoration.pieces.map((piece) => [
+                          piece.id,
+                          editableFields(ctx, piece).piece,
+                        ]),
+                      ),
+                      priceHint:
+                        user.role === "admin"
+                          ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
+                          : SALE_PRICE_HINT,
+                      priceChange: Object.fromEntries(
+                        restoration.pieces.map((piece) => [
+                          piece.id,
+                          editableFields(ctx, piece).priceNeedsOrderFlow,
+                        ]),
+                      ),
+                      materials: editing.materials,
+                      services: editing.services,
+                    }
+                  : null
+              }
+            />
+          )}
         </TabsContent>
         {canSeeMoney ? (
           <TabsContent value="pagos" className="space-y-4">
