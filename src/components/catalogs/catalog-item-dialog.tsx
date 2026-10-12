@@ -41,6 +41,7 @@ export type CatalogItemRow = {
   name: string;
   price: number | null;
   active: boolean;
+  shopifyName?: string | null;
 };
 
 /** Crea un ítem del catálogo o, con `item`, lo edita. */
@@ -60,6 +61,7 @@ export function CatalogItemDialog({
   const values: CatalogItemFormInput = {
     name: item?.name ?? "",
     price: item?.price?.toFixed(2) ?? "",
+    ...(catalog.hasShopifyName && { shopifyName: item?.shopifyName ?? "" }),
   };
   const form = useForm<CatalogItemFormInput, unknown, CatalogItemInput>({
     resolver: zodResolver(catalogItemSchema),
@@ -132,6 +134,27 @@ export function CatalogItemDialog({
                       />
                     </FormControl>
                     <FormDescription>Opcional.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : null}
+            {catalog.hasShopifyName ? (
+              <FormField
+                control={form.control}
+                name="shopifyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre en Shopify</FormLabel>
+                    <FormControl>
+                      <Input autoComplete="off" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Opcional. El nombre exacto del método de pago manual en la
+                      tienda (p. ej. Visa, Mastercard, transferencia bancaria,
+                      PagoEfectivo). Si queda vacío, Shopify lo registra como
+                      «manual».
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

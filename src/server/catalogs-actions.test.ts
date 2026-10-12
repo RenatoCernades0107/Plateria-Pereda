@@ -40,17 +40,24 @@ describe("acciones de catálogos", () => {
     mocks.result = { error: null };
   });
 
-  it("los servicios guardan el precio sugerido; los demás solo el nombre", async () => {
+  it("los servicios guardan el precio sugerido; los materiales solo el nombre", async () => {
     await createCatalogItem("services", { name: "Limpieza", price: "35,5" });
     await createCatalogItem("materials", { name: "Plata 950", price: "99" });
     await updateCatalogItem("payment_methods", "p1", {
-      name: "Yape",
+      name: "Visa",
       price: "",
+      shopifyName: "Visa",
     });
     expect(mocks.calls).toEqual([
       ["insert", "services", { name: "Limpieza", suggested_price: 35.5 }],
       ["insert", "materials", { name: "Plata 950" }],
-      ["update", "payment_methods", { name: "Yape" }, "p1"],
+      // Los métodos de pago guardan su nombre en Shopify (D34).
+      [
+        "update",
+        "payment_methods",
+        { name: "Visa", shopify_name: "Visa" },
+        "p1",
+      ],
     ]);
   });
 

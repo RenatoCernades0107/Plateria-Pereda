@@ -119,6 +119,11 @@ export function CatalogManager({
                         : formatMoney(item.price)}
                     </span>
                   ) : null}
+                  {catalog.hasShopifyName && item.shopifyName ? (
+                    <span className="text-muted-foreground text-sm">
+                      Shopify: {item.shopifyName}
+                    </span>
+                  ) : null}
                   {item.active ? null : (
                     <Badge variant="outline">Inactivo</Badge>
                   )}

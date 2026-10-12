@@ -1,6 +1,7 @@
 import "server-only";
 
 import { toCents } from "@/domain/money";
+import type { SyncPayment } from "@/domain/payment-sync";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { RestorationOrderRepository } from "./shopify-order";
@@ -12,7 +13,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, client_id, contact_id, prices_include_igv, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id)",
+        "id, code, client_id, contact_id, prices_include_igv, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -56,6 +57,16 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
         shopifyCompanyLocationId: r.clients.shopify_company_location_id,
       },
       contact,
+      payments: [...r.payments]
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .map((p): SyncPayment => ({
+          id: p.id,
+          kind: p.kind,
+          amountCents: toCents(Number(p.amount)),
+          // Nombre del método en la tienda (D34); si no lo tiene, el del sistema.
+          gateway: p.payment_methods?.shopify_name || p.method_name,
+          synced: p.shopify_synced_at !== null,
+        })),
     };
   },
 
@@ -75,6 +86,15 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
         .eq("id", pieceId);
       if (lineError) throw lineError;
     }
+  },
+
+  async markPaymentsSynced(paymentIds) {
+    const { error } = await createAdminClient()
+      .from("payments")
+      .update({ shopify_synced_at: new Date().toISOString() })
+      .in("id", paymentIds)
+      .is("shopify_synced_at", null);
+    if (error) throw error;
   },
 
   async saveLineIds(lines) {

@@ -818,17 +818,19 @@ export class LiveShopifyGateway implements ShopifyGateway {
       } | null;
     }>(ORDER_TRANSACTIONS, { id: orderId });
     if (!order) throw new ShopifyNotFoundError(orderId);
-    const parent = order.transactions.find(
+    const sales = order.transactions.filter(
       (t) =>
-        t.status === "SUCCESS" &&
-        (t.kind === "SALE" || t.kind === "CAPTURE") &&
-        t.gateway === refund.gateway,
+        t.status === "SUCCESS" && (t.kind === "SALE" || t.kind === "CAPTURE"),
     );
+    // Si el método no estaba configurado en la tienda, el pago quedó como "manual":
+    // se reembolsa contra el último pago, con su mismo medio.
+    const parent =
+      sales.find((t) => t.gateway === refund.gateway) ?? sales.at(-1);
     if (!parent) {
       throw new ShopifyUserError([
         {
           field: ["gateway"],
-          message: `No hay un pago con ${refund.gateway} para reembolsar`,
+          message: "La orden no tiene pagos para reembolsar",
         },
       ]);
     }
@@ -844,7 +846,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
             orderId,
             parentId: parent.id,
             kind: "REFUND",
-            gateway: refund.gateway,
+            gateway: parent.gateway,
             amount: refund.amount,
           },
         ],

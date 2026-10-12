@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { formatCents } from "@/domain/money";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import type { AppRole } from "@/lib/roles";
@@ -23,6 +24,12 @@ export type PieceEditing = {
   materials: CatalogOption[];
   services: CatalogOption[];
 };
+
+const PRE_APPROVAL: readonly PieceDetail["status"][] = [
+  "registrada",
+  "en_consulta",
+  "en_espera",
+];
 
 function Details({ piece }: { piece: PieceDetail }) {
   const details = [
@@ -47,6 +54,8 @@ export function PiecesBoard({
   workshops,
   editing,
   extra,
+  approvalPayment = null,
+  balanceDue = false,
 }: {
   restorationId: string;
   pieces: PieceDetail[];
@@ -55,6 +64,10 @@ export function PiecesBoard({
   editing: PieceEditing | null;
   /** Contenido adicional por pieza (p. ej. línea de tiempo o datos de logística). */
   extra?: Record<string, React.ReactNode>;
+  /** Pago al aprobar la última pieza (11.2); null si no corresponde. */
+  approvalPayment?: ApprovalPayment | null;
+  /** Falta cobrar el saldo para entregar (P45). */
+  balanceDue?: boolean;
 }) {
   // Por defecto están elegidas todas las piezas que admiten acciones: se guardan las
   // que la persona desmarca, así lo elegido sigue válido tras refrescar la página.
@@ -64,6 +77,9 @@ export function PiecesBoard({
   const toggle = (id: string, on: boolean) =>
     setUnchecked((u) => (on ? u.filter((x) => x !== id) : [...u, id]));
   const allChosen = chosen.length === selectable.length;
+  // La última pieza por aprobar crea la orden: ahí se ofrece registrar el adelanto.
+  const toApprove = pieces.filter((p) => PRE_APPROVAL.includes(p.status));
+  const lastToApprove = toApprove.length === 1 ? toApprove[0]!.id : null;
 
   return (
     <div className="space-y-3">
@@ -134,6 +150,10 @@ export function PiecesBoard({
                 piece={piece}
                 role={role}
                 workshops={workshops}
+                approvalPayment={
+                  piece.id === lastToApprove ? approvalPayment : null
+                }
+                balanceDue={balanceDue}
               />
               <Details piece={piece} />
               {piece.notes ? (

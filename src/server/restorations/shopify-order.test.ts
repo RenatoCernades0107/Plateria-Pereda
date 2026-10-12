@@ -59,6 +59,7 @@ const restoration = (
     shopifyCompanyLocationId: null,
   },
   contact: null,
+  payments: [],
   ...overrides,
 });
 
@@ -89,6 +90,10 @@ function memoryRepo(data: OrderRestoration | null) {
     },
     saveLineIds: async (lines) => {
       for (const l of lines) lineUpdates.set(l.pieceId, l.lineId);
+    },
+    markPaymentsSynced: async (ids) => {
+      for (const p of data?.payments ?? [])
+        if (ids.includes(p.id)) p.synced = true;
     },
   };
   return { repo, saved, lineUpdates };
@@ -221,6 +226,7 @@ describe("order.create", () => {
       shopifyOrderId: order!.id,
       shopifyOrderName: order!.name,
       linked: false,
+      payments: "none",
     });
     expect(saved).toEqual([
       {

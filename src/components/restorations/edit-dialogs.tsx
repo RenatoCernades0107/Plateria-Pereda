@@ -87,6 +87,7 @@ export function EditRestorationDialog({
   initial,
   contacts,
   hasOrder,
+  hasPayments = false,
 }: {
   restorationId: string;
   initial: {
@@ -100,6 +101,8 @@ export function EditRestorationDialog({
   contacts: ContactChoice[] | null;
   /** La orden de Shopify ya existe: el IGV ya no se cambia. */
   hasOrder: boolean;
+  /** Con pagos registrados el tipo de pago ya no se cambia (P28). */
+  hasPayments?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +191,11 @@ export function EditRestorationDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de pago</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={hasPayments}
+                    >
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue />
@@ -202,6 +209,11 @@ export function EditRestorationDialog({
                         ))}
                       </SelectContent>
                     </Select>
+                    {hasPayments ? (
+                      <p className="text-muted-foreground text-xs">
+                        Con pagos registrados ya no se cambia.
+                      </p>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}

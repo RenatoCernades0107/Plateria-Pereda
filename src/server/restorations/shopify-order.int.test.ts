@@ -52,6 +52,10 @@ describe("orden de Shopify al aprobar (9.1)", () => {
       .delete()
       .in("entity_id", created.restorations);
     await admin
+      .from("payments")
+      .delete()
+      .in("restoration_id", created.restorations);
+    await admin
       .from("pieces")
       .delete()
       .in("restoration_id", created.restorations);
@@ -189,6 +193,19 @@ describe("orden de Shopify al aprobar (9.1)", () => {
   });
 
   it("entregar una pieza encola order.fulfill y su línea queda preparada (9.3)", async () => {
+    // Con el saldo cobrado (P45); el pago completa la orden en Shopify.
+    const { data: r } = await createAdminClient()
+      .from("restorations")
+      .select("balance")
+      .eq("id", shared!.id)
+      .single();
+    await createAdminClient()
+      .from("payments")
+      .insert({
+        restoration_id: shared!.id,
+        amount: Number(r!.balance),
+        method_name: "Efectivo",
+      });
     const { error } = await createAdminClient()
       .from("pieces")
       .update({ status: "entregada", delivered_at: new Date().toISOString() })
