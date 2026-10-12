@@ -285,4 +285,66 @@ test.describe("Pagos", () => {
       .delete()
       .eq("webhook_id", webhookId);
   });
+
+  test("historial para ventas y admin; «Resincronizar pagos» trae lo hecho en Shopify (11.4)", async ({
+    page,
+    request,
+    loginAs,
+  }) => {
+    const r = await seedRestoration(
+      await seedClient(request, `Resync${run}`),
+      "a_cuenta",
+    );
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    const card = page.getByTestId(`pieza-${r.code}-1`);
+    await card.getByRole("button", { name: "Aprobar" }).click();
+    await (
+      await fillPayment(page, "Yape")
+    )
+      .getByRole("button", { name: "Aprobar y registrar pago" })
+      .click();
+    await expect(page.getByTestId("orden-shopify")).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toContainText("Yape");
+    await expect(page.getByTestId("pago")).toContainText("En Shopify");
+    // Ventas ve el historial, pero no resincroniza.
+    await expect(
+      page.getByRole("button", { name: "Resincronizar pagos" }),
+    ).toHaveCount(0);
+
+    // Un pago en el POS cuyo webhook no llegó.
+    await request.post("/api/test/shopify", {
+      data: {
+        action: "transaction",
+        tag: r.code,
+        amount: "30.00",
+        gateway: "cash",
+      },
+    });
+    await loginAs("admin");
+    await page.goto(`/restauraciones/${r.id}`);
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toHaveCount(1);
+    await page.getByRole("button", { name: "Resincronizar pagos" }).click();
+    await expect(
+      page.getByText("Resincronizando los pagos con Shopify."),
+    ).toBeVisible();
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          return page.getByTestId("monto-pagado").textContent();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe("S/ 130.00");
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toHaveCount(2);
+    await expect(page.getByTestId("pago").nth(1)).toContainText(
+      "Hecho en Shopify",
+    );
+  });
 });

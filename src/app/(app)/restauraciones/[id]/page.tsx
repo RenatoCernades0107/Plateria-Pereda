@@ -9,6 +9,7 @@ import { FileUploader } from "@/components/files/file-uploader";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
 import { RegisterPaymentDialog } from "@/components/payments/register-payment-dialog";
+import { ResyncPaymentsButton } from "@/components/payments/resync-payments-button";
 import {
   EditRestorationDialog,
   PieceDialog,
@@ -413,6 +414,9 @@ export default async function RestauracionDetallePage({
                     paidCents={money.paidCents}
                     methods={paymentMethods}
                   />
+                ) : null}
+                {can(user.role, "pagos.corregir") && restoration.hasOrder ? (
+                  <ResyncPaymentsButton restorationId={restoration.id} />
                 ) : null}
               </div>
             ) : null}

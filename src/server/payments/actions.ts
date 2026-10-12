@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { MAX_CENTS, toDecimalString } from "@/domain/money";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
@@ -166,5 +167,33 @@ export async function deliverWithBalance(
   scheduleShopifySync();
   if (restorationId) refresh(restorationId);
   revalidatePath("/piezas");
+  return { ok: true };
+}
+
+/**
+ * "Resincronizar pagos" (admin, Paso 11.4): vuelve a leer las transacciones de la
+ * orden en Shopify y concilia (importa lo hecho en el POS, envía lo pendiente).
+ */
+export async function resyncPayments(
+  restorationId: string,
+): Promise<PaymentActionResult> {
+  await requirePermission("pagos.corregir");
+  if (!z.guid().safeParse(restorationId).success)
+    return { error: "Restauración inválida." };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("restorations")
+    .select("shopify_order_id")
+    .eq("id", restorationId)
+    .maybeSingle();
+  if (!data?.shopify_order_id)
+    return { error: "La restauración aún no tiene orden en Shopify." };
+  // Encolar desde fuera de un webhook es solo de la clave secreta.
+  const { error } = await createAdminClient().rpc("enqueue_payment_sync", {
+    p_restoration_id: restorationId,
+  });
+  if (error) return { error: "No se pudo resincronizar los pagos." };
+  scheduleShopifySync();
+  refresh(restorationId);
   return { ok: true };
 }

@@ -1028,12 +1028,13 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `feat(pagos): recibe pagos hechos en Shopify mediante webhooks`
 
 #### Paso 11.4 — Interfaz de pagos
-- [ ] Pestaña Pagos (historial con método, fecha, quién lo registró y estado de envío a Shopify); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
+- [x] Pestaña Pagos (historial con método, fecha, quién lo registró y estado de envío a Shopify); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
 - **Unit:**
-  - [ ] Componentes de resumen e historial.
+  - [x] Componentes de resumen e historial.
 - **E2E:**
-  - [ ] El historial de pagos es visible para ventas y admin.
-  - [ ] "Resincronizar pagos" actualiza los montos desde el fake.
+  - [x] El historial de pagos es visible para ventas y admin.
+  - [x] "Resincronizar pagos" actualiza los montos desde el fake.
+- Hecho (2026-10-12): pestaña Pagos con el historial (`PaymentsList`: fecha, método, monto, reembolsos con motivo, quién lo registró y "En Shopify" / "Pendiente de envío" / "Hecho en Shopify"); el resumen de la cabecera (`MoneySummary`) y el badge de estado de pago en los listados ya existían (7.6 y 12.x). "Resincronizar pagos" (admin, con la orden creada) encola `payment.sync`: importa lo hecho en el POS aunque el webhook no haya llegado y envía lo pendiente. Test de componente `payments-list.test.tsx`; E2E en `e2e/payments.spec.ts`.
 - Commit: `feat(pagos): muestra pagos y saldos en la interfaz`
 
 ### Fase 12 — Listados y gestión operativa
