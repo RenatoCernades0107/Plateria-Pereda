@@ -7,7 +7,11 @@ import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
 import { processShopifyJobs } from "@/server/shopify-sync/processor";
 import { supabaseJobRepository } from "@/server/shopify-sync/repository";
 
-import { supabaseRestorationOrderRepository } from "./order-repository";
+import {
+  supabaseOrderWebhookRepository,
+  supabaseRestorationOrderRepository,
+} from "./order-repository";
+import { orderWebhookHandlers } from "./payment-webhooks";
 import { restorationOrderHandlers } from "./shopify-order";
 
 // Pagos registrados en el sistema y su envío a Shopify (Paso 11.2, §7.5, P43).
@@ -90,48 +94,48 @@ const synced = async (restorationId: string) => {
   return data!.map((p) => [Number(p.amount), p.shopify_synced_at !== null]);
 };
 
+beforeAll(async () => {
+  fakeShopify.reset();
+  customerId = (
+    await new FakeShopifyGateway().createCustomer({
+      firstName: "Pagos",
+      lastName: RUN,
+    })
+  ).id;
+  const { data } = await createAdminClient()
+    .from("clients")
+    .insert({
+      kind: "persona",
+      first_name: "Pagos",
+      last_name: RUN,
+      shopify_customer_id: customerId,
+    })
+    .select("id")
+    .single();
+  clientId = data!.id;
+  created.clients.push(clientId);
+  ventas = await signIn("ventas@pereda.test");
+});
+
+afterAll(async () => {
+  const admin = createAdminClient();
+  await admin
+    .from("shopify_sync_jobs")
+    .delete()
+    .in("entity_id", created.restorations);
+  await admin
+    .from("payments")
+    .delete()
+    .in("restoration_id", created.restorations);
+  await admin
+    .from("pieces")
+    .delete()
+    .in("restoration_id", created.restorations);
+  await admin.from("restorations").delete().in("id", created.restorations);
+  await admin.from("clients").delete().in("id", created.clients);
+});
+
 describe("pagos y Shopify (11.2)", () => {
-  beforeAll(async () => {
-    fakeShopify.reset();
-    customerId = (
-      await new FakeShopifyGateway().createCustomer({
-        firstName: "Pagos",
-        lastName: RUN,
-      })
-    ).id;
-    const { data } = await createAdminClient()
-      .from("clients")
-      .insert({
-        kind: "persona",
-        first_name: "Pagos",
-        last_name: RUN,
-        shopify_customer_id: customerId,
-      })
-      .select("id")
-      .single();
-    clientId = data!.id;
-    created.clients.push(clientId);
-    ventas = await signIn("ventas@pereda.test");
-  });
-
-  afterAll(async () => {
-    const admin = createAdminClient();
-    await admin
-      .from("shopify_sync_jobs")
-      .delete()
-      .in("entity_id", created.restorations);
-    await admin
-      .from("payments")
-      .delete()
-      .in("restoration_id", created.restorations);
-    await admin
-      .from("pieces")
-      .delete()
-      .in("restoration_id", created.restorations);
-    await admin.from("restorations").delete().in("id", created.restorations);
-    await admin.from("clients").delete().in("id", created.clients);
-  });
-
   it("aprobar con adelanto crea la orden «Parcialmente pagada»; el saldo la deja «Pagada»", async () => {
     const r = await seed();
     expect((await approve(r.pieceIds)).error).toBeNull();
@@ -213,5 +217,136 @@ describe("pagos y Shopify (11.2)", () => {
     });
     await process_();
     expect(orderOf(r.code).financials.received).toBe("150.00");
+  });
+});
+
+describe("pagos hechos en Shopify (11.3)", () => {
+  const webhooks = orderWebhookHandlers(
+    supabaseOrderWebhookRepository,
+    process_,
+  );
+  const fire = (topic: string, payload: object) =>
+    webhooks[topic]!({
+      id: 0,
+      webhookId: `w-${Math.random()}`,
+      topic,
+      shopDomain: "pereda-fake.myshopify.com",
+      payload: payload as never,
+    });
+  const payments = async (restorationId: string) => {
+    const { data } = await createAdminClient()
+      .from("payments")
+      .select("kind, amount, source, method_name")
+      .eq("restoration_id", restorationId)
+      .order("created_at");
+    return data!.map((p) => [
+      p.kind,
+      Number(p.amount),
+      p.source,
+      p.method_name,
+    ]);
+  };
+  const status = async (restorationId: string) =>
+    (
+      await createAdminClient()
+        .from("restorations")
+        .select("paid, payment_status")
+        .eq("id", restorationId)
+        .single()
+    ).data;
+
+  it("un pago parcial hecho en el POS queda en el registro y el estado es Parcial", async () => {
+    const r = await seed();
+    await approve(r.pieceIds);
+    await process_();
+    const { id: orderId } = fakeShopify.externalTransaction(
+      r.code,
+      "150.00",
+      "cash",
+    );
+    // Duplicados y en cualquier orden: el resultado es el mismo.
+    await fire("order_transactions/create", {
+      order_id: orderId.split("/").pop(),
+    });
+    await fire("orders/paid", { admin_graphql_api_id: orderId });
+    await fire("orders/paid", { admin_graphql_api_id: orderId });
+    expect(await payments(r.id)).toEqual([
+      ["pago", 150, "shopify", "Efectivo"],
+    ]);
+    expect(await status(r.id)).toEqual({
+      paid: 150,
+      payment_status: "parcial",
+    });
+  });
+
+  it("un pago enviado por el sistema no se duplica al llegar su webhook", async () => {
+    const r = await seed();
+    await approve(r.pieceIds);
+    await pay(r.id, 200, "Yape");
+    await process_();
+    await pay(r.id, 200);
+    await process_();
+    const orderId = orderOf(r.code).id;
+    await fire("orders/paid", { admin_graphql_api_id: orderId });
+    await fire("orders/updated", { admin_graphql_api_id: orderId });
+    expect((await payments(r.id)).map(([, , source]) => source)).toEqual([
+      "sistema",
+      "sistema",
+    ]);
+    expect(await status(r.id)).toEqual({ paid: 400, payment_status: "pagado" });
+  });
+
+  it("un reembolso hecho en Shopify recalcula el saldo y el estado", async () => {
+    const r = await seed();
+    await approve(r.pieceIds);
+    await pay(r.id, 200, "Yape");
+    await process_();
+    const { id: orderId } = fakeShopify.externalTransaction(
+      r.code,
+      "-200.00",
+      "Yape",
+    );
+    await fire("refunds/create", { order_id: orderId.split("/").pop() });
+    expect(await payments(r.id)).toEqual([
+      ["pago", 200, "sistema", "Yape"],
+      ["reembolso", 200, "shopify", "Yape"],
+    ]);
+    expect(await status(r.id)).toEqual({
+      paid: 0,
+      payment_status: "reembolsado",
+    });
+  });
+
+  it("si cambian el cliente de la orden en Shopify, la restauración lo muestra (D31)", async () => {
+    const r = await seed();
+    await approve(r.pieceIds);
+    await process_();
+    const other = await new FakeShopifyGateway().createCustomer({
+      firstName: "Nuevo",
+      lastName: RUN,
+    });
+    await fire("orders/updated", {
+      admin_graphql_api_id: orderOf(r.code).id,
+      customer: {
+        admin_graphql_api_id: other.id,
+        first_name: "Nuevo",
+        last_name: RUN,
+      },
+    });
+    const { data } = await createAdminClient()
+      .from("restorations")
+      .select("clients(first_name, shopify_customer_id)")
+      .eq("id", r.id)
+      .single();
+    expect(data!.clients).toEqual({
+      first_name: "Nuevo",
+      shopify_customer_id: other.id,
+    });
+    const { data: client } = await createAdminClient()
+      .from("clients")
+      .select("id")
+      .eq("shopify_customer_id", other.id)
+      .single();
+    created.clients.push(client!.id);
   });
 });

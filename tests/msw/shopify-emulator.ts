@@ -462,11 +462,33 @@ const operations: Record<
     return {
       data: {
         order: order && {
-          transactions: order.transactions.map((t, i) => ({
-            id: `gid://shopify/OrderTransaction/${suffix(order.id)}${i}`,
+          transactions: order.transactions.map((t) => ({
+            id: t.id,
             kind: t.cents > 0 ? "SALE" : "REFUND",
             status: "SUCCESS",
             gateway: t.gateway,
+          })),
+        },
+      },
+    };
+  },
+  OrderTransactionList: async (variables: Vars) => {
+    const order = fakeShopify
+      .snapshot()
+      .orders.find((o) => o.id === variables.id);
+    return {
+      data: {
+        order: order && {
+          transactions: order.transactions.map((t) => ({
+            id: t.id,
+            kind: t.cents > 0 ? "SALE" : "REFUND",
+            status: "SUCCESS",
+            gateway: t.gateway,
+            processedAt: t.processedAt,
+            // Shopify a veces omite los ceros finales ("200.0").
+            amountSet: {
+              shopMoney: { amount: String(Math.abs(t.cents) / 100) },
+            },
           })),
         },
       },

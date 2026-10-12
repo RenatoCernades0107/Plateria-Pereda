@@ -10,6 +10,7 @@ import type {
   FinancialStatus,
   OrderEdit,
   OrderInput,
+  OrderTransaction,
   RefundInput,
   OrderFinancials,
   Page,
@@ -241,6 +242,15 @@ export const ORDER_MANUAL_PAYMENT = `mutation OrderCreateManualPayment($id: ID!,
 
 export const ORDER_TRANSACTIONS = `query OrderTransactions($id: ID!) {
   order(id: $id) { transactions { id kind status gateway } }
+}`;
+
+export const ORDER_TRANSACTION_LIST = `query OrderTransactionList($id: ID!) {
+  order(id: $id) {
+    transactions {
+      id kind status gateway processedAt
+      amountSet { shopMoney { amount } }
+    }
+  }
 }`;
 
 export const REFUND_CREATE = (
@@ -557,6 +567,30 @@ export class LiveShopifyGateway implements ShopifyGateway {
     );
     const node = data.orders.nodes[0];
     return node ? toOrder(node) : null;
+  }
+
+  async getOrderTransactions(orderId: string): Promise<OrderTransaction[]> {
+    const { order } = await this.client.request<{
+      order: {
+        transactions: {
+          id: string;
+          kind: string;
+          status: string;
+          gateway: string;
+          processedAt: string;
+          amountSet: { shopMoney: { amount: string } };
+        }[];
+      } | null;
+    }>(ORDER_TRANSACTION_LIST, { id: orderId });
+    if (!order) throw new ShopifyNotFoundError(orderId);
+    return order.transactions.map((t) => ({
+      id: t.id,
+      kind: t.kind,
+      status: t.status,
+      gateway: t.gateway,
+      amount: t.amountSet.shopMoney.amount,
+      processedAt: t.processedAt,
+    }));
   }
 
   async getOrderFinancials(orderId: string): Promise<OrderFinancials> {

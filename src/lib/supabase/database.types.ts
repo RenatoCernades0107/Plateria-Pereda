@@ -1082,6 +1082,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      shopify_order_transactions: {
+        Row: {
+          created_at: string;
+          id: string;
+          origin: Database["public"]["Enums"]["payment_source"];
+          restoration_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id: string;
+          origin: Database["public"]["Enums"]["payment_source"];
+          restoration_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          origin?: Database["public"]["Enums"]["payment_source"];
+          restoration_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopify_order_transactions_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopify_order_transactions_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       shopify_sync_jobs: {
         Row: {
           attempts: number;
@@ -1587,6 +1623,17 @@ export type Database = {
         };
         Returns: number;
       };
+      apply_shopify_order_customer: {
+        Args: {
+          p_customer_id: string;
+          p_email: string;
+          p_first_name: string;
+          p_last_name: string;
+          p_phone: string;
+          p_restoration_id: string;
+        };
+        Returns: boolean;
+      };
       assign_piece_workshop: {
         Args: { p_piece_ids: string[]; p_workshop_id: string };
         Returns: number;
@@ -1717,6 +1764,10 @@ export type Database = {
       effective_status: {
         Args: { q: Database["public"]["Tables"]["quotes"]["Row"] };
         Returns: string;
+      };
+      enqueue_payment_sync: {
+        Args: { p_restoration_id: string };
+        Returns: undefined;
       };
       fulfillment_days: {
         Args: {

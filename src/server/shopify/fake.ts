@@ -29,7 +29,14 @@ type FakeOrder = ShopifyOrder & {
   customerId: string;
   note: string;
   /** Pagos (positivos) y reembolsos (negativos) en céntimos. */
-  transactions: { cents: number; gateway: string }[];
+  transactions: FakeTransaction[];
+};
+
+type FakeTransaction = {
+  id: string;
+  cents: number;
+  gateway: string;
+  processedAt: string;
 };
 
 export type FailureKind = "unavailable" | "user" | "auth";
@@ -52,8 +59,8 @@ type FakeState = {
    * Fallos forzados por método. Se guarda la descripción y el error se crea al lanzarlo:
    * en desarrollo la ruta de control y las acciones del servidor pueden cargar copias
    * distintas de las clases de error, y `instanceof` dejaría de funcionar.
+   * `match`: solo falla la llamada cuyos argumentos contienen ese texto.
    */
-  /** `match`: solo falla la llamada cuyos argumentos contienen ese texto. */
   failures: Map<
     GatewayMethod,
     { kind: FailureKind; message?: string; match?: string }[]
@@ -168,6 +175,18 @@ export const fakeShopify = {
   reset() {
     globalStore.__fakeShopify = createState();
   },
+  /**
+   * Pago o reembolso hecho directamente en Shopify (POS o panel) en la orden con esa
+   * etiqueta (11.3). Devuelve la orden para armar el webhook.
+   */
+  externalTransaction(tag: string, amount: string, gateway: string) {
+    const order = [...state().orders.values()].find((o) =>
+      o.tags.includes(tag),
+    );
+    if (!order) throw new ShopifyNotFoundError(tag);
+    order.transactions.push(transaction(toCents(amount), gateway));
+    return { id: order.id, financials: financials(order) };
+  },
   /** La próxima llamada a `method` falla con ese tipo de error. */
   failNext(
     method: GatewayMethod,
@@ -207,6 +226,15 @@ function nextId(kind: string) {
   const s = state();
   s.seq += 1;
   return `gid://shopify/${kind}/${9000 + s.seq}`;
+}
+
+function transaction(cents: number, gateway: string): FakeTransaction {
+  return {
+    id: nextId("OrderTransaction"),
+    cents,
+    gateway,
+    processedAt: new Date().toISOString(),
+  };
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -574,10 +602,9 @@ export class FakeShopifyGateway implements ShopifyGateway {
       lines: input.lines.map(toLine),
       customerId: input.customerId,
       note: input.note ?? "",
-      transactions: (input.payments ?? []).map((p) => ({
-        cents: toCents(p.amount),
-        gateway: p.gateway,
-      })),
+      transactions: (input.payments ?? []).map((p) =>
+        transaction(toCents(p.amount), p.gateway),
+      ),
     };
     if (
       order.transactions.reduce((s, t) => s + t.cents, 0) > totalCents(order)
@@ -599,6 +626,18 @@ export class FakeShopifyGateway implements ShopifyGateway {
       o.tags.includes(tag),
     );
     return order ? publicOrder(order) : null;
+  }
+
+  async getOrderTransactions(orderId: string) {
+    this.track("getOrderTransactions", [orderId]);
+    return getOrder(orderId).transactions.map((t) => ({
+      id: t.id,
+      kind: t.cents > 0 ? "SALE" : "REFUND",
+      status: "SUCCESS",
+      gateway: t.gateway,
+      amount: fromCents(Math.abs(t.cents)),
+      processedAt: t.processedAt,
+    }));
   }
 
   async getOrderFinancials(orderId: string) {
@@ -649,7 +688,7 @@ export class FakeShopifyGateway implements ShopifyGateway {
         { field: null, message: "Order is already paid" },
       ]);
     }
-    order.transactions.push({ cents: outstanding, gateway });
+    order.transactions.push(transaction(outstanding, gateway));
     return financials(order);
   }
 
@@ -668,7 +707,7 @@ export class FakeShopifyGateway implements ShopifyGateway {
         { field: ["amount"], message: "Refund amount is invalid" },
       ]);
     }
-    order.transactions.push({ cents: -cents, gateway: payment.gateway });
+    order.transactions.push(transaction(-cents, payment.gateway));
     state().idempotency.set(payment.idempotencyKey, true);
     return financials(order);
   }

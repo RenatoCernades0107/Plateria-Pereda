@@ -6,6 +6,7 @@ import type {
   OrderEdit,
   OrderFinancials,
   OrderInput,
+  OrderTransaction,
   Page,
   PageOptions,
   RefundInput,
@@ -61,6 +62,8 @@ export interface ShopifyGateway {
    */
   findOrderByTag(tag: string): Promise<ShopifyOrder | null>;
   getOrderFinancials(orderId: string): Promise<OrderFinancials>;
+  /** Transacciones actuales de la orden (pagos hechos en el POS o el panel, 11.3). */
+  getOrderTransactions(orderId: string): Promise<OrderTransaction[]>;
   /** Cambiar un precio quita la línea y agrega otra con el mismo título (Shopify no
    * permite cambiar el precio de una línea personalizada existente). */
   editOrder(orderId: string, edit: OrderEdit): Promise<ShopifyOrder>;
