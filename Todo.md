@@ -947,28 +947,30 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 10 — Fotos y archivos
 
-#### Paso 10.1 — Storage y datos ⛔ P32
-- [ ] Bucket privado `restoration-files` con rutas `restorations/{id}/general/...` (foto general de todas las piezas) y `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol (logística sube y edita fotos, P42); tabla `restoration_files`; URLs firmadas de corta duración.
+#### Paso 10.1 — Storage y datos (P32 ✅, 2026-10-12)
+- [x] Bucket privado `restoration-files` con rutas `restorations/{id}/general/...` (foto general de todas las piezas) y `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol (logística sube y edita fotos, P42); tabla `restoration_files`; URLs firmadas de corta duración.
 - **Unit:** No aplica (políticas en SQL).
 - **BD:**
-  - [ ] Un usuario sin permiso no puede leer ni subir.
-  - [ ] Borrar un archivo requiere el rol acordado y elimina el objeto.
+  - [x] Un usuario sin permiso no puede leer ni subir.
+  - [x] Borrar un archivo requiere el rol acordado y elimina el objeto.
 - **E2E:** se cubre en 10.2.
-- Commit: `feat(archivos): agrega almacenamiento de fotos por restauración y por pieza`
+- Hecho (2026-10-12): migración `20261012120000_archivos.sql`: tabla `restoration_files` (restauración, pieza opcional, ruta, nombre, tipo, tamaño ≤ 10 MB, clasificación `file_category`, quién y cuándo; la ruta debe corresponder a la restauración y a la pieza, y la pieza a la restauración), auditada; bucket privado `restoration-files` (10 MB y tipos permitidos); `private.can_see_restoration()` (admin y ventas todas; logística las que no son pasadas, D24). Storage: sube quien ve la restauración; lee solo archivos registrados (o el objeto propio aún sin registrar); borran el admin y quien lo subió. URLs firmadas de una hora. pgTAP `27_archivos.test.sql`.
+- Commit: `feat(archivos): bucket, tabla y acciones para fotos y archivos (Fase 10.1)`
 
 #### Paso 10.2 — Subida y galería
-- [ ] `FileUploader`: varios archivos, cámara del celular (`capture`), compresión de imágenes en el navegador, tipos y tamaño máximos (P32), progreso y reintento.
-- [ ] Foto general de la restauración + fotos por pieza; clasificación Antes / Después / Documento / Otro; galería con visor y comparación antes/después; descarga; eliminar.
+- [x] `FileUploader`: varios archivos, cámara del celular (`capture`), compresión de imágenes en el navegador, tipos y tamaño máximos (P32), progreso y reintento.
+- [x] Foto general de la restauración + fotos por pieza; clasificación Antes / Después / Documento / Otro; galería con visor y comparación antes/después; descarga; eliminar.
 - **Unit:**
-  - [ ] Validación de tipo y tamaño.
-  - [ ] La compresión se aplica solo a imágenes.
-  - [ ] Agrupación por clasificación.
+  - [x] Validación de tipo y tamaño.
+  - [x] La compresión se aplica solo a imágenes.
+  - [x] Agrupación por clasificación.
 - **E2E:**
-  - [ ] Subir 2 fotos "Antes" y 1 PDF → aparecen en la galería.
-  - [ ] Logística sube la foto general y una foto "Antes" de una pieza.
-  - [ ] Archivo no permitido → mensaje de error.
-  - [ ] Eliminar un archivo.
-  - [ ] `@mobile` subir foto.
+  - [x] Subir 2 fotos "Antes" y 1 PDF → aparecen en la galería.
+  - [x] Logística sube la foto general y una foto "Antes" de una pieza.
+  - [x] Archivo no permitido → mensaje de error.
+  - [x] Eliminar un archivo.
+  - [x] `@mobile` subir foto.
+- Hecho (2026-10-12): pestaña "Archivos" del detalle (todos los roles). `FileUploader`: "Para" (General o una pieza), "Clasificación", "Elegir archivos" (varios) y "Tomar foto" (`capture`); valida tipo y tamaño (`src/domain/files.ts`), comprime con `compressImage` (`src/lib/images/compress.ts`), sube al bucket desde el navegador y registra con `registerRestorationFile` (si falla el registro, borra el objeto); estado por archivo y "Reintentar". `FileGallery`: por destino y clasificación, visor con datos y descarga (y "Abrir" el PDF), "Comparar antes y después" con selección de fotos, borrar con confirmación (admin o quien subió; HEIC se muestra como archivo para descargar). E2E `e2e/files.spec.ts`.
 - Commit: `feat(archivos): agrega subida de fotos y documentos con galería`
 
 ### Fase 11 — Pagos

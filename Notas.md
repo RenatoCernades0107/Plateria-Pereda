@@ -11,8 +11,8 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, N1, N2 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31, P33–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -339,7 +339,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 ### P32 · ¿Qué archivos se pueden subir y quién puede borrarlos?
 - **Contexto:** además de las fotos de cada pieza, habrá una **foto general** de todas las piezas de la restauración (P42).
 - **Propuesta:** JPG, PNG, HEIC/WebP y PDF; máximo 10 MB por archivo; las fotos se comprimen automáticamente (lado mayor 1920 px) para ahorrar espacio; sin límite de cantidad; clasificación Antes / Después / Documento / Otro; borran el administrador y quien lo subió.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-12):** ✅ **Se acepta la propuesta.** JPG, PNG, WebP, HEIC y PDF de hasta 10 MB; las fotos JPG, PNG y WebP se reducen en el navegador (lado mayor 1920 px; HEIC y PDF se suben tal cual); sin límite de cantidad; clasificación Antes / Después / Documento / Otro; suben admin, ventas y logística (logística, en las restauraciones que ve); borran el administrador y quien subió el archivo.
 
 ---
 
@@ -607,6 +607,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D53 | Una pieza en Observación queda en la ubicación "Sin enviar" hasta reenviarla al taller o entregarla | P50, ajusta P48 (1) y D47 |
 | D54 | Cada restauración y cada cotización indican si el precio incluye IGV; si no lo incluye, se cobra el precio + 18 % (por pieza o línea, redondeado a céntimos) | P13 |
 | D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
+| D56 | Fotos y archivos: JPG, PNG, WebP, HEIC y PDF hasta 10 MB, fotos reducidas a 1920 px en el navegador, sin límite de cantidad, clasificación Antes / Después / Documento / Otro, a la restauración (foto general) o a una pieza; borran el admin y quien lo subió | P32, P42 |
 
 ---
 
@@ -623,6 +624,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
+| 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

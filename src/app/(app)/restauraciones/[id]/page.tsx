@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
+import { FileGallery } from "@/components/files/file-gallery";
+import { FileUploader } from "@/components/files/file-uploader";
 import {
   EditRestorationDialog,
   PieceDialog,
@@ -37,6 +39,7 @@ import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
+import { listRestorationFiles } from "@/server/files/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
   getLogisticsInfo,
@@ -115,10 +118,19 @@ export default async function RestauracionDetallePage({
   // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
   // en taller y la última observación (P42).
   const now = new Date();
-  const [history, logistics] = await Promise.all([
+  const [history, logistics, files] = await Promise.all([
     canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
     canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
+    listRestorationFiles(restoration.id),
   ]);
+  // Fotos y archivos (Fase 10): la foto general o la de cada pieza.
+  const fileTargets = [
+    { id: null, label: "General (todas las piezas)" },
+    ...restoration.pieces.map((p) => ({
+      id: p.id,
+      label: `${p.code} · ${p.description}`,
+    })),
+  ];
   const extra = Object.fromEntries(
     restoration.pieces.map((piece) => {
       const info = logistics?.get(piece.id);
@@ -303,7 +315,9 @@ export default async function RestauracionDetallePage({
             Piezas ({restoration.pieces.length})
           </TabsTrigger>
           {canSeeMoney ? <TabsTrigger value="pagos">Pagos</TabsTrigger> : null}
-          <TabsTrigger value="archivos">Archivos</TabsTrigger>
+          <TabsTrigger value="archivos">
+            Archivos{files.length > 0 ? ` (${files.length})` : ""}
+          </TabsTrigger>
           {canSeeMoney ? (
             <TabsTrigger value="historial">Historial</TabsTrigger>
           ) : null}
@@ -356,10 +370,19 @@ export default async function RestauracionDetallePage({
             </p>
           </TabsContent>
         ) : null}
-        <TabsContent value="archivos">
-          <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-            Aquí se verán las fotos de las piezas.
-          </p>
+        <TabsContent value="archivos" className="space-y-6">
+          {can(user.role, "fotos.subir") ? (
+            <FileUploader
+              restorationId={restoration.id}
+              targets={fileTargets}
+            />
+          ) : null}
+          <FileGallery
+            files={files}
+            targets={fileTargets}
+            currentUserId={user.id}
+            isAdmin={user.role === "admin"}
+          />
         </TabsContent>
         {canSeeMoney ? (
           <TabsContent value="historial" className="space-y-6">
