@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { WhatsAppBadge } from "@/components/whatsapp-badge";
 import {
   Table,
   TableBody,
@@ -61,9 +62,7 @@ function Payment({ item }: { item: RestorationListItem }) {
         {PAYMENT_TYPE_LABELS[item.paymentType]}
       </span>
       {item.origin === "whatsapp" ? (
-        <Badge variant="secondary" data-origin="whatsapp">
-          WhatsApp
-        </Badge>
+        <WhatsAppBadge data-origin="whatsapp">WhatsApp</WhatsAppBadge>
       ) : null}
     </span>
   );

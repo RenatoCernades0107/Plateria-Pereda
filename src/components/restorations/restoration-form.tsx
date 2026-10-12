@@ -15,6 +15,7 @@ import {
 import { FormAlert } from "@/components/auth/form-alert";
 import { ClientPicker } from "@/components/clients/client-picker";
 import { TextField } from "@/components/clients/form-fields";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -590,7 +591,8 @@ export function RestorationForm({
               onChange={(e) => toggleWhatsapp(e.target.checked)}
             />
             <span className="space-y-0.5">
-              <span className="block text-sm font-medium">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <WhatsAppIcon className="text-whatsapp-strong size-4" />
                 El pedido vino por WhatsApp
               </span>
               <span className="text-muted-foreground block text-sm">

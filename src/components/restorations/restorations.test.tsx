@@ -60,6 +60,16 @@ describe("insignias", () => {
     expect(screen.getByText("Anulada")).toHaveClass("line-through");
     expect(screen.getByText("Urgente")).toHaveAttribute("data-urgent");
   });
+
+  it("lo que está por WhatsApp lleva su ícono y su verde", () => {
+    render(<LocationBadge location="por_whatsapp" />);
+    const badge = screen.getByText("Por WhatsApp");
+    expect(badge).toHaveClass("bg-whatsapp/10", "border-whatsapp/50");
+    expect(badge.querySelector("svg[data-icon=whatsapp]")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+  });
 });
 
 describe("MoneySummary", () => {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PageHeader } from "@/components/page-header";
 import { RestorationForm } from "@/components/restorations/restoration-form";
 import { canEditQuote } from "@/domain/whatsapp-quotes";
@@ -40,6 +41,7 @@ export default async function EditarCotizacionWhatsappPage({
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
+        icon={<WhatsAppIcon className="text-whatsapp-strong size-6" />}
         title={`Editar ${quote.code}`}
         description="Se puede editar hasta que alguna pieza se pase a una restauración."
       />

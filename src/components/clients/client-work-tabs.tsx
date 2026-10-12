@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { RestorationsList } from "@/components/restorations/restorations-list";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,6 +51,7 @@ export function ClientWorkTabs({
         </TabsTrigger>
         {showQuotes ? (
           <TabsTrigger value="cotizaciones-whatsapp">
+            <WhatsAppIcon className="text-whatsapp-strong" />
             Cotizaciones de WhatsApp ({quotesTotal})
           </TabsTrigger>
         ) : null}

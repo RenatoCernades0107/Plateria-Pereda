@@ -86,7 +86,7 @@ function AppNav({ role }: { role: AppRole }) {
                     tooltip={item.title}
                   >
                     <Link href={item.href} onClick={() => setOpenMobile(false)}>
-                      <item.icon />
+                      <item.icon className={item.iconClassName} />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

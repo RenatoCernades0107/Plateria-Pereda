@@ -1,8 +1,9 @@
 "use client";
 
-import { Copy, MessageCircle } from "lucide-react";
+import { Copy } from "lucide-react";
 import { toast } from "sonner";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -65,9 +66,12 @@ export function WhatsAppQuoteDialog({
             Copiar
           </Button>
           {url && (
-            <Button asChild>
+            <Button
+              asChild
+              className="bg-whatsapp-strong text-whatsapp-strong-foreground hover:bg-whatsapp-strong-hover focus-visible:ring-whatsapp/50"
+            >
               <a href={url} target="_blank" rel="noopener noreferrer">
-                <MessageCircle />
+                <WhatsAppIcon />
                 Abrir WhatsApp
               </a>
             </Button>

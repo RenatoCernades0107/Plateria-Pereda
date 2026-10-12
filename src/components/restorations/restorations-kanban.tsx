@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { WhatsAppBadge } from "@/components/whatsapp-badge";
 import { formatCents, PAYMENT_STATUS_LABELS } from "@/domain/money";
 import {
   RESTORATION_STATUS_LABELS,
@@ -81,7 +82,7 @@ export function RestorationsKanban({
                         <span>{formatCents(r.totalCents)}</span>
                       ) : null}
                       {r.origin === "whatsapp" ? (
-                        <Badge variant="secondary">WhatsApp</Badge>
+                        <WhatsAppBadge>WhatsApp</WhatsAppBadge>
                       ) : null}
                       {r.paymentStatus ? (
                         <Badge variant="outline">

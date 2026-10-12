@@ -73,6 +73,23 @@ describe("RestorationsList", () => {
     );
   });
 
+  it("marca con el ícono y el verde de WhatsApp lo que vino por WhatsApp", () => {
+    render(
+      <RestorationsList
+        items={[{ ...item, origin: "whatsapp" }]}
+        filters={parseRestorationFilters({})}
+        showMoney
+        emptyMessage="Vacío"
+      />,
+    );
+    const badge = within(
+      screen.getByTestId("restauracion-RES-00001"),
+    ).getByText("WhatsApp");
+    expect(badge).toHaveAttribute("data-origin", "whatsapp");
+    expect(badge).toHaveClass("bg-whatsapp/10");
+    expect(badge.querySelector("svg[data-icon=whatsapp]")).not.toBeNull();
+  });
+
   it("sin resultados muestra el mensaje", () => {
     render(
       <RestorationsList

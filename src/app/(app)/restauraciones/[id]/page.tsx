@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { FileGallery } from "@/components/files/file-gallery";
 import { FileUploader } from "@/components/files/file-uploader";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
 import { RegisterPaymentDialog } from "@/components/payments/register-payment-dialog";
@@ -28,6 +29,7 @@ import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import {
   formatCents,
   PAYMENT_STATUS_LABELS,
@@ -278,7 +280,16 @@ export default async function RestauracionDetallePage({
                 lastError={sync.lastError}
               />
             ) : null}
-            <Badge variant="outline" data-testid="origen">
+            <Badge
+              variant="outline"
+              data-testid="origen"
+              className={
+                restoration.origin === "whatsapp"
+                  ? WHATSAPP_BADGE_CLASS
+                  : undefined
+              }
+            >
+              {restoration.origin === "whatsapp" ? <WhatsAppIcon /> : null}
               {RESTORATION_ORIGIN_LABELS[restoration.origin]}
               {quote ? (
                 <>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,8 @@ export default async function CotizacionWhatsappPage({
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-heading text-2xl font-semibold tracking-tight">
+          <h1 className="text-heading flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <WhatsAppIcon className="text-whatsapp-strong size-6" />
             {quote.code}
           </h1>
           <p className="text-sm">

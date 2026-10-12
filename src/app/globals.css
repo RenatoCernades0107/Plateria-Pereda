@@ -43,6 +43,12 @@
   --sidebar-accent-foreground: #222222;
   --sidebar-border: #e8dbd1;
   --sidebar-ring: #a47668;
+  /* WhatsApp: su verde (#25d366) para fondos tenues y bordes; el verde oscuro de
+     WhatsApp (#008069) para íconos y el botón "Abrir WhatsApp" (texto blanco 4.89:1). */
+  --whatsapp: #25d366;
+  --whatsapp-strong: #008069;
+  --whatsapp-strong-hover: #075e54;
+  --whatsapp-strong-foreground: #ffffff;
 }
 
 .dark {
@@ -78,6 +84,10 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --whatsapp: #25d366;
+  --whatsapp-strong: #25d366;
+  --whatsapp-strong-hover: #1da851;
+  --whatsapp-strong-foreground: #0b141a;
 }
 
 @theme inline {
@@ -122,6 +132,10 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-strong: var(--whatsapp-strong);
+  --color-whatsapp-strong-hover: var(--whatsapp-strong-hover);
+  --color-whatsapp-strong-foreground: var(--whatsapp-strong-foreground);
 }
 
 @layer base {

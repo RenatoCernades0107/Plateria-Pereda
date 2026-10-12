@@ -78,6 +78,12 @@ describe("WhatsAppQuoteDialog", () => {
       "https://wa.me/51999888777?text=Hola%20Ana",
     );
     expect(link).toHaveAttribute("target", "_blank");
+    // Botón verde de WhatsApp con su ícono (decorativo).
+    expect(link).toHaveClass("bg-whatsapp-strong");
+    expect(link.querySelector("svg[data-icon=whatsapp]")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
   });
 
   it.each([null, "", "123"])(

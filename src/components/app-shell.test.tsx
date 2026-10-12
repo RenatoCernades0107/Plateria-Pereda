@@ -42,6 +42,15 @@ describe("AppShell", () => {
     }
   });
 
+  it("Cotizaciones de WhatsApp lleva el ícono verde de WhatsApp", () => {
+    render(<AppShell user={user}>contenido</AppShell>);
+    const nav = screen.getByRole("list", { name: "Navegación principal" });
+    const icon = within(nav)
+      .getByRole("link", { name: "Cotizaciones de WhatsApp" })
+      .querySelector("svg[data-icon=whatsapp]");
+    expect(icon).toHaveClass("text-whatsapp-strong");
+  });
+
   it("marca el módulo actual y lo muestra en la ruta de navegación", () => {
     render(<AppShell user={user}>contenido</AppShell>);
     const nav = screen.getByRole("list", { name: "Navegación principal" });

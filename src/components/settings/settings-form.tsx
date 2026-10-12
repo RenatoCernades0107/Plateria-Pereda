@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -160,7 +161,10 @@ export function SettingsForm({
               render={({ field }) => (
                 <FormItem>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <FormLabel>Mensaje de cotización por WhatsApp</FormLabel>
+                    <FormLabel>
+                      <WhatsAppIcon className="text-whatsapp-strong size-4" />
+                      Mensaje de cotización por WhatsApp
+                    </FormLabel>
                     <Button
                       type="button"
                       variant="link"
