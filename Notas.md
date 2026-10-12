@@ -11,9 +11,9 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P28, P29, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, N1, N2 |
-| Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P28, P30 (→ P42) |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, N1, N2 |
+| Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
 > **Hallazgos del 2026-10-02 (cambian el plan):**
@@ -316,10 +316,11 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Preguntas:** ¿"A cuenta" exige un adelanto mínimo (%)? ¿"Al contado" significa que paga todo al aprobar? ¿"Al crédito" está disponible para cualquier cliente o solo para algunos (p. ej., empresas)? ¿Se puede cambiar el tipo de pago después?
 - **Propuesta:** % de adelanto configurable (por defecto 50 %); crédito disponible para todos, pero solo ventas/admin lo eligen; el tipo de pago se puede cambiar mientras no haya pagos registrados.
 - **Respuesta:** 🟡 El adelanto es el **50 %** del total por defecto y en algunos casos otro porcentaje (N2) → % por defecto configurable y editable en cada restauración. Pendiente: ¿"Al contado" = paga todo al aprobar? ¿Crédito para quién? ¿Se puede cambiar el tipo de pago después?
+- **Respuesta (2026-10-12):** ✅ **"Al contado" paga el total al aprobar** (el monto sugerido es el 100 %). **"Al crédito" para cualquier cliente**, lo eligen ventas o admin (no bloquea la entrega con saldo, P45). **El tipo de pago se cambia desde "Editar" mientras no haya pagos registrados.**
 
 ### P29 · ¿Qué estados de pago usamos?
 - **Propuesta:** Pendiente, Parcial, Pagado y Reembolsado (si se devuelve el dinero).
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-12):** ✅ **Se acepta la propuesta.** Se calculan solos con los pagos: Pendiente (nada pagado), Parcial (pagó una parte), Pagado (pagó todo o más) y Reembolsado (se devolvió todo lo que se había pagado; un reembolso parcial solo recalcula).
 
 ---
 
@@ -608,6 +609,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D54 | Cada restauración y cada cotización indican si el precio incluye IGV; si no lo incluye, se cobra el precio + 18 % (por pieza o línea, redondeado a céntimos) | P13 |
 | D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
 | D56 | Fotos y archivos: JPG, PNG, WebP, HEIC y PDF hasta 10 MB, fotos reducidas a 1920 px en el navegador, sin límite de cantidad, clasificación Antes / Después / Documento / Otro, a la restauración (foto general) o a una pieza; borran el admin y quien lo subió | P32, P42 |
+| D57 | Estado de pago automático: Pendiente, Parcial, Pagado y Reembolsado (todo devuelto). Al contado se sugiere el total al aprobar; al crédito, cualquier cliente; el tipo de pago se cambia solo sin pagos registrados | P28, P29 |
 
 ---
 
@@ -624,6 +626,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-04 | P15, P16, P27 | Datos obligatorios según la propuesta; edición sincronizada en ambos sentidos; ~1000 clientes en Shopify, importación construida ahora y ejecutada al pasar a producción. |
 | 2026-10-05 | P46 | Cotizaciones por WhatsApp: código `CWA-`, copia parcial y repetible a una restauración con piezas aprobadas, estados propios, editable hasta la primera copia. |
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
+| 2026-10-12 | P28, P29 | Estados de pago según la propuesta (con Reembolsado); al contado se paga el total al aprobar; crédito para todos (lo elige ventas); el tipo de pago se cambia mientras no haya pagos. |
 | 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |

@@ -242,6 +242,76 @@ export type Database = {
         };
         Relationships: [];
       };
+      payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["payment_kind"];
+          method_name: string;
+          paid_on: string;
+          payment_method_id: string | null;
+          reason: string;
+          restoration_id: string;
+          shopify_transaction_id: string | null;
+          source: Database["public"]["Enums"]["payment_source"];
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["payment_kind"];
+          method_name: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          reason?: string;
+          restoration_id: string;
+          shopify_transaction_id?: string | null;
+          source?: Database["public"]["Enums"]["payment_source"];
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["payment_kind"];
+          method_name?: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          reason?: string;
+          restoration_id?: string;
+          shopify_transaction_id?: string | null;
+          source?: Database["public"]["Enums"]["payment_source"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_payment_method_id_fkey";
+            columns: ["payment_method_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_methods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       piece_status_history: {
         Row: {
           actor_id: string | null;
@@ -1895,6 +1965,8 @@ export type Database = {
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
       file_category: "antes" | "despues" | "documento" | "otro";
+      payment_kind: "pago" | "reembolso";
+      payment_source: "sistema" | "shopify";
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
       payment_type: "contado" | "a_cuenta" | "credito" | "sin_definir";
       piece_event:
@@ -2065,6 +2137,8 @@ export const Constants = {
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],
       file_category: ["antes", "despues", "documento", "otro"],
+      payment_kind: ["pago", "reembolso"],
+      payment_source: ["sistema", "shopify"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
       payment_type: ["contado", "a_cuenta", "credito", "sin_definir"],
       piece_event: [

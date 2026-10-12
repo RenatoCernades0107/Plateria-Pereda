@@ -259,10 +259,10 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 - **Días en taller** = suma de los intervalos entre cada envío al taller ("Interno") y su "Recibir del taller" (incluye reenvíos por observación; P47). Si la pieza sigue en el taller se cuenta hasta hoy y se muestra como "en curso".
 - **Días de cumplimiento** = desde el registro hasta la entrega (propuesta). Días calendario en zona `America/Lima`.
 
-### 7.5 Pagos ⛔ P28 ⛔ P29
+### 7.5 Pagos (P28 ✅, P29 ✅, 2026-10-12)
 
 - **IGV (P13):** cada restauración indica si el precio incluye IGV; si no, cada pieza se cobra a su precio + 18 % y el total, el adelanto y la orden de Shopify usan ese monto.
-- Tipo de pago: **Al contado** (paga el total), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto).
+- Tipo de pago: **Al contado** (paga el total al aprobar), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto; cualquier cliente, lo eligen ventas o admin). Se cambia solo mientras no haya pagos registrados (P28).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
 - **Envío a Shopify** (plan Grow: la API no acepta pagos parciales en una orden ya creada; P43, a validar en el spike):
@@ -271,7 +271,7 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
   - Los pagos intermedios (registrados con la orden ya creada y sin completar el saldo) quedan "pendientes de envío" y llegan a Shopify con el pago que completa el saldo.
   - Los pagos hechos directamente en el POS o el panel llegan por webhook y se suman al registro sin duplicarse (conciliación por id de transacción).
 - Pagado = pagos − reembolsos del registro del sistema. Saldo = Total − Pagado.
-- Estado de pago automático: **Pendiente** (pagado = 0) → **Parcial** (0 < pagado < total) → **Pagado** (pagado ≥ total).
+- Estado de pago automático (P29): **Pendiente** (pagado = 0) → **Parcial** (0 < pagado < total) → **Pagado** (pagado ≥ total); **Reembolsado** si se devolvió todo lo pagado.
 - Un pago no se edita: si hubo un error, el admin lo corrige con un reembolso (con motivo y auditado).
 - **Entrega con saldo pendiente (P45):** si la restauración no es "Al crédito" y tiene saldo, el sistema no deja marcar "Entregada" y muestra "Falta cobrar el saldo" (sin montos). Ventas y admin pueden entregar igual confirmándolo (queda auditado).
 
@@ -975,16 +975,17 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 11 — Pagos
 
-#### Paso 11.1 — Registro de pagos y estado de pago ⛔ P29
-- [ ] Tabla `payments` (registro del sistema; id de transacción de Shopify único cuando existe); función que recalcula pagado, saldo y estado de pago de la restauración.
-- [ ] Dominio `derivePaymentStatus(total, paid)` y `suggestedPayment(restoration)` (adelanto pendiente o saldo).
+#### Paso 11.1 — Registro de pagos y estado de pago (P29 ✅, 2026-10-12)
+- [x] Tabla `payments` (registro del sistema; id de transacción de Shopify único cuando existe); función que recalcula pagado, saldo y estado de pago de la restauración.
+- [x] Dominio `derivePaymentStatus(total, paid)` y `suggestedPayment(restoration)` (adelanto pendiente o saldo).
 - **Unit:**
-  - [ ] Pendiente, Parcial y Pagado; sobrepago; reembolso total y parcial; total 0.
-  - [ ] Monto sugerido: 50 % u otro % del total, y saldo restante.
+  - [x] Pendiente, Parcial y Pagado; sobrepago; reembolso total y parcial; total 0.
+  - [x] Monto sugerido: 50 % u otro % del total, y saldo restante.
 - **BD:**
-  - [ ] Recálculo al insertar pagos y reembolsos.
-  - [ ] RLS: logística no lee pagos (P42); solo admin registra reembolsos.
+  - [x] Recálculo al insertar pagos y reembolsos.
+  - [x] RLS: logística no lee pagos (P42); solo admin registra reembolsos.
 - **E2E:** se cubre en 11.2.
+- Hecho (2026-10-12): migración `20261013120000_pagos.sql`: tabla `payments` (pago o reembolso, monto > 0, método del catálogo o nombre, fecha `paid_on`, motivo obligatorio en reembolsos, origen sistema/Shopify con `shopify_transaction_id` único, quién lo registró), sin edición ni borrado, auditada. Triggers: valida que un pago del sistema no supere el saldo ni un reembolso lo pagado; recalcula `paid`; `payment_status` con `private.payment_status_for()` cada vez que cambian el total, lo pagado o el IGV; con pagos ya no se cambia el tipo de pago (P28). RLS: admin y ventas leen y registran pagos; reembolsos solo el admin; logística nada. Dominio `src/domain/payments.ts` (`derivePaymentStatus`, `suggestedPayment`). pgTAP `28_pagos.test.sql`. **Para 11.2:** deshabilitar el tipo de pago en "Editar" cuando haya pagos.
 - Commit: `feat(pagos): agrega registro de pagos y estado de pago`
 
 #### Paso 11.2 — Registrar pagos desde el sistema
