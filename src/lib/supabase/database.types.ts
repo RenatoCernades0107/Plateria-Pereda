@@ -447,7 +447,7 @@ export type Database = {
           measure: string;
           notes: string;
           number: number;
-          price: number;
+          price: number | null;
           ready_for_delivery: boolean | null;
           restoration_id: string;
           returned_at: string | null;
@@ -482,7 +482,7 @@ export type Database = {
           measure?: string;
           notes?: string;
           number: number;
-          price: number;
+          price?: number | null;
           ready_for_delivery?: never;
           restoration_id: string;
           returned_at?: string | null;
@@ -517,7 +517,7 @@ export type Database = {
           measure?: string;
           notes?: string;
           number?: number;
-          price?: number;
+          price?: number | null;
           ready_for_delivery?: never;
           restoration_id?: string;
           returned_at?: string | null;

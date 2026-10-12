@@ -44,6 +44,27 @@ describe("orden de Shopify (Fase 9)", () => {
     expect(chargedPieces(pieces).map((p) => p.id)).toEqual(["p1", "p6"]);
   });
 
+  it("una pieza aprobada sin precio de venta entra a la orden cuando lo tiene (D58)", () => {
+    expect(
+      orderLinesChange(
+        "RES-00001",
+        [piece(1), piece(2, { priceCents: null })],
+        [line(1)],
+      ),
+    ).toBeNull();
+    expect(
+      orderLinesChange(
+        "RES-00001",
+        [piece(1), piece(2, { priceCents: 5000 })],
+        [line(1)],
+      ),
+    ).toEqual({
+      addLines: [{ title: orderLineTitle("RES-00001-2"), priceCents: 5000 }],
+      removeLineIds: [],
+      setPrices: [],
+    });
+  });
+
   it("sin cambios no edita la orden", () => {
     expect(
       orderLinesChange("RES-00001", [piece(1), piece(2)], [line(1), line(2)]),

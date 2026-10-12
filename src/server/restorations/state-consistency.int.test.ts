@@ -52,6 +52,7 @@ describe("consistencia entre TypeScript y la BD", () => {
       const parsed = pieces.map((p) => ({
         status: p.status as never,
         approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
+        priceCents: p.price === null ? null : Math.round(p.price * 100),
         firstSentAt: p.firstSentAt ? new Date(p.firstSentAt) : null,
         readyForDelivery: p.readyForDelivery,
       }));

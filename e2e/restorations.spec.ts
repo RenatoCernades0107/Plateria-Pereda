@@ -74,8 +74,9 @@ test.describe("Restauraciones", () => {
       .in("id", [...clientIds, ...(nuevos ?? []).map((c) => c.id)]);
   });
 
+  // Con precios de venta: solo el admin los asigna (D58).
   test.beforeEach(async ({ loginAs }) => {
-    await loginAs("ventas");
+    await loginAs("admin");
   });
 
   test("registra una restauración con 3 piezas y muestra la cotización", async ({
@@ -168,7 +169,8 @@ test.describe("Restauraciones", () => {
     await expect(
       page.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
-    await expect(page.getByText("Ingresa el precio")).toBeVisible();
+    // El precio de venta es opcional: queda "Sin asignar" (D58).
+    await expect(page.getByText("Ingresa el precio")).toHaveCount(0);
     await expect(
       page.getByText("Indica si el precio incluye IGV"),
     ).toBeVisible();
@@ -229,6 +231,59 @@ test.describe("Restauraciones", () => {
     ).toHaveValue("Bandeja con asas");
   });
 
+  test("ventas registra sin precio de venta y el admin lo asigna (D58)", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("ventas");
+    await page.goto("/restauraciones/nueva");
+    await pickClient(page, clientName);
+    const card = page.getByTestId("pieza-1");
+    await card.getByLabel("Descripción").fill("Tetera sin precio");
+    await expect(card.getByLabel("Precio (S/)")).toBeDisabled();
+    await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
+      "placeholder",
+      "Sin asignar",
+    );
+    await expect(
+      card.getByText("Solo el administrador asigna el precio de venta."),
+    ).toBeVisible();
+    await page.getByLabel(/Sí, el precio incluye IGV/).check();
+    await page.getByRole("button", { name: "Registrar restauración" }).click();
+    await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
+      timeout: 30_000,
+    });
+    const url = new URL(page.url()).pathname;
+    await expect(
+      page.getByRole("dialog").getByTestId("mensaje-cotizacion"),
+    ).toContainText("Tetera sin precio: precio por definir");
+    await page.keyboard.press("Escape");
+    const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
+    await expect(
+      page.getByTestId(`pieza-${code}-1`).getByTestId("precio-sin-asignar"),
+    ).toBeVisible();
+
+    // Aprobada sin precio: la orden de Shopify espera el precio.
+    await adminClient()
+      .from("pieces")
+      .update({ status: "aprobada", approved_at: new Date().toISOString() })
+      .eq("code", `${code}-1`);
+    await page.reload();
+    await expect(page.getByTestId("faltan-precios")).toContainText(
+      "Faltan precios de venta para crear la orden de Shopify",
+    );
+
+    await loginAs("admin");
+    await page.goto(url);
+    await page.getByRole("button", { name: `Editar pieza ${code}-1` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Precio (S/)").fill("90");
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(page.getByText("Pieza actualizada.")).toBeVisible();
+    await expect(page.getByTestId("monto-total")).toContainText("90.00");
+    await expect(page.getByTestId("faltan-precios")).toHaveCount(0);
+  });
+
   test("edita la restauración y sus piezas antes de la orden, y agrega una pieza", async ({
     page,
   }) => {
@@ -271,7 +326,9 @@ test.describe("Restauraciones", () => {
 
   test("con la orden creada se edita el material pero no el precio (P12)", async ({
     page,
+    loginAs,
   }) => {
+    await loginAs("ventas");
     const id = detailUrl.split("/").pop()!;
     // La orden la crea la Fase 9; aquí se simula.
     await adminClient()
@@ -287,7 +344,7 @@ test.describe("Restauraciones", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(
-      dialog.getByText("solo el administrador cambia el precio"),
+      dialog.getByText("Solo el administrador asigna el precio de venta."),
     ).toBeVisible();
     await dialog.getByLabel("Material").fill("Plata 925");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();

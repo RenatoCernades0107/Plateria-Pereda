@@ -8,6 +8,7 @@ import {
   deriveLocation,
   deriveRestorationStatus,
   isReadyForShopifyOrder,
+  missingSalePrices,
   PIECE_LOCATION_LABELS,
   PIECE_LOCATIONS,
   RESTORATION_STATUS_LABELS,
@@ -21,6 +22,7 @@ const restorationCases = scenarios.restorationStatus.map((s) => ({
   pieces: s.pieces.map((p) => ({
     status: p.status as PieceStatus,
     approvedAt: date(p.approvedAt),
+    priceCents: p.price === null ? null : Math.round(p.price * 100),
     firstSentAt: date(p.firstSentAt),
     readyForDelivery: p.readyForDelivery,
   })),
@@ -61,6 +63,77 @@ describe("isReadyForShopifyOrder (escenarios compartidos con la BD)", () => {
 
   it("sin piezas no hay orden", () => {
     expect(isReadyForShopifyOrder([])).toBe(false);
+  });
+
+  it("espera el precio de venta de cada pieza que se cobra (D58)", () => {
+    const approvedAt = new Date("2026-10-01T15:00:00Z");
+    expect(
+      isReadyForShopifyOrder([
+        { status: "aprobada", approvedAt, priceCents: 0 },
+        { status: "aprobada", approvedAt, priceCents: null },
+      ]),
+    ).toBe(false);
+    expect(
+      isReadyForShopifyOrder([
+        { status: "aprobada", approvedAt, priceCents: 0 },
+        { status: "rechazada", approvedAt: null, priceCents: null },
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe("missingSalePrices (D58)", () => {
+  const piece = (
+    code: string,
+    status: PieceStatus,
+    priceCents: number | null,
+  ) => ({ code, status, priceCents });
+
+  it("sin orden avisa cuando todo está aprobado y falta algún precio", () => {
+    expect(
+      missingSalePrices(
+        [
+          piece("RES-00001-1", "aprobada", 1000),
+          piece("RES-00001-2", "enviada_taller", null),
+          piece("RES-00001-3", "anulada", null),
+        ],
+        false,
+      ),
+    ).toEqual({
+      codes: ["RES-00001-2"],
+      message:
+        "Faltan precios de venta para crear la orden de Shopify: RES-00001-2.",
+    });
+  });
+
+  it("sin orden no avisa mientras haya piezas por aprobar o si no falta nada", () => {
+    expect(
+      missingSalePrices(
+        [
+          piece("RES-00001-1", "aprobada", null),
+          piece("RES-00001-2", "en_consulta", null),
+        ],
+        false,
+      ),
+    ).toBeNull();
+    expect(
+      missingSalePrices([piece("RES-00001-1", "aprobada", 0)], false),
+    ).toBeNull();
+  });
+
+  it("con la orden avisa las piezas aprobadas sin precio", () => {
+    expect(
+      missingSalePrices(
+        [
+          piece("RES-00001-1", "aprobada", 1000),
+          piece("RES-00001-2", "aprobada", null),
+          piece("RES-00001-3", "registrada", null),
+        ],
+        true,
+      )?.message,
+    ).toBe(
+      "Faltan precios de venta para agregar a la orden de Shopify: RES-00001-2.",
+    );
   });
 });
 

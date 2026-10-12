@@ -141,6 +141,10 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(page.getByText("Elige un cliente")).toBeVisible();
     await pickClient(page, clientName);
+    // Ventas conserva el precio cotizado; cambiarlo es cosa del admin (D58).
+    const price = page.getByTestId("pieza-1").getByLabel("Precio (S/)");
+    await expect(price).toHaveValue("100.00");
+    await expect(price).toBeDisabled();
     // Cada pieza elige su estado inicial (P49): nacen en Consulta y piden nota.
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(

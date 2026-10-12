@@ -1,5 +1,5 @@
 {
-  "description": "Escenarios de los derivados de piezas y restauraciones (Todo.md §7.2–§7.4, P47). Los usan los tests unitarios del dominio (Paso 8.2) y los de BD/integración (Paso 8.3) para verificar que TypeScript y la BD den lo mismo. Fechas en UTC; Lima es UTC-5.",
+  "description": "Escenarios de los derivados de piezas y restauraciones (Todo.md §7.2–§7.4, P47). Los usan los tests unitarios del dominio (Paso 8.2) y los de BD/integración (Paso 8.3) para verificar que TypeScript y la BD den lo mismo. Fechas en UTC; Lima es UTC-5. \"price\" es el precio de venta (null: sin asignar, D58).",
   "restorationStatus": [
     {
       "name": "una pieza recién registrada",
@@ -7,6 +7,7 @@
         {
           "status": "registrada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -20,12 +21,14 @@
         {
           "status": "en_consulta",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -39,12 +42,14 @@
         {
           "status": "en_espera",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -58,12 +63,14 @@
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -77,12 +84,14 @@
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -96,12 +105,14 @@
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "anulada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -115,12 +126,14 @@
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "anulada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -134,12 +147,14 @@
         {
           "status": "anulada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "anulada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -153,12 +168,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "en_consulta",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -172,12 +189,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -191,12 +210,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         },
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -210,12 +231,14 @@
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "en_espera",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -229,12 +252,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         },
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         }
@@ -248,12 +273,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         },
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -267,12 +294,14 @@
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -286,12 +315,14 @@
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "anulada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -305,12 +336,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         },
         {
           "status": "observada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -324,6 +357,7 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -337,12 +371,14 @@
         {
           "status": "observada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "entregada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -356,18 +392,21 @@
         {
           "status": "aprobada",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "rechazada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "sin_arreglo",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -381,18 +420,21 @@
         {
           "status": "rechazada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         },
         {
           "status": "sin_arreglo",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         },
         {
           "status": "anulada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
@@ -406,12 +448,14 @@
         {
           "status": "enviada_taller",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": true
         },
         {
           "status": "sin_arreglo",
           "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
           "firstSentAt": "2026-10-02T15:00:00Z",
           "readyForDelivery": false
         }
@@ -425,12 +469,55 @@
         {
           "status": "rechazada",
           "approvedAt": null,
+          "price": 100,
           "firstSentAt": null,
           "readyForDelivery": false
         }
       ],
       "expected": "rechazada",
       "readyForOrder": false
+    },
+    {
+      "name": "todas aprobadas pero una sin precio de venta (D58)",
+      "pieces": [
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 100,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        },
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "price": null,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": false
+    },
+    {
+      "name": "la pieza sin precio está anulada: no se cobra (D58)",
+      "pieces": [
+        {
+          "status": "aprobada",
+          "approvedAt": "2026-10-01T15:00:00Z",
+          "price": 0,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        },
+        {
+          "status": "anulada",
+          "approvedAt": null,
+          "price": null,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": true
     }
   ],
   "location": [

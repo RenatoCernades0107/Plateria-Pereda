@@ -36,7 +36,6 @@ function CatalogField({
   label,
   options,
   disabled,
-  onPick,
 }: {
   form: AnyForm;
   prefix: string;
@@ -44,7 +43,6 @@ function CatalogField({
   label: string;
   options: CatalogOption[];
   disabled: boolean;
-  onPick?: (option: CatalogOption) => void;
 }) {
   const listId = `${prefix.replace(/\W/g, "-")}${name}-opciones`;
   return (
@@ -68,7 +66,6 @@ function CatalogField({
                 );
                 field.onChange(value);
                 form.setValue(`${prefix}${name}.id`, match?.id ?? null);
-                if (match) onPick?.(match);
               }}
             />
           </FormControl>
@@ -87,7 +84,9 @@ function CatalogField({
 /**
  * Campos de una pieza (P22). Se usan en el registro (`prefix` = "pieces.0.") y en
  * los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede cambiar
- * según `editableFields()` (Paso 7.7).
+ * según `editableFields()` (Paso 7.7). El precio de venta no sale del servicio: es
+ * opcional ("Sin asignar") y solo lo asigna el admin (D58); en las cotizaciones de
+ * WhatsApp es el precio cotizado y es obligatorio.
  */
 export function PieceFields({
   form,
@@ -99,6 +98,7 @@ export function PieceFields({
   showWorkshop = true,
   showUrgent = true,
   priceHint,
+  pricePlaceholder,
 }: {
   form: AnyForm;
   prefix?: string;
@@ -111,6 +111,8 @@ export function PieceFields({
   showUrgent?: boolean;
   /** Explicación cuando el precio no se puede editar aquí. */
   priceHint?: string;
+  /** Texto del precio vacío (p. ej. "Sin asignar" si es opcional). */
+  pricePlaceholder?: string;
 }) {
   const off = (field: PieceEditableField) =>
     editable ? !editable.includes(field) : false;
@@ -133,16 +135,6 @@ export function PieceFields({
           label="Servicio"
           options={services}
           disabled={off("service")}
-          onPick={(option) => {
-            // El precio sugerido del servicio solo se propone si aún no hay precio.
-            if (
-              option.price !== null &&
-              !off("price") &&
-              !form.getValues(path("price"))
-            ) {
-              form.setValue(path("price"), option.price.toFixed(2));
-            }
-          }}
         />
         <div className="space-y-1">
           <TextField
@@ -151,6 +143,7 @@ export function PieceFields({
             label="Precio (S/)"
             inputMode="numeric"
             disabled={off("price")}
+            placeholder={pricePlaceholder}
           />
           {off("price") && priceHint ? (
             <FormDescription>{priceHint}</FormDescription>

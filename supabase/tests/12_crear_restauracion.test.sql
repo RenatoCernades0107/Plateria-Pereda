@@ -1,18 +1,20 @@
 begin;
 
-select plan(9);
+select plan(14);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000008a1', 'ventas@crear.test', '{"role":"ventas"}', '{}'),
-  ('00000000-0000-0000-0000-0000000008a2', 'logistica@crear.test', '{"role":"logistica"}', '{}');
+  ('00000000-0000-0000-0000-0000000008a2', 'logistica@crear.test', '{"role":"logistica"}', '{}'),
+  ('00000000-0000-0000-0000-0000000008a3', 'admin@crear.test', '{"role":"admin"}', '{}');
 
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000d801', 'persona', 'Ana', 'gid://shopify/Customer/801');
 insert into public.clients (id, kind, first_name, active, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000d802', 'persona', 'Inactiva', false, 'gid://shopify/Customer/802');
 
+-- Con precios: los asigna el admin (D58).
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a3","role":"authenticated"}', true);
 
 create temporary table created on commit drop as
 select * from public.create_restoration(
@@ -25,7 +27,7 @@ select ok((select code from created) ~ '^RES-\d{5,}$', 'devuelve el código de l
 select results_eq(
   $$ select r.total, r.deposit_percent, r.expected_deposit, r.notes, r.created_by::text
      from public.restorations r join created c on c.id = r.id $$,
-  $$ values (250.00::numeric, 40.00::numeric, 100.00::numeric, 'Urgente', '00000000-0000-0000-0000-0000000008a1') $$,
+  $$ values (250.00::numeric, 40.00::numeric, 100.00::numeric, 'Urgente', '00000000-0000-0000-0000-0000000008a3') $$,
   'guarda la restauración con su total, adelanto y autor'
 );
 select results_eq(
@@ -58,6 +60,42 @@ select throws_ok(
        '[{"description": "X", "price": "10"}]') $$,
   '23503', null, 'rechaza clientes desactivados'
 );
+
+-- Precio de venta sin asignar (D58): ventas registra sin precio; solo el admin lo pone.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a1","role":"authenticated"}', true);
+create temporary table created_by_sales on commit drop as
+select * from public.create_restoration(
+  '00000000-0000-0000-0000-00000000d801', null, 'a_cuenta', 50, '',
+  '[{"description": "Fuente", "price": ""}, {"description": "Bandeja"}]'
+);
+select results_eq(
+  $$ select p.price from public.pieces p join created_by_sales c on c.id = p.restoration_id order by p.number $$,
+  $$ values (null::numeric), (null::numeric) $$,
+  'ventas registra piezas con el precio sin asignar'
+);
+select results_eq(
+  $$ select r.total, r.expected_deposit from public.restorations r join created_by_sales c on c.id = r.id $$,
+  $$ values (0.00::numeric, 0.00::numeric) $$,
+  'sin precios el total y el adelanto son 0'
+);
+select throws_ok(
+  $$ select * from public.create_restoration('00000000-0000-0000-0000-00000000d801', null, 'contado', null, '',
+       '[{"description": "X", "price": "10"}]') $$,
+  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no asigna el precio de venta'
+);
+select throws_ok(
+  $$ update public.pieces p set price = 10 from created_by_sales c where c.id = p.restoration_id $$,
+  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas tampoco lo asigna al editar la pieza'
+);
+reset role;
+grant select on created_by_sales to service_role;
+set local role service_role;
+select lives_ok(
+  $$ update public.pieces p set price = 10 from created_by_sales c where c.id = p.restoration_id $$,
+  'la clave secreta (pruebas y datos iniciales) sí escribe precios'
+);
+reset role;
+set local role authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a2","role":"authenticated"}', true);
 select throws_ok(

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  role: "admin" as "admin" | "ventas",
   update: vi.fn(),
   insert: vi.fn(),
   eq: vi.fn(),
@@ -16,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/auth", () => ({
   requirePermission: async () => {
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "ventas" };
+    return { id: "u1", role: mocks.role };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -42,6 +43,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("./create", () => ({ createRestorationRecord: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
+vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
 
 const { addPiece, updatePiece, updateRestoration } = await import("./actions");
 
@@ -59,6 +61,7 @@ const piece = {
 describe("edición de restauraciones", () => {
   beforeEach(() => {
     mocks.forbidden = false;
+    mocks.role = "admin";
     for (const fn of [mocks.update, mocks.insert, mocks.eq, mocks.revalidate])
       fn.mockReset();
     mocks.result = { data: [{ id: "r1", restoration_id: "r1" }], error: null };
@@ -131,6 +134,23 @@ describe("edición de restauraciones", () => {
     expect(await addPiece("r1", piece)).toEqual({
       error: "No se agregan piezas a una restauración completada o anulada",
     });
+  });
+
+  it("ventas no escribe el precio de venta: lo asigna el admin (D58)", async () => {
+    mocks.role = "ventas";
+    expect(await updatePiece("p1", piece)).toEqual({ ok: true });
+    expect(mocks.update.mock.calls[0]![0]).not.toHaveProperty("price");
+    expect(await addPiece("r1", piece)).toEqual({ ok: true });
+    expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("price");
+  });
+
+  it("el admin deja el precio sin asignar si lo vacía", async () => {
+    expect(await updatePiece("p1", { ...piece, price: "" })).toEqual({
+      ok: true,
+    });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ price: null }),
+    );
   });
 
   it("exige permiso", async () => {

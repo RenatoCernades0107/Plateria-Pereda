@@ -121,6 +121,33 @@ describe("PieceDialog", () => {
   });
 });
 
+describe("PieceDialog: precio de venta sin asignar (D58)", () => {
+  it("una pieza sin precio muestra «Sin asignar» y se guarda sin precio", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{ ...piece, priceCents: null }}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const price = within(dialog).getByLabelText("Precio (S/)");
+    expect(price).toHaveValue("");
+    expect(price).toHaveAttribute("placeholder", "Sin asignar");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ price: "" }),
+    );
+  });
+});
+
 describe("EditRestorationDialog", () => {
   it("cambia el tipo de pago y oculta el % fuera de A cuenta", async () => {
     const user = userEvent.setup();

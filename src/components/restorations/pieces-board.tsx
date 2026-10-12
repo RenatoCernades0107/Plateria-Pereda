@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
+import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/domain/money";
+import { can } from "@/domain/permissions";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import type { AppRole } from "@/lib/roles";
 import type { PieceDetail } from "@/server/restorations/queries";
@@ -143,6 +145,11 @@ export function PiecesBoard({
                   <p className="font-medium tabular-nums">
                     {formatCents(piece.priceCents)}
                   </p>
+                ) : can(role, "dinero.ver") ? (
+                  // Precio de venta sin asignar (D58): lo asigna el admin.
+                  <Badge variant="outline" data-testid="precio-sin-asignar">
+                    Sin asignar
+                  </Badge>
                 ) : null}
               </div>
               <PieceStatusPanel

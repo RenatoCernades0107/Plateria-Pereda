@@ -345,6 +345,7 @@ export function PieceDialog({
               services={services}
               editable={editable}
               priceHint={priceHint}
+              pricePlaceholder="Sin asignar"
             />
             <DialogFooter>
               <Button type="submit" disabled={pending}>

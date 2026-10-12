@@ -37,9 +37,13 @@ import { can } from "@/domain/permissions";
 import { igvLabel } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
-import { editableFields } from "@/domain/restoration-edit";
-import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
+import { editableFields, SALE_PRICE_HINT } from "@/domain/restoration-edit";
+import {
+  missingSalePrices,
+  RESTORATION_ORIGIN_LABELS,
+} from "@/domain/restoration-status";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
+import { isClosedStatus } from "@/domain/piece-state-machine";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
@@ -83,7 +87,8 @@ export default async function RestauracionDetallePage({
         pieces: restoration.pieces.map((p) => ({
           description: p.description,
           service: p.serviceName || null,
-          priceCents: p.priceCents ?? 0,
+          // Sin precio de venta (D58) el mensaje dice "por definir".
+          priceCents: p.priceCents,
           status: p.status,
         })),
         pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
@@ -147,10 +152,19 @@ export default async function RestauracionDetallePage({
       })
     : null;
   const paymentMethods = methods.map((m) => ({ id: m.id, name: m.name }));
+  // Precios de venta que faltan para la orden de Shopify (D58).
+  const missingPrices = canSeeMoney
+    ? missingSalePrices(restoration.pieces, restoration.hasOrder)
+    : null;
+  // Sin todos los precios el adelanto aún no se conoce (ni se crea la orden al aprobar).
+  const unpricedPieces = restoration.pieces.some(
+    (p) => p.priceCents === null && !isClosedStatus(p.status),
+  );
   const approvalPayment =
     money &&
     suggested &&
     !restoration.hasOrder &&
+    !unpricedPieces &&
     can(user.role, "pagos.registrar") &&
     money.expectedDepositCents > money.paidCents
       ? { methods: paymentMethods, suggested }
@@ -336,6 +350,19 @@ export default async function RestauracionDetallePage({
         </p>
       ) : null}
 
+      {missingPrices ? (
+        <p
+          role="status"
+          className="bg-muted rounded-md border p-3 text-sm"
+          data-testid="faltan-precios"
+        >
+          {missingPrices.message}
+          {user.role === "admin"
+            ? " Asígnalos con «Editar» en cada pieza."
+            : " Los asigna el administrador."}
+        </p>
+      ) : null}
+
       {restoration.notes ? (
         <p className="rounded-md border p-3 text-sm whitespace-pre-line">
           {restoration.notes}
@@ -359,6 +386,8 @@ export default async function RestauracionDetallePage({
           {editing && editableFields(ctx).canAddPieces ? (
             <PieceDialog
               restorationId={restoration.id}
+              editable={editableFields(ctx).piece}
+              priceHint={SALE_PRICE_HINT}
               workshops={workshops}
               materials={editing.materials}
               services={editing.services}
@@ -384,7 +413,7 @@ export default async function RestauracionDetallePage({
                     priceHint:
                       user.role === "admin"
                         ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
-                        : "Con la orden de Shopify creada, solo el administrador cambia el precio.",
+                        : SALE_PRICE_HINT,
                     priceChange: Object.fromEntries(
                       restoration.pieces.map((piece) => [
                         piece.id,

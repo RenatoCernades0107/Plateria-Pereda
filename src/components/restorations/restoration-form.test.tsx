@@ -37,10 +37,12 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-function renderForm(mode?: RestorationFormMode) {
+/** Por defecto como admin, que asigna el precio de venta (D58). */
+function renderForm(mode?: RestorationFormMode, canSetPrice = true) {
   return render(
     <RestorationForm
       mode={mode}
+      canSetPrice={canSetPrice}
       defaultDepositPercent={50}
       workshops={[{ id: "w1", name: "Taller Central" }]}
       materials={[]}
@@ -139,12 +141,40 @@ describe("RestorationForm", () => {
     ).toBeNull();
   });
 
-  it("propone el precio sugerido del servicio elegido del catálogo", async () => {
+  it("el precio de venta no sale del servicio: queda «Sin asignar» (D58)", async () => {
     const user = userEvent.setup();
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
     await user.type(card.getByLabelText("Servicio"), "Limpieza");
-    expect(card.getByLabelText("Precio (S/)")).toHaveValue("40.00");
+    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+    expect(card.getByLabelText("Precio (S/)")).toHaveAttribute(
+      "placeholder",
+      "Sin asignar",
+    );
+    expect(card.getByTestId("precio-pieza")).toHaveTextContent("Sin asignar");
+  });
+
+  it("sin ser admin el precio de venta no se edita (D58)", () => {
+    renderForm(undefined, false);
+    const card = within(screen.getByTestId("pieza-1"));
+    expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
+    expect(
+      card.getByText("Solo el administrador asigna el precio de venta."),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 0.00");
+  });
+
+  it("al quitar la casilla de WhatsApp, sin ser admin se borran los precios cotizados", async () => {
+    const user = userEvent.setup();
+    renderForm(undefined, false);
+    const whatsapp = screen.getByLabelText(/El pedido vino por WhatsApp/);
+    await user.click(whatsapp);
+    const card = within(screen.getByTestId("pieza-1"));
+    expect(card.getByLabelText("Precio (S/)")).toBeEnabled();
+    await user.type(card.getByLabelText("Precio (S/)"), "100");
+    await user.click(whatsapp);
+    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+    expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
   });
 
   it("muestra los errores en cada pieza y no envía datos incompletos", async () => {
@@ -165,7 +195,8 @@ describe("RestorationForm", () => {
     expect(
       first.queryByText("Describe la pieza (qué es y cómo está)"),
     ).toBeNull();
-    expect(first.getByText("Ingresa el precio")).toBeVisible();
+    // El precio de venta es opcional (D58).
+    expect(first.queryByText("Ingresa el precio")).toBeNull();
     expect(
       second.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
@@ -469,6 +500,20 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
         ],
       }),
     );
+  });
+
+  it("sin ser admin conserva el precio cotizado y las piezas nuevas quedan sin precio (D58)", async () => {
+    const user = userEvent.setup();
+    renderForm({ kind: "copia", quote: linkedQuote }, false);
+    const fuente = within(screen.getByTestId("pieza-1"));
+    expect(fuente.getByLabelText("Precio (S/)")).toHaveValue("100.00");
+    expect(fuente.getByLabelText("Precio (S/)")).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Duplicar pieza 1" }));
+    expect(
+      within(screen.getByTestId("pieza-2")).getByLabelText("Precio (S/)"),
+    ).toHaveValue("");
+    expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 160.00");
   });
 
   it("las piezas nuevas también eligen estado inicial", async () => {

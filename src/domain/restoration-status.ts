@@ -160,14 +160,63 @@ export function advanceRestorationStatus(
   return STATUS_RANK[derived] > STATUS_RANK[current] ? derived : current;
 }
 
+/** Pieza para decidir la orden de Shopify: el precio de venta puede faltar (D58). */
+export type PieceForShopifyOrder = Pick<
+  PieceForRestorationStatus,
+  "status" | "approvedAt"
+> & { priceCents: number | null };
+
 /**
  * La orden de Shopify se crea cuando todas las piezas que se cobran fueron aprobadas
- * (y hay al menos una), sin importar el estado general (§7.3). Que la orden aún no
- * exista lo revisa quien encola el trabajo.
+ * y tienen precio de venta (y hay al menos una), sin importar el estado general
+ * (§7.3, D58). Que la orden aún no exista lo revisa quien encola el trabajo.
  */
 export function isReadyForShopifyOrder(
-  pieces: readonly Pick<PieceForRestorationStatus, "status" | "approvedAt">[],
+  pieces: readonly PieceForShopifyOrder[],
 ): boolean {
   const active = pieces.filter((p) => !isClosedStatus(p.status));
-  return active.length > 0 && active.every((p) => p.approvedAt);
+  return (
+    active.length > 0 &&
+    active.every((p) => p.approvedAt && p.priceCents !== null)
+  );
+}
+
+/** Estados en los que la pieza aún no se aprueba (no se cobra todavía). */
+const BEFORE_APPROVAL: readonly PieceStatus[] = [
+  "registrada",
+  "en_consulta",
+  "en_espera",
+];
+
+/**
+ * Aviso de precios de venta que faltan para Shopify (D58), o null si no falta nada:
+ * sin orden, cuando todas las piezas que se cobran están aprobadas pero alguna no
+ * tiene precio (la orden espera); con la orden, las piezas aprobadas sin precio (su
+ * línea entra cuando se les asigne).
+ */
+export function missingSalePrices(
+  pieces: readonly {
+    code: string;
+    status: PieceStatus;
+    priceCents: number | null;
+  }[],
+  hasOrder: boolean,
+): { codes: string[]; message: string } | null {
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
+  const approved = active.filter((p) => !BEFORE_APPROVAL.includes(p.status));
+  const codes = approved
+    .filter((p) => p.priceCents === null)
+    .map((p) => p.code);
+  if (codes.length === 0) return null;
+  if (hasOrder) {
+    return {
+      codes,
+      message: `Faltan precios de venta para agregar a la orden de Shopify: ${codes.join(", ")}.`,
+    };
+  }
+  if (approved.length < active.length) return null;
+  return {
+    codes,
+    message: `Faltan precios de venta para crear la orden de Shopify: ${codes.join(", ")}.`,
+  };
 }

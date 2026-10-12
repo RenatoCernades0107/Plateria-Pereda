@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  role: "admin" as "admin" | "ventas",
   create: vi.fn(),
   revalidate: vi.fn(),
 }));
@@ -9,15 +10,19 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/auth", () => ({
   requirePermission: async () => {
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "ventas" };
+    return { id: "u1", role: mocks.role };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
-vi.mock("./create", () => ({ createRestorationRecord: mocks.create }));
+vi.mock("./create", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./create")>()),
+  createRestorationRecord: mocks.create,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
+vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
 
 const { createRestoration } = await import("./actions");
-const { pieceToRpc } =
+const { pieceToRpc, withoutSalePrices } =
   await vi.importActual<typeof import("./create")>("./create");
 
 const piece = {
@@ -44,6 +49,7 @@ const input = {
 describe("createRestoration", () => {
   beforeEach(() => {
     mocks.forbidden = false;
+    mocks.role = "admin";
     mocks.create.mockReset().mockResolvedValue({ id: "r1", code: "RES-00001" });
     mocks.revalidate.mockReset();
   });
@@ -66,6 +72,17 @@ describe("createRestoration", () => {
       }),
     );
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones");
+  });
+
+  it("ventas registra las piezas sin precio de venta: lo asigna el admin (D58)", async () => {
+    mocks.role = "ventas";
+    expect(await createRestoration(input)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [expect.objectContaining({ priceCents: null })],
+      }),
+    );
   });
 
   it("rechaza datos inválidos sin llamar a la BD", async () => {
@@ -125,6 +142,22 @@ describe("pieceToRpc", () => {
     });
   });
 
+  it("una pieza sin precio de venta va sin precio (D58)", () => {
+    expect(
+      pieceToRpc({
+        workshopId: null,
+        description: "Fuente",
+        measure: "",
+        material: null,
+        service: null,
+        weightGrams: null,
+        priceCents: null,
+        urgent: false,
+        notes: "",
+      }).price,
+    ).toBeNull();
+  });
+
   it("pasa el estado inicial y su nota de la copia desde WhatsApp (P49)", () => {
     expect(
       pieceToRpc({
@@ -144,5 +177,33 @@ describe("pieceToRpc", () => {
       status: "en_consulta",
       status_note: "Consultar al taller",
     });
+  });
+});
+
+describe("withoutSalePrices (D58)", () => {
+  const base = {
+    workshopId: null,
+    description: "Fuente",
+    measure: "",
+    material: null,
+    service: null,
+    weightGrams: null,
+    urgent: false,
+    notes: "",
+  };
+
+  it("quita el precio de venta de las piezas", () => {
+    expect(withoutSalePrices([{ ...base, priceCents: 1000 }])).toEqual([
+      { ...base, priceCents: null },
+    ]);
+  });
+
+  it("en la copia conserva el precio cotizado y quita el de las piezas nuevas", () => {
+    const quoted = { ...base, priceCents: 1000, quoteItemId: "i1" };
+    const nueva = { ...base, priceCents: 500, quoteItemId: null };
+    expect(withoutSalePrices([quoted, nueva], { keepQuoted: true })).toEqual([
+      quoted,
+      { ...nueva, priceCents: null },
+    ]);
   });
 });

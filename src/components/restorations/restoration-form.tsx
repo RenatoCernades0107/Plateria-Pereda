@@ -43,6 +43,7 @@ import {
   type PaymentType,
 } from "@/domain/money";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
+import { PIECE_FREE_FIELDS, SALE_PRICE_HINT } from "@/domain/restoration-edit";
 import { cn } from "@/lib/utils";
 import {
   COPY_INITIAL_STATUSES,
@@ -129,6 +130,7 @@ function PieceCard({
   services,
   quoteOnly,
   showInitialStatus,
+  canSetPrice,
   onDuplicate,
   onRemove,
 }: {
@@ -142,6 +144,8 @@ function PieceCard({
   quoteOnly: boolean;
   /** "Crear restauración" desde una cotización: estado inicial y nota (P49). */
   showInitialStatus: boolean;
+  /** Puede asignar el precio de venta (admin, D58). */
+  canSetPrice: boolean;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -184,8 +188,18 @@ function PieceCard({
             ) : null}
           </span>
         </button>
-        <span className="text-sm tabular-nums">
-          {price === null ? "—" : formatCents(price)}
+        <span
+          className={cn(
+            "text-sm tabular-nums",
+            price === null && "text-muted-foreground",
+          )}
+          data-testid="precio-pieza"
+        >
+          {price !== null
+            ? formatCents(price)
+            : quoteOnly
+              ? "—"
+              : "Sin asignar"}
         </span>
         <Button
           type="button"
@@ -220,6 +234,11 @@ function PieceCard({
           services={services}
           showWorkshop={!quoteOnly}
           showUrgent={!quoteOnly}
+          // La cotización de WhatsApp lleva el precio cotizado (obligatorio); en la
+          // restauración el precio de venta es opcional y solo lo asigna el admin (D58).
+          editable={quoteOnly || canSetPrice ? undefined : PIECE_FREE_FIELDS}
+          priceHint={SALE_PRICE_HINT}
+          pricePlaceholder={quoteOnly ? undefined : "Sin asignar"}
         />
       </div>
     </li>
@@ -374,12 +393,15 @@ export function RestorationForm({
   materials,
   services,
   mode = { kind: "nueva" },
+  canSetPrice = false,
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
   materials: CatalogOption[];
   services: CatalogOption[];
   mode?: RestorationFormMode;
+  /** Puede asignar el precio de venta de las piezas (solo admin, D58). */
+  canSetPrice?: boolean;
 }) {
   const router = useRouter();
   const quote = mode.kind === "nueva" ? null : mode.quote;
@@ -477,6 +499,12 @@ export function RestorationForm({
     quoteMode.current = on;
     setViaWhatsapp(on);
     form.clearErrors();
+    // Sin permiso, la restauración no lleva el precio cotizado (D58).
+    if (!on && !canSetPrice) {
+      (form.getValues("pieces") ?? []).forEach((_, i) =>
+        form.setValue(`pieces.${i}.price`, ""),
+      );
+    }
   };
 
   /** Elegir o quitar una pieza cotizada en la copia. */
@@ -673,8 +701,10 @@ export function RestorationForm({
             </h2>
             <p className="text-muted-foreground text-sm">
               Elige las que el cliente pidió y, en cada pieza, si pasa a
-              Consulta o Aprobada. Puedes ajustar el precio o agregar piezas
-              nuevas abajo.
+              Consulta o Aprobada.{" "}
+              {canSetPrice
+                ? "Puedes ajustar el precio o agregar piezas nuevas abajo."
+                : "Las piezas pedidas conservan el precio cotizado; las nuevas quedan sin precio de venta hasta que lo asigne el administrador."}
             </p>
             <ul className="divide-y rounded-lg border">
               {mode.quote.items.map((item) => (
@@ -730,12 +760,18 @@ export function RestorationForm({
                 services={services}
                 quoteOnly={viaWhatsapp}
                 showInitialStatus={mode.kind === "copia"}
-                onDuplicate={() =>
+                canSetPrice={canSetPrice}
+                onDuplicate={() => {
+                  const copy = structuredClone(
+                    form.getValues(`pieces.${index}`),
+                  );
                   pieces.insert(index + 1, {
-                    ...structuredClone(form.getValues(`pieces.${index}`)),
+                    ...copy,
+                    // Una pieza nueva no trae precio cotizado (D58).
+                    price: viaWhatsapp || canSetPrice ? copy.price : "",
                     quoteItemId: null,
-                  })
-                }
+                  });
+                }}
                 onRemove={() => pieces.remove(index)}
               />
             ))}

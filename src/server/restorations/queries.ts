@@ -45,7 +45,7 @@ export type PieceDetail = {
   deliveredAt: string | null;
   /** Devuelta al cliente (rechazada o sin arreglo, P47). */
   returnedAt: string | null;
-  /** null si quien mira no ve montos (logística, P42). */
+  /** null si quien mira no ve montos (logística, P42) o si aún no tiene precio de venta (D58). */
   priceCents: Cents | null;
 };
 
@@ -143,7 +143,10 @@ export async function getRestorationDetail(
   if (workshops.error) throw workshops.error;
   const workshopName = new Map(workshops.data!.map((w) => [w.id, w.name]));
   const priceOf = new Map(
-    (prices.data ?? []).map((p) => [p.id, toCents(Number(p.price))]),
+    (prices.data ?? []).map((p) => [
+      p.id,
+      p.price === null ? null : toCents(Number(p.price)),
+    ]),
   );
 
   return {

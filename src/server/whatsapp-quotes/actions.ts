@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import {
   copyRestorationSchema,
@@ -11,7 +12,7 @@ import {
   type WhatsappQuoteInput,
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
-import { pieceToRpc } from "@/server/restorations/create";
+import { pieceToRpc, withoutSalePrices } from "@/server/restorations/create";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
@@ -118,10 +119,15 @@ export async function createRestorationFromQuote(
   quoteId: string,
   input: RestorationFormInput,
 ): Promise<CreatedResult> {
-  await requirePermission("restauraciones.editar");
+  const user = await requirePermission("restauraciones.editar");
   const parsed = copyRestorationSchema.safeParse(input);
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
   const v = parsed.data;
+  // Sin ser admin se conserva el precio cotizado y las piezas nuevas quedan sin
+  // precio de venta (D58).
+  const pieces = can(user.role, "piezas.precio-venta")
+    ? v.pieces
+    : withoutSalePrices(v.pieces, { keepQuoted: true });
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("create_restoration_from_whatsapp_quote", {
@@ -131,7 +137,7 @@ export async function createRestorationFromQuote(
       p_payment_type: v.paymentType,
       p_deposit_percent: v.depositPercent as number,
       p_notes: v.notes,
-      p_pieces: v.pieces.map(pieceToRpc),
+      p_pieces: pieces.map(pieceToRpc),
       p_prices_include_igv: v.pricesIncludeIgv,
     })
     .single();

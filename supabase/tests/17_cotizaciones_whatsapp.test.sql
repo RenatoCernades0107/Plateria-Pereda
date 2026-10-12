@@ -1,10 +1,11 @@
 begin;
 
-select plan(47);
+select plan(53);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ea1', 'ventas@cwa.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
-  ('00000000-0000-0000-0000-000000000ea2', 'logistica@cwa.test', '{"role":"logistica"}', '{"full_name":"Lalo Logística"}');
+  ('00000000-0000-0000-0000-000000000ea2', 'logistica@cwa.test', '{"role":"logistica"}', '{"full_name":"Lalo Logística"}'),
+  ('00000000-0000-0000-0000-000000000ea3', 'admin@cwa.test', '{"role":"admin"}', '{"full_name":"Ada Admin"}');
 
 insert into public.clients (id, kind, first_name, shopify_customer_id) values
   ('00000000-0000-0000-0000-00000000ea20', 'persona', 'Cliente WhatsApp', 'gid://shopify/Customer/ea20'),
@@ -77,12 +78,21 @@ select throws_ok(
   '23514', 'Elige el cliente de la restauración.', 'la copia exige un cliente'
 );
 
--- Copia de dos piezas que el cliente aprobó: la Fuente (con precio nuevo) y la Jarra.
+-- Ventas copia con el precio cotizado; cambiarlo es cosa del admin (D58).
+select throws_ok(
+  format($$ select * from public.create_restoration_from_whatsapp_quote(%L, '00000000-0000-0000-0000-00000000ea20', null,
+    'contado', null, '', jsonb_build_array(jsonb_build_object('quote_item_id', %L, 'description', 'Fuente ovalada',
+      'price', '110', 'status', 'aprobada'))) $$,
+    (select id from q), (select id from public.whatsapp_quote_items where quote_id = (select id from q) and number = 1)),
+  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no cambia el precio cotizado al copiar'
+);
+
+-- Copia de dos piezas que el cliente aprobó: la Fuente y la Jarra, con su precio cotizado.
 create temporary table r1 as
   select * from public.create_restoration_from_whatsapp_quote(
     (select id from q), '00000000-0000-0000-0000-00000000ea20', null, 'contado', null, '',
     (select jsonb_build_array(
-       jsonb_build_object('quote_item_id', i1.id, 'description', 'Fuente ovalada', 'price', '110', 'status', 'aprobada'),
+       jsonb_build_object('quote_item_id', i1.id, 'description', 'Fuente ovalada', 'price', '120', 'status', 'aprobada'),
        jsonb_build_object('quote_item_id', i2.id, 'description', 'Jarra', 'price', '60.50', 'status', 'aprobada'))
      from public.whatsapp_quote_items i1, public.whatsapp_quote_items i2
      where i1.quote_id = (select id from q) and i1.number = 1
@@ -94,8 +104,8 @@ reset role;
 select results_eq(
   $$ select r.origin::text, r.whatsapp_quote_id = (select id from q), r.status::text, r.total, r.client_id::text
      from public.restorations r where r.id = (select id from r1) $$,
-  $$ values ('whatsapp', true, 'aprobada', 170.50::numeric, '00000000-0000-0000-0000-00000000ea20') $$,
-  'la restauración es de origen WhatsApp, con las piezas aprobadas y el precio editado'
+  $$ values ('whatsapp', true, 'aprobada', 180.50::numeric, '00000000-0000-0000-0000-00000000ea20') $$,
+  'la restauración es de origen WhatsApp, con las piezas aprobadas y el precio cotizado aunque copie ventas'
 );
 select results_eq(
   $$ select status::text, location::text from public.pieces where restoration_id = (select id from r1) order by number $$,
@@ -193,9 +203,18 @@ create temporary table r2 as
     (select jsonb_agg(jsonb_build_object('quote_item_id', i.id, 'description', i.description, 'price', i.price::text,
        'status', 'aprobada') order by i.number)
      from public.whatsapp_quote_items i where i.quote_id = (select id from q) and i.number in (2, 3))
-    || jsonb_build_array(jsonb_build_object('description', 'Pieza nueva', 'price', '15', 'urgent', true, 'status', 'aprobada')));
+    || jsonb_build_array(jsonb_build_object('description', 'Pieza nueva', 'urgent', true, 'status', 'aprobada')));
 grant select on r2 to authenticated;
 reset role;
+select results_eq(
+  $$ select price from public.pieces where restoration_id = (select id from r2) order by number $$,
+  $$ values (60.50::numeric), (40.00::numeric), (null::numeric) $$,
+  'las piezas cotizadas llevan su precio; la nueva queda sin asignar'
+);
+select is(
+  (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r2)),
+  0, 'con una pieza aprobada sin precio la orden de Shopify espera (D58)'
+);
 select results_eq(
   $$ select status::text from public.whatsapp_quotes where id = (select id from q) $$,
   $$ values ('pedida') $$,
@@ -254,7 +273,7 @@ create temporary table r3 as
          'status', 'en_consulta', 'status_note', 'Consultar al taller si se puede soldar'),
        jsonb_build_object('quote_item_id', i2.id, 'description', 'Azucarera', 'price', '30',
          'status', 'en_consulta', 'status_note', 'Preguntar si quiere grabado'),
-       jsonb_build_object('description', 'Cucharita', 'price', '10', 'status', 'aprobada'))
+       jsonb_build_object('description', 'Cucharita', 'status', 'aprobada'))
      from public.whatsapp_quote_items i1, public.whatsapp_quote_items i2
      where i1.quote_id = (select id from q2) and i1.number = 1
        and i2.quote_id = (select id from q2) and i2.number = 2));
@@ -301,6 +320,22 @@ select is(
   (select status::text from public.restorations where id = (select id from r3)),
   'aprobada', 'con todas aprobadas la restauración pasa a Aprobada'
 );
+select is(
+  (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r3)),
+  0, 'pero la orden espera el precio de la Cucharita (D58)'
+);
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);
+select throws_ok(
+  $$ update public.pieces set price = 10 where restoration_id = (select id from r3) and number = 3 $$,
+  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no asigna el precio que falta'
+);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea3","role":"authenticated"}', true);
+select lives_ok(
+  $$ update public.pieces set price = 10 where restoration_id = (select id from r3) and number = 3 $$,
+  'el admin asigna el último precio'
+);
+reset role;
 select is(
   (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r3)),
   1, 'y entonces se encola la orden de Shopify'

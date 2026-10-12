@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { toDecimalString } from "@/domain/money";
+import { can } from "@/domain/permissions";
 import {
   pieceSchema,
   restorationEditSchema,
@@ -14,8 +15,9 @@ import {
   type RestorationFormInput,
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
+import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
-import { createRestorationRecord } from "./create";
+import { createRestorationRecord, withoutSalePrices } from "./create";
 
 export type CreateRestorationResult =
   { ok: true; id: string; code: string } | { error: string };
@@ -31,15 +33,16 @@ const ERRORS: Record<string, string> = {
 export async function createRestoration(
   input: RestorationFormInput,
 ): Promise<CreateRestorationResult> {
-  await requirePermission("restauraciones.editar");
+  const user = await requirePermission("restauraciones.editar");
   const parsed = restorationSchema.safeParse(input);
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  // El precio de venta lo asigna solo el admin (D58): ventas registra sin precio.
+  const data = can(user.role, "piezas.precio-venta")
+    ? parsed.data
+    : { ...parsed.data, pieces: withoutSalePrices(parsed.data.pieces) };
 
   try {
-    const created = await createRestorationRecord(
-      await createClient(),
-      parsed.data,
-    );
+    const created = await createRestorationRecord(await createClient(), data);
     revalidatePath("/restauraciones");
     return { ok: true, ...created };
   } catch (error) {
@@ -113,7 +116,11 @@ export async function updateRestoration(
   return { ok: true };
 }
 
-function pieceColumns(input: PieceFormInput) {
+/**
+ * Columnas de la pieza. El precio de venta solo lo escribe quien puede asignarlo
+ * (admin, D58); para los demás no se envía y queda como está (o sin asignar).
+ */
+function pieceColumns(input: PieceFormInput, withPrice: boolean) {
   const parsed = pieceSchema.safeParse(input);
   if (!parsed.success) return null;
   const p = parsed.data;
@@ -128,7 +135,10 @@ function pieceColumns(input: PieceFormInput) {
       service_id: p.service?.id ?? null,
       service_name: p.service?.name ?? "",
       weight_grams: p.weightGrams,
-      price: Number(toDecimalString(p.priceCents)),
+      ...(withPrice && {
+        price:
+          p.priceCents === null ? null : Number(toDecimalString(p.priceCents)),
+      }),
       notes: p.notes,
       urgent: p.urgent,
     },
@@ -140,8 +150,8 @@ export async function updatePiece(
   pieceId: string,
   input: PieceFormInput,
 ): Promise<ActionResult> {
-  await requirePermission("restauraciones.editar");
-  const parsed = pieceColumns(input);
+  const user = await requirePermission("restauraciones.editar");
+  const parsed = pieceColumns(input, can(user.role, "piezas.precio-venta"));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
   const supabase = await createClient();
@@ -152,6 +162,9 @@ export async function updatePiece(
     .select("restoration_id");
   if (error) return { error: editError(error, "No se pudo guardar la pieza.") };
   if (data.length === 0) return { error: "La pieza no existe." };
+  // Asignar el último precio de venta encola la orden de Shopify, o agrega la
+  // pieza a la orden ya creada (D58).
+  if ("price" in parsed.columns) scheduleShopifySync();
   revalidatePath(`/restauraciones/${data[0]!.restoration_id}`);
   return { ok: true };
 }
@@ -161,8 +174,8 @@ export async function addPiece(
   restorationId: string,
   input: PieceFormInput,
 ): Promise<ActionResult> {
-  await requirePermission("restauraciones.editar");
-  const parsed = pieceColumns(input);
+  const user = await requirePermission("restauraciones.editar");
+  const parsed = pieceColumns(input, can(user.role, "piezas.precio-venta"));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
   const supabase = await createClient();

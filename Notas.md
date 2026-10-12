@@ -517,6 +517,18 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (2) Una pieza en **Observación** queda en la ubicación **Sin enviar** (en la tienda): hay que volver a programar su envío al taller. Vale para las dos observaciones: la que se hace al volver del taller y el reclamo después de la entrega. Ajusta P48 (1).
   - (3) Se reenvía con la acción de siempre, "Reenviar al taller" (Observación → Interno, ubicación En taller). Si se resuelve en la tienda, pasa a Entregada.
 
+### P51 · Precio de venta sin asignar (pedido del 2026-10-12)
+- **Contexto:** el precio de venta de la pieza se proponía con el precio sugerido del servicio y lo escribía quien registraba (ventas o admin). La Platería pide separarlo del servicio: el precio lo define después el administrador.
+- **Respuesta (2026-10-12):** ✅
+  - (1) El precio de venta de la pieza nace **"Sin asignar"** y ya no se propone a partir del servicio.
+  - (2) **Solo el admin** asigna o cambia el precio de venta. Ventas lo ve (o ve "Sin asignar") pero no lo edita; logística sigue sin ver precios (D16). La BD lo exige.
+  - (3) La **orden de Shopify espera** a que todas las piezas que se cobran (aprobadas y no cerradas) tengan precio; asignar el último la crea. Mientras falte, el detalle avisa "Faltan precios de venta para crear la orden de Shopify". Con la orden ya creada, una pieza aprobada sin precio entra a la orden cuando el admin se lo asigna.
+  - (4) Las **cotizaciones de WhatsApp no cambian**: ventas cotiza el precio y es obligatorio. Al pasar la cotización a restauración, las piezas cotizadas **conservan su precio** aunque la copie ventas; cambiarlo o ponerle precio a una pieza nueva es cosa del admin.
+- **Supuestos (confirmar):**
+  - (a) Una pieza sin precio suma 0 al total y al adelanto, y el mensaje de WhatsApp de la restauración dice "precio por definir".
+  - (b) Mientras falten precios no se ofrece "Aprobar y registrar adelanto" (el adelanto aún no se conoce); el pago se puede registrar igual desde la pestaña "Pagos".
+  - (c) El admin asigna el precio que falta desde "Editar" de la pieza, sin motivo, aunque la pieza ya esté entregada o la orden ya exista; un precio ya asignado se cambia como siempre (P12: con la orden, "Cambiar precio" con motivo).
+
 ---
 
 ## Preguntas para el negocio
@@ -610,6 +622,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
 | D56 | Fotos y archivos: JPG, PNG, WebP, HEIC y PDF hasta 10 MB, fotos reducidas a 1920 px en el navegador, sin límite de cantidad, clasificación Antes / Después / Documento / Otro, a la restauración (foto general) o a una pieza; borran el admin y quien lo subió | P32, P42 |
 | D57 | Estado de pago automático: Pendiente, Parcial, Pagado y Reembolsado (todo devuelto). Al contado se sugiere el total al aprobar; al crédito, cualquier cliente; el tipo de pago se cambia solo sin pagos registrados | P28, P29 |
+| D58 | El precio de venta de la pieza no sale del servicio: nace "Sin asignar" y solo el admin lo asigna o cambia (ventas lo ve). La orden de Shopify espera a que todas las piezas que se cobran tengan precio. La copia de una cotización de WhatsApp conserva los precios cotizados | P51 |
 
 ---
 
@@ -628,6 +641,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
 | 2026-10-12 | P28, P29 | Estados de pago según la propuesta (con Reembolsado); al contado se paga el total al aprobar; crédito para todos (lo elige ventas); el tipo de pago se cambia mientras no haya pagos. |
 | 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
+| 2026-10-12 | P51 | Precio de venta "Sin asignar" y separado del servicio; solo el admin lo asigna; la orden de Shopify espera los precios; la copia de una cotización de WhatsApp conserva los precios cotizados. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

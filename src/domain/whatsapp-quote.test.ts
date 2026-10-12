@@ -105,6 +105,19 @@ describe("mensaje de cotización", () => {
     });
   });
 
+  it("una pieza sin precio de venta dice «por definir» y suma 0 (D58)", () => {
+    const pieces = data().pieces.map((p, i) =>
+      i === 1 ? { ...p, priceCents: null } : p,
+    );
+    const message = buildQuoteMessage(
+      DEFAULT_WHATSAPP_TEMPLATE,
+      data({ pieces, paymentType: "contado" }),
+    );
+    expect(message).toContain("2. Candelabro: precio por definir");
+    expect(message).toContain("*Total: S/ 1,200.50*");
+    expect(quoteAmounts(data({ pieces })).totalCents).toBe(120_050);
+  });
+
   it("sin IGV incluido suma el 18 % por pieza y muestra el desglose (P13)", () => {
     const sinIgv = data({ pricesIncludeIgv: false, paymentType: "contado" });
     // 1,200.50 → 1,416.59 y 350.00 → 413.00

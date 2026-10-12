@@ -84,3 +84,33 @@ describe("PiecesBoard: cambio de estado masivo", () => {
     expect(within(bar()).getByLabelText("Cambiar estado a…")).toBeDisabled();
   });
 });
+
+describe("PiecesBoard: precio de venta (D58)", () => {
+  const renderWith = (role: "ventas" | "logistica") =>
+    render(
+      <PiecesBoard
+        restorationId="r1"
+        role={role}
+        workshops={[]}
+        editing={null}
+        pieces={[piece(1, { priceCents: 12_050 }), piece(2)]}
+      />,
+    );
+
+  it("admin y ventas ven el precio o «Sin asignar»", () => {
+    renderWith("ventas");
+    expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
+      "S/ 120.50",
+    );
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-2")).getByTestId(
+        "precio-sin-asignar",
+      ),
+    ).toHaveTextContent("Sin asignar");
+  });
+
+  it("logística no ve precios ni si faltan", () => {
+    renderWith("logistica");
+    expect(screen.queryByTestId("precio-sin-asignar")).toBeNull();
+  });
+});

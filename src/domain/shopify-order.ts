@@ -12,8 +12,8 @@ export type OrderPiece = {
   id: string;
   /** RES-00001-1 */
   code: string;
-  /** Precio en céntimos. */
-  priceCents: number;
+  /** Precio en céntimos; null si aún no tiene precio de venta (D58). */
+  priceCents: number | null;
   status: PieceStatus;
   /** Las piezas que se agregan después de crear la orden entran al aprobarse (P12). */
   approved: boolean;
@@ -33,9 +33,17 @@ export function orderLineTitle(pieceCode: string): string {
   return `Restauración ${pieceCode}`;
 }
 
-/** Piezas que deben estar en la orden: aprobadas y que se cobran. */
-export function chargedPieces(pieces: readonly OrderPiece[]): OrderPiece[] {
-  return pieces.filter((p) => p.approved && !isClosedStatus(p.status));
+type PricedPiece = OrderPiece & { priceCents: number };
+
+/**
+ * Piezas que deben estar en la orden: aprobadas, que se cobran y con precio de venta
+ * (una pieza sin precio entra cuando el admin se lo asigna, D58).
+ */
+export function chargedPieces(pieces: readonly OrderPiece[]): PricedPiece[] {
+  return pieces.filter(
+    (p): p is PricedPiece =>
+      p.approved && !isClosedStatus(p.status) && p.priceCents !== null,
+  );
 }
 
 /** Líneas de la orden que pertenecen a piezas de esta restauración. */

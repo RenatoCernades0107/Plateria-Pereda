@@ -25,6 +25,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "piezas.enviar-recibir-taller": [A, L],
   "piezas.asignar-taller": [A, V, L],
   "piezas.costo-servicio": [A, L],
+  "piezas.precio-venta": [A],
   "piezas.entregar-observar": [A, V, L],
   "fotos.subir": [A, V, L],
   "fotos.eliminar-ajenas": [A],

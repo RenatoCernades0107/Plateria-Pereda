@@ -945,6 +945,21 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-10-10): handler `order.fulfill`: marca como preparadas solo las líneas de piezas entregadas que aún no lo están (`fulfillLines` no es idempotente). Si la orden se crea o se edita con piezas ya entregadas, también las prepara. Pruebas: pgTAP `26_cambios_orden_shopify`, unit (`shopify-order.test.ts` del dominio y del servidor), integración (`shopify-order.int.test.ts`) y E2E (`e2e/shopify-order.spec.ts`).
 - Commit: `feat(shopify): marca como preparadas las piezas entregadas`
 
+#### Paso 9.4 — Precio de venta sin asignar (P51 ✅, pedido del 2026-10-12)
+- [x] El precio de venta de la pieza es opcional ("Sin asignar") y ya no se propone con el precio sugerido del servicio.
+- [x] Solo el admin asigna o cambia el precio (permiso `piezas.precio-venta`); ventas lo ve deshabilitado; logística sigue sin ver precios. La BD lo exige.
+- [x] La orden de Shopify espera a que todas las piezas que se cobran tengan precio; asignar el último la encola. Con la orden creada, una pieza aprobada sin precio entra a la orden al asignárselo.
+- [x] Aviso en el detalle: "Faltan precios de venta para crear la orden de Shopify" (o "para agregar a la orden").
+- [x] La cotización de WhatsApp sigue con precio obligatorio y la copia a restauración conserva los precios cotizados aunque la haga ventas.
+- **Unit:**
+  - [x] Validación (precio opcional en la pieza, obligatorio en la cotización), `isReadyForShopifyOrder` y `missingSalePrices`, `editableFields` por rol, mensaje "precio por definir", conciliación de la orden sin la pieza sin precio, acciones (ventas no envía precios) y componentes (formulario, diálogo de pieza, tablero).
+- **BD:**
+  - [x] Ventas no pone ni cambia precios (registro, edición, copia con precio distinto); el admin sí; la clave secreta no se restringe; la copia conserva el precio cotizado; la orden espera los precios y se encola con el último; total con piezas sin precio.
+- **Integración:** ventas registra sin precio y la BD rechaza un precio; aprobar sin precios no encola la orden y el último precio del admin la crea.
+- **E2E:** ventas registra sin precio ("Sin asignar", mensaje "por definir", aviso de precios faltantes) y el admin lo asigna; la copia de ventas conserva el precio cotizado.
+- Hecho (2026-10-12): migración `20261014120000_precio_sin_asignar.sql`: `pieces.price` admite null; `price_with_igv` y `restoration_total` cuentan 0 sin precio; trigger `pieces_guard_price` (en peticiones de usuarios, rol `authenticated`, solo el admin pone o cambia el precio, salvo `app.quote_copy_price` en la copia de una cotización con el precio cotizado y `app.shopify_order_edit` de `change_piece_price`); `guard_piece_edit` deja asignar el precio que falta aunque la orden exista o la pieza esté entregada; `is_ready_for_shopify_order` exige precio y `pieces_sync_restoration_status` también corre al cambiar el precio; `create_restoration` y `create_restoration_from_whatsapp_quote` aceptan el precio vacío. Escenarios compartidos con la clave `price` en `tests/fixtures/restorations/derivations.json`. Las acciones no envían el precio si el usuario no es admin (la copia conserva el cotizado) y procesan el outbox al asignar un precio. Mientras falten precios no se ofrece "Aprobar y registrar adelanto".
+- Commit: `feat(piezas): precio de venta sin asignar que solo asigna el admin (P51)`
+
 ### Fase 10 — Fotos y archivos
 
 #### Paso 10.1 — Storage y datos (P32 ✅, 2026-10-12)

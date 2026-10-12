@@ -85,12 +85,13 @@ describe("registro de restauraciones", () => {
       ],
     });
 
-    const ventas = await signIn("ventas@pereda.test");
-    const result = await createRestorationRecord(ventas, input);
+    // Con precios de venta: los asigna solo el admin (D58).
+    const pricing = await signIn("admin@pereda.test");
+    const result = await createRestorationRecord(pricing, input);
     created.restorations.push(result.id);
     expect(result.code).toMatch(/^RES-\d{5,}$/);
 
-    const { data: restoration } = await ventas
+    const { data: restoration } = await pricing
       .from("restorations")
       .select(
         "total, expected_deposit, notes, pieces(id, code, material_name, price, location)",
@@ -133,6 +134,42 @@ describe("registro de restauraciones", () => {
         pieces.map((p) => p.id),
       );
     expect(count).toBe(2);
+  });
+
+  it("ventas registra sin precio de venta; con precio lo rechaza la BD (D58)", async () => {
+    const piece = {
+      workshopId: null,
+      description: "Jarra",
+      measure: "",
+      material: { id: null, name: "" },
+      service: { id: null, name: "" },
+      weight: "",
+      price: "",
+      notes: "",
+    };
+    const input = (price: string) =>
+      restorationSchema.parse({
+        clientId: created.clients[0]!,
+        contactId: null,
+        paymentType: "contado",
+        depositPercent: "",
+        pricesIncludeIgv: "si",
+        notes: "",
+        pieces: [{ ...piece, price }],
+      });
+    const ventas = await signIn("ventas@pereda.test");
+    const result = await createRestorationRecord(ventas, input(""));
+    created.restorations.push(result.id);
+    const { data } = await ventas
+      .from("restorations")
+      .select("total, pieces(price)")
+      .eq("id", result.id)
+      .single();
+    expect(data).toEqual({ total: 0, pieces: [{ price: null }] });
+
+    await expect(
+      createRestorationRecord(ventas, input("10")),
+    ).rejects.toMatchObject({ code: "42501" });
   });
 
   it("logística no puede registrar", async () => {
