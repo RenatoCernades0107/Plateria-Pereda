@@ -224,6 +224,7 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          shopify_name: string | null;
           updated_at: string;
         };
         Insert: {
@@ -231,6 +232,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name: string;
+          shopify_name?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -238,6 +240,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name?: string;
+          shopify_name?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -255,6 +258,7 @@ export type Database = {
           payment_method_id: string | null;
           reason: string;
           restoration_id: string;
+          shopify_synced_at: string | null;
           shopify_transaction_id: string | null;
           source: Database["public"]["Enums"]["payment_source"];
         };
@@ -270,6 +274,7 @@ export type Database = {
           payment_method_id?: string | null;
           reason?: string;
           restoration_id: string;
+          shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
           source?: Database["public"]["Enums"]["payment_source"];
         };
@@ -285,6 +290,7 @@ export type Database = {
           payment_method_id?: string | null;
           reason?: string;
           restoration_id?: string;
+          shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
           source?: Database["public"]["Enums"]["payment_source"];
         };
@@ -1677,6 +1683,13 @@ export type Database = {
           id: string;
         }[];
       };
+      deliver_pieces_with_balance: {
+        Args: { p_note?: string; p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       derive_piece_location: {
         Args: {
           p_arrived_at: string;
@@ -1903,6 +1916,13 @@ export type Database = {
       reopen_whatsapp_quote: {
         Args: { p_id: string };
         Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
+      };
+      restorations_balance_due: {
+        Args: { p_restoration_ids: string[] };
+        Returns: {
+          balance_due: boolean;
+          restoration_id: string;
+        }[];
       };
       return_pieces_to_client: {
         Args: { p_piece_ids: string[] };

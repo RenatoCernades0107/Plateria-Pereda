@@ -2,6 +2,9 @@ begin;
 
 select plan(16);
 
+-- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
+select set_config('app.deliver_with_balance', 'on', true);
+
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ca1', 'ventas@listados.test', '{"role":"ventas"}', '{}'),
   ('00000000-0000-0000-0000-000000000ca2', 'logistica@listados.test', '{"role":"logistica"}', '{}');
