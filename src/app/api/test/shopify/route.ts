@@ -44,6 +44,8 @@ const actionSchema = z.discriminatedUnion("action", [
     ]),
     kind: z.enum(["unavailable", "user", "auth"]),
     message: z.string().optional(),
+    /** Solo falla la llamada cuyos argumentos contienen este texto. */
+    match: z.string().optional(),
   }),
 ]);
 
@@ -65,6 +67,12 @@ export async function POST(request: NextRequest) {
       action.input,
     );
     return NextResponse.json({ ok: true, customer });
-  } else fakeShopify.failNext(action.method, action.kind, action.message);
+  } else
+    fakeShopify.failNext(
+      action.method,
+      action.kind,
+      action.message,
+      action.match,
+    );
   return NextResponse.json({ ok: true });
 }

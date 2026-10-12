@@ -164,6 +164,8 @@ test.describe("Clientes", () => {
         method: "createCustomer",
         kind: "user",
         message: "Rechazo de prueba",
+        // Solo el alta de este cliente (otros tests crean clientes en paralelo).
+        match: firstName,
       },
     });
 

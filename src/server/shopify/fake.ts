@@ -53,7 +53,11 @@ type FakeState = {
    * en desarrollo la ruta de control y las acciones del servidor pueden cargar copias
    * distintas de las clases de error, y `instanceof` dejaría de funcionar.
    */
-  failures: Map<GatewayMethod, { kind: FailureKind; message?: string }[]>;
+  /** `match`: solo falla la llamada cuyos argumentos contienen ese texto. */
+  failures: Map<
+    GatewayMethod,
+    { kind: FailureKind; message?: string; match?: string }[]
+  >;
   /** Claves de idempotencia de reembolsos ya usadas. */
   idempotency: Map<string, unknown>;
   calls: { method: GatewayMethod; args: unknown[] }[];
@@ -165,9 +169,14 @@ export const fakeShopify = {
     globalStore.__fakeShopify = createState();
   },
   /** La próxima llamada a `method` falla con ese tipo de error. */
-  failNext(method: GatewayMethod, kind: FailureKind, message?: string) {
+  failNext(
+    method: GatewayMethod,
+    kind: FailureKind,
+    message?: string,
+    match?: string,
+  ) {
     const queue = state().failures.get(method) ?? [];
-    state().failures.set(method, [...queue, { kind, message }]);
+    state().failures.set(method, [...queue, { kind, message, match }]);
   },
   snapshot() {
     const s = state();
@@ -306,9 +315,11 @@ export class FakeShopifyGateway implements ShopifyGateway {
   private track(method: GatewayMethod, args: unknown[]) {
     const s = state();
     s.calls.push({ method, args: structuredClone(args) });
-    const queue = s.failures.get(method);
-    const failure = queue?.shift();
-    if (failure) throw toError(failure);
+    const queue = s.failures.get(method) ?? [];
+    // Con `match`, otras llamadas en paralelo (otros tests) no consumen la falla.
+    const text = JSON.stringify(args);
+    const index = queue.findIndex((f) => !f.match || text.includes(f.match));
+    if (index >= 0) throw toError(queue.splice(index, 1)[0]!);
   }
 
   async createCustomer(input: CustomerInput) {
