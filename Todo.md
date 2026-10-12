@@ -1010,20 +1010,21 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `feat(pagos): registra pagos desde el sistema y los envía a Shopify`
 
 #### Paso 11.3 — Pagos hechos en Shopify (webhooks)
-- [ ] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
-- [ ] `orders/updated` también actualiza el cliente de la restauración si lo cambiaron en Shopify (lo busca o crea localmente por `shopify_customer_id`; auditado como cambio desde Shopify).
-- [ ] Las órdenes que no son de restauraciones se ignoran.
+- [x] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
+- [x] `orders/updated` también actualiza el cliente de la restauración si lo cambiaron en Shopify (lo busca o crea localmente por `shopify_customer_id`; auditado como cambio desde Shopify).
+- [x] Las órdenes que no son de restauraciones se ignoran.
 - **Unit:**
-  - [ ] Parseo de los fixtures reales del spike.
-  - [ ] Mapeo transacción → pago (tipos venta/captura/reembolso; estados éxito/fallo).
+  - [x] Parseo de los fixtures reales del spike.
+  - [x] Mapeo transacción → pago (tipos venta/captura/reembolso; estados éxito/fallo).
 - **Integración:**
-  - [ ] Pago parcial hecho en el POS → estado Parcial.
-  - [ ] Un pago enviado por el sistema no se duplica al llegar su webhook.
-  - [ ] Webhooks duplicados o desordenados → resultado correcto.
-  - [ ] Reembolso → recalcula saldo y estado.
-  - [ ] Cambio de cliente en Shopify → la restauración muestra el nuevo cliente y queda auditado.
+  - [x] Pago parcial hecho en el POS → estado Parcial.
+  - [x] Un pago enviado por el sistema no se duplica al llegar su webhook.
+  - [x] Webhooks duplicados o desordenados → resultado correcto.
+  - [x] Reembolso → recalcula saldo y estado.
+  - [x] Cambio de cliente en Shopify → la restauración muestra el nuevo cliente y queda auditado.
 - **E2E:**
-  - [ ] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
+  - [x] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
+- Hecho (2026-10-12): migración `20261013140000_pagos_webhooks.sql`: `shopify_order_transactions` (transacciones ya contadas: las que creó el sistema al crear la orden, registrar el pago completo o reembolsar, y las importadas), `enqueue_payment_sync()` y `apply_shopify_order_customer()` (solo clave secreta; persona: busca o crea el cliente con `import_shopify_customer` y cambia el de la restauración, auditado con `app.sync_origin = 'shopify'`; las órdenes de empresa no cambian de cliente) y `claim_shopify_jobs` que no toma jobs de una entidad que otro procesador tiene en curso. Gateway `getOrderTransactions` (live, fake y la API emulada). Los webhooks (`src/server/restorations/payment-webhooks.ts`) solo identifican la restauración por `shopify_order_id` (las demás órdenes se ignoran) y encolan `payment.sync`; este importa primero las transacciones desconocidas (`src/domain/shopify-transactions.ts`: venta o captura exitosa = pago, reembolso exitoso = reembolso, fecha en Lima) y después concilia lo del sistema. `pnpm shopify:register-webhooks` suscribe además `ORDERS_PAID`, `ORDER_TRANSACTIONS_CREATE` y `REFUNDS_CREATE`. El fake simula pagos del POS (`/api/test/shopify` acción `transaction`). Los fixtures reales de estos webhooks quedan para la prueba con la tienda (`@shopify-live`): el handler solo usa el id de la orden y el cliente. pgTAP `30_pagos_webhooks.test.sql`, integración en `payments.int.test.ts`, E2E en `e2e/payments.spec.ts`. **Límite conocido:** si el proceso se cae justo entre registrar algo en Shopify y recordar su transacción, al reintentar esa transacción se tomaría como hecha en Shopify.
 - Commit: `feat(pagos): recibe pagos hechos en Shopify mediante webhooks`
 
 #### Paso 11.4 — Interfaz de pagos

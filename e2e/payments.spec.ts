@@ -1,5 +1,10 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 
+import {
+  FAKE_SHOP_DOMAIN,
+  FAKE_WEBHOOK_SECRET,
+} from "../src/server/shopify-webhooks/config";
+import { signWebhook } from "../src/server/shopify-webhooks/hmac";
 import { expect, test } from "./fixtures";
 import { adminClient } from "./support/supabase";
 
@@ -211,5 +216,73 @@ test.describe("Pagos", () => {
     await dialog.getByLabel("Nota (opcional)").fill("Cliente de confianza");
     await dialog.getByRole("button", { name: "Entregar igual" }).click();
     await expect(card).toContainText("Entregada");
+  });
+
+  test("un pago hecho en el POS llega por webhook: pagado, saldo y «Parcial» (11.3)", async ({
+    page,
+    request,
+    loginAs,
+  }) => {
+    const r = await seedRestoration(
+      await seedClient(request, `Pos${run}`),
+      "contado",
+    );
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    const card = page.getByTestId(`pieza-${r.code}-1`);
+    await card.getByRole("button", { name: "Aprobar" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Aprobar sin pago" })
+      .click();
+    await expect(card).toContainText("Aprobada");
+    await expect(page.getByTestId("orden-shopify")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Alguien cobra S/ 80 en el POS y Shopify avisa con un webhook firmado.
+    const response = await request.post("/api/test/shopify", {
+      data: {
+        action: "transaction",
+        tag: r.code,
+        amount: "80.00",
+        gateway: "cash",
+      },
+    });
+    const { order } = (await response.json()) as { order: { id: string } };
+    const webhookId = `e2e-pos-${run}`;
+    const body = JSON.stringify({ admin_graphql_api_id: order.id });
+    expect(
+      (
+        await request.post("/api/webhooks/shopify", {
+          data: body,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Topic": "orders/updated",
+            "X-Shopify-Shop-Domain": FAKE_SHOP_DOMAIN,
+            "X-Shopify-Webhook-Id": webhookId,
+            "X-Shopify-Hmac-Sha256": signWebhook(body, FAKE_WEBHOOK_SECRET),
+          },
+        })
+      ).status(),
+    ).toBe(200);
+
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          return page.getByTestId("estado-pago").textContent();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe("Pago parcial");
+    await expect(page.getByTestId("monto-pagado")).toContainText("S/ 80.00");
+    await expect(page.getByTestId("monto-saldo")).toContainText("S/ 120.00");
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toContainText("Hecho en Shopify");
+    await adminClient()
+      .from("shopify_webhook_events")
+      .delete()
+      .eq("webhook_id", webhookId);
   });
 });
