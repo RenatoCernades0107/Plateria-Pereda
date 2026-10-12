@@ -2,6 +2,9 @@ begin;
 
 select plan(16);
 
+-- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
+select set_config('app.deliver_with_balance', 'on', true);
+
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ca1', 'ventas@listados.test', '{"role":"ventas"}', '{}'),
   ('00000000-0000-0000-0000-000000000ca2', 'logistica@listados.test', '{"role":"logistica"}', '{}');
@@ -19,7 +22,8 @@ insert into public.pieces (id, restoration_id, description, price, workshop_id) 
   ('00000000-0000-0000-0000-00000000ca41', '00000000-0000-0000-0000-00000000ca31', 'Fuente listada', 100, '00000000-0000-0000-0000-00000000ca10'),
   ('00000000-0000-0000-0000-00000000ca42', '00000000-0000-0000-0000-00000000ca32', 'Bandeja listada', 50, null),
   ('00000000-0000-0000-0000-00000000ca43', '00000000-0000-0000-0000-00000000ca33', 'Jarra entregada', 30, null);
-update public.restorations set payment_status = 'pagado' where id = '00000000-0000-0000-0000-00000000ca31';
+-- Pagado: el estado lo calculan los pagos (Paso 11.1).
+insert into public.payments (restoration_id, amount, method_name) values ('00000000-0000-0000-0000-00000000ca31', 100, 'Efectivo');
 update public.restorations set status = 'completada' where id = '00000000-0000-0000-0000-00000000ca33';
 update public.pieces set status = 'entregada' where id = '00000000-0000-0000-0000-00000000ca43';
 

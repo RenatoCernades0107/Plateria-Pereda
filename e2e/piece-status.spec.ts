@@ -26,7 +26,7 @@ async function seedRestoration(pieces: NewPiece[]) {
   const admin = adminClient();
   const { data: r, error } = await admin
     .from("restorations")
-    .insert({ client_id: clientId, payment_type: "contado" })
+    .insert({ client_id: clientId, payment_type: "credito" })
     .select("id, code")
     .single();
   if (error) throw error;

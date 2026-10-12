@@ -157,6 +157,16 @@ export type OrderFinancials = {
   outstanding: Money;
 };
 
+/** Transacción de una orden (pago, captura, reembolso…), para conciliar pagos (11.3). */
+export type OrderTransaction = {
+  id: string;
+  kind: string;
+  status: string;
+  gateway: string;
+  amount: Money;
+  processedAt: string;
+};
+
 export type OrderEdit = {
   addLines?: CustomLine[];
   removeLineIds?: string[];

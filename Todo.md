@@ -259,10 +259,10 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 - **Días en taller** = suma de los intervalos entre cada envío al taller ("Interno") y su "Recibir del taller" (incluye reenvíos por observación; P47). Si la pieza sigue en el taller se cuenta hasta hoy y se muestra como "en curso".
 - **Días de cumplimiento** = desde el registro hasta la entrega (propuesta). Días calendario en zona `America/Lima`.
 
-### 7.5 Pagos ⛔ P28 ⛔ P29
+### 7.5 Pagos (P28 ✅, P29 ✅, 2026-10-12)
 
 - **IGV (P13):** cada restauración indica si el precio incluye IGV; si no, cada pieza se cobra a su precio + 18 % y el total, el adelanto y la orden de Shopify usan ese monto.
-- Tipo de pago: **Al contado** (paga el total), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto).
+- Tipo de pago: **Al contado** (paga el total al aprobar), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto; cualquier cliente, lo eligen ventas o admin). Se cambia solo mientras no haya pagos registrados (P28).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
 - **Envío a Shopify** (plan Grow: la API no acepta pagos parciales en una orden ya creada; P43, a validar en el spike):
@@ -271,7 +271,7 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
   - Los pagos intermedios (registrados con la orden ya creada y sin completar el saldo) quedan "pendientes de envío" y llegan a Shopify con el pago que completa el saldo.
   - Los pagos hechos directamente en el POS o el panel llegan por webhook y se suman al registro sin duplicarse (conciliación por id de transacción).
 - Pagado = pagos − reembolsos del registro del sistema. Saldo = Total − Pagado.
-- Estado de pago automático: **Pendiente** (pagado = 0) → **Parcial** (0 < pagado < total) → **Pagado** (pagado ≥ total).
+- Estado de pago automático (P29): **Pendiente** (pagado = 0) → **Parcial** (0 < pagado < total) → **Pagado** (pagado ≥ total); **Reembolsado** si se devolvió todo lo pagado.
 - Un pago no se edita: si hubo un error, el admin lo corrige con un reembolso (con motivo y auditado).
 - **Entrega con saldo pendiente (P45):** si la restauración no es "Al crédito" y tiene saldo, el sistema no deja marcar "Entregada" y muestra "Falta cobrar el saldo" (sin montos). Ventas y admin pueden entregar igual confirmándolo (queda auditado).
 
@@ -947,88 +947,94 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 10 — Fotos y archivos
 
-#### Paso 10.1 — Storage y datos ⛔ P32
-- [ ] Bucket privado `restoration-files` con rutas `restorations/{id}/general/...` (foto general de todas las piezas) y `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol (logística sube y edita fotos, P42); tabla `restoration_files`; URLs firmadas de corta duración.
+#### Paso 10.1 — Storage y datos (P32 ✅, 2026-10-12)
+- [x] Bucket privado `restoration-files` con rutas `restorations/{id}/general/...` (foto general de todas las piezas) y `restorations/{id}/pieces/{id}/...`; políticas de Storage por rol (logística sube y edita fotos, P42); tabla `restoration_files`; URLs firmadas de corta duración.
 - **Unit:** No aplica (políticas en SQL).
 - **BD:**
-  - [ ] Un usuario sin permiso no puede leer ni subir.
-  - [ ] Borrar un archivo requiere el rol acordado y elimina el objeto.
+  - [x] Un usuario sin permiso no puede leer ni subir.
+  - [x] Borrar un archivo requiere el rol acordado y elimina el objeto.
 - **E2E:** se cubre en 10.2.
-- Commit: `feat(archivos): agrega almacenamiento de fotos por restauración y por pieza`
+- Hecho (2026-10-12): migración `20261012120000_archivos.sql`: tabla `restoration_files` (restauración, pieza opcional, ruta, nombre, tipo, tamaño ≤ 10 MB, clasificación `file_category`, quién y cuándo; la ruta debe corresponder a la restauración y a la pieza, y la pieza a la restauración), auditada; bucket privado `restoration-files` (10 MB y tipos permitidos); `private.can_see_restoration()` (admin y ventas todas; logística las que no son pasadas, D24). Storage: sube quien ve la restauración; lee solo archivos registrados (o el objeto propio aún sin registrar); borran el admin y quien lo subió. URLs firmadas de una hora. pgTAP `27_archivos.test.sql`.
+- Commit: `feat(archivos): bucket, tabla y acciones para fotos y archivos (Fase 10.1)`
 
 #### Paso 10.2 — Subida y galería
-- [ ] `FileUploader`: varios archivos, cámara del celular (`capture`), compresión de imágenes en el navegador, tipos y tamaño máximos (P32), progreso y reintento.
-- [ ] Foto general de la restauración + fotos por pieza; clasificación Antes / Después / Documento / Otro; galería con visor y comparación antes/después; descarga; eliminar.
+- [x] `FileUploader`: varios archivos, cámara del celular (`capture`), compresión de imágenes en el navegador, tipos y tamaño máximos (P32), progreso y reintento.
+- [x] Foto general de la restauración + fotos por pieza; clasificación Antes / Después / Documento / Otro; galería con visor y comparación antes/después; descarga; eliminar.
 - **Unit:**
-  - [ ] Validación de tipo y tamaño.
-  - [ ] La compresión se aplica solo a imágenes.
-  - [ ] Agrupación por clasificación.
+  - [x] Validación de tipo y tamaño.
+  - [x] La compresión se aplica solo a imágenes.
+  - [x] Agrupación por clasificación.
 - **E2E:**
-  - [ ] Subir 2 fotos "Antes" y 1 PDF → aparecen en la galería.
-  - [ ] Logística sube la foto general y una foto "Antes" de una pieza.
-  - [ ] Archivo no permitido → mensaje de error.
-  - [ ] Eliminar un archivo.
-  - [ ] `@mobile` subir foto.
+  - [x] Subir 2 fotos "Antes" y 1 PDF → aparecen en la galería.
+  - [x] Logística sube la foto general y una foto "Antes" de una pieza.
+  - [x] Archivo no permitido → mensaje de error.
+  - [x] Eliminar un archivo.
+  - [x] `@mobile` subir foto.
+- Hecho (2026-10-12): pestaña "Archivos" del detalle (todos los roles). `FileUploader`: "Para" (General o una pieza), "Clasificación", "Elegir archivos" (varios) y "Tomar foto" (`capture`); valida tipo y tamaño (`src/domain/files.ts`), comprime con `compressImage` (`src/lib/images/compress.ts`), sube al bucket desde el navegador y registra con `registerRestorationFile` (si falla el registro, borra el objeto); estado por archivo y "Reintentar". `FileGallery`: por destino y clasificación, visor con datos y descarga (y "Abrir" el PDF), "Comparar antes y después" con selección de fotos, borrar con confirmación (admin o quien subió; HEIC se muestra como archivo para descargar). E2E `e2e/files.spec.ts`.
 - Commit: `feat(archivos): agrega subida de fotos y documentos con galería`
 
 ### Fase 11 — Pagos
 
-#### Paso 11.1 — Registro de pagos y estado de pago ⛔ P29
-- [ ] Tabla `payments` (registro del sistema; id de transacción de Shopify único cuando existe); función que recalcula pagado, saldo y estado de pago de la restauración.
-- [ ] Dominio `derivePaymentStatus(total, paid)` y `suggestedPayment(restoration)` (adelanto pendiente o saldo).
+#### Paso 11.1 — Registro de pagos y estado de pago (P29 ✅, 2026-10-12)
+- [x] Tabla `payments` (registro del sistema; id de transacción de Shopify único cuando existe); función que recalcula pagado, saldo y estado de pago de la restauración.
+- [x] Dominio `derivePaymentStatus(total, paid)` y `suggestedPayment(restoration)` (adelanto pendiente o saldo).
 - **Unit:**
-  - [ ] Pendiente, Parcial y Pagado; sobrepago; reembolso total y parcial; total 0.
-  - [ ] Monto sugerido: 50 % u otro % del total, y saldo restante.
+  - [x] Pendiente, Parcial y Pagado; sobrepago; reembolso total y parcial; total 0.
+  - [x] Monto sugerido: 50 % u otro % del total, y saldo restante.
 - **BD:**
-  - [ ] Recálculo al insertar pagos y reembolsos.
-  - [ ] RLS: logística no lee pagos (P42); solo admin registra reembolsos.
+  - [x] Recálculo al insertar pagos y reembolsos.
+  - [x] RLS: logística no lee pagos (P42); solo admin registra reembolsos.
 - **E2E:** se cubre en 11.2.
+- Hecho (2026-10-12): migración `20261013120000_pagos.sql`: tabla `payments` (pago o reembolso, monto > 0, método del catálogo o nombre, fecha `paid_on`, motivo obligatorio en reembolsos, origen sistema/Shopify con `shopify_transaction_id` único, quién lo registró), sin edición ni borrado, auditada. Triggers: valida que un pago del sistema no supere el saldo ni un reembolso lo pagado; recalcula `paid`; `payment_status` con `private.payment_status_for()` cada vez que cambian el total, lo pagado o el IGV; con pagos ya no se cambia el tipo de pago (P28). RLS: admin y ventas leen y registran pagos; reembolsos solo el admin; logística nada. Dominio `src/domain/payments.ts` (`derivePaymentStatus`, `suggestedPayment`). pgTAP `28_pagos.test.sql`. **Para 11.2:** deshabilitar el tipo de pago en "Editar" cuando haya pagos.
 - Commit: `feat(pagos): agrega registro de pagos y estado de pago`
 
 #### Paso 11.2 — Registrar pagos desde el sistema
-- [ ] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
-- [ ] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
-- [ ] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
-- [ ] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
-- [ ] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
-- [ ] Regla de entrega con saldo pendiente (§7.5, P45).
+- [x] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
+- [x] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
+- [x] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
+- [x] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
+- [x] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
+- [x] Regla de entrega con saldo pendiente (§7.5, P45).
 - **Unit:**
-  - [ ] Validaciones: monto > 0 y ≤ saldo.
-  - [ ] Decisión de envío: incluir al crear la orden / pago completo / pendiente.
+  - [x] Validaciones: monto > 0 y ≤ saldo.
+  - [x] Decisión de envío: incluir al crear la orden / pago completo / pendiente.
 - **Integración:**
-  - [ ] Aprobar con adelanto → la orden del fake queda "Parcialmente pagada".
-  - [ ] Pagar el saldo → "Pagada".
-  - [ ] Pago intermedio → queda pendiente y se envía junto con el pago que completa el saldo.
+  - [x] Aprobar con adelanto → la orden del fake queda "Parcialmente pagada".
+  - [x] Pagar el saldo → "Pagada".
+  - [x] Pago intermedio → queda pendiente y se envía junto con el pago que completa el saldo.
 - **E2E:**
-  - [ ] Registrar el adelanto al aprobar y el saldo antes de entregar → estado "Pagado" en el sistema y en el fake.
-  - [ ] Logística no ve el botón "Registrar pago".
-  - [ ] Con saldo pendiente, logística no puede marcar "Entregada" y ve "Falta cobrar el saldo"; ventas entrega confirmándolo.
+  - [x] Registrar el adelanto al aprobar y el saldo antes de entregar → estado "Pagado" en el sistema y en el fake.
+  - [x] Logística no ve el botón "Registrar pago".
+  - [x] Con saldo pendiente, logística no puede marcar "Entregada" y ve "Falta cobrar el saldo"; ventas entrega confirmándolo.
+- Hecho (2026-10-12): migración `20261013130000_pagos_shopify.sql`: `payments.shopify_synced_at` (pendiente de envío mientras sea null; los que vienen de Shopify ya están allá), job `payment.sync` al registrar un pago o reembolso con la orden creada, `payment_methods.shopify_name` (D34, en Configuración → Métodos de pago), entrega bloqueada con saldo (`private.guard_unpaid_delivery`, salvo `deliver_pieces_with_balance` de ventas/admin, que lo anota en el historial) y `restorations_balance_due()` sin montos para logística. Dominio `src/domain/payment-sync.ts`: `orderCreatePayments` (pagos incluidos al crear la orden, lo neto si hubo reembolsos, nunca más que el total) y `planPaymentSync` (pago completo con `recordFullPayment` cuando el sistema cubrió el total; reembolso de la diferencia si Shopify tiene cobrado más de lo pagado en el sistema; si no, los pagos intermedios esperan). Los handlers `order.create`, `order.edit` y `payment.sync` concilian con Shopify (repetirlos no cambia nada). En lugar de jobs `payment_record`/`payment_refund` separados hay un solo `payment.sync` que concilia. Interfaz: "Registrar pago" y "Reembolsar" (admin, con motivo) en la pestaña Pagos con el historial y su estado de envío; al aprobar la última pieza, "Aprobar y registrar pago" o "Aprobar sin pago" (`approveWithPayment`: el pago queda antes de procesar la orden); "Entregar" con saldo: logística ve "Falta cobrar el saldo" y el botón deshabilitado; ventas y admin confirman. El tipo de pago queda deshabilitado en "Editar" con pagos (P28). El adaptador real reembolsa contra el último pago si el método quedó como "manual". **Pendiente con la tienda real:** confirmar los nombres exactos de `paymentMethodName` (spike) y cargarlos en "Nombre en Shopify". Integración `payments.int.test.ts`; E2E `e2e/payments.spec.ts` (los E2E que no tratan pagos usan restauraciones al crédito).
 - Commit: `feat(pagos): registra pagos desde el sistema y los envía a Shopify`
 
 #### Paso 11.3 — Pagos hechos en Shopify (webhooks)
-- [ ] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
-- [ ] `orders/updated` también actualiza el cliente de la restauración si lo cambiaron en Shopify (lo busca o crea localmente por `shopify_customer_id`; auditado como cambio desde Shopify).
-- [ ] Las órdenes que no son de restauraciones se ignoran.
+- [x] Handlers para `orders/paid`, `orders/updated`, `order_transactions/create` y `refunds/create` (según el spike): identifican la restauración por `shopify_order_id`, **consultan a Shopify las transacciones actuales de la orden** (inmune a webhooks desordenados) y agregan al registro las que no vienen del sistema (pagos hechos en el POS o el panel).
+- [x] `orders/updated` también actualiza el cliente de la restauración si lo cambiaron en Shopify (lo busca o crea localmente por `shopify_customer_id`; auditado como cambio desde Shopify).
+- [x] Las órdenes que no son de restauraciones se ignoran.
 - **Unit:**
-  - [ ] Parseo de los fixtures reales del spike.
-  - [ ] Mapeo transacción → pago (tipos venta/captura/reembolso; estados éxito/fallo).
+  - [x] Parseo de los fixtures reales del spike.
+  - [x] Mapeo transacción → pago (tipos venta/captura/reembolso; estados éxito/fallo).
 - **Integración:**
-  - [ ] Pago parcial hecho en el POS → estado Parcial.
-  - [ ] Un pago enviado por el sistema no se duplica al llegar su webhook.
-  - [ ] Webhooks duplicados o desordenados → resultado correcto.
-  - [ ] Reembolso → recalcula saldo y estado.
-  - [ ] Cambio de cliente en Shopify → la restauración muestra el nuevo cliente y queda auditado.
+  - [x] Pago parcial hecho en el POS → estado Parcial.
+  - [x] Un pago enviado por el sistema no se duplica al llegar su webhook.
+  - [x] Webhooks duplicados o desordenados → resultado correcto.
+  - [x] Reembolso → recalcula saldo y estado.
+  - [x] Cambio de cliente en Shopify → la restauración muestra el nuevo cliente y queda auditado.
 - **E2E:**
-  - [ ] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
+  - [x] Con una restauración aprobada, enviar un webhook firmado de un pago del POS → la interfaz muestra pagado, saldo y "Parcial".
+- Hecho (2026-10-12): migración `20261013140000_pagos_webhooks.sql`: `shopify_order_transactions` (transacciones ya contadas: las que creó el sistema al crear la orden, registrar el pago completo o reembolsar, y las importadas), `enqueue_payment_sync()` y `apply_shopify_order_customer()` (solo clave secreta; persona: busca o crea el cliente con `import_shopify_customer` y cambia el de la restauración, auditado con `app.sync_origin = 'shopify'`; las órdenes de empresa no cambian de cliente) y `claim_shopify_jobs` que no toma jobs de una entidad que otro procesador tiene en curso. Gateway `getOrderTransactions` (live, fake y la API emulada). Los webhooks (`src/server/restorations/payment-webhooks.ts`) solo identifican la restauración por `shopify_order_id` (las demás órdenes se ignoran) y encolan `payment.sync`; este importa primero las transacciones desconocidas (`src/domain/shopify-transactions.ts`: venta o captura exitosa = pago, reembolso exitoso = reembolso, fecha en Lima) y después concilia lo del sistema. `pnpm shopify:register-webhooks` suscribe además `ORDERS_PAID`, `ORDER_TRANSACTIONS_CREATE` y `REFUNDS_CREATE`. El fake simula pagos del POS (`/api/test/shopify` acción `transaction`). Los fixtures reales de estos webhooks quedan para la prueba con la tienda (`@shopify-live`): el handler solo usa el id de la orden y el cliente. pgTAP `30_pagos_webhooks.test.sql`, integración en `payments.int.test.ts`, E2E en `e2e/payments.spec.ts`. **Límite conocido:** si el proceso se cae justo entre registrar algo en Shopify y recordar su transacción, al reintentar esa transacción se tomaría como hecha en Shopify.
 - Commit: `feat(pagos): recibe pagos hechos en Shopify mediante webhooks`
 
 #### Paso 11.4 — Interfaz de pagos
-- [ ] Pestaña Pagos (historial con método, fecha, quién lo registró y estado de envío a Shopify); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
+- [x] Pestaña Pagos (historial con método, fecha, quién lo registró y estado de envío a Shopify); resumen en la cabecera; badge de estado de pago en listados; botón "Resincronizar pagos" (admin).
 - **Unit:**
-  - [ ] Componentes de resumen e historial.
+  - [x] Componentes de resumen e historial.
 - **E2E:**
-  - [ ] El historial de pagos es visible para ventas y admin.
-  - [ ] "Resincronizar pagos" actualiza los montos desde el fake.
+  - [x] El historial de pagos es visible para ventas y admin.
+  - [x] "Resincronizar pagos" actualiza los montos desde el fake.
+- Hecho (2026-10-12): pestaña Pagos con el historial (`PaymentsList`: fecha, método, monto, reembolsos con motivo, quién lo registró y "En Shopify" / "Pendiente de envío" / "Hecho en Shopify"); el resumen de la cabecera (`MoneySummary`) y el badge de estado de pago en los listados ya existían (7.6 y 12.x). "Resincronizar pagos" (admin, con la orden creada) encola `payment.sync`: importa lo hecho en el POS aunque el webhook no haya llegado y envía lo pendiente. Test de componente `payments-list.test.tsx`; E2E en `e2e/payments.spec.ts`.
 - Commit: `feat(pagos): muestra pagos y saldos en la interfaz`
 
 ### Fase 12 — Listados y gestión operativa

@@ -69,11 +69,23 @@ test.describe("Catálogos", () => {
     }
     await page.getByRole("button", { name: "Agregar" }).click();
     const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Nombre").fill("yape");
+    await dialog.getByLabel("Nombre", { exact: true }).fill("yape");
     await dialog.getByRole("button", { name: "Agregar" }).click();
     await expect(
       dialog.getByText("Ya existe un ítem con ese nombre."),
     ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // Nombre del método de pago manual en Shopify (D34), opcional.
+    const tarjeta = page.getByTestId("catalogo-Tarjeta");
+    await tarjeta.getByRole("button", { name: "Editar Tarjeta" }).click();
+    await dialog.getByLabel("Nombre en Shopify").fill("Visa");
+    await dialog.getByRole("button", { name: "Guardar" }).click();
+    await expect(tarjeta).toContainText("Shopify: Visa");
+    await tarjeta.getByRole("button", { name: "Editar Tarjeta" }).click();
+    await dialog.getByLabel("Nombre en Shopify").fill("");
+    await dialog.getByRole("button", { name: "Guardar" }).click();
+    await expect(tarjeta).not.toContainText("Shopify:");
   });
 
   test("ventas no entra a los catálogos", async ({ page, loginAs }) => {

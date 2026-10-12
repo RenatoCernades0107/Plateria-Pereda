@@ -52,7 +52,8 @@ async function seedRestoration(clientId: string) {
     .from("restorations")
     .insert({
       client_id: clientId,
-      payment_type: "contado",
+      // Al crédito: sin adelanto al aprobar ni saldo que bloquee la entrega (11.2).
+      payment_type: "credito",
       prices_include_igv: false,
     })
     .select("id, code")
@@ -176,7 +177,7 @@ async function seedReadyPiece(clientId: string) {
   const admin = adminClient();
   const { data: r, error } = await admin
     .from("restorations")
-    .insert({ client_id: clientId, payment_type: "contado" })
+    .insert({ client_id: clientId, payment_type: "credito" })
     .select("id, code")
     .single();
   if (error) throw error;

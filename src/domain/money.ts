@@ -85,7 +85,7 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
 };
 
 /** % de adelanto por defecto si la configuración no tiene otro (N2). */
-/** Estados de pago (P29, pendiente: se usa su propuesta). */
+/** Estados de pago (P29 ✅, 2026-10-12): los calcula `derivePaymentStatus()` (payments.ts). */
 export const PAYMENT_STATUSES = [
   "pendiente",
   "parcial",

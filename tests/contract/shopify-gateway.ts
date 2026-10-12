@@ -388,6 +388,20 @@ export function shopifyGatewayContract(
           "150.00",
         );
       });
+
+      it("lista las transacciones de la orden con su monto (11.3)", async () => {
+        const order = await createOrder();
+        await gateway.recordFullPayment(order.id, "Efectivo");
+        const list = await gateway.getOrderTransactions(order.id);
+        // El método del pago completo puede quedar "manual" si la tienda no lo tiene.
+        expect(list.map((t) => [t.kind, t.status, Number(t.amount)])).toEqual([
+          ["SALE", "SUCCESS", 200],
+          ["SALE", "SUCCESS", 200],
+        ]);
+        expect(list[0]!.gateway).toBe("Yape");
+        expect(new Set(list.map((t) => t.id)).size).toBe(2);
+        expect(Number.isNaN(Date.parse(list[0]!.processedAt))).toBe(false);
+      });
     });
   });
 }

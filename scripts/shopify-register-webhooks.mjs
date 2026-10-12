@@ -6,7 +6,10 @@ const TOPICS = [
   "CUSTOMERS_UPDATE",
   "ORDERS_UPDATED",
   "ORDERS_CANCELLED",
+  // Pagos hechos en el POS o el panel (Paso 11.3).
+  "ORDERS_PAID",
   "ORDER_TRANSACTIONS_CREATE",
+  "REFUNDS_CREATE",
 ];
 
 const {

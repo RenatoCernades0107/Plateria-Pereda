@@ -5,6 +5,7 @@ export const CATALOGS = {
     singular: "material",
     href: "/configuracion/materiales",
     hasPrice: false,
+    hasShopifyName: false,
     description:
       "Se proponen al registrar cada pieza; también se puede escribir otro.",
   },
@@ -13,6 +14,7 @@ export const CATALOGS = {
     singular: "servicio",
     href: "/configuracion/servicios",
     hasPrice: true,
+    hasShopifyName: false,
     description:
       "Se proponen al cotizar cada pieza, con su precio sugerido (editable en cada pieza).",
   },
@@ -21,6 +23,7 @@ export const CATALOGS = {
     singular: "método de pago",
     href: "/configuracion/metodos-de-pago",
     hasPrice: false,
+    hasShopifyName: true,
     description: "Se eligen al registrar un pago; se envían a Shopify.",
   },
 } as const;

@@ -15,6 +15,8 @@ export const catalogItemSchema = z.object({
       "Ingresa un monto válido (hasta 2 decimales)",
     )
     .transform((v) => (v === "" ? null : Number(v.replace(",", ".")))),
+  // Solo métodos de pago (D34): nombre exacto del pago manual en Shopify.
+  shopifyName: z.string().trim().max(100, "Máximo 100 caracteres").optional(),
 });
 
 export type CatalogItemFormInput = z.input<typeof catalogItemSchema>;

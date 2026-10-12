@@ -12,6 +12,13 @@ const notFound = () => new NextResponse(null, { status: 404 });
 
 const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("reset") }),
+  // Pago (o reembolso, monto negativo) hecho directamente en el POS o el panel (11.3).
+  z.object({
+    action: z.literal("transaction"),
+    tag: z.string(),
+    amount: z.string(),
+    gateway: z.string(),
+  }),
   // Crea un cliente que existe solo en Shopify (para probar el buscador e importaciones).
   z.object({
     action: z.literal("customer"),
@@ -44,6 +51,8 @@ const actionSchema = z.discriminatedUnion("action", [
     ]),
     kind: z.enum(["unavailable", "user", "auth"]),
     message: z.string().optional(),
+    /** Solo falla la llamada cuyos argumentos contienen este texto. */
+    match: z.string().optional(),
   }),
 ]);
 
@@ -60,11 +69,24 @@ export async function POST(request: NextRequest) {
   }
   const action = parsed.data;
   if (action.action === "reset") fakeShopify.reset();
-  else if (action.action === "customer") {
+  else if (action.action === "transaction") {
+    const order = fakeShopify.externalTransaction(
+      action.tag,
+      action.amount,
+      action.gateway,
+    );
+    return NextResponse.json({ ok: true, order });
+  } else if (action.action === "customer") {
     const customer = await new FakeShopifyGateway().createCustomer(
       action.input,
     );
     return NextResponse.json({ ok: true, customer });
-  } else fakeShopify.failNext(action.method, action.kind, action.message);
+  } else
+    fakeShopify.failNext(
+      action.method,
+      action.kind,
+      action.message,
+      action.match,
+    );
   return NextResponse.json({ ok: true });
 }

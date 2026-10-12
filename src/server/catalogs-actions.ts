@@ -23,13 +23,20 @@ async function save(
 ) {
   const parsed = catalogItemSchema.safeParse(input);
   if (!parsed.success) return { invalid: true as const };
-  const { name, price } = parsed.data;
+  const { name, price, shopifyName } = parsed.data;
 
   if (kind === "services") {
     const row = { name, suggested_price: price };
     const { error } = id
       ? await supabase.from("services").update(row).eq("id", id)
       : await supabase.from("services").insert(row);
+    return { error };
+  }
+  if (kind === "payment_methods") {
+    const row = { name, shopify_name: shopifyName || null };
+    const { error } = id
+      ? await supabase.from("payment_methods").update(row).eq("id", id)
+      : await supabase.from("payment_methods").insert(row);
     return { error };
   }
   const { error } = id

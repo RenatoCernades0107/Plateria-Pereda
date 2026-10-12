@@ -5,6 +5,11 @@ import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
+import {
+  ApproveWithPaymentDialog,
+  DeliverWithBalanceDialog,
+  type ApprovalPayment,
+} from "@/components/payments/piece-payment-dialogs";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -232,11 +237,17 @@ export function PieceStatusPanel({
   piece,
   role,
   workshops,
+  approvalPayment = null,
+  balanceDue = false,
 }: {
   restorationId: string;
   piece: StatusPiece;
   role: AppRole;
   workshops: WorkshopOption[];
+  /** Es la última pieza por aprobar: "Aprobar" ofrece registrar el adelanto (11.2). */
+  approvalPayment?: ApprovalPayment | null;
+  /** Falta cobrar el saldo: "Entregar" se bloquea o pide confirmarlo (P45). */
+  balanceDue?: boolean;
 }) {
   const [optimistic, setOptimistic] = useOptimistic(
     piece,
@@ -244,6 +255,10 @@ export function PieceStatusPanel({
   );
   const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<PendingChange | null>(null);
+  const [paymentDialog, setPaymentDialog] = useState<
+    "aprobar" | "entregar" | null
+  >(null);
+  const canConfirmBalance = role === "admin" || role === "ventas";
 
   const snapshot = snapshotOf(piece);
   const transitions = availableTransitions(snapshot, role);
@@ -377,22 +392,55 @@ export function PieceStatusPanel({
           {transitions.map((t) => {
             const change = requirementsFor([t])!;
             const closing = isClosedStatus(t.to);
+            const blocked =
+              t.to === "entregada" && balanceDue && !canConfirmBalance;
+            const onClick = () => {
+              if (t.to === "aprobada" && approvalPayment)
+                return setPaymentDialog("aprobar");
+              if (t.to === "entregada" && balanceDue)
+                return setPaymentDialog("entregar");
+              return needsDialog(change) ? setDialog(change) : void run(change);
+            };
             return (
               <Button
                 key={t.to}
                 size="sm"
                 variant={closing ? "ghost" : "outline"}
                 className={closing ? "text-destructive" : undefined}
-                disabled={pending}
-                onClick={() =>
-                  needsDialog(change) ? setDialog(change) : void run(change)
-                }
+                disabled={pending || blocked}
+                onClick={onClick}
               >
                 {ACTION_LABELS[t.to]}
               </Button>
             );
           })}
         </div>
+      ) : null}
+      {balanceDue && transitions.some((t) => t.to === "entregada") ? (
+        <p className="text-destructive text-sm">Falta cobrar el saldo</p>
+      ) : null}
+      {approvalPayment ? (
+        <ApproveWithPaymentDialog
+          key={paymentDialog === "aprobar" ? "abierto" : "cerrado"}
+          open={paymentDialog === "aprobar"}
+          onOpenChange={(open) => !open && setPaymentDialog(null)}
+          restorationId={restorationId}
+          pieceId={piece.id}
+          pieceCode={piece.code}
+          payment={approvalPayment}
+          onDone={() => undefined}
+        />
+      ) : null}
+      {balanceDue && canConfirmBalance ? (
+        <DeliverWithBalanceDialog
+          key={paymentDialog === "entregar" ? "abierto" : "cerrado"}
+          open={paymentDialog === "entregar"}
+          onOpenChange={(open) => !open && setPaymentDialog(null)}
+          restorationId={restorationId}
+          pieceIds={[piece.id]}
+          subject={piece.code}
+          onDone={() => undefined}
+        />
       ) : null}
       <StatusChangeDialog
         key={dialog?.to ?? "cerrado"}

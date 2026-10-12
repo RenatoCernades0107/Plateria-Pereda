@@ -2,6 +2,9 @@ begin;
 
 select plan(16);
 
+-- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
+select set_config('app.deliver_with_balance', 'on', true);
+
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000bb1', 'ventas@orden.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
   ('00000000-0000-0000-0000-000000000bb3', 'admin@orden.test', '{"role":"admin"}', '{"full_name":"Ada Admin"}');

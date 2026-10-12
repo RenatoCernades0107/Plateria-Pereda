@@ -4,6 +4,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
+import { FileGallery } from "@/components/files/file-gallery";
+import { FileUploader } from "@/components/files/file-uploader";
+import { PaymentsList } from "@/components/payments/payments-list";
+import { RefundDialog } from "@/components/payments/refund-dialog";
+import { RegisterPaymentDialog } from "@/components/payments/register-payment-dialog";
+import { ResyncPaymentsButton } from "@/components/payments/resync-payments-button";
 import {
   EditRestorationDialog,
   PieceDialog,
@@ -29,6 +35,7 @@ import {
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { igvLabel } from "@/domain/igv";
+import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
 import { editableFields } from "@/domain/restoration-edit";
 import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
@@ -37,6 +44,8 @@ import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
+import { listRestorationFiles } from "@/server/files/queries";
+import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
   getLogisticsInfo,
@@ -115,10 +124,45 @@ export default async function RestauracionDetallePage({
   // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
   // en taller y la última observación (P42).
   const now = new Date();
-  const [history, logistics] = await Promise.all([
-    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
-    canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
-  ]);
+  const [history, logistics, files, payments, methods, balanceDue] =
+    await Promise.all([
+      canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+      canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
+      listRestorationFiles(restoration.id),
+      canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
+      canSeeMoney
+        ? listCatalog("payment_methods", { onlyActive: true })
+        : Promise.resolve([]),
+      getBalanceDue(restoration.id),
+    ]);
+  // Pagos (11.2): monto sugerido y, al aprobar la última pieza sin orden aún, el
+  // adelanto que la orden incluirá (al contado, el total; a cuenta, el %; P28).
+  const money = restoration.money;
+  const suggested = money
+    ? suggestedPayment({
+        paymentType: restoration.paymentType,
+        totalCents: money.totalCents,
+        paidCents: money.paidCents,
+        expectedDepositCents: money.expectedDepositCents,
+      })
+    : null;
+  const paymentMethods = methods.map((m) => ({ id: m.id, name: m.name }));
+  const approvalPayment =
+    money &&
+    suggested &&
+    !restoration.hasOrder &&
+    can(user.role, "pagos.registrar") &&
+    money.expectedDepositCents > money.paidCents
+      ? { methods: paymentMethods, suggested }
+      : null;
+  // Fotos y archivos (Fase 10): la foto general o la de cada pieza.
+  const fileTargets = [
+    { id: null, label: "General (todas las piezas)" },
+    ...restoration.pieces.map((p) => ({
+      id: p.id,
+      label: `${p.code} · ${p.description}`,
+    })),
+  ];
   const extra = Object.fromEntries(
     restoration.pieces.map((piece) => {
       const info = logistics?.get(piece.id);
@@ -249,6 +293,7 @@ export default async function RestauracionDetallePage({
               }}
               contacts={editing.contacts}
               hasOrder={restoration.hasOrder}
+              hasPayments={payments.length > 0}
             />
           ) : null}
           {message ? (
@@ -303,7 +348,9 @@ export default async function RestauracionDetallePage({
             Piezas ({restoration.pieces.length})
           </TabsTrigger>
           {canSeeMoney ? <TabsTrigger value="pagos">Pagos</TabsTrigger> : null}
-          <TabsTrigger value="archivos">Archivos</TabsTrigger>
+          <TabsTrigger value="archivos">
+            Archivos{files.length > 0 ? ` (${files.length})` : ""}
+          </TabsTrigger>
           {canSeeMoney ? (
             <TabsTrigger value="historial">Historial</TabsTrigger>
           ) : null}
@@ -323,6 +370,8 @@ export default async function RestauracionDetallePage({
             role={user.role}
             workshops={workshops}
             extra={extra}
+            approvalPayment={approvalPayment}
+            balanceDue={balanceDue}
             editing={
               editing
                 ? {
@@ -350,16 +399,43 @@ export default async function RestauracionDetallePage({
           />
         </TabsContent>
         {canSeeMoney ? (
-          <TabsContent value="pagos">
-            <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-              Aquí se registrarán los pagos (adelanto y saldo).
-            </p>
+          <TabsContent value="pagos" className="space-y-4">
+            {money ? (
+              <div className="flex flex-wrap gap-2">
+                <RegisterPaymentDialog
+                  restorationId={restoration.id}
+                  balanceCents={money.totalCents - money.paidCents}
+                  suggested={suggested}
+                  methods={paymentMethods}
+                />
+                {can(user.role, "pagos.corregir") ? (
+                  <RefundDialog
+                    restorationId={restoration.id}
+                    paidCents={money.paidCents}
+                    methods={paymentMethods}
+                  />
+                ) : null}
+                {can(user.role, "pagos.corregir") && restoration.hasOrder ? (
+                  <ResyncPaymentsButton restorationId={restoration.id} />
+                ) : null}
+              </div>
+            ) : null}
+            <PaymentsList payments={payments} />
           </TabsContent>
         ) : null}
-        <TabsContent value="archivos">
-          <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-            Aquí se verán las fotos de las piezas.
-          </p>
+        <TabsContent value="archivos" className="space-y-6">
+          {can(user.role, "fotos.subir") ? (
+            <FileUploader
+              restorationId={restoration.id}
+              targets={fileTargets}
+            />
+          ) : null}
+          <FileGallery
+            files={files}
+            targets={fileTargets}
+            currentUserId={user.id}
+            isAdmin={user.role === "admin"}
+          />
         </TabsContent>
         {canSeeMoney ? (
           <TabsContent value="historial" className="space-y-6">

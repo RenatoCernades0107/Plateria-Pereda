@@ -10,6 +10,7 @@ import type {
   FinancialStatus,
   OrderEdit,
   OrderInput,
+  OrderTransaction,
   RefundInput,
   OrderFinancials,
   Page,
@@ -241,6 +242,15 @@ export const ORDER_MANUAL_PAYMENT = `mutation OrderCreateManualPayment($id: ID!,
 
 export const ORDER_TRANSACTIONS = `query OrderTransactions($id: ID!) {
   order(id: $id) { transactions { id kind status gateway } }
+}`;
+
+export const ORDER_TRANSACTION_LIST = `query OrderTransactionList($id: ID!) {
+  order(id: $id) {
+    transactions {
+      id kind status gateway processedAt
+      amountSet { shopMoney { amount } }
+    }
+  }
 }`;
 
 export const REFUND_CREATE = (
@@ -559,6 +569,30 @@ export class LiveShopifyGateway implements ShopifyGateway {
     return node ? toOrder(node) : null;
   }
 
+  async getOrderTransactions(orderId: string): Promise<OrderTransaction[]> {
+    const { order } = await this.client.request<{
+      order: {
+        transactions: {
+          id: string;
+          kind: string;
+          status: string;
+          gateway: string;
+          processedAt: string;
+          amountSet: { shopMoney: { amount: string } };
+        }[];
+      } | null;
+    }>(ORDER_TRANSACTION_LIST, { id: orderId });
+    if (!order) throw new ShopifyNotFoundError(orderId);
+    return order.transactions.map((t) => ({
+      id: t.id,
+      kind: t.kind,
+      status: t.status,
+      gateway: t.gateway,
+      amount: t.amountSet.shopMoney.amount,
+      processedAt: t.processedAt,
+    }));
+  }
+
   async getOrderFinancials(orderId: string): Promise<OrderFinancials> {
     const data = await this.client.request<{
       order: {
@@ -818,17 +852,19 @@ export class LiveShopifyGateway implements ShopifyGateway {
       } | null;
     }>(ORDER_TRANSACTIONS, { id: orderId });
     if (!order) throw new ShopifyNotFoundError(orderId);
-    const parent = order.transactions.find(
+    const sales = order.transactions.filter(
       (t) =>
-        t.status === "SUCCESS" &&
-        (t.kind === "SALE" || t.kind === "CAPTURE") &&
-        t.gateway === refund.gateway,
+        t.status === "SUCCESS" && (t.kind === "SALE" || t.kind === "CAPTURE"),
     );
+    // Si el método no estaba configurado en la tienda, el pago quedó como "manual":
+    // se reembolsa contra el último pago, con su mismo medio.
+    const parent =
+      sales.find((t) => t.gateway === refund.gateway) ?? sales.at(-1);
     if (!parent) {
       throw new ShopifyUserError([
         {
           field: ["gateway"],
-          message: `No hay un pago con ${refund.gateway} para reembolsar`,
+          message: "La orden no tiene pagos para reembolsar",
         },
       ]);
     }
@@ -844,7 +880,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
             orderId,
             parentId: parent.id,
             kind: "REFUND",
-            gateway: refund.gateway,
+            gateway: parent.gateway,
             amount: refund.amount,
           },
         ],

@@ -224,6 +224,7 @@ export type Database = {
           created_at: string;
           id: string;
           name: string;
+          shopify_name: string | null;
           updated_at: string;
         };
         Insert: {
@@ -231,6 +232,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           name: string;
+          shopify_name?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -238,9 +240,83 @@ export type Database = {
           created_at?: string;
           id?: string;
           name?: string;
+          shopify_name?: string | null;
           updated_at?: string;
         };
         Relationships: [];
+      };
+      payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          kind: Database["public"]["Enums"]["payment_kind"];
+          method_name: string;
+          paid_on: string;
+          payment_method_id: string | null;
+          reason: string;
+          restoration_id: string;
+          shopify_synced_at: string | null;
+          shopify_transaction_id: string | null;
+          source: Database["public"]["Enums"]["payment_source"];
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["payment_kind"];
+          method_name: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          reason?: string;
+          restoration_id: string;
+          shopify_synced_at?: string | null;
+          shopify_transaction_id?: string | null;
+          source?: Database["public"]["Enums"]["payment_source"];
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          kind?: Database["public"]["Enums"]["payment_kind"];
+          method_name?: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          reason?: string;
+          restoration_id?: string;
+          shopify_synced_at?: string | null;
+          shopify_transaction_id?: string | null;
+          source?: Database["public"]["Enums"]["payment_source"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_payment_method_id_fkey";
+            columns: ["payment_method_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_methods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       piece_status_history: {
         Row: {
@@ -752,6 +828,84 @@ export type Database = {
           },
         ];
       };
+      restoration_files: {
+        Row: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          mime_type: string;
+          name: string;
+          path: string;
+          piece_id: string | null;
+          restoration_id: string;
+          size_bytes: number;
+        };
+        Insert: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          mime_type: string;
+          name: string;
+          path: string;
+          piece_id?: string | null;
+          restoration_id: string;
+          size_bytes: number;
+        };
+        Update: {
+          category?: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          mime_type?: string;
+          name?: string;
+          path?: string;
+          piece_id?: string | null;
+          restoration_id?: string;
+          size_bytes?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "piece_metrics";
+            referencedColumns: ["piece_id"];
+          },
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       restorations: {
         Row: {
           balance: number | null;
@@ -927,6 +1081,42 @@ export type Database = {
           whatsapp_template?: string | null;
         };
         Relationships: [];
+      };
+      shopify_order_transactions: {
+        Row: {
+          created_at: string;
+          id: string;
+          origin: Database["public"]["Enums"]["payment_source"];
+          restoration_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id: string;
+          origin: Database["public"]["Enums"]["payment_source"];
+          restoration_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          origin?: Database["public"]["Enums"]["payment_source"];
+          restoration_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shopify_order_transactions_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shopify_order_transactions_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       shopify_sync_jobs: {
         Row: {
@@ -1433,6 +1623,17 @@ export type Database = {
         };
         Returns: number;
       };
+      apply_shopify_order_customer: {
+        Args: {
+          p_customer_id: string;
+          p_email: string;
+          p_first_name: string;
+          p_last_name: string;
+          p_phone: string;
+          p_restoration_id: string;
+        };
+        Returns: boolean;
+      };
       assign_piece_workshop: {
         Args: { p_piece_ids: string[]; p_workshop_id: string };
         Returns: number;
@@ -1529,6 +1730,13 @@ export type Database = {
           id: string;
         }[];
       };
+      deliver_pieces_with_balance: {
+        Args: { p_note?: string; p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       derive_piece_location: {
         Args: {
           p_arrived_at: string;
@@ -1556,6 +1764,10 @@ export type Database = {
       effective_status: {
         Args: { q: Database["public"]["Tables"]["quotes"]["Row"] };
         Returns: string;
+      };
+      enqueue_payment_sync: {
+        Args: { p_restoration_id: string };
+        Returns: undefined;
       };
       fulfillment_days: {
         Args: {
@@ -1756,6 +1968,13 @@ export type Database = {
         Args: { p_id: string };
         Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
       };
+      restorations_balance_due: {
+        Args: { p_restoration_ids: string[] };
+        Returns: {
+          balance_due: boolean;
+          restoration_id: string;
+        }[];
+      };
       return_pieces_to_client: {
         Args: { p_piece_ids: string[] };
         Returns: {
@@ -1816,6 +2035,9 @@ export type Database = {
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
+      file_category: "antes" | "despues" | "documento" | "otro";
+      payment_kind: "pago" | "reembolso";
+      payment_source: "sistema" | "shopify";
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
       payment_type: "contado" | "a_cuenta" | "credito" | "sin_definir";
       piece_event:
@@ -1985,6 +2207,9 @@ export const Constants = {
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],
+      file_category: ["antes", "despues", "documento", "otro"],
+      payment_kind: ["pago", "reembolso"],
+      payment_source: ["sistema", "shopify"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
       payment_type: ["contado", "a_cuenta", "credito", "sin_definir"],
       piece_event: [

@@ -1,6 +1,15 @@
 import { priceWithIgv } from "@/domain/igv";
 import { toDecimalString, type Cents } from "@/domain/money";
+import {
+  orderCreatePayments,
+  planPaymentSync,
+  type SyncPayment,
+} from "@/domain/payment-sync";
 import { isClosedStatus, type PieceStatus } from "@/domain/piece-state-machine";
+import {
+  externalPayments,
+  type ImportedPayment,
+} from "@/domain/shopify-transactions";
 import { isReadyForShopifyOrder } from "@/domain/restoration-status";
 import {
   linesToFulfill,
@@ -23,7 +32,8 @@ import type { ShopifyJobHandler } from "@/server/shopify-sync/handlers";
  * Orden de venta en Shopify al aprobar la restauración (Paso 9.1). Una línea
  * personalizada por pieza que se cobra, con el título "Restauración RES-00001-1"
  * (D30) y su precio con IGV (P13); etiquetas `restauracion` y el código; nota con el
- * enlace al sistema. Los pagos registrados al aprobar se agregan en la Fase 11.
+ * enlace al sistema. Los pagos registrados antes de la orden (el adelanto al aprobar)
+ * van incluidos al crearla; los posteriores los concilia `payment.sync` (11.2).
  */
 
 export type OrderPiece = {
@@ -52,6 +62,8 @@ export type OrderRestoration = {
    * contacto activo (la orden necesita un comprador). null si la empresa no tiene.
    */
   contact: { shopifyCustomerId: string | null } | null;
+  /** Pagos y reembolsos del sistema, en orden (11.2). */
+  payments: SyncPayment[];
 };
 
 /** Lectura y escritura de la restauración para el handler (con la clave secreta). */
@@ -66,6 +78,17 @@ export interface RestorationOrderRepository {
   /** Actualiza el id de línea de las piezas tras editar la orden (null: ya no está). */
   saveLineIds(
     lines: { pieceId: string; lineId: string | null }[],
+  ): Promise<void>;
+  /** Marca los pagos como ya enviados a Shopify. */
+  markPaymentsSynced(paymentIds: string[]): Promise<void>;
+  /** Transacciones de la orden ya contadas (del sistema o importadas, 11.3). */
+  knownTransactions(restorationId: string): Promise<Set<string>>;
+  /** Recuerda transacciones que creó el sistema (no son pagos hechos en Shopify). */
+  rememberTransactions(restorationId: string, ids: string[]): Promise<void>;
+  /** Agrega al registro los pagos hechos en Shopify (sin duplicar). */
+  importPayments(
+    restorationId: string,
+    payments: ImportedPayment[],
   ): Promise<void>;
 }
 
@@ -112,11 +135,20 @@ export function orderBuyer(
   };
 }
 
-/** Datos de la orden a partir de la restauración. */
+/** Total que se cobra: las piezas que van a la orden, con IGV (P13). */
+export function chargedTotal(data: OrderRestoration): Cents {
+  return billablePieces(data.pieces).reduce(
+    (sum, p) => sum + priceWithIgv(p.priceCents, data.pricesIncludeIgv),
+    0,
+  );
+}
+
+/** Datos de la orden a partir de la restauración, con los pagos ya registrados. */
 export function buildOrderInput(
   data: OrderRestoration,
   appUrl: string,
 ): OrderInput {
+  const payments = orderCreatePayments(data.payments, chargedTotal(data));
   return {
     ...orderBuyer(data),
     lines: billablePieces(data.pieces).map((piece) => ({
@@ -128,7 +160,102 @@ export function buildOrderInput(
     })),
     tags: ["restauracion", orderTag(data.code)],
     note: `Restauración ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}`,
+    ...(payments.length > 0 && {
+      payments: payments.map((p) => ({
+        gateway: p.gateway,
+        amount: toDecimalString(p.amountCents),
+      })),
+    }),
   };
+}
+
+/** Transacciones actuales de la orden, en céntimos. */
+async function orderTransactions(gateway: ShopifyGateway, orderId: string) {
+  return (await gateway.getOrderTransactions(orderId)).map((t) => ({
+    ...t,
+    amountCents: toCents(t.amount),
+  }));
+}
+
+/** Las transacciones que aún no se conocen las creó el sistema: se recuerdan. */
+async function rememberOwnTransactions(
+  repo: RestorationOrderRepository,
+  gateway: ShopifyGateway,
+  restorationId: string,
+  orderId: string,
+) {
+  const known = await repo.knownTransactions(restorationId);
+  const ids = (await gateway.getOrderTransactions(orderId))
+    .map((t) => t.id)
+    .filter((id) => !known.has(id));
+  if (ids.length > 0) await repo.rememberTransactions(restorationId, ids);
+}
+
+/**
+ * Pagos hechos directamente en Shopify (POS o panel, 11.3): las transacciones que el
+ * sistema no conoce se agregan al registro. Se leen de Shopify, no del webhook.
+ */
+async function importExternalPayments(
+  repo: RestorationOrderRepository,
+  gateway: ShopifyGateway,
+  restorationId: string,
+  orderId: string,
+) {
+  const imported = externalPayments(
+    await orderTransactions(gateway, orderId),
+    await repo.knownTransactions(restorationId),
+  );
+  if (imported.length > 0) await repo.importPayments(restorationId, imported);
+  return imported.length;
+}
+
+/**
+ * Concilia los pagos del sistema con la orden (11.2): pago completo, reembolso de la
+ * diferencia o nada (pagos intermedios). Repetirlo no cambia nada.
+ */
+async function syncPayments(
+  repo: RestorationOrderRepository,
+  gateway: ShopifyGateway,
+  current: OrderRestoration,
+  orderId: string,
+) {
+  // Primero lo hecho directamente en Shopify (11.3), así no se toma por propio.
+  const imported = await importExternalPayments(
+    repo,
+    gateway,
+    current.id,
+    orderId,
+  );
+  const data =
+    imported > 0 ? ((await repo.getOrderData(current.id)) ?? current) : current;
+  const financials = await gateway.getOrderFinancials(orderId);
+  const receivedCents = toCents(financials.received);
+  const plan = planPaymentSync({
+    payments: data.payments,
+    totalCents: chargedTotal(data),
+    shopify: {
+      receivedCents,
+      outstandingCents: toCents(financials.outstanding),
+    },
+  });
+  if (plan.kind === "record_full") {
+    await gateway.recordFullPayment(orderId, plan.gateway);
+    await rememberOwnTransactions(repo, gateway, data.id, orderId);
+  } else if (plan.kind === "refund") {
+    await gateway.refundPayment(orderId, {
+      gateway: plan.gateway,
+      amount: toDecimalString(plan.amountCents),
+      // Mismo estado (cobrado en Shopify → pagado en el sistema), misma clave.
+      idempotencyKey: `${data.id}:${receivedCents}:${receivedCents - plan.amountCents}`,
+      note: "Reembolso registrado en el sistema",
+    });
+    await rememberOwnTransactions(repo, gateway, data.id, orderId);
+  }
+  const pending = data.payments.filter((p) => !p.synced).map((p) => p.id);
+  if (plan.markSynced && pending.length > 0) {
+    await repo.markPaymentsSynced(pending);
+  }
+  return plan.kind;
 }
 
 /** Id de la línea de cada pieza, por su título. */
@@ -246,10 +373,29 @@ export function restorationOrderHandlers(
         { id: order.id, name: order.name },
         lineIdsByPiece(data.pieces, order),
       );
+      // Las transacciones de la orden recién creada (o hallada por su etiqueta tras
+      // un corte) son los pagos que incluyó el sistema.
+      await rememberOwnTransactions(repo, gateway, data.id, order.id);
+      // Los pagos incluidos ya están allá; lo que quede (p. ej., un pago registrado
+      // mientras se creaba) se concilia ahora.
+      if (!existing) {
+        const included = data.payments.filter((p) => !p.synced);
+        if (included.length > 0) {
+          await repo.markPaymentsSynced(included.map((p) => p.id));
+          for (const p of included) p.synced = true;
+        }
+      }
+      const payments = await syncPayments(
+        repo,
+        gateway,
+        (await repo.getOrderData(data.id)) ?? data,
+        order.id,
+      );
       return {
         shopifyOrderId: order.id,
         shopifyOrderName: order.name,
         linked: Boolean(existing),
+        payments,
       };
     },
 
@@ -259,7 +405,10 @@ export function restorationOrderHandlers(
       let order = await currentOrder(gateway, data);
       const pieces = domainPieces(data);
       const change = orderLinesChange(data.code, pieces, orderLines(order));
-      if (!change) return { shopifyOrderId: order.id, unchanged: true };
+      if (!change) {
+        const payments = await syncPayments(repo, gateway, data, order.id);
+        return { shopifyOrderId: order.id, unchanged: true, payments };
+      }
       order = await gateway.editOrder(order.id, {
         addLines: change.addLines.map((l) => ({
           title: l.title,
@@ -275,12 +424,29 @@ export function restorationOrderHandlers(
       // Una pieza agregada que ya se entregó también queda preparada.
       order = await fulfillDelivered(gateway, data, order);
       await repo.saveLineIds(pieceLineIds(pieces, orderLines(order)));
+      // Con otro total, lo pagado puede completar la orden (o sobrar).
+      const payments = await syncPayments(repo, gateway, data, order.id);
       return {
         shopifyOrderId: order.id,
         added: change.addLines.length,
         removed: change.removeLineIds.length,
         repriced: change.setPrices.length,
+        payments,
       };
+    },
+
+    "payment.sync": async (job, gateway) => {
+      const data = await repo.getOrderData(job.entityId);
+      if (!data) throw gone();
+      // Sin orden no hay nada que conciliar: los pagos irán al crearla.
+      if (!data.shopifyOrderId) return { skipped: true } satisfies Json;
+      const payments = await syncPayments(
+        repo,
+        gateway,
+        data,
+        data.shopifyOrderId,
+      );
+      return { shopifyOrderId: data.shopifyOrderId, payments };
     },
 
     "order.fulfill": async (job, gateway) => {
