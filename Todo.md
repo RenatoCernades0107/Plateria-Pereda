@@ -989,23 +989,24 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `feat(pagos): agrega registro de pagos y estado de pago`
 
 #### Paso 11.2 — Registrar pagos desde el sistema
-- [ ] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
-- [ ] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
-- [ ] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
-- [ ] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
-- [ ] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
-- [ ] Regla de entrega con saldo pendiente (§7.5, P45).
+- [x] Diálogo "Registrar pago" (ventas y admin): monto sugerido, método y fecha; se puede repartir en varios métodos.
+- [x] Al aprobar la última pieza: paso opcional "Registrar adelanto" en el mismo diálogo; la orden (9.1) se crea con esos pagos incluidos.
+- [x] Envío a Shopify según §7.5: el pago que completa el saldo → `recordFullPayment` (job `payment_record`); pagos intermedios → "pendiente de envío" hasta completar el saldo.
+- [x] Campo opcional "Nombre en Shopify" en los métodos de pago (D34): Visa, Mastercard, transferencia bancaria y PagoEfectivo con el nombre exacto que tienen en la tienda; el resto queda como "manual". Confirmar en el spike los nombres exactos que acepta `paymentMethodName`.
+- [x] Corrección de pagos: solo admin, mediante reembolso (job `payment_refund`) con motivo.
+- [x] Regla de entrega con saldo pendiente (§7.5, P45).
 - **Unit:**
-  - [ ] Validaciones: monto > 0 y ≤ saldo.
-  - [ ] Decisión de envío: incluir al crear la orden / pago completo / pendiente.
+  - [x] Validaciones: monto > 0 y ≤ saldo.
+  - [x] Decisión de envío: incluir al crear la orden / pago completo / pendiente.
 - **Integración:**
-  - [ ] Aprobar con adelanto → la orden del fake queda "Parcialmente pagada".
-  - [ ] Pagar el saldo → "Pagada".
-  - [ ] Pago intermedio → queda pendiente y se envía junto con el pago que completa el saldo.
+  - [x] Aprobar con adelanto → la orden del fake queda "Parcialmente pagada".
+  - [x] Pagar el saldo → "Pagada".
+  - [x] Pago intermedio → queda pendiente y se envía junto con el pago que completa el saldo.
 - **E2E:**
-  - [ ] Registrar el adelanto al aprobar y el saldo antes de entregar → estado "Pagado" en el sistema y en el fake.
-  - [ ] Logística no ve el botón "Registrar pago".
-  - [ ] Con saldo pendiente, logística no puede marcar "Entregada" y ve "Falta cobrar el saldo"; ventas entrega confirmándolo.
+  - [x] Registrar el adelanto al aprobar y el saldo antes de entregar → estado "Pagado" en el sistema y en el fake.
+  - [x] Logística no ve el botón "Registrar pago".
+  - [x] Con saldo pendiente, logística no puede marcar "Entregada" y ve "Falta cobrar el saldo"; ventas entrega confirmándolo.
+- Hecho (2026-10-12): migración `20261013130000_pagos_shopify.sql`: `payments.shopify_synced_at` (pendiente de envío mientras sea null; los que vienen de Shopify ya están allá), job `payment.sync` al registrar un pago o reembolso con la orden creada, `payment_methods.shopify_name` (D34, en Configuración → Métodos de pago), entrega bloqueada con saldo (`private.guard_unpaid_delivery`, salvo `deliver_pieces_with_balance` de ventas/admin, que lo anota en el historial) y `restorations_balance_due()` sin montos para logística. Dominio `src/domain/payment-sync.ts`: `orderCreatePayments` (pagos incluidos al crear la orden, lo neto si hubo reembolsos, nunca más que el total) y `planPaymentSync` (pago completo con `recordFullPayment` cuando el sistema cubrió el total; reembolso de la diferencia si Shopify tiene cobrado más de lo pagado en el sistema; si no, los pagos intermedios esperan). Los handlers `order.create`, `order.edit` y `payment.sync` concilian con Shopify (repetirlos no cambia nada). En lugar de jobs `payment_record`/`payment_refund` separados hay un solo `payment.sync` que concilia. Interfaz: "Registrar pago" y "Reembolsar" (admin, con motivo) en la pestaña Pagos con el historial y su estado de envío; al aprobar la última pieza, "Aprobar y registrar pago" o "Aprobar sin pago" (`approveWithPayment`: el pago queda antes de procesar la orden); "Entregar" con saldo: logística ve "Falta cobrar el saldo" y el botón deshabilitado; ventas y admin confirman. El tipo de pago queda deshabilitado en "Editar" con pagos (P28). El adaptador real reembolsa contra el último pago si el método quedó como "manual". **Pendiente con la tienda real:** confirmar los nombres exactos de `paymentMethodName` (spike) y cargarlos en "Nombre en Shopify". Integración `payments.int.test.ts`; E2E `e2e/payments.spec.ts` (los E2E que no tratan pagos usan restauraciones al crédito).
 - Commit: `feat(pagos): registra pagos desde el sistema y los envía a Shopify`
 
 #### Paso 11.3 — Pagos hechos en Shopify (webhooks)
