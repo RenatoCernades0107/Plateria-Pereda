@@ -752,6 +752,84 @@ export type Database = {
           },
         ];
       };
+      restoration_files: {
+        Row: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          mime_type: string;
+          name: string;
+          path: string;
+          piece_id: string | null;
+          restoration_id: string;
+          size_bytes: number;
+        };
+        Insert: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          mime_type: string;
+          name: string;
+          path: string;
+          piece_id?: string | null;
+          restoration_id: string;
+          size_bytes: number;
+        };
+        Update: {
+          category?: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          mime_type?: string;
+          name?: string;
+          path?: string;
+          piece_id?: string | null;
+          restoration_id?: string;
+          size_bytes?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "piece_metrics";
+            referencedColumns: ["piece_id"];
+          },
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_piece_id_fkey";
+            columns: ["piece_id"];
+            isOneToOne: false;
+            referencedRelation: "pieces_operational";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "restoration_files_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       restorations: {
         Row: {
           balance: number | null;
@@ -1816,6 +1894,7 @@ export type Database = {
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
+      file_category: "antes" | "despues" | "documento" | "otro";
       payment_status: "pendiente" | "parcial" | "pagado" | "reembolsado";
       payment_type: "contado" | "a_cuenta" | "credito" | "sin_definir";
       piece_event:
@@ -1985,6 +2064,7 @@ export const Constants = {
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],
+      file_category: ["antes", "despues", "documento", "otro"],
       payment_status: ["pendiente", "parcial", "pagado", "reembolsado"],
       payment_type: ["contado", "a_cuenta", "credito", "sin_definir"],
       piece_event: [
