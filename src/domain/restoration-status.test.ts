@@ -189,6 +189,18 @@ describe("advanceRestorationStatus (P19: solo avanza)", () => {
       "en_proceso",
     );
     expect(advanceRestorationStatus("lista", "completada")).toBe("completada");
+    expect(
+      advanceRestorationStatus("registrada", "parcialmente_aprobada"),
+    ).toBe("parcialmente_aprobada");
+    expect(advanceRestorationStatus("parcialmente_aprobada", "aprobada")).toBe(
+      "aprobada",
+    );
+  });
+
+  it("una pieza nueva en una restauración aprobada no la regresa a Parcialmente aprobada", () => {
+    expect(advanceRestorationStatus("aprobada", "parcialmente_aprobada")).toBe(
+      "aprobada",
+    );
   });
 
   it("no retrocede si una pieza lista se observa y vuelve al taller", () => {

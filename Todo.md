@@ -237,7 +237,7 @@ Recorrido físico: **Por WhatsApp** → **Sin enviar** → **En taller** → **E
 
 - Se envía al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
 
-### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅)
+### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅, P54 ✅)
 
 Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa en este orden:
 
@@ -247,7 +247,8 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 4. Alguna de vuelta del taller o entregada → **Parcialmente lista**
 5. Alguna fue enviada al taller al menos una vez (`first_sent_at` con valor) → **En proceso**
 6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
-7. Si no → **Registrada**
+7. Alguna fue aprobada (y otras todavía no) → **Parcialmente aprobada** (P54)
+8. Si no → **Registrada**
 
 - El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Rechazada y Anulada son finales.
 - Logística no ve las restauraciones pasadas (Completada, Anulada, y Rechazada sin piezas por devolver; D24, P48).
@@ -779,6 +780,15 @@ Objetivo: validar con llamadas reales antes de construir.
 - **E2E:** ventas registra sin taller, ve el taller como texto al editar y no ve "Asignar taller"; logística sí lo ve.
 - Hecho (2026-10-12): migración `20261014130000_taller_solo_logistica.sql`: `assign_piece_workshop` solo para admin y logística y trigger `pieces_guard_workshop` (en peticiones de usuarios, rol `authenticated`, solo admin y logística ponen o cambian `workshop_id`; dejar el mismo taller no cuenta como cambio). `change_piece_status` (enviar al taller) ya era solo de admin y logística.
 - Commit: `feat(permisos): el taller lo asignan solo logística y admin`
+
+#### Paso 7.11 — Estado general "Parcialmente aprobada" (P54 ✅, 2026-10-12)
+- [x] Nuevo estado general entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no, sin piezas enviadas al taller (§7.3). Solo avanza (P19): una pieza nueva en una restauración Aprobada no la regresa.
+- [x] Etiqueta, insignia (borde punteado), columna del kanban, filtro y CSV.
+- **Unit / integración:** escenarios nuevos en `tests/fixtures/restorations/derivations.json` (TypeScript y BD dan lo mismo) y `advanceRestorationStatus`.
+- **BD:** el valor va justo antes de Aprobada; aprobar una de tres, rechazar otra y aprobar la última (`32_parcialmente_aprobada`).
+- **E2E:** aprobar una de dos piezas muestra "Parcialmente aprobada"; la copia de una cotización con una pieza aprobada y otra en consulta nace Parcialmente aprobada.
+- Hecho (2026-10-12): migraciones `20261014140000_estado_parcialmente_aprobada.sql` (valor del enum; va en su propio archivo porque `add value` no se usa en la misma transacción) y `20261014140100_derivar_parcialmente_aprobada.sql` (`derive_restoration_status` y las restauraciones Registradas con piezas aprobadas pasan al estado nuevo).
+- Commit: `feat(restauraciones): estado general «Parcialmente aprobada»`
 
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 

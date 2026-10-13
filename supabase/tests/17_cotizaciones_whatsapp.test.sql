@@ -281,7 +281,8 @@ grant select on r3 to authenticated;
 reset role;
 select is(
   (select status::text from public.restorations where id = (select id from r3)),
-  'registrada', 'con piezas en consulta la restauración nace Registrada'
+  'parcialmente_aprobada',
+  'con piezas en consulta y una aprobada la restauración nace Parcialmente aprobada (P54)'
 );
 select results_eq(
   $$ select status::text, location::text from public.pieces where restoration_id = (select id from r3) order by number $$,

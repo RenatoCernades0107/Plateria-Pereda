@@ -164,9 +164,9 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
       timeout: 30_000,
     });
     await page.keyboard.press("Escape");
-    // Con una pieza en consulta no se aprueba sola.
+    // Una aprobada y otra en consulta: Parcialmente aprobada (P54).
     await expect(page.getByTestId("estado-restauracion")).toHaveText(
-      "Registrada",
+      "Parcialmente aprobada",
     );
     await expect(page.getByTestId("origen")).toContainText("WhatsApp");
     await expect(page.getByTestId("origen")).toContainText(/CWA-\d{5,}/);

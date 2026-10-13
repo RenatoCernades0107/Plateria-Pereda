@@ -100,6 +100,10 @@ test.describe("Orden de Shopify al aprobar", () => {
     await page.goto(`/restauraciones/${r.id}`);
 
     await approve(page, `${r.code}-1`);
+    // Una de dos aprobadas: la guía queda Parcialmente aprobada (P54).
+    await expect(page.getByTestId("estado-restauracion")).toHaveText(
+      "Parcialmente aprobada",
+    );
     await expect(page.getByTestId("orden-shopify")).toHaveCount(0);
     expect(await fakeOrders(request, r.code)).toEqual([]);
 

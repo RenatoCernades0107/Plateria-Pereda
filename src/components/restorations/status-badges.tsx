@@ -89,6 +89,7 @@ export function UrgentBadge({ className }: { className?: string }) {
 
 const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
   registrada: "outline",
+  parcialmente_aprobada: "secondary",
   aprobada: "secondary",
   en_proceso: "secondary",
   parcialmente_lista: "default",
@@ -112,6 +113,9 @@ export function RestorationStatusBadge({
       className={cn(
         status === "anulada" && CANCELLED,
         status === "rechazada" && "border-transparent bg-amber-900 text-white",
+        // A medio aprobar: borde punteado para distinguirla de Aprobada.
+        status === "parcialmente_aprobada" &&
+          "border-foreground/40 border-dashed",
         className,
       )}
     >

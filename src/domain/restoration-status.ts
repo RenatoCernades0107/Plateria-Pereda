@@ -4,7 +4,8 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
  * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
  * avanza; P21 con su propuesta; P47: sin "Recibida" ni "Devuelta por el taller";
  * P48: ubicaciones Por WhatsApp → Sin enviar → En taller → En tienda → Entregada y
- * restauración Rechazada; P50: Observación queda Sin enviar).
+ * restauración Rechazada; P50: Observación queda Sin enviar; P54: Parcialmente
+ * aprobada).
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -12,6 +13,7 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 
 export const RESTORATION_STATUSES = [
   "registrada",
+  "parcialmente_aprobada",
   "aprobada",
   "en_proceso",
   "parcialmente_lista",
@@ -24,6 +26,7 @@ export type RestorationStatus = (typeof RESTORATION_STATUSES)[number];
 
 export const RESTORATION_STATUS_LABELS: Record<RestorationStatus, string> = {
   registrada: "Registrada",
+  parcialmente_aprobada: "Parcialmente aprobada",
   aprobada: "Aprobada",
   en_proceso: "En proceso",
   parcialmente_lista: "Parcialmente lista",
@@ -133,19 +136,21 @@ export function deriveRestorationStatus(
   if (active.some(isBack)) return "parcialmente_lista";
   if (active.some((p) => p.firstSentAt)) return "en_proceso";
   if (active.every((p) => p.approvedAt)) return "aprobada";
+  if (active.some((p) => p.approvedAt)) return "parcialmente_aprobada";
   return "registrada";
 }
 
 /** Orden de avance del estado general (igual al enum de la BD); Anulada y Rechazada son finales. */
 const STATUS_RANK: Record<RestorationStatus, number> = {
   registrada: 0,
-  aprobada: 1,
-  en_proceso: 2,
-  parcialmente_lista: 3,
-  lista: 4,
-  completada: 5,
-  anulada: 6,
-  rechazada: 7,
+  parcialmente_aprobada: 1,
+  aprobada: 2,
+  en_proceso: 3,
+  parcialmente_lista: 4,
+  lista: 5,
+  completada: 6,
+  anulada: 7,
+  rechazada: 8,
 };
 
 /**

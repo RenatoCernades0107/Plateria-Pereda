@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -544,6 +544,11 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Respuesta (2026-10-12):** ✅ El taller lo asignan **solo logística y el admin**. Ventas lo ve (en el detalle y al editar la pieza) pero no lo elige al registrar ni lo cambia después. Ajusta la matriz de P42.
 - **Cómo queda:** "Asignar taller" (acción en bloque) y "Enviar al taller" con taller siguen para logística y el admin; el registro y "Agregar pieza" de ventas no muestran el taller, y "Editar" de la pieza lo muestra como texto. La BD lo exige: `assign_piece_workshop` rechaza a ventas y el trigger `pieces_guard_workshop` impide que ventas ponga o cambie el taller por cualquier otro camino (registro, copia de una cotización, edición o pieza nueva).
 
+### P54 · Estado "Parcialmente aprobada" (2026-10-12)
+- **Contexto:** el estado general pasaba de Registrada a Aprobada solo cuando se aprobaban todas las piezas vivas; mientras tanto la guía seguía como Registrada aunque el cliente ya hubiera aprobado parte.
+- **Respuesta (2026-10-12):** ✅ Nuevo estado general **Parcialmente aprobada**, entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no (y ninguna enviada al taller, que ya es En proceso). Se calcula de las piezas como los demás (§7.3) y solo avanza (P19).
+- **Cómo queda:** una restauración que salió de una cotización de WhatsApp con piezas Aprobadas y otras en Consulta nace Parcialmente aprobada (antes, Registrada; ajusta P49). Las piezas anuladas, rechazadas o sin arreglo no cuentan.
+
 ---
 
 ## Preguntas para el negocio
@@ -640,6 +645,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D58 | El precio de venta de la pieza no sale del servicio: nace "Sin asignar" y solo el admin lo asigna o cambia (ventas lo ve). La orden de Shopify espera a que todas las piezas que se cobran tengan precio. La copia de una cotización de WhatsApp conserva los precios cotizados | P51 |
 | D59 | Formulario de la pieza: servicio obligatorio; material, peso, medida y precio opcionales y en ese orden; descripción junto a las notas de la pieza. "Notas" de la restauración pasa a "Notas generales". "¿El precio incluye IGV?" parte de "No" (sigue obligatorio) y el total muestra subtotal, + IGV y total | P52, cambia P13 en el valor por defecto |
 | D60 | El taller de la pieza lo asignan o cambian solo logística y el admin; ventas lo ve. La BD lo exige | P53, ajusta P42 |
+| D61 | Estado general **Parcialmente aprobada** entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no | P54, ajusta §7.3 y P49 |
 
 ---
 
@@ -661,6 +667,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-12 | P51 | Precio de venta "Sin asignar" y separado del servicio; solo el admin lo asigna; la orden de Shopify espera los precios; la copia de una cotización de WhatsApp conserva los precios cotizados. |
 | 2026-10-12 | P52 | Servicio obligatorio; orden Material, Peso, Medida, Precio (opcionales); descripción junto a las notas de la pieza; "Notas generales"; IGV "No" por defecto con subtotal, + IGV y total. |
 | 2026-10-12 | P53 | El taller lo asignan solo logística y el admin; ventas lo ve sin cambiarlo. |
+| 2026-10-12 | P54 | Nuevo estado general Parcialmente aprobada (alguna pieza aprobada y otras todavía no). |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

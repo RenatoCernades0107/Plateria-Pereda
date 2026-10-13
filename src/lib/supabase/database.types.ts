@@ -2068,6 +2068,7 @@ export type Database = {
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
         | "registrada"
+        | "parcialmente_aprobada"
         | "aprobada"
         | "en_proceso"
         | "parcialmente_lista"
@@ -2243,6 +2244,7 @@ export const Constants = {
       restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [
         "registrada",
+        "parcialmente_aprobada",
         "aprobada",
         "en_proceso",
         "parcialmente_lista",
