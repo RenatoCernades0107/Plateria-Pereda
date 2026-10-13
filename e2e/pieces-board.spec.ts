@@ -230,6 +230,11 @@ test.describe("Vista de piezas", () => {
       name: "Acciones para las piezas elegidas",
     });
     await bar.getByRole("button", { name: "Recibir del taller" }).click();
+    // Se espera a que se guarde antes de navegar (si no, la acción se corta).
+    for (const piece of pieces)
+      await expect(page.getByTestId(`pieza-${piece.code}`)).toContainText(
+        "En tienda",
+      );
     await page.goto(`/piezas?q=Vuelta&listas=1`);
     await expect(page.getByText("2 piezas · Página 1 de 1")).toBeVisible();
     await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
