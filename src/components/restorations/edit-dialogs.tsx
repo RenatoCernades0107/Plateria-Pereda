@@ -79,7 +79,8 @@ type RestorationValues = {
 };
 
 /**
- * Edición de contacto, tipo y % de adelanto, IGV y notas (no tocan Shopify, P12). Si
+ * Edición de contacto, tipo y % de adelanto, IGV y notas generales (no tocan
+ * Shopify, P12). Si
  * el precio incluye IGV solo se cambia antes de crear la orden (P13).
  */
 export function EditRestorationDialog({
@@ -237,7 +238,12 @@ export function EditRestorationDialog({
                   : undefined
               }
             />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
             <DialogFooter>
               <Button type="submit" disabled={pending}>
                 {pending ? "Guardando…" : "Guardar cambios"}

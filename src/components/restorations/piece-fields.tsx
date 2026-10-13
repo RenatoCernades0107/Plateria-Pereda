@@ -82,11 +82,14 @@ function CatalogField({
 }
 
 /**
- * Campos de una pieza (P22). Se usan en el registro (`prefix` = "pieces.0.") y en
- * los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede cambiar
- * según `editableFields()` (Paso 7.7). El precio de venta no sale del servicio: es
- * opcional ("Sin asignar") y solo lo asigna el admin (D58); en las cotizaciones de
- * WhatsApp es el precio cotizado y es obligatorio.
+ * Campos de una pieza (P22, D59). Se usan en el registro (`prefix` = "pieces.0.") y
+ * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
+ * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: el
+ * servicio (obligatorio), luego material, peso, medida y precio (opcionales), la
+ * descripción junto a las notas de la pieza y al final taller y urgente. El precio
+ * de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
+ * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y es
+ * obligatorio.
  */
 export function PieceFields({
   form,
@@ -120,21 +123,35 @@ export function PieceFields({
 
   return (
     <div className="space-y-4">
-      <TextField
+      <CatalogField
         form={form}
-        name={path("description")}
-        label="Descripción"
-        multiline
-        disabled={off("description")}
+        prefix={prefix}
+        name="service"
+        label="Servicio"
+        options={services}
+        disabled={off("service")}
       />
       <div className="grid gap-4 sm:grid-cols-2">
         <CatalogField
           form={form}
           prefix={prefix}
-          name="service"
-          label="Servicio"
-          options={services}
-          disabled={off("service")}
+          name="material"
+          label="Material"
+          options={materials}
+          disabled={off("material")}
+        />
+        <TextField
+          form={form}
+          name={path("weight")}
+          label="Peso (g)"
+          inputMode="numeric"
+          disabled={off("weight")}
+        />
+        <TextField
+          form={form}
+          name={path("measure")}
+          label="Medida"
+          disabled={off("measure")}
         />
         <div className="space-y-1">
           <TextField
@@ -149,86 +166,78 @@ export function PieceFields({
             <FormDescription>{priceHint}</FormDescription>
           ) : null}
         </div>
-        <CatalogField
-          form={form}
-          prefix={prefix}
-          name="material"
-          label="Material"
-          options={materials}
-          disabled={off("material")}
-        />
-        <TextField
-          form={form}
-          name={path("measure")}
-          label="Medida"
-          disabled={off("measure")}
-        />
-        <TextField
-          form={form}
-          name={path("weight")}
-          label="Peso (g)"
-          inputMode="numeric"
-          disabled={off("weight")}
-        />
-        {showWorkshop ? (
-          <FormField
-            control={form.control}
-            name={path("workshopId")}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Taller</FormLabel>
-                <Select
-                  value={field.value ?? NONE}
-                  onValueChange={(v) => field.onChange(v === NONE ? null : v)}
-                  disabled={off("workshopId")}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {workshops.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : null}
       </div>
-      {showUrgent ? (
-        <FormField
-          control={form.control}
-          name={path("urgent")}
-          render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
-              <FormControl>
-                <input
-                  type="checkbox"
-                  className="accent-primary size-4"
-                  checked={Boolean(field.value)}
-                  disabled={off("urgent")}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              </FormControl>
-              <FormLabel className="font-normal">Urgente</FormLabel>
-            </FormItem>
-          )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          form={form}
+          name={path("description")}
+          label="Descripción"
+          multiline
+          disabled={off("description")}
         />
+        <TextField
+          form={form}
+          name={path("notes")}
+          label="Notas de la pieza"
+          multiline
+          disabled={off("notes")}
+        />
+      </div>
+      {showWorkshop || showUrgent ? (
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+          {showWorkshop ? (
+            <FormField
+              control={form.control}
+              name={path("workshopId")}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Taller</FormLabel>
+                  <Select
+                    value={field.value ?? NONE}
+                    onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                    disabled={off("workshopId")}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Sin asignar</SelectItem>
+                      {workshops.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>
+                          {w.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
+          {showUrgent ? (
+            <FormField
+              control={form.control}
+              name={path("urgent")}
+              render={({ field }) => (
+                <FormItem className="flex h-9 items-center gap-2">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="accent-primary size-4"
+                      checked={Boolean(field.value)}
+                      disabled={off("urgent")}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">Urgente</FormLabel>
+                </FormItem>
+              )}
+            />
+          ) : null}
+        </div>
       ) : null}
-      <TextField
-        form={form}
-        name={path("notes")}
-        label="Notas de la pieza"
-        multiline
-        disabled={off("notes")}
-      />
     </div>
   );
 }

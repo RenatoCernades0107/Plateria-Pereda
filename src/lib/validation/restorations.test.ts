@@ -68,20 +68,20 @@ describe("pieceSchema", () => {
     });
   });
 
-  it("solo exige la descripción: el precio de venta puede quedar sin asignar (D58)", () => {
+  it("el precio de venta puede quedar sin asignar (D58)", () => {
     expect(pieceSchema.parse({ ...piece, price: "  " })).toMatchObject({
       priceCents: null,
     });
   });
 
-  it("acepta precio 0 y deja vacíos los opcionales (P22)", () => {
+  it("acepta precio 0 y deja vacíos los opcionales: material, peso, medida y precio (P22, D59)", () => {
     expect(
       pieceSchema.parse({
         workshopId: null,
         description: "Cáliz",
         measure: "",
         material: { id: null, name: "" },
-        service: { id: null, name: "" },
+        service: { id: null, name: "Limpieza" },
         weight: "",
         price: "0",
         notes: "",
@@ -91,7 +91,7 @@ describe("pieceSchema", () => {
       description: "Cáliz",
       measure: "",
       material: null,
-      service: null,
+      service: { id: null, name: "Limpieza" },
       weightGrams: null,
       priceCents: 0,
       urgent: false,
@@ -132,6 +132,21 @@ describe("pieceSchema", () => {
     expect(errorsOf(pieceSchema, { ...piece, weight: "0" })).toEqual({
       weight: "El peso debe ser mayor que 0",
     });
+  });
+
+  it("servicio requerido, del catálogo o escrito (D59)", () => {
+    for (const schema of [pieceSchema, quotePieceSchema]) {
+      expect(
+        errorsOf(schema, { ...piece, service: { id: null, name: "  " } }),
+      ).toEqual({ "service.name": "Elige o escribe el servicio" });
+      expect(
+        errorsOf(schema, { ...piece, service: { id: SILVER, name: "" } }),
+      ).toEqual({ "service.name": "Elige o escribe el servicio" });
+    }
+    expect(
+      pieceSchema.parse({ ...piece, service: { id: SILVER, name: "Pulido" } })
+        .service,
+    ).toEqual({ id: SILVER, name: "Pulido" });
   });
 
   it("descripción requerida", () => {

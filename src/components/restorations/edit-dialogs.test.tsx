@@ -41,7 +41,7 @@ const piece: PieceDetail = {
   description: "Fuente",
   measure: "40 cm",
   materialName: "Plata",
-  serviceName: "",
+  serviceName: "Limpieza",
   weightGrams: 820.5,
   workshopId: null,
   workshopName: null,
@@ -111,9 +111,22 @@ describe("PieceDialog", () => {
     await user.click(
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
+    // El servicio es obligatorio (D59).
+    expect(
+      await within(dialog).findByText("Elige o escribe el servicio"),
+    ).toBeVisible();
+    expect(mocks.addPiece).not.toHaveBeenCalled();
+    await user.type(within(dialog).getByLabelText("Servicio"), "Pulido");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Agregar pieza" }),
+    );
     expect(mocks.addPiece).toHaveBeenCalledWith(
       "r1",
-      expect.objectContaining({ description: "Azucarera", price: "64.5" }),
+      expect.objectContaining({
+        description: "Azucarera",
+        service: { id: null, name: "Pulido" },
+        price: "64.5",
+      }),
     );
     expect(
       await within(dialog).findByText("No se agregan piezas"),
@@ -173,6 +186,7 @@ describe("EditRestorationDialog", () => {
     );
     await user.click(screen.getByRole("button", { name: "Editar" }));
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Notas generales")).toBeVisible();
     expect(
       within(dialog).getByLabelText("Adelanto (%) (opcional)"),
     ).toHaveValue("30");

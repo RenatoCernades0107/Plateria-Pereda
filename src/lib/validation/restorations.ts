@@ -5,10 +5,11 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
- * P22: medida libre; material y servicio del catálogo o escritos libremente; peso
- * en gramos opcional; taller opcional al registrar. El precio de venta es opcional
- * (vacío = "Sin asignar", lo asigna el admin, D58); en las cotizaciones de WhatsApp
- * es obligatorio (es lo que se le cotiza al cliente).
+ * P22 y D59: el servicio (del catálogo o escrito libremente) y la descripción son
+ * obligatorios; material, peso en gramos, medida y precio son opcionales; taller
+ * opcional al registrar. El precio de venta vacío queda "Sin asignar" (lo asigna el
+ * admin, D58); en las cotizaciones de WhatsApp es obligatorio (es lo que se le
+ * cotiza al cliente).
  * Lo obligatorio se define aquí (no en la BD) para cambiarlo sin migraciones.
  */
 
@@ -59,6 +60,21 @@ const catalogChoice = z
     return null;
   });
 
+/** Servicio de la pieza (D59): obligatorio, del catálogo o escrito libremente. */
+const requiredService = z
+  .object({ id: optionalId, name: line(100) })
+  .transform(({ id, name }, ctx) => {
+    if (!name) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["name"],
+        message: "Elige o escribe el servicio",
+      });
+      return z.NEVER;
+    }
+    return { id, name };
+  });
+
 /** Monto en céntimos; vacío = null. */
 const money = z
   .string()
@@ -105,7 +121,7 @@ const pieceFields = {
   ),
   measure: line(100),
   material: catalogChoice,
-  service: catalogChoice,
+  service: requiredService,
   weight,
   /** Marca "Urgente" (P47): no es un estado. */
   urgent: z.boolean().default(false),
@@ -156,8 +172,8 @@ const depositPercent = z.preprocess(
 );
 
 /**
- * "¿El precio incluye IGV?" (P13): se responde siempre, sin valor por defecto. Si no
- * lo incluye, cada pieza se cobra con el 18 % encima.
+ * "¿El precio incluye IGV?" (P13): obligatorio. Los formularios nuevos parten de
+ * "No" (D59); si no lo incluye, cada pieza se cobra con el 18 % encima.
  */
 export const pricesIncludeIgv = z
   .enum(["si", "no"], { error: "Indica si el precio incluye IGV" })

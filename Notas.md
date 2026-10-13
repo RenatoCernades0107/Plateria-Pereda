@@ -4,7 +4,7 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-09
+**Última actualización:** 2026-10-12
 
 ## Resumen de pendientes
 
@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -147,7 +147,7 @@
 - **Propuesta:** todos los precios incluyen IGV; en el PDF se puede mostrar el desglose (op. gravada + IGV 18 %) si lo desean.
 - **Respuesta (2026-10-05):** ✅ (en parte) **No asumir: preguntar siempre si el precio incluye IGV** (en cada restauración y en cada cotización). Falta confirmar qué pasa cuando **no** lo incluye (¿se suma el 18 % al total que se cobra o solo se indica "+ IGV"?) y si aplica igual a restauraciones y cotizaciones.
 - **Respuesta (2026-10-09):** ✅ **Si el precio no incluye IGV, se suma el 18 % al cobro**, y la regla es la misma para restauraciones, cotizaciones de WhatsApp y cotizaciones de productos (`COT-`).
-  - Al registrar se elige siempre "¿El precio incluye IGV?" (Sí / No, sin valor por defecto).
+  - Al registrar se elige siempre "¿El precio incluye IGV?" (Sí / No, sin valor por defecto). _(Cambiado en P52: por defecto "No".)_
   - **No incluye:** cada pieza (o línea) se cobra a su precio + 18 % redondeado a céntimos; el total, el adelanto, la orden de Shopify y el saldo usan ese monto. El mensaje de WhatsApp y el PDF muestran el subtotal sin IGV, el IGV y el total.
   - **Incluye:** el total es la suma de los precios; el desglose (op. gravada + IGV) solo se informa.
   - Se puede cambiar mientras no exista la orden de Shopify (restauración) o mientras la cotización se pueda editar.
@@ -529,6 +529,16 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (b) Mientras falten precios no se ofrece "Aprobar y registrar adelanto" (el adelanto aún no se conoce); el pago se puede registrar igual desde la pestaña "Pagos".
   - (c) El admin asigna el precio que falta desde "Editar" de la pieza, sin motivo, aunque la pieza ya esté entregada o la orden ya exista; un precio ya asignado se cambia como siempre (P12: con la orden, "Cambiar precio" con motivo).
 
+### P52 · Observaciones al formulario de restauración (2026-10-12)
+- **Contexto:** al revisar el formulario de registro la Platería hizo seis observaciones.
+- **Respuesta (2026-10-12):** ✅
+  - (1) **El servicio es obligatorio** en cada pieza (del catálogo o escrito libremente). Vale para el registro, la copia desde una cotización de WhatsApp, "Editar" y "Agregar pieza", y también para las piezas de la cotización de WhatsApp (luego pasan a la restauración).
+  - (2) **Descripción al lado de "Notas de la pieza"** (dos columnas en pantallas medianas o más; una debajo de la otra en el celular).
+  - (3) El precio va separado del servicio y nace "Sin asignar" (ya hecho en P51).
+  - (4) **Orden de los campos de la pieza:** Servicio y luego Material, Peso, Medida y Precio, todos **opcionales**; después Descripción (sigue obligatoria) junto a Notas de la pieza y al final Taller y Urgente.
+  - (5) El campo "Notas" de la restauración pasa a llamarse **"Notas generales"** (registro, "Editar", cotización de WhatsApp e historial de cambios).
+  - (6) **IGV: por defecto "No"** (se suma el IGV) y sigue siendo obligatorio. La barra del total muestra **Subtotal, "+ IGV (18 %)" y Total**; sin precios el IGV es S/ 0.00 y se actualiza a medida que el admin asigna los precios de venta. Si el precio incluye IGV se indica "IGV incluido". El detalle muestra también el IGV debajo del total. Cambia P13 ("sin valor por defecto").
+
 ---
 
 ## Preguntas para el negocio
@@ -623,6 +633,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D56 | Fotos y archivos: JPG, PNG, WebP, HEIC y PDF hasta 10 MB, fotos reducidas a 1920 px en el navegador, sin límite de cantidad, clasificación Antes / Después / Documento / Otro, a la restauración (foto general) o a una pieza; borran el admin y quien lo subió | P32, P42 |
 | D57 | Estado de pago automático: Pendiente, Parcial, Pagado y Reembolsado (todo devuelto). Al contado se sugiere el total al aprobar; al crédito, cualquier cliente; el tipo de pago se cambia solo sin pagos registrados | P28, P29 |
 | D58 | El precio de venta de la pieza no sale del servicio: nace "Sin asignar" y solo el admin lo asigna o cambia (ventas lo ve). La orden de Shopify espera a que todas las piezas que se cobran tengan precio. La copia de una cotización de WhatsApp conserva los precios cotizados | P51 |
+| D59 | Formulario de la pieza: servicio obligatorio; material, peso, medida y precio opcionales y en ese orden; descripción junto a las notas de la pieza. "Notas" de la restauración pasa a "Notas generales". "¿El precio incluye IGV?" parte de "No" (sigue obligatorio) y el total muestra subtotal, + IGV y total | P52, cambia P13 en el valor por defecto |
 
 ---
 
@@ -642,6 +653,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-12 | P28, P29 | Estados de pago según la propuesta (con Reembolsado); al contado se paga el total al aprobar; crédito para todos (lo elige ventas); el tipo de pago se cambia mientras no haya pagos. |
 | 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
 | 2026-10-12 | P51 | Precio de venta "Sin asignar" y separado del servicio; solo el admin lo asigna; la orden de Shopify espera los precios; la copia de una cotización de WhatsApp conserva los precios cotizados. |
+| 2026-10-12 | P52 | Servicio obligatorio; orden Material, Peso, Medida, Precio (opcionales); descripción junto a las notas de la pieza; "Notas generales"; IGV "No" por defecto con subtotal, + IGV y total. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

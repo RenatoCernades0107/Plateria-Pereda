@@ -30,6 +30,8 @@ async function fillPiece(
   piece: { description: string; price: string },
 ) {
   const card = page.getByTestId(`pieza-${index}`);
+  // El servicio es obligatorio (D59).
+  await card.getByLabel("Servicio").fill("Limpieza");
   await card.getByLabel("Descripción").fill(piece.description);
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }
@@ -217,7 +219,9 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.goto("/restauraciones/nueva?whatsapp=1");
     await page.getByLabel("Nombre (opcional)").fill(`Descartable ${run}`);
     await fillPiece(page, 1, { description: "Plato", price: "10" });
-    await page.getByLabel(/No, se suma el IGV/).check();
+    // Por defecto el precio no incluye IGV (D59).
+    await expect(page.getByLabel(/No, se suma el IGV/)).toBeChecked();
+    await expect(page.getByTestId("igv-en-vivo")).toHaveText("S/ 1.80");
     await page.getByRole("button", { name: "Registrar cotización" }).click();
     await expect(page).toHaveURL(/\/cotizaciones-whatsapp\/[0-9a-f-]{36}/, {
       timeout: 30_000,

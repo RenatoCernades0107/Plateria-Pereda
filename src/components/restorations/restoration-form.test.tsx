@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   liveTotal,
+  liveTotals,
   RestorationForm,
   type QuoteForForm,
   type RestorationFormMode,
@@ -72,6 +73,14 @@ describe("liveTotal", () => {
   it("sin IGV incluido suma el 18 % de cada pieza (P13)", () => {
     expect(liveTotal([{ price: "0.10" }, { price: "0.20" }], false)).toBe(36);
   });
+
+  it("sin precios todavía el IGV es 0 (D59)", () => {
+    expect(liveTotals([{ price: "" }, { price: "" }], false)).toEqual({
+      total: 0,
+      taxableBase: 0,
+      igv: 0,
+    });
+  });
 });
 
 describe("RestorationForm", () => {
@@ -82,6 +91,7 @@ describe("RestorationForm", () => {
   it("actualiza el total y el adelanto al agregar, editar y quitar piezas", async () => {
     const user = userEvent.setup();
     renderForm();
+    await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
     const total = screen.getByTestId("total-en-vivo");
     const deposit = screen.getByTestId("adelanto-en-vivo");
 
@@ -110,26 +120,53 @@ describe("RestorationForm", () => {
     expect(total).toHaveTextContent("S/ 51.00");
   });
 
-  it("pregunta siempre si el precio incluye IGV y lo suma si no (P13)", async () => {
+  it("por defecto el precio no incluye IGV: muestra subtotal, + IGV y total (D59)", async () => {
     const user = userEvent.setup();
     renderForm();
+    expect(screen.getByLabelText(/No, se suma el IGV/)).toBeChecked();
+    // Sin precios todavía el IGV es 0.
+    expect(screen.getByTestId("subtotal-en-vivo")).toHaveTextContent("S/ 0.00");
+    expect(screen.getByTestId("igv-en-vivo")).toHaveTextContent("S/ 0.00");
+    expect(screen.getByText("+ IGV (18 %)")).toBeInTheDocument();
     const total = screen.getByTestId("total-en-vivo");
+    expect(total).toHaveTextContent("S/ 0.00");
+
     await user.type(
       within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
       "100",
     );
-    await user.click(
-      screen.getByRole("button", { name: "Registrar restauración" }),
+    expect(screen.getByTestId("subtotal-en-vivo")).toHaveTextContent(
+      "S/ 100.00",
     );
-    expect(
-      screen.getByText("Indica si el precio incluye IGV"),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByLabelText(/No, se suma el IGV/));
+    expect(screen.getByTestId("igv-en-vivo")).toHaveTextContent("S/ 18.00");
     expect(total).toHaveTextContent("S/ 118.00");
-    expect(screen.getByText("Total (con IGV 18 %)")).toBeInTheDocument();
+
     await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
     expect(total).toHaveTextContent("S/ 100.00");
+    expect(screen.getByText("Total (IGV incluido)")).toBeInTheDocument();
+    expect(screen.queryByTestId("igv-en-vivo")).toBeNull();
+  });
+
+  it("ordena los campos de la pieza: servicio, material, peso, medida y precio (D59)", () => {
+    renderForm();
+    const card = within(screen.getByTestId("pieza-1"));
+    const labels = card
+      .getAllByText(
+        /^(Servicio|Material|Peso \(g\)|Medida|Precio \(S\/\)|Descripción|Notas de la pieza|Taller|Urgente)$/,
+      )
+      .map((el) => el.textContent);
+    expect(labels).toEqual([
+      "Servicio",
+      "Material",
+      "Peso (g)",
+      "Medida",
+      "Precio (S/)",
+      "Descripción",
+      "Notas de la pieza",
+      "Taller",
+      "Urgente",
+    ]);
+    expect(screen.getByLabelText("Notas generales")).toBeInTheDocument();
   });
 
   it("no pregunta si la pieza ya está en tienda: en oficina siempre lo está (P48)", () => {
@@ -195,17 +232,20 @@ describe("RestorationForm", () => {
     expect(
       first.queryByText("Describe la pieza (qué es y cómo está)"),
     ).toBeNull();
-    // El precio de venta es opcional (D58).
+    // El servicio es obligatorio (D59); el precio de venta, opcional (D58).
+    expect(first.getByText("Elige o escribe el servicio")).toBeVisible();
     expect(first.queryByText("Ingresa el precio")).toBeNull();
     expect(
       second.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
+    expect(second.getByText("Elige o escribe el servicio")).toBeVisible();
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("el % de adelanto solo se pide en A cuenta", async () => {
     const user = userEvent.setup();
     renderForm();
+    await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
     // Por defecto el tipo de pago está por definir: sin adelanto ni %.
     expect(screen.getByLabelText("Tipo de pago")).toHaveTextContent(
       "Por definir",
@@ -258,7 +298,7 @@ const quoteItem = (
     description,
     measure: "",
     material: { id: null, name: "" },
-    service: { id: null, name: "" },
+    service: { id: null, name: "Limpieza" },
     weight: "",
     price,
     urgent: false,
@@ -316,8 +356,10 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
 
     await user.type(screen.getByLabelText("Nombre (opcional)"), "Ana Pérez");
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
+    await user.type(within(piece).getByLabelText("Servicio"), "Limpieza");
     await user.type(within(piece).getByLabelText("Precio (S/)"), "100");
-    await user.click(screen.getByLabelText(/No, se suma el IGV/));
+    // Por defecto el precio no incluye IGV (D59).
+    expect(screen.getByTestId("igv-en-vivo")).toHaveTextContent("S/ 18.00");
     await user.click(
       screen.getByRole("button", { name: "Registrar cotización" }),
     );

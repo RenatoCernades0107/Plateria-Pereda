@@ -38,7 +38,7 @@ import {
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
-import { igvLabel } from "@/domain/igv";
+import { igvLabel, igvTotals } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
 import { editableFields, SALE_PRICE_HINT } from "@/domain/restoration-edit";
@@ -345,6 +345,15 @@ export default async function RestauracionDetallePage({
           <MoneySummary
             totalCents={restoration.money.totalCents}
             paidCents={restoration.money.paidCents}
+            igv={{
+              ...igvTotals(
+                restoration.pieces
+                  .filter((p) => !isClosedStatus(p.status))
+                  .map((p) => p.priceCents ?? 0),
+                restoration.money.pricesIncludeIgv,
+              ),
+              included: restoration.money.pricesIncludeIgv,
+            }}
           />
           {restoration.money.expectedDepositCents > 0 ? (
             <p className="text-muted-foreground text-sm">

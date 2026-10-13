@@ -52,7 +52,7 @@ const piece = {
   description: "Fuente",
   measure: "",
   material: { id: null, name: "Plata" },
-  service: { id: null, name: "" },
+  service: { id: null, name: "Limpieza" },
   weight: "",
   price: "1,300",
   notes: "",

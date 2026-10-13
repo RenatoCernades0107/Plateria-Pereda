@@ -37,6 +37,8 @@ async function seedRestoration(pieces: NewPiece[]) {
       .insert({
         restoration_id: r.id,
         description: p.description,
+        // El servicio es obligatorio al editar la pieza (D59).
+        service_name: "Limpieza",
         price: 10,
         arrived_at: p.arrived ? new Date().toISOString() : null,
       } as never)

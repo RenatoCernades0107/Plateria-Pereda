@@ -1,7 +1,7 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
 > **Estado:** planificación (todavía no se desarrolla).
-> **Última actualización:** 2026-10-09
+> **Última actualización:** 2026-10-12
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
 
@@ -746,7 +746,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
 #### Paso 7.8 — IGV en restauraciones y cotizaciones de WhatsApp (P13 ✅, 2026-10-09)
-- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto) al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
+- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto; desde 7.9 parte de "No") al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
 - [x] Si no incluye IGV, cada pieza se cobra a su precio + 18 % redondeado a céntimos: total, adelanto, saldo y (9.1) líneas de la orden de Shopify. El mensaje de WhatsApp muestra el subtotal sin IGV y el IGV debajo de las piezas.
 - [x] Se cambia desde "Editar" mientras no exista la orden de Shopify (la BD lo exige).
 - **Unit:**
@@ -759,6 +759,16 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] La validación pide responder la pregunta.
 - Hecho (2026-10-09): migración `20261009120000_igv.sql` (`prices_include_igv` en `restorations` y `whatsapp_quotes`, las filas existentes quedan con IGV incluido; `public.price_with_igv()`; triggers que recalculan el total; `create_restoration`, `create_restoration_from_whatsapp_quote`, `create_whatsapp_quote` y `update_whatsapp_quote` con `p_prices_include_igv`). Dominio en `src/domain/igv.ts` (el cotizador `COT-` reutiliza `IGV_PERCENT` e `igvBreakdown`). Campo `IgvField` en el registro y en "Editar"; insignia en los detalles.
 - Commit: `feat(restauraciones): pregunta si el precio incluye IGV y lo suma al cobro (P13)`
+
+#### Paso 7.9 — Observaciones al formulario de registro (P52 ✅, 2026-10-12)
+- [x] Servicio obligatorio en cada pieza ("Elige o escribe el servicio"): registro, copia desde una cotización, "Editar", "Agregar pieza" y piezas de la cotización de WhatsApp.
+- [x] Orden de la pieza: Servicio · Material · Peso (g) · Medida · Precio (S/) (opcionales) · Descripción junto a Notas de la pieza · Taller y Urgente.
+- [x] "Notas" de la restauración → "Notas generales" (registro, cotización de WhatsApp, "Editar" e historial).
+- [x] "¿El precio incluye IGV?" parte de "No" (obligatorio); la barra del total muestra Subtotal, "+ IGV (18 %)" y Total (S/ 0.00 sin precios) o "Total (IGV incluido)". El detalle muestra el IGV debajo del total.
+- **Unit:** validación (servicio obligatorio también en la cotización), orden de los campos, IGV por defecto y totales en vivo, "Notas generales" en "Editar", "Agregar pieza" exige el servicio, IGV del `MoneySummary`.
+- **E2E:** registro con subtotal, IGV y total; la validación pide el servicio y el IGV ya viene en "No"; ventas registra sin precio con IGV S/ 0.00; detalle con el IGV; edición con "Notas generales".
+- Hecho (2026-10-12): sin cambios en la BD (lo obligatorio vive en zod; el formulario siempre envía la respuesta del IGV, así que el `default true` de `prices_include_igv` no se usa). La copia desde una cotización y la edición de una cotización conservan la respuesta del IGV de la cotización.
+- Commit: `feat(restauraciones): formulario con servicio obligatorio, nuevo orden de campos e IGV por defecto`
 
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 

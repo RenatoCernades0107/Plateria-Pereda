@@ -81,7 +81,7 @@ type FormValues = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: string;
-  /** "¿El precio incluye IGV?" (P13): "" hasta que se responda. */
+  /** "¿El precio incluye IGV?" (P13): por defecto "no" en lo nuevo (D59). */
   pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   pieces: PieceFormInput[];
@@ -109,17 +109,26 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
 };
 
 /**
- * Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0) y,
- * si los precios no incluyen IGV, el 18 % de cada uno (P13).
+ * Totales en vivo: suman los precios válidos (los vacíos o mal escritos cuentan 0)
+ * y, si los precios no incluyen IGV, el 18 % de cada uno (P13). Sin precios todavía
+ * el IGV es 0 y crece a medida que el admin los asigna (D59).
  */
-export function liveTotal(
+export function liveTotals(
   pieces: readonly { price?: string }[],
   pricesIncludeIgv = true,
 ) {
   return igvTotals(
     pieces.map((p) => parseMoney(p.price ?? "") ?? 0),
     pricesIncludeIgv,
-  ).total;
+  );
+}
+
+/** Total en vivo (lo que paga el cliente). */
+export function liveTotal(
+  pieces: readonly { price?: string }[],
+  pricesIncludeIgv = true,
+) {
+  return liveTotals(pieces, pricesIncludeIgv).total;
 }
 
 function PieceCard({
@@ -361,7 +370,8 @@ function defaultsFor(
       customerPhone: "",
       paymentType: "sin_definir",
       depositPercent: String(defaultDepositPercent),
-      pricesIncludeIgv: "",
+      // Por defecto el precio no incluye IGV: se suma el 18 % (D59).
+      pricesIncludeIgv: "no",
       notes: "",
       pieces: [EMPTY_PIECE],
     };
@@ -437,7 +447,8 @@ export function RestorationForm({
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
   const withoutIgv = values.pricesIncludeIgv === "no";
-  const total = liveTotal(values.pieces ?? [], !withoutIgv);
+  const totals = liveTotals(values.pieces ?? [], !withoutIgv);
+  const total = totals.total;
   const paymentType = values.paymentType ?? "sin_definir";
   const percent = Number(values.depositPercent);
   const deposit =
@@ -798,10 +809,15 @@ export function RestorationForm({
         {viaWhatsapp ? (
           <section className="space-y-4" aria-labelledby="notas">
             <h2 id="notas" className="sr-only">
-              Notas
+              Notas generales
             </h2>
             <IgvField form={form} name="pricesIncludeIgv" />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
           </section>
         ) : (
           <section className="space-y-4" aria-labelledby="pago">
@@ -843,15 +859,40 @@ export function RestorationForm({
               ) : null}
             </div>
             <IgvField form={form} name="pricesIncludeIgv" />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
           </section>
         )}
 
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
-          <dl className="flex gap-6">
+          <dl className="flex flex-wrap gap-x-6 gap-y-2">
+            {withoutIgv ? (
+              <>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Subtotal</dt>
+                  <dd className="tabular-nums" data-testid="subtotal-en-vivo">
+                    {formatCents(totals.taxableBase)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    + IGV ({IGV_PERCENT} %)
+                  </dt>
+                  <dd className="tabular-nums" data-testid="igv-en-vivo">
+                    {formatCents(totals.igv)}
+                  </dd>
+                </div>
+              </>
+            ) : null}
             <div>
               <dt className="text-muted-foreground text-xs">
-                {withoutIgv ? `Total (con IGV ${IGV_PERCENT} %)` : "Total"}
+                {values.pricesIncludeIgv === "si"
+                  ? "Total (IGV incluido)"
+                  : "Total"}
               </dt>
               <dd
                 className="text-heading font-semibold tabular-nums"

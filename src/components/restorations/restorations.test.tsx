@@ -95,6 +95,31 @@ describe("MoneySummary", () => {
     expect(screen.getByText("A favor del cliente")).toBeInTheDocument();
     expect(screen.getByTestId("monto-saldo")).toHaveTextContent("S/ 20.00");
   });
+
+  it("muestra el IGV sumado o incluido en el total (D59)", () => {
+    const { rerender } = render(
+      <MoneySummary
+        totalCents={11_800}
+        paidCents={0}
+        igv={{ taxableBase: 10_000, igv: 1_800, included: false }}
+      />,
+    );
+    expect(screen.getByTestId("monto-igv")).toHaveTextContent(
+      "Subtotal: S/ 100.00 · + IGV (18 %): S/ 18.00",
+    );
+    rerender(
+      <MoneySummary
+        totalCents={11_800}
+        paidCents={0}
+        igv={{ taxableBase: 10_000, igv: 1_800, included: true }}
+      />,
+    );
+    expect(screen.getByTestId("monto-igv")).toHaveTextContent(
+      "IGV incluido (18 %): S/ 18.00",
+    );
+    rerender(<MoneySummary totalCents={0} paidCents={0} />);
+    expect(screen.queryByTestId("monto-igv")).toBeNull();
+  });
 });
 
 // 10:00 en Lima (UTC−5).
