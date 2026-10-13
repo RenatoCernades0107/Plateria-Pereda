@@ -12,7 +12,11 @@ import {
   type WhatsappQuoteInput,
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
-import { pieceToRpc, withoutSalePrices } from "@/server/restorations/create";
+import {
+  pieceToRpc,
+  withoutSalePrices,
+  withoutWorkshops,
+} from "@/server/restorations/create";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
@@ -124,10 +128,12 @@ export async function createRestorationFromQuote(
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
   const v = parsed.data;
   // Sin ser admin se conserva el precio cotizado y las piezas nuevas quedan sin
-  // precio de venta (D58).
-  const pieces = can(user.role, "piezas.precio-venta")
+  // precio de venta (D58); sin el permiso del taller, sin taller (D60).
+  let pieces = can(user.role, "piezas.precio-venta")
     ? v.pieces
     : withoutSalePrices(v.pieces, { keepQuoted: true });
+  if (!can(user.role, "piezas.asignar-taller"))
+    pieces = withoutWorkshops(pieces);
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("create_restoration_from_whatsapp_quote", {

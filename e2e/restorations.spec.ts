@@ -256,6 +256,8 @@ test.describe("Restauraciones", () => {
     await page.goto("/restauraciones/nueva");
     await pickClient(page, clientName);
     const card = page.getByTestId("pieza-1");
+    // El taller lo asignan logística y el admin (D60): ventas no lo elige.
+    await expect(card.getByText("Taller", { exact: true })).toHaveCount(0);
     await card.getByLabel("Servicio").fill("Limpieza");
     await card.getByLabel("Descripción").fill("Tetera sin precio");
     await expect(card.getByLabel("Precio (S/)")).toBeDisabled();

@@ -122,6 +122,12 @@ test.describe("Estados de las piezas", () => {
     // Las piezas de oficina ya están en la tienda: no hay "Marcar llegada" (P48).
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
+    // Logística sí asigna el taller (D60).
+    await expect(
+      page
+        .getByRole("region", { name: "Acciones para las piezas elegidas" })
+        .getByRole("button", { name: "Asignar taller" }),
+    ).toBeVisible();
     await expect(
       card(page, code).getByRole("button", { name: "Marcar llegada a tienda" }),
     ).toHaveCount(0);
@@ -346,6 +352,10 @@ test.describe("Estados de las piezas", () => {
       name: "Acciones para las piezas elegidas",
     });
     await expect(bar).toContainText("2 piezas elegidas");
+    // El taller lo asignan logística y el admin (D60).
+    await expect(
+      bar.getByRole("button", { name: "Asignar taller" }),
+    ).toHaveCount(0);
     await bar.getByLabel("Cambiar estado a…").click();
     await page.getByRole("option", { name: "Anular" }).click();
     await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
@@ -465,6 +475,13 @@ test.describe("Estados de las piezas", () => {
     await page.goto(`/restauraciones/${r.id}`);
     await page.getByRole("button", { name: `Editar pieza ${code}` }).click();
     const dialog = page.getByRole("dialog");
+    // Ventas ve el taller pero no lo cambia (D60).
+    await expect(dialog.getByTestId("taller-solo-lectura")).toContainText(
+      "Sin asignar",
+    );
+    await expect(dialog.getByRole("combobox", { name: "Taller" })).toHaveCount(
+      0,
+    );
     await dialog.getByLabel("Urgente").check();
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(card(page, code)).toContainText("Urgente");

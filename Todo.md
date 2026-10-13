@@ -770,6 +770,16 @@ Objetivo: validar con llamadas reales antes de construir.
 - Hecho (2026-10-12): sin cambios en la BD (lo obligatorio vive en zod; el formulario siempre envía la respuesta del IGV, así que el `default true` de `prices_include_igv` no se usa). La copia desde una cotización y la edición de una cotización conservan la respuesta del IGV de la cotización.
 - Commit: `feat(restauraciones): formulario con servicio obligatorio, nuevo orden de campos e IGV por defecto`
 
+#### Paso 7.10 — El taller lo asignan solo logística y el admin (P53 ✅, 2026-10-12)
+- [x] Permiso `piezas.asignar-taller`: admin y logística (ventas lo ve).
+- [x] Ventas no ve el taller al registrar ni al agregar una pieza; en "Editar" lo ve como texto ("Lo asignan logística y el administrador."). No ve "Asignar taller" en las acciones en bloque.
+- [x] Las acciones del servidor no envían el taller si el rol no tiene el permiso (registro, copia desde una cotización, edición y pieza nueva).
+- **Unit:** permisos, `editableFields` (el taller solo para el admin), acciones sin taller para ventas, formulario y diálogos (texto de solo lectura) y barra de acciones en bloque.
+- **BD:** ventas no usa `assign_piece_workshop`, no cambia ni quita el taller al editar, no registra ni agrega piezas con taller; logística asigna y envía al taller con otro taller; el admin hace todo (`31_taller_solo_logistica`).
+- **E2E:** ventas registra sin taller, ve el taller como texto al editar y no ve "Asignar taller"; logística sí lo ve.
+- Hecho (2026-10-12): migración `20261014130000_taller_solo_logistica.sql`: `assign_piece_workshop` solo para admin y logística y trigger `pieces_guard_workshop` (en peticiones de usuarios, rol `authenticated`, solo admin y logística ponen o cambian `workshop_id`; dejar el mismo taller no cuenta como cambio). `change_piece_status` (enviar al taller) ya era solo de admin y logística.
+- Commit: `feat(permisos): el taller lo asignan solo logística y admin`
+
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 
 Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las restauraciones: no va a Shopify, no lleva fotos y nunca se muestra en la misma vista que las restauraciones. "Crear restauración" copia las piezas elegidas a una restauración normal (origen WhatsApp; cada pieza pasa al estado inicial elegido, P49), y se puede repetir con las pendientes.
@@ -863,7 +873,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - [x] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
 - [x] Acción "Marcar llegada a tienda".
 - [x] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
-- [x] Asignar / cambiar taller (queda auditado).
+- [x] Asignar / cambiar taller (queda auditado). _(Desde 7.10 solo logística y el admin.)_
 - **Unit:**
   - [x] El componente muestra los botones correctos por estado y rol.
   - [x] El diálogo exige nota/taller cuando corresponde.

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import type { AppRole } from "@/lib/roles";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { toDecimalString } from "@/domain/money";
@@ -17,7 +18,11 @@ import {
 import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
-import { createRestorationRecord, withoutSalePrices } from "./create";
+import {
+  createRestorationRecord,
+  withoutSalePrices,
+  withoutWorkshops,
+} from "./create";
 
 export type CreateRestorationResult =
   { ok: true; id: string; code: string } | { error: string };
@@ -36,10 +41,14 @@ export async function createRestoration(
   const user = await requirePermission("restauraciones.editar");
   const parsed = restorationSchema.safeParse(input);
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
-  // El precio de venta lo asigna solo el admin (D58): ventas registra sin precio.
-  const data = can(user.role, "piezas.precio-venta")
-    ? parsed.data
-    : { ...parsed.data, pieces: withoutSalePrices(parsed.data.pieces) };
+  // El precio de venta lo asigna solo el admin (D58) y el taller, logística y el
+  // admin (D60): ventas registra sin precio ni taller.
+  let pieces = parsed.data.pieces;
+  if (!can(user.role, "piezas.precio-venta"))
+    pieces = withoutSalePrices(pieces);
+  if (!can(user.role, "piezas.asignar-taller"))
+    pieces = withoutWorkshops(pieces);
+  const data = { ...parsed.data, pieces };
 
   try {
     const created = await createRestorationRecord(await createClient(), data);
@@ -118,16 +127,20 @@ export async function updateRestoration(
 
 /**
  * Columnas de la pieza. El precio de venta solo lo escribe quien puede asignarlo
- * (admin, D58); para los demás no se envía y queda como está (o sin asignar).
+ * (admin, D58) y el taller, quien puede asignarlo (D60); para los demás no se envían
+ * y quedan como están (o sin asignar).
  */
-function pieceColumns(input: PieceFormInput, withPrice: boolean) {
+function pieceColumns(
+  input: PieceFormInput,
+  { withPrice, withWorkshop }: { withPrice: boolean; withWorkshop: boolean },
+) {
   const parsed = pieceSchema.safeParse(input);
   if (!parsed.success) return null;
   const p = parsed.data;
   return {
     piece: p,
     columns: {
-      workshop_id: p.workshopId,
+      ...(withWorkshop && { workshop_id: p.workshopId }),
       description: p.description,
       measure: p.measure,
       material_id: p.material?.id ?? null,
@@ -145,13 +158,19 @@ function pieceColumns(input: PieceFormInput, withPrice: boolean) {
   };
 }
 
+/** Qué columnas de la pieza escribe el rol (D58 y D60). */
+const permissionsOf = (role: AppRole) => ({
+  withPrice: can(role, "piezas.precio-venta"),
+  withWorkshop: can(role, "piezas.asignar-taller"),
+});
+
 /** Edita una pieza; la BD bloquea lo que su estado o la orden de Shopify no permiten. */
 export async function updatePiece(
   pieceId: string,
   input: PieceFormInput,
 ): Promise<ActionResult> {
   const user = await requirePermission("restauraciones.editar");
-  const parsed = pieceColumns(input, can(user.role, "piezas.precio-venta"));
+  const parsed = pieceColumns(input, permissionsOf(user.role));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
   const supabase = await createClient();
@@ -175,7 +194,7 @@ export async function addPiece(
   input: PieceFormInput,
 ): Promise<ActionResult> {
   const user = await requirePermission("restauraciones.editar");
-  const parsed = pieceColumns(input, can(user.role, "piezas.precio-venta"));
+  const parsed = pieceColumns(input, permissionsOf(user.role));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
   const supabase = await createClient();

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { CLOSED_STATUSES, PIECE_STATUSES } from "./piece-state-machine";
-import { editableFields, PIECE_FREE_FIELDS } from "./restoration-edit";
+import {
+  editableFields,
+  PIECE_FREE_FIELDS,
+  SALES_PIECE_FIELDS,
+} from "./restoration-edit";
 
 describe("editableFields", () => {
   it("logística no edita nada", () => {
@@ -27,7 +31,7 @@ describe("editableFields", () => {
         { status: "aprobada", priceCents: 10_000 },
       );
       if (role === "admin") expect(fields.piece).toContain("price");
-      else expect(fields.piece).toEqual(PIECE_FREE_FIELDS);
+      else expect(fields.piece).toEqual(SALES_PIECE_FIELDS);
       expect(fields.restoration).toEqual([
         "contactId",
         "paymentType",
@@ -43,7 +47,7 @@ describe("editableFields", () => {
       { role: "ventas", hasOrder: true },
       { status: "aprobada", priceCents: 10_000 },
     );
-    expect(ventas.piece).toEqual(PIECE_FREE_FIELDS);
+    expect(ventas.piece).toEqual(SALES_PIECE_FIELDS);
     expect(ventas.piece).not.toContain("price");
     expect(ventas.priceNeedsOrderFlow).toBe(false);
     expect(ventas.restoration).toContain("paymentType");
@@ -102,13 +106,31 @@ describe("editableFields", () => {
     for (const status of others) {
       expect(
         editableFields({ role: "ventas", hasOrder: true }, { status }).piece,
+      ).toEqual(SALES_PIECE_FIELDS);
+      expect(
+        editableFields(
+          { role: "admin", hasOrder: true },
+          { status, priceCents: 1000 },
+        ).piece,
       ).toEqual(PIECE_FREE_FIELDS);
+    }
+  });
+
+  it("el taller lo cambia el admin, no ventas (D60)", () => {
+    expect(SALES_PIECE_FIELDS).not.toContain("workshopId");
+    for (const piece of [undefined, { status: "aprobada" as const }]) {
+      expect(
+        editableFields({ role: "admin", hasOrder: false }, piece).piece,
+      ).toContain("workshopId");
+      expect(
+        editableFields({ role: "ventas", hasOrder: false }, piece).piece,
+      ).not.toContain("workshopId");
     }
   });
 
   it("sin pieza informa los campos de una pieza nueva: el precio solo para el admin", () => {
     expect(editableFields({ role: "ventas", hasOrder: false })).toMatchObject({
-      piece: PIECE_FREE_FIELDS,
+      piece: SALES_PIECE_FIELDS,
       canAddPieces: true,
     });
     expect(editableFields({ role: "admin", hasOrder: true }).piece).toContain(

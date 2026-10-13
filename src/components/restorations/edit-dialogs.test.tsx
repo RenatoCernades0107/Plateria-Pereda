@@ -134,6 +134,64 @@ describe("PieceDialog", () => {
   });
 });
 
+describe("PieceDialog: taller (D60)", () => {
+  const SALES = [
+    "description",
+    "service",
+    "measure",
+    "material",
+    "weight",
+    "notes",
+    "urgent",
+  ] as const;
+
+  it("ventas ve el taller asignado como texto, sin poder cambiarlo", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{ ...piece, workshopId: "w9", workshopName: "Taller Viejo" }}
+        editable={SALES}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Taller")).toBeNull();
+    expect(within(dialog).getByTestId("taller-solo-lectura")).toHaveTextContent(
+      "Taller Viejo",
+    );
+    expect(
+      within(dialog).getByText("Lo asignan logística y el administrador."),
+    ).toBeVisible();
+  });
+
+  it("ventas no elige taller al agregar una pieza; el admin sí", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <PieceDialog restorationId="r1" editable={SALES} {...props} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    expect(within(screen.getByRole("dialog")).queryByText("Taller")).toBeNull();
+    unmount();
+
+    render(
+      <PieceDialog
+        restorationId="r1"
+        workshops={[{ id: "w1", name: "Taller Central" }]}
+        materials={[]}
+        services={[]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText("Taller"),
+    ).toBeEnabled();
+  });
+});
+
 describe("PieceDialog: precio de venta sin asignar (D58)", () => {
   it("una pieza sin precio muestra «Sin asignar» y se guarda sin precio", async () => {
     const user = userEvent.setup();

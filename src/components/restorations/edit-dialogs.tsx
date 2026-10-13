@@ -352,6 +352,11 @@ export function PieceDialog({
               editable={editable}
               priceHint={priceHint}
               pricePlaceholder="Sin asignar"
+              // Ventas no elige taller al agregar una pieza y lo ve al editarla (D60).
+              showWorkshop={
+                Boolean(piece) || !editable || editable.includes("workshopId")
+              }
+              workshopName={piece?.workshopName}
             />
             <DialogFooter>
               <Button type="submit" disabled={pending}>

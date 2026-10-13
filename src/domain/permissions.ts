@@ -11,7 +11,8 @@ const PERMISSIONS = {
   "piezas.consultar-aprobar-anular": ["admin", "ventas"],
   "piezas.marcar-llegada": ["admin", "ventas", "logistica"],
   "piezas.enviar-recibir-taller": ["admin", "logistica"],
-  "piezas.asignar-taller": ["admin", "ventas", "logistica"],
+  /** Taller de la pieza: lo asignan o cambian logística y el admin (D60); ventas lo ve. */
+  "piezas.asignar-taller": ["admin", "logistica"],
   /** Costo de servicio de la pieza: lo que cobra el taller (solo admin y logística). */
   "piezas.costo-servicio": ["admin", "logistica"],
   /** Precio de venta de la pieza: lo asigna o cambia solo el admin (D58); ventas lo ve. */

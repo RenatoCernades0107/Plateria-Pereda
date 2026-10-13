@@ -38,12 +38,17 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-/** Por defecto como admin, que asigna el precio de venta (D58). */
-function renderForm(mode?: RestorationFormMode, canSetPrice = true) {
+/** Por defecto como admin, que asigna el precio de venta (D58) y el taller (D60). */
+function renderForm(
+  mode?: RestorationFormMode,
+  canSetPrice = true,
+  canAssignWorkshop = canSetPrice,
+) {
   return render(
     <RestorationForm
       mode={mode}
       canSetPrice={canSetPrice}
+      canAssignWorkshop={canAssignWorkshop}
       defaultDepositPercent={50}
       workshops={[{ id: "w1", name: "Taller Central" }]}
       materials={[]}
@@ -189,6 +194,14 @@ describe("RestorationForm", () => {
       "Sin asignar",
     );
     expect(card.getByTestId("precio-pieza")).toHaveTextContent("Sin asignar");
+  });
+
+  it("sin permiso del taller (ventas) no se elige el taller al registrar (D60)", () => {
+    renderForm(undefined, false);
+    const card = within(screen.getByTestId("pieza-1"));
+    expect(card.queryByLabelText("Taller")).toBeNull();
+    expect(card.queryByText("Taller")).toBeNull();
+    expect(card.getByLabelText("Urgente")).toBeInTheDocument();
   });
 
   it("sin ser admin el precio de venta no se edita (D58)", () => {

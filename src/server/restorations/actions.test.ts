@@ -22,7 +22,7 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
 
 const { createRestoration } = await import("./actions");
-const { pieceToRpc, withoutSalePrices } =
+const { pieceToRpc, withoutSalePrices, withoutWorkshops } =
   await vi.importActual<typeof import("./create")>("./create");
 
 const piece = {
@@ -81,6 +81,34 @@ describe("createRestoration", () => {
       {},
       expect.objectContaining({
         pieces: [expect.objectContaining({ priceCents: null })],
+      }),
+    );
+  });
+
+  it("ventas registra las piezas sin taller: lo asignan logística y el admin (D60)", async () => {
+    const withWorkshop = {
+      ...input,
+      pieces: [
+        { ...piece, workshopId: "00000000-0000-0000-0000-0000000000f1" },
+      ],
+    };
+    expect(await createRestoration(withWorkshop)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenLastCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [
+          expect.objectContaining({
+            workshopId: "00000000-0000-0000-0000-0000000000f1",
+          }),
+        ],
+      }),
+    );
+    mocks.role = "ventas";
+    expect(await createRestoration(withWorkshop)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenLastCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [expect.objectContaining({ workshopId: null })],
       }),
     );
   });
@@ -204,6 +232,24 @@ describe("withoutSalePrices (D58)", () => {
     expect(withoutSalePrices([quoted, nueva], { keepQuoted: true })).toEqual([
       quoted,
       { ...nueva, priceCents: null },
+    ]);
+  });
+});
+
+describe("withoutWorkshops (D60)", () => {
+  it("quita el taller de las piezas", () => {
+    const base = {
+      description: "Fuente",
+      measure: "",
+      material: null,
+      service: { id: null, name: "Limpieza" },
+      weightGrams: null,
+      priceCents: null,
+      urgent: false,
+      notes: "",
+    };
+    expect(withoutWorkshops([{ ...base, workshopId: "w1" }])).toEqual([
+      { ...base, workshopId: null },
     ]);
   });
 });

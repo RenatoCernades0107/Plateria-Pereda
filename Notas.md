@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -414,7 +414,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | Consultas, aprobar y anular piezas | ✅ | ✅ | ❌ |
 | Marcar llegada a tienda | ✅ | ✅ | ✅ |
 | Enviar al taller y marcar devuelta por el taller | ✅ | ❌ | ✅ |
-| Asignar / cambiar taller | ✅ | ✅ | ✅ |
+| Asignar / cambiar taller | ✅ | ❌ (lo ve, P53) | ✅ |
 | Entregar al cliente (ver P45) y observar | ✅ | ✅ | ✅ |
 | Subir y editar fotos (por pieza y foto general) | ✅ | ✅ | ✅ |
 | Eliminar fotos y archivos | ✅ | Solo los suyos | Solo los suyos |
@@ -539,6 +539,11 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (5) El campo "Notas" de la restauración pasa a llamarse **"Notas generales"** (registro, "Editar", cotización de WhatsApp e historial de cambios).
   - (6) **IGV: por defecto "No"** (se suma el IGV) y sigue siendo obligatorio. La barra del total muestra **Subtotal, "+ IGV (18 %)" y Total**; sin precios el IGV es S/ 0.00 y se actualiza a medida que el admin asigna los precios de venta. Si el precio incluye IGV se indica "IGV incluido". El detalle muestra también el IGV debajo del total. Cambia P13 ("sin valor por defecto").
 
+### P53 · ¿Quién asigna el taller? (2026-10-12)
+- **Contexto:** la matriz de P42 dejaba asignar o cambiar el taller a admin, ventas y logística.
+- **Respuesta (2026-10-12):** ✅ El taller lo asignan **solo logística y el admin**. Ventas lo ve (en el detalle y al editar la pieza) pero no lo elige al registrar ni lo cambia después. Ajusta la matriz de P42.
+- **Cómo queda:** "Asignar taller" (acción en bloque) y "Enviar al taller" con taller siguen para logística y el admin; el registro y "Agregar pieza" de ventas no muestran el taller, y "Editar" de la pieza lo muestra como texto. La BD lo exige: `assign_piece_workshop` rechaza a ventas y el trigger `pieces_guard_workshop` impide que ventas ponga o cambie el taller por cualquier otro camino (registro, copia de una cotización, edición o pieza nueva).
+
 ---
 
 ## Preguntas para el negocio
@@ -634,6 +639,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D57 | Estado de pago automático: Pendiente, Parcial, Pagado y Reembolsado (todo devuelto). Al contado se sugiere el total al aprobar; al crédito, cualquier cliente; el tipo de pago se cambia solo sin pagos registrados | P28, P29 |
 | D58 | El precio de venta de la pieza no sale del servicio: nace "Sin asignar" y solo el admin lo asigna o cambia (ventas lo ve). La orden de Shopify espera a que todas las piezas que se cobran tengan precio. La copia de una cotización de WhatsApp conserva los precios cotizados | P51 |
 | D59 | Formulario de la pieza: servicio obligatorio; material, peso, medida y precio opcionales y en ese orden; descripción junto a las notas de la pieza. "Notas" de la restauración pasa a "Notas generales". "¿El precio incluye IGV?" parte de "No" (sigue obligatorio) y el total muestra subtotal, + IGV y total | P52, cambia P13 en el valor por defecto |
+| D60 | El taller de la pieza lo asignan o cambian solo logística y el admin; ventas lo ve. La BD lo exige | P53, ajusta P42 |
 
 ---
 
@@ -654,6 +660,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
 | 2026-10-12 | P51 | Precio de venta "Sin asignar" y separado del servicio; solo el admin lo asigna; la orden de Shopify espera los precios; la copia de una cotización de WhatsApp conserva los precios cotizados. |
 | 2026-10-12 | P52 | Servicio obligatorio; orden Material, Peso, Medida, Precio (opcionales); descripción junto a las notas de la pieza; "Notas generales"; IGV "No" por defecto con subtotal, + IGV y total. |
+| 2026-10-12 | P53 | El taller lo asignan solo logística y el admin; ventas lo ve sin cambiarlo. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

@@ -144,6 +144,22 @@ describe("edición de restauraciones", () => {
     expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("price");
   });
 
+  it("solo el admin escribe el taller; ventas no lo envía (D60)", async () => {
+    const withWorkshop = {
+      ...piece,
+      workshopId: "00000000-0000-0000-0000-0000000000f1",
+    };
+    expect(await updatePiece("p1", withWorkshop)).toEqual({ ok: true });
+    expect(mocks.update.mock.calls[0]![0]).toMatchObject({
+      workshop_id: "00000000-0000-0000-0000-0000000000f1",
+    });
+    mocks.role = "ventas";
+    expect(await updatePiece("p1", withWorkshop)).toEqual({ ok: true });
+    expect(mocks.update.mock.calls[1]![0]).not.toHaveProperty("workshop_id");
+    expect(await addPiece("r1", withWorkshop)).toEqual({ ok: true });
+    expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("workshop_id");
+  });
+
   it("el admin deja el precio sin asignar si lo vacía", async () => {
     expect(await updatePiece("p1", { ...piece, price: "" })).toEqual({
       ok: true,

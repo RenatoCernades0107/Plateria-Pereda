@@ -141,6 +141,7 @@ function PieceCard({
   quoteOnly,
   showInitialStatus,
   canSetPrice,
+  canAssignWorkshop,
   onDuplicate,
   onRemove,
 }: {
@@ -156,6 +157,8 @@ function PieceCard({
   showInitialStatus: boolean;
   /** Puede asignar el precio de venta (admin, D58). */
   canSetPrice: boolean;
+  /** Puede elegir el taller (logística y admin, D60). */
+  canAssignWorkshop: boolean;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -242,7 +245,7 @@ function PieceCard({
           workshops={workshops}
           materials={materials}
           services={services}
-          showWorkshop={!quoteOnly}
+          showWorkshop={!quoteOnly && canAssignWorkshop}
           showUrgent={!quoteOnly}
           // La cotización de WhatsApp lleva el precio cotizado (obligatorio); en la
           // restauración el precio de venta es opcional y solo lo asigna el admin (D58).
@@ -405,6 +408,7 @@ export function RestorationForm({
   services,
   mode = { kind: "nueva" },
   canSetPrice = false,
+  canAssignWorkshop = false,
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
@@ -413,6 +417,8 @@ export function RestorationForm({
   mode?: RestorationFormMode;
   /** Puede asignar el precio de venta de las piezas (solo admin, D58). */
   canSetPrice?: boolean;
+  /** Puede elegir el taller de las piezas (logística y admin, D60). */
+  canAssignWorkshop?: boolean;
 }) {
   const router = useRouter();
   const quote = mode.kind === "nueva" ? null : mode.quote;
@@ -774,6 +780,7 @@ export function RestorationForm({
                 quoteOnly={viaWhatsapp}
                 showInitialStatus={mode.kind === "copia"}
                 canSetPrice={canSetPrice}
+                canAssignWorkshop={canAssignWorkshop}
                 onDuplicate={() => {
                   const copy = structuredClone(
                     form.getValues(`pieces.${index}`),

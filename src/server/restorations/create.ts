@@ -45,6 +45,13 @@ export function withoutSalePrices<T extends PieceInput>(
   );
 }
 
+/** Sin el permiso del taller (ventas, D60) las piezas se registran sin taller. */
+export function withoutWorkshops<T extends PieceInput>(
+  pieces: readonly T[],
+): T[] {
+  return pieces.map((piece) => ({ ...piece, workshopId: null }));
+}
+
 /** Registra la restauración y sus piezas en una sola transacción (RPC). */
 export async function createRestorationRecord(
   supabase: SupabaseClient<Database>,

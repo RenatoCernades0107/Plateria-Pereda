@@ -1,6 +1,11 @@
 "use client";
 
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import {
+  useWatch,
+  type FieldValues,
+  type Path,
+  type UseFormReturn,
+} from "react-hook-form";
 
 import { TextField } from "@/components/clients/form-fields";
 import {
@@ -19,7 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PieceEditableField } from "@/domain/restoration-edit";
+import {
+  WORKSHOP_HINT,
+  type PieceEditableField,
+} from "@/domain/restoration-edit";
 
 export type CatalogOption = { id: string; name: string; price: number | null };
 export type WorkshopOption = { id: string; name: string };
@@ -86,7 +94,8 @@ function CatalogField({
  * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
  * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: el
  * servicio (obligatorio), luego material, peso, medida y precio (opcionales), la
- * descripción junto a las notas de la pieza y al final taller y urgente. El precio
+ * descripción junto a las notas de la pieza y al final taller y urgente. Quien no
+ * puede cambiar el taller (ventas, D60) lo ve como texto. El precio
  * de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
  * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y es
  * obligatorio.
@@ -102,6 +111,7 @@ export function PieceFields({
   showUrgent = true,
   priceHint,
   pricePlaceholder,
+  workshopName,
 }: {
   form: AnyForm;
   prefix?: string;
@@ -116,10 +126,21 @@ export function PieceFields({
   priceHint?: string;
   /** Texto del precio vacío (p. ej. "Sin asignar" si es opcional). */
   pricePlaceholder?: string;
+  /** Nombre del taller ya asignado (puede estar desactivado y no venir en `workshops`). */
+  workshopName?: string | null;
 }) {
   const off = (field: PieceEditableField) =>
     editable ? !editable.includes(field) : false;
   const path = (name: string) => `${prefix}${name}` as Path<FieldValues>;
+  const workshopId = useWatch({
+    control: form.control,
+    name: path("workshopId"),
+  }) as string | null | undefined;
+  const currentWorkshop = workshopId
+    ? (workshops.find((w) => w.id === workshopId)?.name ??
+      workshopName ??
+      "Asignado")
+    : "Sin asignar";
 
   return (
     <div className="space-y-4">
@@ -185,7 +206,16 @@ export function PieceFields({
       </div>
       {showWorkshop || showUrgent ? (
         <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
-          {showWorkshop ? (
+          {showWorkshop && off("workshopId") ? (
+            <div className="space-y-2" data-testid="taller-solo-lectura">
+              <p className="text-sm leading-none font-medium">Taller</p>
+              <p className="flex h-9 items-center text-sm">{currentWorkshop}</p>
+              {/* Solo el taller está bloqueado: es ventas (D60). */}
+              {!off("description") ? (
+                <p className="text-muted-foreground text-sm">{WORKSHOP_HINT}</p>
+              ) : null}
+            </div>
+          ) : showWorkshop ? (
             <FormField
               control={form.control}
               name={path("workshopId")}
@@ -195,7 +225,6 @@ export function PieceFields({
                   <Select
                     value={field.value ?? NONE}
                     onValueChange={(v) => field.onChange(v === NONE ? null : v)}
-                    disabled={off("workshopId")}
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">

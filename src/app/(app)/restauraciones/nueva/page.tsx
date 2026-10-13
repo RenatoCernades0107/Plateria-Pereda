@@ -64,6 +64,7 @@ export default async function NuevaRestauracionPage({
         }
         defaultDepositPercent={settings.depositPercent}
         canSetPrice={can(user.role, "piezas.precio-venta")}
+        canAssignWorkshop={can(user.role, "piezas.asignar-taller")}
         workshops={workshops.data}
         materials={materials.map(({ id, name, price }) => ({
           id,
