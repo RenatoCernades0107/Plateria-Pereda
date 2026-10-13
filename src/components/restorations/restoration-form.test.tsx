@@ -152,7 +152,7 @@ describe("RestorationForm", () => {
     expect(screen.queryByTestId("igv-en-vivo")).toBeNull();
   });
 
-  it("ordena los campos de la pieza: servicio, material, peso, medida y precio (D59)", () => {
+  it("ordena los campos de la pieza: descripción y notas primero, luego servicio, material, peso, medida y precio", () => {
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
     const labels = card
@@ -161,16 +161,23 @@ describe("RestorationForm", () => {
       )
       .map((el) => el.textContent);
     expect(labels).toEqual([
+      "Descripción",
+      "Notas de la pieza",
       "Servicio",
       "Material",
       "Peso (g)",
       "Medida",
       "Precio (S/)",
-      "Descripción",
-      "Notas de la pieza",
       "Taller",
       "Urgente",
     ]);
+    // La descripción va antes que el servicio en el DOM (orden de tabulación).
+    expect(
+      card
+        .getByLabelText("Descripción")
+        .compareDocumentPosition(card.getByLabelText("Servicio")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByLabelText("Notas generales")).toBeInTheDocument();
   });
 

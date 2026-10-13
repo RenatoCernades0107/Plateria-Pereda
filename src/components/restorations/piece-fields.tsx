@@ -10,7 +10,6 @@ import {
 import { TextField } from "@/components/clients/form-fields";
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -92,11 +91,11 @@ function CatalogField({
 /**
  * Campos de una pieza (P22, D59). Se usan en el registro (`prefix` = "pieces.0.") y
  * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
- * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: el
- * servicio (obligatorio), luego material, peso, medida y precio (opcionales), la
- * descripción junto a las notas de la pieza y al final taller y urgente. Quien no
- * puede cambiar el taller (ventas, D60) lo ve como texto. El precio
- * de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
+ * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: primero
+ * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
+ * material, peso, medida y precio (opcionales) en una sola fila y al final taller y
+ * urgente. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
+ * precio de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
  * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y es
  * obligatorio.
  */
@@ -144,50 +143,6 @@ export function PieceFields({
 
   return (
     <div className="space-y-4">
-      <CatalogField
-        form={form}
-        prefix={prefix}
-        name="service"
-        label="Servicio"
-        options={services}
-        disabled={off("service")}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <CatalogField
-          form={form}
-          prefix={prefix}
-          name="material"
-          label="Material"
-          options={materials}
-          disabled={off("material")}
-        />
-        <TextField
-          form={form}
-          name={path("weight")}
-          label="Peso (g)"
-          inputMode="numeric"
-          disabled={off("weight")}
-        />
-        <TextField
-          form={form}
-          name={path("measure")}
-          label="Medida"
-          disabled={off("measure")}
-        />
-        <div className="space-y-1">
-          <TextField
-            form={form}
-            name={path("price")}
-            label="Precio (S/)"
-            inputMode="numeric"
-            disabled={off("price")}
-            placeholder={pricePlaceholder}
-          />
-          {off("price") && priceHint ? (
-            <FormDescription>{priceHint}</FormDescription>
-          ) : null}
-        </div>
-      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextField
           form={form}
@@ -203,6 +158,53 @@ export function PieceFields({
           multiline
           disabled={off("notes")}
         />
+      </div>
+      <CatalogField
+        form={form}
+        prefix={prefix}
+        name="service"
+        label="Servicio"
+        options={services}
+        disabled={off("service")}
+      />
+      <div className="space-y-2">
+        {/* Los cuatro datos cortos en una fila (2 en tablet, 1 en móvil); `items-start`
+            mantiene las etiquetas alineadas aunque un campo muestre su error. */}
+        <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <CatalogField
+            form={form}
+            prefix={prefix}
+            name="material"
+            label="Material"
+            options={materials}
+            disabled={off("material")}
+          />
+          <TextField
+            form={form}
+            name={path("weight")}
+            label="Peso (g)"
+            inputMode="numeric"
+            disabled={off("weight")}
+          />
+          <TextField
+            form={form}
+            name={path("measure")}
+            label="Medida"
+            disabled={off("measure")}
+          />
+          <TextField
+            form={form}
+            name={path("price")}
+            label="Precio (S/)"
+            inputMode="numeric"
+            disabled={off("price")}
+            placeholder={pricePlaceholder}
+          />
+        </div>
+        {/* Debajo de la fila completa para no desalinear los campos. */}
+        {off("price") && priceHint ? (
+          <p className="text-muted-foreground text-sm">{priceHint}</p>
+        ) : null}
       </div>
       {showWorkshop || showUrgent ? (
         <div className="grid gap-4 sm:grid-cols-2 sm:items-end">

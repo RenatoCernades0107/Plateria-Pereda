@@ -100,6 +100,28 @@ describe("PieceDialog", () => {
     );
   });
 
+  it("muestra la descripción y las notas antes que el servicio y los datos cortos", async () => {
+    const user = userEvent.setup();
+    render(<PieceDialog restorationId="r1" {...props} />);
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    const dialog = within(screen.getByRole("dialog"));
+    const order = [
+      "Descripción",
+      "Notas de la pieza",
+      "Servicio",
+      "Material",
+      "Peso (g)",
+      "Medida",
+      "Precio (S/)",
+    ].map((label) => dialog.getByLabelText(label));
+    order.slice(1).forEach((field, i) => {
+      expect(
+        order[i]!.compareDocumentPosition(field) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
   it("agrega una pieza y muestra el error de la BD", async () => {
     mocks.addPiece.mockResolvedValue({ error: "No se agregan piezas" });
     const user = userEvent.setup();
