@@ -279,6 +279,8 @@ export function PieceDialog({
   workshops,
   materials,
   services,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   restorationId: string;
   /** Sin pieza: agregar una nueva. */
@@ -288,8 +290,17 @@ export function PieceDialog({
   workshops: WorkshopOption[];
   materials: CatalogOption[];
   services: CatalogOption[];
+  /** Abierto desde fuera (p. ej. el menú «Acciones» de la tabla): sin botón propio. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const form = useForm<PieceFormInput>({
@@ -313,23 +324,25 @@ export function PieceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {piece ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Editar pieza ${piece.code}`}
-          >
-            <Pencil />
-            Editar
-          </Button>
-        ) : (
-          <Button variant="outline">
-            <Plus />
-            Agregar pieza
-          </Button>
-        )}
-      </DialogTrigger>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          {piece ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Editar pieza ${piece.code}`}
+            >
+              <Pencil />
+              Editar
+            </Button>
+          ) : (
+            <Button variant="outline">
+              <Plus />
+              Agregar pieza
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>

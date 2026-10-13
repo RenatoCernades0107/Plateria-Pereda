@@ -1140,6 +1140,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-10-13): `@dnd-kit/core`; `KanbanColumns` con `drag` opcional (`getId`, `getLabel`, `canDrop`, `onMove`) y columnas `dropOnly`; `usePieceMoves` y `MoveToMenu` comparten la lógica de los dos kanban de piezas.
 - Commit: `feat(kanban): mover piezas entre estados arrastrando`
 
+#### Paso 12.6 — Las vistas de lista se ven como el Excel (D64, 2026-10-13)
+- [x] Piezas de la guía (`/restauraciones/<id>`, vista Lista) en **tabla** como `/piezas`: elegir, foto "Antes", pieza (código al detalle + Urgente), descripción con notas, servicio, material · medida · peso, precio de venta (admin y ventas; el admin lo ingresa en la celda o, con la orden creada, "Cambiar precio"), estado y ubicación, taller.
+- [x] Menú **"Acciones ▾"** por fila con las mismas acciones del panel de estado (`usePieceActions`, compartido con el detalle de la pieza), "Editar", "Cambiar precio" y "Ver detalle". El diálogo se abre cuando el menú termina de cerrarse (foco correcto).
+- [x] La línea de tiempo y el resumen de logística salen de la guía: quedan en el detalle de la pieza.
+- [x] `@mobile` la tabla se desplaza dentro de su contenedor sin ensanchar la página.
+- **Unit:** tabla (columnas, foto, datos), menú (acciones por rol, aprobar, confirmación con foco, editar, cambiar precio), precio por rol; `firstBeforePhotos`.
+- **E2E:** los specs que usaban botones por pieza usan el menú (`e2e/support/pieces.ts`); la línea de tiempo se revisa en `/piezas/<id>`.
+- Commit: `feat(restauraciones): piezas de la guía en tabla con menú de acciones`
+
 ### Fase 13 — Dashboard
 
 #### Paso 13.1 — Métricas en BD ⛔ P33

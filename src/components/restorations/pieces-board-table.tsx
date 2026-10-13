@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, ImageOff } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
+import { materialSummary, PiecePhoto } from "./piece-photo";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { SalePriceInput, ServiceCostInput } from "./piece-money-cells";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
@@ -37,41 +38,6 @@ function Days({ piece }: { piece: BoardPiece }) {
     </span>
   );
 }
-
-/** Miniatura de la primera foto "Antes" de la pieza. */
-function Photo({ piece }: { piece: BoardPiece }) {
-  if (!piece.photoUrl) {
-    return (
-      <span
-        className="bg-muted text-muted-foreground flex size-14 items-center justify-center rounded-md"
-        title="Sin foto de antes"
-      >
-        <ImageOff className="size-5" aria-hidden />
-        <span className="sr-only">Sin foto de antes</span>
-      </span>
-    );
-  }
-  return (
-    <a
-      href={piece.photoUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block size-14 overflow-hidden rounded-md border"
-    >
-      {/* URL firmada de corta duración: no pasa por el optimizador de imágenes. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={piece.photoUrl}
-        alt={`Foto de antes de ${piece.code}`}
-        className="size-full object-cover"
-        loading="lazy"
-      />
-    </a>
-  );
-}
-
-const weight = (grams: number | null) =>
-  grams === null ? "" : `${grams.toLocaleString("es-PE")} g`;
 
 /**
  * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
@@ -133,7 +99,7 @@ export function PiecesBoardTable({
           Elegir todas las de esta página
         </label>
       ) : null}
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="relative overflow-x-auto rounded-lg border">
         <table className="w-full min-w-max border-collapse text-sm">
           <caption className="sr-only">Piezas en curso</caption>
           <thead className="bg-muted/60 text-muted-foreground border-b text-xs">
@@ -199,7 +165,7 @@ export function PiecesBoardTable({
                   ) : null}
                 </td>
                 <td className={cell}>
-                  <Photo piece={piece} />
+                  <PiecePhoto code={piece.code} url={piece.photoUrl} />
                 </td>
                 <td className={cn(cell, "whitespace-nowrap")}>
                   <Link
@@ -261,13 +227,7 @@ export function PiecesBoardTable({
                   </td>
                 ) : null}
                 <td className={cn(cell, "text-muted-foreground max-w-40")}>
-                  {[
-                    piece.materialName,
-                    piece.measure,
-                    weight(piece.weightGrams),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
+                  {materialSummary(piece)}
                 </td>
                 <td className={cell}>
                   <div className="flex flex-col items-start gap-1">

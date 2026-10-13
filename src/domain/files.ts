@@ -128,6 +128,33 @@ export function groupByCategory<T extends { category: FileCategory }>(
   })).filter((g) => g.files.length > 0);
 }
 
+/**
+ * Primera foto "Antes" de cada pieza (los archivos vienen por fecha de subida), para
+ * la miniatura de la tabla de piezas de la guía: id de la pieza → URL. Solo JPG, PNG
+ * y WebP, que el navegador muestra tal cual (HEIC no).
+ */
+export function firstBeforePhotos(
+  files: readonly {
+    pieceId: string | null;
+    category: FileCategory;
+    mimeType: string;
+    url: string | null;
+  }[],
+): Record<string, string> {
+  const photos: Record<string, string> = {};
+  for (const f of files) {
+    if (
+      f.pieceId &&
+      f.url &&
+      f.category === "antes" &&
+      isCompressible(f.mimeType) &&
+      !(f.pieceId in photos)
+    )
+      photos[f.pieceId] = f.url;
+  }
+  return photos;
+}
+
 /** "1,2 MB", "350 KB". */
 export function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024)

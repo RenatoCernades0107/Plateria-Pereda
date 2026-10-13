@@ -653,6 +653,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D61 | Estado general **Parcialmente aprobada** entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no | P54, ajusta §7.3 y P49 |
 | D62 | Vista de piezas tipo hoja: foto "Antes" primero, costo de servicio (logística y admin) y precio de venta (admin) en la tabla, filtro por número de guía y detalle de la pieza con acceso a su guía | P55 |
 | D63 | Arrastrar y soltar solo en los kanban de piezas, con las mismas reglas que los botones (máquina de estados por rol, nota, taller y pagos) y "Mover a…" como alternativa accesible. El kanban de guías no se arrastra: su estado se calcula de las piezas | Pedido del usuario (2026-10-13), Paso 12.5 |
+| D64 | Toda vista de lista se ve como una hoja de cálculo (tabla en escritorio; tarjetas solo en el celular donde ya las había). Las piezas de la guía van en tabla con un menú "Acciones" por fila; su línea de tiempo queda en el detalle de la pieza | Pedido del 2026-10-13 |
 
 ---
 
@@ -676,6 +677,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-12 | P53 | El taller lo asignan solo logística y el admin; ventas lo ve sin cambiarlo. |
 | 2026-10-12 | P54 | Nuevo estado general Parcialmente aprobada (alguna pieza aprobada y otras todavía no). |
 | 2026-10-12 | P55 | Vista de piezas tipo hoja con foto, costo y precio; filtro por número de guía; detalle de la pieza con acceso a la guía. |
+| 2026-10-13 | D64 | "Todo lo que esté como vista lista debe ser como el Excel": las piezas de la guía en tabla con menú de acciones; la línea de tiempo, en el detalle de la pieza. |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

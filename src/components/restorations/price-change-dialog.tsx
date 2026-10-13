@@ -29,12 +29,23 @@ import type { PieceDetail } from "@/server/restorations/queries";
 export function PriceChangeDialog({
   restorationId,
   piece,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   restorationId: string;
   piece: Pick<PieceDetail, "id" | "code" | "priceCents">;
+  /** Abierto desde fuera (p. ej. el menú «Acciones» de la tabla): sin botón propio. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const current = piece.priceCents ?? 0;
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [price, setPrice] = useState((current / 100).toFixed(2));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -74,12 +85,14 @@ export function PriceChangeDialog({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Tag />
-          Cambiar precio
-        </Button>
-      </DialogTrigger>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          <Button variant="outline" size="sm">
+            <Tag />
+            Cambiar precio
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <form onSubmit={submit} className="space-y-4">
           <DialogHeader>

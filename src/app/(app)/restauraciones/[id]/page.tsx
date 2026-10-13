@@ -16,11 +16,7 @@ import {
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
 import { MoneySummary } from "@/components/restorations/money-summary";
-import {
-  LogisticsPieceSummary,
-  PieceTimelineDetails,
-  RestorationStatusSummary,
-} from "@/components/restorations/piece-history";
+import { RestorationStatusSummary } from "@/components/restorations/piece-history";
 import {
   GUIDE_CARD_CLASS,
   GuideEyebrow,
@@ -42,6 +38,7 @@ import {
   PAYMENT_STATUS_LABELS,
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
+import { firstBeforePhotos } from "@/domain/files";
 import { can } from "@/domain/permissions";
 import { igvLabel, igvTotals } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
@@ -66,7 +63,6 @@ import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
-  getLogisticsInfo,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -143,20 +139,17 @@ export default async function RestauracionDetallePage({
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
 
-  // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
-  // en taller y la última observación (P42).
-  const now = new Date();
-  const [history, logistics, files, payments, methods, balanceDue] =
-    await Promise.all([
-      canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
-      canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
-      listRestorationFiles(restoration.id),
-      canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
-      canSeeMoney
-        ? listCatalog("payment_methods", { onlyActive: true })
-        : Promise.resolve([]),
-      getBalanceDue(restoration.id),
-    ]);
+  // Historial de estados (8.5, admin y ventas). La línea de tiempo de cada pieza está
+  // en su detalle (/piezas/[id]).
+  const [history, files, payments, methods, balanceDue] = await Promise.all([
+    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+    listRestorationFiles(restoration.id),
+    canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
+    canSeeMoney
+      ? listCatalog("payment_methods", { onlyActive: true })
+      : Promise.resolve([]),
+    getBalanceDue(restoration.id),
+  ]);
   // Pagos (11.2): monto sugerido y, al aprobar la última pieza sin orden aún, el
   // adelanto que la orden incluirá (al contado, el total; a cuenta, el %; P28).
   const money = restoration.money;
@@ -194,23 +187,8 @@ export default async function RestauracionDetallePage({
       label: `${p.code} · ${p.description}`,
     })),
   ];
-  const extra = Object.fromEntries(
-    restoration.pieces.map((piece) => {
-      const info = logistics?.get(piece.id);
-      return [
-        piece.id,
-        canSeeMoney ? (
-          <PieceTimelineDetails
-            piece={piece}
-            events={history.filter((e) => e.pieceId === piece.id)}
-            now={now}
-          />
-        ) : info ? (
-          <LogisticsPieceSummary info={info} />
-        ) : null,
-      ];
-    }),
-  );
+  // Miniatura de cada pieza en la tabla: su primera foto "Antes".
+  const photos = firstBeforePhotos(files);
 
   return (
     <div className="space-y-6">
@@ -422,7 +400,7 @@ export default async function RestauracionDetallePage({
         >
           {missingPrices.message}
           {user.role === "admin"
-            ? " Asígnalos con «Editar» en cada pieza."
+            ? " Asígnalos en la columna «Precio venta» de cada pieza."
             : " Los asigna el administrador."}
         </p>
       ) : null}
@@ -477,7 +455,7 @@ export default async function RestauracionDetallePage({
               pieces={restoration.pieces}
               role={user.role}
               workshops={workshops}
-              extra={extra}
+              photos={photos}
               approvalPayment={approvalPayment}
               balanceDue={balanceDue}
               editing={

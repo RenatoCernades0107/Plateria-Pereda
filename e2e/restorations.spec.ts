@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { pieceAction } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
 // Comparten el cliente y la restauración creados: en serie.
@@ -297,7 +298,7 @@ test.describe("Restauraciones", () => {
 
     await loginAs("admin");
     await page.goto(url);
-    await page.getByRole("button", { name: `Editar pieza ${code}-1` }).click();
+    await pieceAction(page, `${code}-1`, "Editar");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Precio (S/)").fill("90");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
@@ -312,7 +313,7 @@ test.describe("Restauraciones", () => {
     await page.goto(detailUrl);
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
 
-    await page.getByRole("button", { name: `Editar pieza ${code}-1` }).click();
+    await pieceAction(page, `${code}-1`, "Editar");
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descripción").fill("Fuente ovalada restaurada");
     await dialog.getByLabel("Precio (S/)").fill("1300");
@@ -365,7 +366,7 @@ test.describe("Restauraciones", () => {
       .eq("id", id);
     await page.goto(detailUrl);
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
-    await page.getByRole("button", { name: `Editar pieza ${code}-2` }).click();
+    await pieceAction(page, `${code}-2`, "Editar");
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(
@@ -374,7 +375,7 @@ test.describe("Restauraciones", () => {
     await dialog.getByLabel("Material").fill("Plata 925");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByTestId(`pieza-${code}-2`)).toContainText(
-      "Material: Plata 925",
+      "Plata 925",
     );
   });
 
