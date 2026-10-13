@@ -272,4 +272,78 @@ test.describe("Vista de piezas", () => {
     await expect(received).toContainText("Sin piezas");
     await expect(page).toHaveURL(/vista=kanban/);
   });
+  test("tabla tipo hoja: logística pone el costo, el admin el precio; filtra por guía y abre la pieza (P55)", async ({
+    page,
+    loginAs,
+    makeAxeBuilder,
+  }) => {
+    const admin = adminClient();
+    const { data: r, error } = await admin
+      .from("restorations")
+      .insert({ client_id: clientId, payment_type: "contado" })
+      .select("id, code")
+      .single();
+    if (error) throw error;
+    restorationIds.push(r.id);
+    const { data: pieces } = await admin
+      .from("pieces")
+      .insert({
+        restoration_id: r.id,
+        description: "Tetera hoja",
+        service_name: "Baño de plata",
+        material_name: "Plata",
+        price: null,
+      } as never)
+      .select("id, code");
+    const code = pieces![0]!.code;
+    await seedReceived(1, "Otra guía");
+
+    // Logística: filtra por el número de la guía e ingresa el costo de servicio.
+    await loginAs("logistica");
+    await page.goto("/piezas");
+    await page.getByLabel("N.º de guía").fill(r.code.replace(/^RES-0*/, ""));
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page).toHaveURL(/guia=\d+/);
+    await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
+    const row = page.getByTestId(`pieza-${code}`);
+    await expect(row).toContainText("Baño de plata");
+    await expect(row).toContainText("Sin foto de antes");
+    await expect(
+      page.getByRole("columnheader", { name: "Precio venta" }),
+    ).toHaveCount(0);
+    await row.getByLabel(`Costo de servicio de ${code}`).fill("45");
+    await row.getByRole("button", { name: `Guardar costo de ${code}` }).click();
+    await expect(page.getByText(`Costo de ${code} guardado.`)).toBeVisible();
+
+    // Admin: ve el costo y pone el precio de venta.
+    await loginAs("admin");
+    await page.goto(`/piezas?guia=${encodeURIComponent(r.code)}`);
+    const adminRow = page.getByTestId(`pieza-${code}`);
+    await expect(
+      adminRow.getByLabel(`Costo de servicio de ${code}`),
+    ).toHaveValue("45.00");
+    await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
+    await adminRow
+      .getByRole("button", { name: `Guardar precio de ${code}` })
+      .click();
+    await expect(page.getByText(`Precio de ${code} guardado.`)).toBeVisible();
+    const serious = async () =>
+      (await makeAxeBuilder().analyze()).violations.filter((v) =>
+        ["critical", "serious"].includes(v.impact ?? ""),
+      );
+    expect(await serious()).toEqual([]);
+
+    // La pieza abre su detalle, con un acceso explícito a la guía.
+    await adminRow.getByRole("link", { name: code }).click();
+    await expect(page).toHaveURL(new RegExp(`/piezas/${pieces![0]!.id}$`));
+    await expect(
+      page.getByRole("heading", { level: 1, name: code }),
+    ).toBeVisible();
+    await expect(page.getByLabel(`Precio de venta de ${code}`)).toHaveValue(
+      "120.00",
+    );
+    expect(await serious()).toEqual([]);
+    await page.getByRole("link", { name: `Ver guía ${r.code}` }).click();
+    await expect(page).toHaveURL(new RegExp(`/restauraciones/${r.id}$`));
+  });
 });

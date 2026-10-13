@@ -1781,6 +1781,7 @@ export type Database = {
           ongoing: boolean;
         }[];
       };
+      get_piece_service_cost: { Args: { p_piece_id: string }; Returns: number };
       import_shopify_customer: {
         Args: {
           p_customer_id: string;
@@ -1833,6 +1834,7 @@ export type Database = {
           p_offset?: number;
           p_query?: string;
           p_ready?: boolean;
+          p_restoration_code?: string;
           p_status?: Database["public"]["Enums"]["piece_status"];
           p_to_return?: boolean;
           p_urgent?: boolean;
@@ -1843,15 +1845,23 @@ export type Database = {
           client_name: string;
           code: string;
           description: string;
+          has_order: boolean;
           id: string;
           last_observation: string;
           location: Database["public"]["Enums"]["piece_location"];
+          material_name: string;
+          measure: string;
+          photo_path: string;
+          price: number;
           ready_for_delivery: boolean;
           restoration_code: string;
           restoration_id: string;
+          service_cost: number;
+          service_name: string;
           status: Database["public"]["Enums"]["piece_status"];
           total_count: number;
           urgent: boolean;
+          weight_grams: number;
           workshop_days: number;
           workshop_id: string;
           workshop_name: string;

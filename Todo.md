@@ -1120,6 +1120,17 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición).
 - Commit: `feat(listados): agrega vista kanban por estado en restauraciones y piezas`
 
+#### Paso 12.4 — Tabla de piezas tipo hoja, filtro por guía y detalle de la pieza (P55 ✅, 2026-10-12)
+- [x] `/piezas` en tabla como una hoja de cálculo: primero la foto "Antes" de la pieza, luego pieza, guía, cliente, descripción, servicio, material · medida · peso, estado y ubicación, taller y días en taller.
+- [x] Logística (y el admin) ingresa el **costo de servicio** en la tabla; el admin, viéndolo, ingresa el **precio de venta** (D58; con la orden creada, un precio ya asignado se cambia con motivo). Ventas ve el precio sin editarlo y no ve el costo; logística no ve el precio.
+- [x] Filtro **N.º de guía** (`guia=`): "123", "RES-123" o "RES-00123".
+- [x] **Detalle de la pieza** (`/piezas/<id>`): datos, estado y acciones, montos según el rol, historia y fotos, con el botón explícito **"Ver guía RES-…"**. La tabla, el kanban del detalle y cada pieza de la guía ("Ver detalle") llevan a él.
+- **Unit:** filtro por guía en la URL y la consulta; tabla (foto primero, columnas y montos por rol, guardar precio, "Cambiar precio" con la orden creada); acción `setPieceSalePrice`.
+- **BD:** montos por rol, primera foto "Antes" (imagen), filtro por número de guía y costo en el detalle (`33_vista_piezas_tabla`).
+- **E2E:** logística filtra por guía e ingresa el costo; el admin ve el costo y pone el precio; abre la pieza y vuelve a la guía (sin violaciones de axe).
+- Hecho (2026-10-12): migración `20261014150000_vista_piezas_tabla.sql`: `list_pieces_board` con servicio, material, medida, peso, costo de servicio (admin y logística), precio de venta (admin y ventas), si hay orden, la ruta de la primera foto "Antes" y el parámetro `p_restoration_code`; `get_piece_service_cost` para el detalle; índice de archivos por pieza y clasificación. Las miniaturas usan URLs firmadas en lote (`signedPhotoUrls`). `MoneyCell` es la celda de monto editable que comparten el costo y el precio.
+- Commit: `feat(piezas): tabla tipo hoja con costo y precio, filtro por guía y detalle de pieza`
+
 ### Fase 13 — Dashboard
 
 #### Paso 13.1 — Métricas en BD ⛔ P33

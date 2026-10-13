@@ -24,9 +24,7 @@ describe("vista de las piezas en el detalle de la restauración", () => {
       "/restauraciones/r1?vista=kanban",
     );
     expect(pieceAnchor("p1")).toBe("pieza-p1");
-    expect(pieceHref({ id: "p1", restorationId: "r1" })).toBe(
-      "/restauraciones/r1#pieza-p1",
-    );
+    expect(pieceHref({ id: "p1" })).toBe("/piezas/p1");
   });
 
   it("muestra siempre los estados en curso y los finales solo con piezas", () => {

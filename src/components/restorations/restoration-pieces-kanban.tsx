@@ -78,7 +78,7 @@ export function RestorationPiecesKanban({
                   />
                 ) : null}
                 <Link
-                  href={pieceHref({ id: piece.id, restorationId })}
+                  href={pieceHref(piece)}
                   className="text-heading font-medium underline-offset-4 hover:underline"
                 >
                   {piece.code}

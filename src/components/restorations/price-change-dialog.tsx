@@ -31,7 +31,7 @@ export function PriceChangeDialog({
   piece,
 }: {
   restorationId: string;
-  piece: PieceDetail;
+  piece: Pick<PieceDetail, "id" | "code" | "priceCents">;
 }) {
   const current = piece.priceCents ?? 0;
   const [open, setOpen] = useState(false);

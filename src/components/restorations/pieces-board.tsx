@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
@@ -7,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import type { PieceEditableField } from "@/domain/restoration-edit";
-import { pieceAnchor } from "@/domain/restoration-pieces-view";
+import { pieceAnchor, pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { PieceDetail } from "@/server/restorations/queries";
@@ -146,16 +148,27 @@ export function PiecesBoard({
                     </p>
                   </div>
                 </div>
-                {piece.priceCents !== null ? (
-                  <p className="font-medium tabular-nums">
-                    {formatCents(piece.priceCents)}
-                  </p>
-                ) : can(role, "dinero.ver") ? (
-                  // Precio de venta sin asignar (D58): lo asigna el admin.
-                  <Badge variant="outline" data-testid="precio-sin-asignar">
-                    Sin asignar
-                  </Badge>
-                ) : null}
+                <div className="flex flex-col items-end gap-1">
+                  {piece.priceCents !== null ? (
+                    <p className="font-medium tabular-nums">
+                      {formatCents(piece.priceCents)}
+                    </p>
+                  ) : can(role, "dinero.ver") ? (
+                    // Precio de venta sin asignar (D58): lo asigna el admin.
+                    <Badge variant="outline" data-testid="precio-sin-asignar">
+                      Sin asignar
+                    </Badge>
+                  ) : null}
+                  {/* Detalle completo de la pieza (P55). */}
+                  <Link
+                    href={pieceHref(piece)}
+                    className="text-primary inline-flex items-center gap-1 text-sm underline-offset-4 hover:underline"
+                    aria-label={`Ver detalle de ${piece.code}`}
+                  >
+                    Ver detalle
+                    <ChevronRight className="size-4" aria-hidden />
+                  </Link>
+                </div>
               </div>
               <PieceStatusPanel
                 restorationId={restorationId}

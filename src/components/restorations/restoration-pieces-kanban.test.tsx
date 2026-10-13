@@ -105,7 +105,7 @@ describe("RestorationPiecesKanban", () => {
     );
     expect(
       within(card).getByRole("link", { name: "RES-00012-1" }),
-    ).toHaveAttribute("href", "/restauraciones/r1#pieza-p1");
+    ).toHaveAttribute("href", "/piezas/p1");
     expect(card).toHaveTextContent("Pieza 1");
     expect(card).toHaveTextContent("Servicio: Limpieza");
     expect(card).toHaveTextContent("Urgente");

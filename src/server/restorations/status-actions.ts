@@ -13,6 +13,7 @@ export type StatusActionResult = { ok: true } | { error: string };
 function refresh(restorationId: string | null) {
   if (restorationId) revalidatePath(`/restauraciones/${restorationId}`);
   revalidatePath("/piezas");
+  revalidatePath("/piezas/[id]", "page");
 }
 
 /** Las reglas de la BD ya traen mensajes en español para estos códigos. */

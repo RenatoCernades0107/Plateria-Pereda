@@ -23,15 +23,9 @@ export function restorationPiecesHref(
   return view === "kanban" ? `${base}?vista=kanban` : base;
 }
 
-/**
- * Enlace a una pieza: por ahora, su ficha dentro de la lista de la restauración
- * (ancla `#pieza-<id>`). Único lugar a cambiar cuando exista la página de la pieza.
- */
-export function pieceHref(piece: {
-  id: string;
-  restorationId: string;
-}): string {
-  return `${restorationPiecesHref(piece.restorationId, "lista")}#${pieceAnchor(piece.id)}`;
+/** Enlace a la página de la pieza (`/piezas/<id>`, P55), con el acceso a su guía. */
+export function pieceHref(piece: { id: string }): string {
+  return `/piezas/${piece.id}`;
 }
 
 /** `id` HTML de la pieza en la lista de la restauración. */

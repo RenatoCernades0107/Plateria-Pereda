@@ -103,10 +103,16 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
       ),
     ).toEqual([]);
 
-    // La tarjeta lleva a la pieza en la lista.
+    // La tarjeta lleva al detalle de la pieza, que tiene el acceso a su guía (P55).
     await approved.getByRole("link", { name: approvedCode }).click();
-    await expect(page).not.toHaveURL(/vista=kanban/);
-    await expect(page).toHaveURL(/#pieza-/);
+    await expect(page).toHaveURL(/\/piezas\/[0-9a-f-]{36}$/, {
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("heading", { level: 1, name: approvedCode }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: /Ver guía RES-/ }).click();
+    await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId(`pieza-${approvedCode}`)).toBeVisible();
   });
 

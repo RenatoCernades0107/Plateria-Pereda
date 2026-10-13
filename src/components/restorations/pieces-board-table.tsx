@@ -1,16 +1,19 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ImageOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 import { isLongInWorkshop } from "@/domain/piece-board-filters";
+import { can } from "@/domain/permissions";
+import { pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
+import { SalePriceInput, ServiceCostInput } from "./piece-money-cells";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
 function Days({ piece }: { piece: BoardPiece }) {
@@ -19,7 +22,7 @@ function Days({ piece }: { piece: BoardPiece }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 text-sm",
+        "inline-flex items-center gap-1 whitespace-nowrap",
         long && "text-destructive font-medium",
       )}
       data-testid="dias-en-taller"
@@ -35,11 +38,47 @@ function Days({ piece }: { piece: BoardPiece }) {
   );
 }
 
+/** Miniatura de la primera foto "Antes" de la pieza. */
+function Photo({ piece }: { piece: BoardPiece }) {
+  if (!piece.photoUrl) {
+    return (
+      <span
+        className="bg-muted text-muted-foreground flex size-14 items-center justify-center rounded-md"
+        title="Sin foto de antes"
+      >
+        <ImageOff className="size-5" aria-hidden />
+        <span className="sr-only">Sin foto de antes</span>
+      </span>
+    );
+  }
+  return (
+    <a
+      href={piece.photoUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block size-14 overflow-hidden rounded-md border"
+    >
+      {/* URL firmada de corta duración: no pasa por el optimizador de imágenes. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={piece.photoUrl}
+        alt={`Foto de antes de ${piece.code}`}
+        className="size-full object-cover"
+        loading="lazy"
+      />
+    </a>
+  );
+}
+
+const weight = (grams: number | null) =>
+  grams === null ? "" : `${grams.toLocaleString("es-PE")} g`;
+
 /**
- * Vista operativa de piezas (12.2): piezas en curso de varias restauraciones, sin
- * precios, con selección para acciones masivas (enviar al taller, recibir del
- * taller, marcar llegada, devolver al cliente, asignar taller). Las urgentes van
- * primero; resalta las que llevan muchos días en el taller.
+ * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
+ * "Antes" de cada pieza y sus datos principales; logística y el admin ingresan el
+ * costo de servicio y, viéndolo, el admin pone el precio de venta (D58). Ventas ve el
+ * precio y logística no ve montos de venta. Selección para acciones en bloque; las
+ * urgentes van primero y se resaltan las que llevan muchos días en el taller.
  */
 export function PiecesBoardTable({
   pieces,
@@ -57,6 +96,9 @@ export function PiecesBoardTable({
     selectable.length > 0 && selectable.every((p) => selected.includes(p.id));
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
+  const showCost = can(role, "piezas.costo-servicio");
+  const showPrice = can(role, "dinero.ver");
+  const editPrice = can(role, "piezas.precio-venta");
 
   if (pieces.length === 0) {
     return (
@@ -65,6 +107,9 @@ export function PiecesBoardTable({
       </p>
     );
   }
+
+  const head = "px-3 py-2 text-left font-medium whitespace-nowrap";
+  const cell = "px-3 py-2 align-top";
 
   return (
     <div className="space-y-3">
@@ -88,64 +133,163 @@ export function PiecesBoardTable({
           Elegir todas las de esta página
         </label>
       ) : null}
-      <ul className="divide-y rounded-lg border">
-        {pieces.map((piece) => (
-          <li
-            key={piece.id}
-            className={cn(
-              "flex flex-wrap items-start gap-3 p-3 sm:flex-nowrap",
-              isLongInWorkshop(piece) && "bg-destructive/5",
-            )}
-            data-testid={`pieza-${piece.code}`}
-          >
-            {isSelectable(piece, role) ? (
-              <input
-                type="checkbox"
-                className="accent-primary mt-1 size-4 shrink-0"
-                aria-label={`Elegir ${piece.code}`}
-                checked={selected.includes(piece.id)}
-                onChange={(e) => toggle(piece.id, e.target.checked)}
-              />
-            ) : (
-              <span className="size-4 shrink-0" />
-            )}
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-sm">
-                <Link
-                  href={`/restauraciones/${piece.restorationId}`}
-                  className="text-heading font-medium underline-offset-4 hover:underline"
-                >
-                  {piece.code}
-                </Link>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {piece.clientName}
-                </span>
-              </p>
-              <p className="break-words">{piece.description}</p>
-              {piece.lastObservation ? (
-                <p className="text-sm break-words">
-                  <span className="text-muted-foreground">
-                    Última observación:{" "}
-                  </span>
-                  {piece.lastObservation}
-                </p>
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full min-w-max border-collapse text-sm">
+          <caption className="sr-only">Piezas en curso</caption>
+          <thead className="bg-muted/60 text-muted-foreground border-b text-xs">
+            <tr>
+              <th scope="col" className={cn(head, "w-8")}>
+                <span className="sr-only">Elegir</span>
+              </th>
+              <th scope="col" className={head}>
+                Foto antes
+              </th>
+              <th scope="col" className={head}>
+                Pieza
+              </th>
+              <th scope="col" className={head}>
+                Guía
+              </th>
+              <th scope="col" className={head}>
+                Cliente
+              </th>
+              <th scope="col" className={head}>
+                Descripción
+              </th>
+              <th scope="col" className={head}>
+                Servicio
+              </th>
+              <th scope="col" className={head}>
+                Material · medida · peso
+              </th>
+              <th scope="col" className={head}>
+                Estado
+              </th>
+              <th scope="col" className={head}>
+                Taller
+              </th>
+              <th scope="col" className={head}>
+                Días en taller
+              </th>
+              {showCost ? (
+                <th scope="col" className={cn(head, "text-right")}>
+                  Costo servicio
+                </th>
               ) : null}
-            </div>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-col sm:items-end">
-              <div className="flex flex-wrap gap-2">
-                {piece.urgent ? <UrgentBadge /> : null}
-                <PieceStatusBadge status={piece.status} />
-                <LocationBadge location={piece.location} />
-              </div>
-              <span className="text-muted-foreground text-sm">
-                {piece.workshopName ?? "Sin taller"}
-              </span>
-              <Days piece={piece} />
-            </div>
-          </li>
-        ))}
-      </ul>
+              {showPrice ? (
+                <th scope="col" className={cn(head, "text-right")}>
+                  Precio venta
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {pieces.map((piece) => (
+              <tr
+                key={piece.id}
+                className={cn(
+                  "hover:bg-muted/30",
+                  isLongInWorkshop(piece) && "bg-destructive/5",
+                )}
+                data-testid={`pieza-${piece.code}`}
+              >
+                <td className={cell}>
+                  {isSelectable(piece, role) ? (
+                    <input
+                      type="checkbox"
+                      className="accent-primary mt-1 size-4"
+                      aria-label={`Elegir ${piece.code}`}
+                      checked={selected.includes(piece.id)}
+                      onChange={(e) => toggle(piece.id, e.target.checked)}
+                    />
+                  ) : null}
+                </td>
+                <td className={cell}>
+                  <Photo piece={piece} />
+                </td>
+                <td className={cn(cell, "whitespace-nowrap")}>
+                  <Link
+                    href={pieceHref(piece)}
+                    className="text-heading font-medium underline-offset-4 hover:underline"
+                  >
+                    {piece.code}
+                  </Link>
+                  {piece.urgent ? (
+                    <div className="mt-1">
+                      <UrgentBadge />
+                    </div>
+                  ) : null}
+                </td>
+                <td className={cn(cell, "whitespace-nowrap")}>
+                  <Link
+                    href={`/restauraciones/${piece.restorationId}`}
+                    className="underline-offset-4 hover:underline"
+                    aria-label={`Ver guía ${piece.restorationCode}`}
+                  >
+                    {piece.restorationCode}
+                  </Link>
+                </td>
+                <td className={cn(cell, "max-w-40")}>{piece.clientName}</td>
+                <td className={cn(cell, "max-w-64 min-w-48")}>
+                  <p className="break-words">{piece.description}</p>
+                  {piece.lastObservation ? (
+                    <p className="mt-1 text-xs break-words">
+                      <span className="text-muted-foreground">
+                        Última observación:{" "}
+                      </span>
+                      {piece.lastObservation}
+                    </p>
+                  ) : null}
+                </td>
+                <td className={cn(cell, "max-w-40")}>
+                  {piece.serviceName || (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className={cn(cell, "text-muted-foreground max-w-48")}>
+                  {[
+                    piece.materialName,
+                    piece.measure,
+                    weight(piece.weightGrams),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </td>
+                <td className={cell}>
+                  <div className="flex flex-col items-start gap-1">
+                    <PieceStatusBadge status={piece.status} />
+                    <LocationBadge location={piece.location} />
+                  </div>
+                </td>
+                <td className={cn(cell, "text-muted-foreground")}>
+                  {piece.workshopName ?? "Sin taller"}
+                </td>
+                <td className={cell}>
+                  <Days piece={piece} />
+                </td>
+                {showCost ? (
+                  <td className={cn(cell, "text-right")}>
+                    <ServiceCostInput
+                      piece={piece}
+                      cents={piece.serviceCostCents}
+                    />
+                  </td>
+                ) : null}
+                {showPrice ? (
+                  <td className={cn(cell, "text-right")}>
+                    <SalePriceInput
+                      piece={piece}
+                      cents={piece.priceCents}
+                      hasOrder={piece.hasOrder}
+                      editable={editPrice}
+                    />
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
