@@ -108,7 +108,11 @@ describe("PiecesBoardTable", () => {
     const headers = screen
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(1, 4)).toEqual(["Foto antes", "Pieza", "Guía"]);
+    expect(headers.slice(1, 4)).toEqual([
+      "Foto antes",
+      "Pieza",
+      "Guía · cliente",
+    ]);
     expect(
       screen.getByRole("img", { name: "Foto de antes de RES-00001-1" }),
     ).toHaveAttribute("src", "https://example.test/antes.jpg");

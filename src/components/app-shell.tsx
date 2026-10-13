@@ -168,7 +168,8 @@ export function AppShell({
   return (
     <SidebarProvider>
       <AppNav role={user.role} />
-      <SidebarInset>
+      {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
+      <SidebarInset className="min-w-0">
         <AppHeader user={user} />
         <div className="flex-1 p-4 md:p-6">{children}</div>
       </SidebarInset>

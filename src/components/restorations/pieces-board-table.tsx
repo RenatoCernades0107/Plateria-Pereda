@@ -148,10 +148,7 @@ export function PiecesBoardTable({
                 Pieza
               </th>
               <th scope="col" className={head}>
-                Guía
-              </th>
-              <th scope="col" className={head}>
-                Cliente
+                Guía · cliente
               </th>
               <th scope="col" className={head}>
                 Descripción
@@ -161,15 +158,6 @@ export function PiecesBoardTable({
               </th>
               <th scope="col" className={head}>
                 Material · medida · peso
-              </th>
-              <th scope="col" className={head}>
-                Estado
-              </th>
-              <th scope="col" className={head}>
-                Taller
-              </th>
-              <th scope="col" className={head}>
-                Días en taller
               </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>
@@ -181,6 +169,12 @@ export function PiecesBoardTable({
                   Precio venta
                 </th>
               ) : null}
+              <th scope="col" className={head}>
+                Estado
+              </th>
+              <th scope="col" className={head}>
+                Taller · días
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -220,17 +214,19 @@ export function PiecesBoardTable({
                     </div>
                   ) : null}
                 </td>
-                <td className={cn(cell, "whitespace-nowrap")}>
+                <td className={cn(cell, "max-w-44")}>
                   <Link
                     href={`/restauraciones/${piece.restorationId}`}
-                    className="underline-offset-4 hover:underline"
+                    className="whitespace-nowrap underline-offset-4 hover:underline"
                     aria-label={`Ver guía ${piece.restorationCode}`}
                   >
                     {piece.restorationCode}
                   </Link>
+                  <p className="text-muted-foreground text-xs">
+                    {piece.clientName}
+                  </p>
                 </td>
-                <td className={cn(cell, "max-w-40")}>{piece.clientName}</td>
-                <td className={cn(cell, "max-w-64 min-w-48")}>
+                <td className={cn(cell, "max-w-60 min-w-44")}>
                   <p className="break-words">{piece.description}</p>
                   {piece.lastObservation ? (
                     <p className="mt-1 text-xs break-words">
@@ -241,12 +237,12 @@ export function PiecesBoardTable({
                     </p>
                   ) : null}
                 </td>
-                <td className={cn(cell, "max-w-40")}>
+                <td className={cn(cell, "max-w-36")}>
                   {piece.serviceName || (
                     <span className="text-muted-foreground">—</span>
                   )}
                 </td>
-                <td className={cn(cell, "text-muted-foreground max-w-48")}>
+                <td className={cn(cell, "text-muted-foreground max-w-40")}>
                   {[
                     piece.materialName,
                     piece.measure,
@@ -254,18 +250,6 @@ export function PiecesBoardTable({
                   ]
                     .filter(Boolean)
                     .join(" · ") || "—"}
-                </td>
-                <td className={cell}>
-                  <div className="flex flex-col items-start gap-1">
-                    <PieceStatusBadge status={piece.status} />
-                    <LocationBadge location={piece.location} />
-                  </div>
-                </td>
-                <td className={cn(cell, "text-muted-foreground")}>
-                  {piece.workshopName ?? "Sin taller"}
-                </td>
-                <td className={cell}>
-                  <Days piece={piece} />
                 </td>
                 {showCost ? (
                   <td className={cn(cell, "text-right")}>
@@ -285,6 +269,18 @@ export function PiecesBoardTable({
                     />
                   </td>
                 ) : null}
+                <td className={cell}>
+                  <div className="flex flex-col items-start gap-1">
+                    <PieceStatusBadge status={piece.status} />
+                    <LocationBadge location={piece.location} />
+                  </div>
+                </td>
+                <td className={cell}>
+                  <p className="text-muted-foreground">
+                    {piece.workshopName ?? "Sin taller"}
+                  </p>
+                  <Days piece={piece} />
+                </td>
               </tr>
             ))}
           </tbody>
