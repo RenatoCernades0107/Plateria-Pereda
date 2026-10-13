@@ -652,6 +652,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D60 | El taller de la pieza lo asignan o cambian solo logística y el admin; ventas lo ve. La BD lo exige | P53, ajusta P42 |
 | D61 | Estado general **Parcialmente aprobada** entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no | P54, ajusta §7.3 y P49 |
 | D62 | Vista de piezas tipo hoja: foto "Antes" primero, costo de servicio (logística y admin) y precio de venta (admin) en la tabla, filtro por número de guía y detalle de la pieza con acceso a su guía | P55 |
+| D63 | Arrastrar y soltar solo en los kanban de piezas, con las mismas reglas que los botones (máquina de estados por rol, nota, taller y pagos) y "Mover a…" como alternativa accesible. El kanban de guías no se arrastra: su estado se calcula de las piezas | Pedido del usuario (2026-10-13), Paso 12.5 |
 
 ---
 

@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { dragWithMouse } from "./support/drag";
 import { adminClient } from "./support/supabase";
 
 // Comparten las piezas y el taller sembrados: en serie.
@@ -271,6 +272,49 @@ test.describe("Vista de piezas", () => {
       );
     await expect(received).toContainText("Sin piezas");
     await expect(page).toHaveURL(/vista=kanban/);
+  });
+
+  test("en kanban arrastra una pieza de Aprobada a Interno eligiendo el taller", async ({
+    page,
+    loginAs,
+  }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const { pieces } = await seedReceived(1, "Arrastre");
+    const code = pieces[0]!.code;
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=${clientName}&vista=kanban`);
+    const approved = page.getByTestId("columna-aprobada");
+    const card = approved.getByTestId(`tarjeta-${code}`);
+    await expect(card).toBeVisible();
+
+    await dragWithMouse(
+      page,
+      card.getByText("Arrastre 1"),
+      page.getByTestId("columna-enviada_taller"),
+      async () => {
+        // Logística no aprueba ni anula: esas columnas se atenúan.
+        await expect(page.getByTestId("columna-registrada")).toHaveAttribute(
+          "data-drop",
+          "bloqueada",
+        );
+        await expect(page.getByTestId("columna-anulada")).toHaveCount(0);
+      },
+    );
+    const dialog = page.getByRole("dialog", {
+      name: `Enviar al taller: ${code}`,
+    });
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .click();
+    await expect(
+      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+    ).toContainText(workshopName);
+    await page.reload();
+    await expect(
+      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+    ).toBeVisible();
   });
   test("tabla tipo hoja: logística pone el costo, el admin el precio; filtra por guía y abre la pieza (P55)", async ({
     page,

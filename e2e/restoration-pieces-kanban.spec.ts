@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { dragWithMouse } from "./support/drag";
 import { adminClient } from "./support/supabase";
 
 // Comparten el cliente y la restauración sembrados: en serie.
@@ -10,6 +11,9 @@ let restoration = { id: "", code: "" };
 /** Códigos de las piezas (p. ej. RES-00012-1). */
 let approvedCode = "";
 let newCode = "";
+/** Piezas registradas que se mueven a Consulta (arrastrando) y con el teclado. */
+let consultCode = "";
+let keyboardCode = "";
 
 test.describe("Kanban de piezas en el detalle de la restauración", () => {
   test.beforeAll(async () => {
@@ -39,12 +43,18 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
       .insert([
         { restoration_id: r.id, description: "Jarra aprobada", price: 10 },
         { restoration_id: r.id, description: "Bandeja nueva", price: 20 },
+        { restoration_id: r.id, description: "Copa consulta", price: 30 },
+        { restoration_id: r.id, description: "Fuente teclado", price: 40 },
       ] as never)
       .select("id, code, description");
     if (piecesError) throw piecesError;
     const approved = pieces!.find((p) => p.description === "Jarra aprobada")!;
     approvedCode = approved.code;
-    newCode = pieces!.find((p) => p.description === "Bandeja nueva")!.code;
+    const codeOf = (description: string) =>
+      pieces!.find((p) => p.description === description)!.code;
+    newCode = codeOf("Bandeja nueva");
+    consultCode = codeOf("Copa consulta");
+    keyboardCode = codeOf("Fuente teclado");
     await admin
       .from("pieces")
       .update({
@@ -130,5 +140,170 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(page.viewportSize()?.width ?? Infinity);
+  });
+  test.describe("mover piezas de estado", () => {
+    // Pantalla ancha: las columnas de destino quedan lejos del borde que desplaza.
+    test.use({ viewport: { width: 1920, height: 1080 } });
+
+    const kanban = (page: import("@playwright/test").Page) =>
+      page.goto(`/restauraciones/${restoration.id}?vista=kanban`);
+
+    test("arrastra una pieza de Registrada a Aprobada y queda guardada", async ({
+      page,
+      loginAs,
+    }) => {
+      await loginAs("ventas");
+      await kanban(page);
+      const registered = page.getByTestId("columna-registrada");
+      const approvedColumn = page.getByTestId("columna-aprobada");
+      const card = registered.getByTestId(`tarjeta-${newCode}`);
+      await expect(card).toBeVisible();
+
+      await dragWithMouse(
+        page,
+        card.getByText("Bandeja nueva"),
+        approvedColumn,
+        async () => {
+          // En el aire: se resaltan las columnas permitidas y se atenúan las demás.
+          await expect(approvedColumn).toHaveAttribute(
+            "data-drop",
+            "permitida",
+          );
+          await expect(page.getByTestId("columna-en_consulta")).toHaveAttribute(
+            "data-drop",
+            "permitida",
+          );
+          await expect(page.getByTestId("columna-observada")).toHaveAttribute(
+            "data-drop",
+            "bloqueada",
+          );
+          // Anulado no tiene piezas: aparece solo como destino.
+          await expect(page.getByTestId("columna-anulada")).toHaveAttribute(
+            "data-drop",
+            "permitida",
+          );
+        },
+      );
+
+      await expect(
+        approvedColumn.getByTestId(`tarjeta-${newCode}`),
+      ).toBeVisible();
+      await expect(page.getByText(`${newCode}: Aprobada.`)).toBeVisible();
+      await expect(page.getByTestId("columna-anulada")).toHaveCount(0);
+
+      await page.reload();
+      await expect(
+        page.getByTestId("columna-aprobada").getByTestId(`tarjeta-${newCode}`),
+      ).toBeVisible();
+    });
+
+    test("soltar en una columna no permitida no la mueve y explica por qué", async ({
+      page,
+      loginAs,
+    }) => {
+      await loginAs("ventas");
+      await kanban(page);
+      const card = page
+        .getByTestId("columna-registrada")
+        .getByTestId(`tarjeta-${consultCode}`);
+      await dragWithMouse(
+        page,
+        card.getByText("Copa consulta"),
+        page.getByTestId("columna-enviada_taller"),
+      );
+      await expect(
+        page.getByText("No se puede pasar de «Registrada» a «Interno».", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId("columna-registrada")
+          .getByTestId(`tarjeta-${consultCode}`),
+      ).toBeVisible();
+    });
+
+    test("al soltar en Consulta pide la nota con el diálogo de siempre", async ({
+      page,
+      loginAs,
+    }) => {
+      await loginAs("ventas");
+      await kanban(page);
+      const card = page
+        .getByTestId("columna-registrada")
+        .getByTestId(`tarjeta-${consultCode}`);
+      await dragWithMouse(
+        page,
+        card.getByText("Copa consulta"),
+        page.getByTestId("columna-en_consulta"),
+      );
+      const dialog = page.getByRole("dialog", {
+        name: `Poner en consulta: ${consultCode}`,
+      });
+      await expect(dialog).toBeVisible();
+      await dialog.getByLabel("Nota (obligatoria)").fill("¿Tiene arreglo?");
+      await dialog
+        .getByRole("button", { name: "Confirmar: Poner en consulta" })
+        .click();
+      await expect(dialog).toBeHidden();
+      await expect(
+        page
+          .getByTestId("columna-en_consulta")
+          .getByTestId(`tarjeta-${consultCode}`),
+      ).toBeVisible();
+    });
+
+    test("con el teclado: toma la pieza con el asa, la lleva con flechas y la suelta", async ({
+      page,
+      loginAs,
+      makeAxeBuilder,
+    }) => {
+      await loginAs("ventas");
+      await kanban(page);
+      const handle = page.getByRole("button", {
+        name: `Arrastrar ${keyboardCode}`,
+      });
+      // Los avisos del lector de pantalla (región viva de dnd-kit), en español.
+      const live = page.locator('[id^="DndLiveRegion"]');
+      await handle.focus();
+      await page.keyboard.press("Space");
+      await expect(live).toContainText(
+        `Tomaste ${keyboardCode}, en Registrada. Puede ir a: Consulta, Aprobada, Anulado.`,
+      );
+      await expect(page.getByTestId("columna-aprobada")).toHaveAttribute(
+        "data-drop",
+        "permitida",
+      );
+      // Registrada → Consulta → Espera → Aprobada, una columna por flecha.
+      for (const over of [
+        "sobre Consulta.",
+        "sobre Espera respuesta cliente: ahí no se puede soltar.",
+        "sobre Aprobada.",
+      ]) {
+        await page.keyboard.press("ArrowRight");
+        await expect(live).toContainText(`${keyboardCode} está ${over}`);
+      }
+      await page.keyboard.press("Space");
+      await expect(live).toContainText(`Soltaste ${keyboardCode} en Aprobada.`);
+      await expect(
+        page
+          .getByTestId("columna-aprobada")
+          .getByTestId(`tarjeta-${keyboardCode}`),
+      ).toBeVisible();
+
+      // Sin arrastrar: «Mover a…» lista los estados permitidos.
+      await page
+        .getByRole("button", { name: `Mover ${keyboardCode} a…` })
+        .click();
+      const menu = page.getByRole("menu");
+      await expect(menu.getByRole("menuitem")).toHaveText(["Anulado"]);
+      const results = await makeAxeBuilder().analyze();
+      expect(
+        results.violations.filter((v) =>
+          ["critical", "serious"].includes(v.impact ?? ""),
+        ),
+      ).toEqual([]);
+      await page.keyboard.press("Escape");
+    });
   });
 });

@@ -1,13 +1,19 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formatCents } from "@/domain/money";
 import type { AppRole } from "@/lib/roles";
 import type { PieceDetail } from "@/server/restorations/queries";
+import { changePieceStatus } from "@/server/restorations/status-actions";
 
 import { RestorationPiecesKanban } from "./restoration-pieces-kanban";
 
+vi.mock("@/server/payments/actions", () => ({
+  approveWithPayment: vi.fn(),
+  deliverWithBalance: vi.fn(),
+}));
 vi.mock("@/server/restorations/status-actions", () => ({
   changePieceStatus: vi.fn(),
   markPiecesArrived: vi.fn(),
@@ -151,5 +157,119 @@ describe("RestorationPiecesKanban", () => {
     );
     expect(bar()).toBeNull();
     expect(screen.getByLabelText("Elegir RES-00012-4")).not.toBeChecked();
+  });
+});
+
+describe("RestorationPiecesKanban: mover de estado", () => {
+  beforeEach(() => {
+    vi.mocked(changePieceStatus).mockReset().mockResolvedValue({ ok: true });
+  });
+
+  const openMenu = async (
+    user: ReturnType<typeof userEvent.setup>,
+    code: string,
+  ) => {
+    await user.click(screen.getByRole("button", { name: `Mover ${code} a…` }));
+    return screen.getByRole("menu");
+  };
+
+  it("cada tarjeta se arrastra desde su asa o se mueve con «Mover a…»", () => {
+    renderKanban("ventas");
+    const card = screen.getByTestId("tarjeta-RES-00012-4");
+    expect(
+      within(card).getByRole("button", { name: "Arrastrar RES-00012-4" }),
+    ).toHaveAttribute("aria-roledescription", "tarjeta arrastrable");
+    expect(
+      within(card).getByRole("button", { name: "Mover RES-00012-4 a…" }),
+    ).toBeVisible();
+    // Una pieza anulada ya no cambia de estado: sin menú.
+    expect(
+      screen.queryByRole("button", { name: "Mover RES-00012-3 a…" }),
+    ).toBeNull();
+  });
+
+  it("«Mover a…» lista solo los estados permitidos y cambia el estado", async () => {
+    const user = userEvent.setup();
+    renderKanban("ventas");
+    const menu = await openMenu(user, "RES-00012-4");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Consulta", "Aprobada", "Anulado"]);
+
+    await user.click(within(menu).getByRole("menuitem", { name: "Aprobada" }));
+    expect(changePieceStatus).toHaveBeenCalledWith(
+      "r1",
+      ["p4"],
+      "aprobada",
+      null,
+      null,
+    );
+    expect(toast.success).toHaveBeenCalledWith("RES-00012-4: Aprobada.");
+  });
+
+  it("si el cambio pide nota, abre el diálogo de cambio de estado", async () => {
+    const user = userEvent.setup();
+    renderKanban("ventas");
+    const menu = await openMenu(user, "RES-00012-4");
+    await user.click(within(menu).getByRole("menuitem", { name: "Consulta" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Poner en consulta: RES-00012-4",
+    });
+    expect(changePieceStatus).not.toHaveBeenCalled();
+    await user.type(
+      within(dialog).getByLabelText("Nota (obligatoria)"),
+      "¿Se puede soldar?",
+    );
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: Poner en consulta",
+      }),
+    );
+    expect(changePieceStatus).toHaveBeenCalledWith(
+      "r1",
+      ["p4"],
+      "en_consulta",
+      "¿Se puede soldar?",
+      null,
+    );
+  });
+
+  it("logística solo ve los cambios de su rol (enviar al taller, con taller)", async () => {
+    const user = userEvent.setup();
+    renderKanban("logistica");
+    expect(
+      screen.queryByRole("button", { name: "Mover RES-00012-4 a…" }),
+    ).toBeNull();
+    const menu = await openMenu(user, "RES-00012-1");
+    await user.click(within(menu).getByRole("menuitem", { name: "Interno" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Enviar al taller: RES-00012-1",
+    });
+    expect(within(dialog).getByLabelText("Taller")).toBeVisible();
+  });
+
+  it("aprobar la última pieza ofrece registrar el adelanto, como en la lista", async () => {
+    const user = userEvent.setup();
+    render(
+      <RestorationPiecesKanban
+        restorationId="r1"
+        pieces={pieces}
+        role="ventas"
+        workshops={[]}
+        approvalPayment={{
+          methods: [{ id: "m1", name: "Efectivo" }],
+          suggested: { kind: "adelanto", amount: 6_000 },
+        }}
+      />,
+    );
+    const menu = await openMenu(user, "RES-00012-4");
+    await user.click(within(menu).getByRole("menuitem", { name: "Aprobada" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Aprobar RES-00012-4" }),
+    ).toBeVisible();
+    expect(changePieceStatus).not.toHaveBeenCalled();
   });
 });

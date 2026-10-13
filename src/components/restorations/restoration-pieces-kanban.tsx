@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
+import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
+import { pieceKanbanColumns } from "@/domain/piece-moves";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import {
   pieceHref,
@@ -16,32 +18,49 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PIECE_ACCENT_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
+import { MoveToMenu, usePieceMoves } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, UrgentBadge } from "./status-badges";
 
 /**
  * Piezas de una restauración en un tablero kanban por estado (detalle, `?vista=kanban`).
- * Las columnas de estados finales solo aparecen si tienen piezas. Se eligen piezas
- * y se usan las mismas acciones masivas que en la lista; el precio solo lo ve quien
- * ve montos.
+ * Las columnas de estados finales solo aparecen si tienen piezas (o, al arrastrar,
+ * si la pieza puede pasar a ellas). Las piezas se mueven de estado arrastrándolas o
+ * con "Mover a…" (Paso 12.5). Se eligen piezas y se usan las mismas acciones masivas
+ * que en la lista; el precio solo lo ve quien ve montos.
  */
 export function RestorationPiecesKanban({
   restorationId,
   pieces,
   role,
   workshops,
+  approvalPayment = null,
+  balanceDue = false,
 }: {
   restorationId: string;
   pieces: PieceDetail[];
   role: AppRole;
   workshops: WorkshopOption[];
+  /** Al aprobar la última pieza se ofrece registrar el adelanto (11.2). */
+  approvalPayment?: ApprovalPayment | null;
+  /** Falta cobrar el saldo: entregar pide confirmarlo (P45). */
+  balanceDue?: boolean;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const chosen = pieces.filter((p) => selected.includes(p.id));
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
   const showMoney = can(role, "dinero.ver");
-  const statuses = restorationKanbanStatuses(pieces.map((p) => p.status));
+  const moves = usePieceMoves({
+    restorationId,
+    pieces,
+    role,
+    workshops,
+    approvalPayment,
+    balanceDue,
+  });
+  const shown = moves.pieces;
+  const statuses = restorationKanbanStatuses(shown.map((p) => p.status));
 
   return (
     <div className="space-y-3">
@@ -55,12 +74,14 @@ export function RestorationPiecesKanban({
       <KanbanColumns
         label="Piezas por estado"
         emptyText="Sin piezas"
-        columns={statuses.map((status) => ({
+        columns={pieceKanbanColumns(statuses).map(({ status, dropOnly }) => ({
           key: status,
           label: PIECE_STATUS_LABELS[status],
-          items: pieces.filter((p) => p.status === status),
+          items: shown.filter((p) => p.status === status),
+          dropOnly,
         }))}
-        renderCard={(piece) => (
+        drag={moves.drag}
+        renderCard={(piece, drag) => (
           <KanbanCard
             key={piece.id}
             data-testid={`tarjeta-${piece.code}`}
@@ -84,19 +105,24 @@ export function RestorationPiecesKanban({
                   {piece.code}
                 </Link>
               </div>
-              {showMoney ? (
-                <span
-                  className="shrink-0 text-xs tabular-nums"
-                  data-testid="precio"
-                >
-                  <span className="sr-only">Precio: </span>
-                  {piece.priceCents === null ? (
-                    <span className="text-muted-foreground">Sin asignar</span>
-                  ) : (
-                    formatCents(piece.priceCents)
-                  )}
-                </span>
-              ) : null}
+              <div className="flex shrink-0 items-center gap-1">
+                {showMoney ? (
+                  <span className="text-xs tabular-nums" data-testid="precio">
+                    <span className="sr-only">Precio: </span>
+                    {piece.priceCents === null ? (
+                      <span className="text-muted-foreground">Sin asignar</span>
+                    ) : (
+                      formatCents(piece.priceCents)
+                    )}
+                  </span>
+                ) : null}
+                <MoveToMenu
+                  code={piece.code}
+                  targets={moves.targets(piece)}
+                  onMove={(to) => moves.move(piece, to)}
+                />
+                {drag?.handle}
+              </div>
             </div>
             <p className="break-words">{piece.description}</p>
             {piece.serviceName ? (
@@ -114,6 +140,7 @@ export function RestorationPiecesKanban({
           </KanbanCard>
         )}
       />
+      {moves.dialogs}
     </div>
   );
 }

@@ -1117,7 +1117,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Cambiar a kanban, ver las tarjetas en su columna, filtrar sin perder la vista y volver a la tabla.
   - [x] Elegir piezas en el kanban y enviarlas al taller con la barra de acciones masivas.
   - [x] `@mobile` el kanban se desplaza dentro de su contenedor, sin desbordar la página.
-- Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición).
+- Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición); desde el Paso 12.5 las piezas sí se arrastran.
 - Commit: `feat(listados): agrega vista kanban por estado en restauraciones y piezas`
 
 #### Paso 12.4 — Tabla de piezas tipo hoja, filtro por guía y detalle de la pieza (P55 ✅, 2026-10-12)
@@ -1130,6 +1130,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - **E2E:** logística filtra por guía e ingresa el costo; el admin ve el costo y pone el precio; abre la pieza y vuelve a la guía (sin violaciones de axe).
 - Hecho (2026-10-12): migración `20261014150000_vista_piezas_tabla.sql`: `list_pieces_board` con servicio, material, medida, peso, costo de servicio (admin y logística), precio de venta (admin y ventas), si hay orden, la ruta de la primera foto "Antes" y el parámetro `p_restoration_code`; `get_piece_service_cost` para el detalle; índice de archivos por pieza y clasificación. Las miniaturas usan URLs firmadas en lote (`signedPhotoUrls`). `MoneyCell` es la celda de monto editable que comparten el costo y el precio.
 - Commit: `feat(piezas): tabla tipo hoja con costo y precio, filtro por guía y detalle de pieza`
+
+#### Paso 12.5 — Arrastrar piezas en los kanban (pedido del usuario, 2026-10-13)
+- [x] En los kanban de piezas (`/piezas` y el de cada restauración) la pieza cambia de estado arrastrándola a otra columna (ratón, dedo con pulsación larga y teclado) o con **"Mover a…"** en la tarjeta. Mientras se arrastra se resaltan solo las columnas permitidas para la pieza y el rol, y se atenúan las demás; soltar en una no permitida no cambia nada y avisa por qué. Los estados sin columna visible (p. ej. Entregada o Anulado) aparecen como destino solo al arrastrar.
+- [x] Mismas reglas y acciones que los botones de la pieza (máquina de estados, `changePieceStatus`): nota o taller con el diálogo de cambio de estado; en el detalle de la restauración, aprobar la última pieza ofrece el adelanto y entregar con saldo pide confirmarlo; en `/piezas` el cambio es directo, como en las acciones masivas. Cambio optimista con aviso; vuelve atrás si la BD lo rechaza.
+- [x] El kanban de restauraciones (guías) sigue sin arrastrar: su estado se calcula de las piezas (D63).
+- **Unit:** destinos y motivos de rechazo (`piece-moves`), columnas resaltadas y asa accesible en `KanbanColumns` (tomar con el teclado en jsdom), "Mover a…" (lista, cambio directo, diálogo de nota, taller para logística y adelanto al aprobar la última pieza).
+- **E2E:** arrastrar de Registrada a Aprobada (persiste al recargar), soltar en una columna no permitida, soltar en Consulta abre el diálogo de la nota, mover con el teclado con avisos en español y "Mover a…" sin violaciones de axe; en `/piezas`, logística arrastra de Aprobada a Interno eligiendo el taller.
+- Hecho (2026-10-13): `@dnd-kit/core`; `KanbanColumns` con `drag` opcional (`getId`, `getLabel`, `canDrop`, `onMove`) y columnas `dropOnly`; `usePieceMoves` y `MoveToMenu` comparten la lógica de los dos kanban de piezas.
+- Commit: `feat(kanban): mover piezas entre estados arrastrando`
 
 ### Fase 13 — Dashboard
 

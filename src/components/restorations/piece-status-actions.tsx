@@ -108,6 +108,25 @@ export function requirementsFor(
 export const needsDialog = (change: PendingChange) =>
   change.requiresNote || change.requiresWorkshop || isClosedStatus(change.to);
 
+/** Ubicación que se muestra al instante (optimista) tras pasar a `to`. */
+export function locationAfter(
+  to: PieceStatus,
+  location: PieceLocation,
+): PieceLocation {
+  switch (to) {
+    case "enviada_taller":
+      return "en_taller";
+    case "entregada":
+      return "entregada";
+    case "anulada":
+      return "anulada";
+    case "observada":
+      return "sin_enviar";
+    default:
+      return location;
+  }
+}
+
 const NONE = "ninguno";
 
 /** Confirmación de un cambio de estado con nota y/o taller cuando se requiere. */
@@ -275,16 +294,7 @@ export function PieceStatusPanel({
       startTransition(async () => {
         setOptimistic({
           status: change.to,
-          location:
-            change.to === "enviada_taller"
-              ? "en_taller"
-              : change.to === "entregada"
-                ? "entregada"
-                : change.to === "anulada"
-                  ? "anulada"
-                  : change.to === "observada"
-                    ? "sin_enviar"
-                    : piece.location,
+          location: locationAfter(change.to, piece.location),
           readyForDelivery: false,
         });
         const result = await changePieceStatus(

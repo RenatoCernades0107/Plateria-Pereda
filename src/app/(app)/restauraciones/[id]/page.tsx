@@ -468,6 +468,8 @@ export default async function RestauracionDetallePage({
               pieces={restoration.pieces}
               role={user.role}
               workshops={workshops}
+              approvalPayment={approvalPayment}
+              balanceDue={balanceDue}
             />
           ) : (
             <PiecesBoard

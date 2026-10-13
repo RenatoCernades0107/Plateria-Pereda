@@ -6,19 +6,23 @@ import { useState } from "react";
 
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import { BOARD_STATUSES, isLongInWorkshop } from "@/domain/piece-board-filters";
+import { pieceKanbanColumns } from "@/domain/piece-moves";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
+import { MoveToMenu, usePieceMoves } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, UrgentBadge } from "./status-badges";
 
 /**
  * Tablero kanban de piezas en curso: una columna por estado (las urgentes primero en
- * cada columna). Se eligen piezas de una o varias columnas y se usan las mismas
- * acciones masivas que en la tabla.
+ * cada columna). Las piezas se mueven de estado arrastrándolas o con "Mover a…"
+ * (Paso 12.5); Entregada y Anulado aparecen como destino solo al arrastrar. Se
+ * eligen piezas de una o varias columnas y se usan las mismas acciones masivas que
+ * en la tabla.
  */
 export function PiecesKanban({
   pieces,
@@ -33,6 +37,12 @@ export function PiecesKanban({
   const chosen = pieces.filter((p) => selected.includes(p.id));
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
+  const moves = usePieceMoves({
+    restorationId: null,
+    pieces,
+    role,
+    workshops,
+  });
 
   return (
     <div className="space-y-3">
@@ -46,12 +56,16 @@ export function PiecesKanban({
       <KanbanColumns
         label="Piezas por estado"
         emptyText="Sin piezas"
-        columns={BOARD_STATUSES.map((status) => ({
-          key: status,
-          label: PIECE_STATUS_LABELS[status],
-          items: pieces.filter((p) => p.status === status),
-        }))}
-        renderCard={(piece) => {
+        columns={pieceKanbanColumns(BOARD_STATUSES).map(
+          ({ status, dropOnly }) => ({
+            key: status,
+            label: PIECE_STATUS_LABELS[status],
+            items: moves.pieces.filter((p) => p.status === status),
+            dropOnly,
+          }),
+        )}
+        drag={moves.drag}
+        renderCard={(piece, drag) => {
           const long = isLongInWorkshop(piece);
           return (
             <KanbanCard
@@ -69,7 +83,7 @@ export function PiecesKanban({
                     onChange={(e) => toggle(piece.id, e.target.checked)}
                   />
                 ) : null}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <Link
                     href={`/restauraciones/${piece.restorationId}`}
                     className="text-heading font-medium underline-offset-4 hover:underline"
@@ -79,6 +93,14 @@ export function PiecesKanban({
                   <p className="text-muted-foreground truncate text-xs">
                     {piece.clientName}
                   </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <MoveToMenu
+                    code={piece.code}
+                    targets={moves.targets(piece)}
+                    onMove={(to) => moves.move(piece, to)}
+                  />
+                  {drag?.handle}
                 </div>
               </div>
               <p className="break-words">{piece.description}</p>
@@ -117,6 +139,7 @@ export function PiecesKanban({
           );
         }}
       />
+      {moves.dialogs}
     </div>
   );
 }
