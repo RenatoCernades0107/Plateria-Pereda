@@ -174,7 +174,22 @@ describe("ContactsSection", () => {
     const user = userEvent.setup();
     render(<ContactsSection client={company} canEdit />);
 
+    expect(
+      screen.getAllByRole("columnheader").map((h) => h.textContent),
+    ).toEqual([
+      "Contacto",
+      "Cargo",
+      "Documento",
+      "Teléfono",
+      "Email",
+      "Shopify",
+      "Acciones",
+    ]);
     const luis = screen.getByTestId("contacto-Luis Rojas");
+    expect(luis.tagName).toBe("TR");
+    expect(screen.getByTestId("contacto-movil-Luis Rojas")).toHaveTextContent(
+      "Compras",
+    );
     expect(luis).toHaveTextContent("Compras");
     expect(luis).toHaveTextContent("+51 988 777 666");
     expect(within(luis).getByTestId("estado-shopify")).toHaveTextContent(
@@ -213,7 +228,12 @@ describe("ContactsSection", () => {
     const user = userEvent.setup();
     render(<ContactsSection client={company} canEdit />);
 
-    await user.click(screen.getByRole("button", { name: "Editar Luis Rojas" }));
+    // En jsdom se ven la tabla y las tarjetas del celular: se usa la fila.
+    const row = (name: string) =>
+      within(screen.getByTestId(`contacto-${name}`));
+    await user.click(
+      row("Luis Rojas").getByRole("button", { name: "Editar Luis Rojas" }),
+    );
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Email")).toHaveValue(
       "luis@andina.pe",
@@ -228,10 +248,12 @@ describe("ContactsSection", () => {
     expect(mocks.success).toHaveBeenCalledWith("Contacto actualizado.");
 
     await user.click(
-      screen.getByRole("button", { name: "Desactivar Luis Rojas" }),
+      row("Luis Rojas").getByRole("button", { name: "Desactivar Luis Rojas" }),
     );
     expect(mocks.setContactActive).toHaveBeenCalledWith("k1", false);
-    await user.click(screen.getByRole("button", { name: "Activar Rosa Díaz" }));
+    await user.click(
+      row("Rosa Díaz").getByRole("button", { name: "Activar Rosa Díaz" }),
+    );
     expect(mocks.setContactActive).toHaveBeenCalledWith("k2", true);
   });
 

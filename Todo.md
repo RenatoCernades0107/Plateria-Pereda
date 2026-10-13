@@ -1148,6 +1148,9 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - **Unit:** tabla (columnas, foto, datos), menú (acciones por rol, aprobar, confirmación con foco, editar, cambiar precio), precio por rol; `firstBeforePhotos`.
 - **E2E:** los specs que usaban botones por pieza usan el menú (`e2e/support/pieces.ts`); la línea de tiempo se revisa en `/piezas/<id>`.
 - Commit: `feat(restauraciones): piezas de la guía en tabla con menú de acciones`
+- [x] Otras listas que eran tarjetas en la computadora pasan a tabla (`Table` en escritorio, tarjetas `md:hidden` en el celular, como clientes y restauraciones): **contactos** de la empresa, **piezas cotizadas** de una cotización de WhatsApp (con fila de total) y **catálogos** (materiales, servicios, métodos de pago).
+- **Unit:** columnas de contactos y catálogos; acciones dentro de la fila de la tabla. **E2E:** clientes, cotizaciones de WhatsApp y catálogos (las tarjetas del celular usan `*-movil-*`).
+- Commit: `feat(ui): contactos, ítems de cotización y catálogos en tabla`
 
 ### Fase 13 — Dashboard
 

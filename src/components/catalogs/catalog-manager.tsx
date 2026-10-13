@@ -13,6 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CATALOGS, type CatalogKind } from "@/domain/catalogs";
 import { formatMoney } from "@/lib/format";
 import { setCatalogItemActive } from "@/server/catalogs-actions";
@@ -40,13 +48,18 @@ function ItemActions({
     });
 
   return (
-    <div className="flex shrink-0 gap-2">
+    <div className="flex shrink-0 gap-2 md:justify-end">
       <CatalogItemDialog
         kind={kind}
         item={item}
         trigger={
-          <Button variant="ghost" size="sm" aria-label={`Editar ${item.name}`}>
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Editar ${item.name}`}
+          >
             <Pencil />
+            Editar
           </Button>
         }
       />
@@ -59,6 +72,14 @@ function ItemActions({
         {item.active ? "Desactivar" : "Activar"}
       </Button>
     </div>
+  );
+}
+
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <Badge variant={active ? "secondary" : "outline"}>
+      {active ? "Activo" : "Inactivo"}
+    </Badge>
   );
 }
 
@@ -95,43 +116,108 @@ export function CatalogManager({
             Aún no hay {catalog.title.toLowerCase()}.
           </p>
         ) : (
-          <ul className="divide-y" aria-label={catalog.title}>
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-center justify-between gap-3 py-3"
-                data-testid={`catalogo-${item.name}`}
-              >
-                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                  <span
-                    className={
-                      item.active
-                        ? "text-heading font-medium"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {item.name}
-                  </span>
-                  {catalog.hasPrice ? (
-                    <span className="text-muted-foreground text-sm">
-                      {item.price === null
-                        ? "Sin precio sugerido"
-                        : formatMoney(item.price)}
+          <>
+            {/* Como una hoja de cálculo en la computadora (D63); lista en el celular. */}
+            <div className="hidden rounded-md border md:block">
+              <Table aria-label={catalog.title}>
+                <TableHeader className="bg-muted/60">
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    {catalog.hasPrice ? (
+                      <TableHead className="text-right">
+                        Precio sugerido
+                      </TableHead>
+                    ) : null}
+                    {catalog.hasShopifyName ? (
+                      <TableHead>Nombre en Shopify</TableHead>
+                    ) : null}
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      data-testid={`catalogo-${item.name}`}
+                    >
+                      <TableCell
+                        className={
+                          item.active
+                            ? "text-heading font-medium"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {item.name}
+                      </TableCell>
+                      {catalog.hasPrice ? (
+                        <TableCell className="text-right tabular-nums">
+                          {item.price === null ? (
+                            <span className="text-muted-foreground">
+                              Sin precio sugerido
+                            </span>
+                          ) : (
+                            formatMoney(item.price)
+                          )}
+                        </TableCell>
+                      ) : null}
+                      {catalog.hasShopifyName ? (
+                        <TableCell>
+                          {item.shopifyName || (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                      <TableCell>
+                        <StatusBadge active={item.active} />
+                      </TableCell>
+                      <TableCell>
+                        <ItemActions kind={kind} item={item} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <ul className="divide-y md:hidden" aria-label={catalog.title}>
+              {items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  data-testid={`catalogo-movil-${item.name}`}
+                >
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                    <span
+                      className={
+                        item.active
+                          ? "text-heading font-medium"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {item.name}
                     </span>
-                  ) : null}
-                  {catalog.hasShopifyName && item.shopifyName ? (
-                    <span className="text-muted-foreground text-sm">
-                      Shopify: {item.shopifyName}
-                    </span>
-                  ) : null}
-                  {item.active ? null : (
-                    <Badge variant="outline">Inactivo</Badge>
-                  )}
-                </div>
-                <ItemActions kind={kind} item={item} />
-              </li>
-            ))}
-          </ul>
+                    {catalog.hasPrice ? (
+                      <span className="text-muted-foreground text-sm">
+                        {item.price === null
+                          ? "Sin precio sugerido"
+                          : formatMoney(item.price)}
+                      </span>
+                    ) : null}
+                    {catalog.hasShopifyName && item.shopifyName ? (
+                      <span className="text-muted-foreground text-sm">
+                        Shopify: {item.shopifyName}
+                      </span>
+                    ) : null}
+                    {item.active ? null : (
+                      <Badge variant="outline">Inactivo</Badge>
+                    )}
+                  </div>
+                  <ItemActions kind={kind} item={item} />
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </CardContent>
     </Card>
