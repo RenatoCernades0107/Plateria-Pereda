@@ -1,3 +1,5 @@
+import { ChevronRight, History } from "lucide-react";
+
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { formatDateTime } from "@/lib/format";
 import type {
@@ -20,10 +22,18 @@ export function PieceTimelineDetails({
 }) {
   return (
     <details
-      className="rounded-md border p-3 text-sm"
+      className="group rounded-md border p-3 text-sm"
       data-testid="linea-tiempo"
     >
-      <summary className="cursor-pointer font-medium">Línea de tiempo</summary>
+      {/* Solo muestra información: se ve como un enlace que se despliega, no como botón. */}
+      <summary className="text-primary flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 transition-transform group-open:rotate-90"
+        />
+        <History aria-hidden className="size-4" />
+        Línea de tiempo
+      </summary>
       <div className="pt-3">
         <Timeline
           events={events}

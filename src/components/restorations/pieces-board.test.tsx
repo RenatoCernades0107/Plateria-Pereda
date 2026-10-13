@@ -90,6 +90,32 @@ describe("PiecesBoard: cambio de estado masivo", () => {
   });
 });
 
+describe("PiecesBoard: cada pieza se distingue de la guía", () => {
+  it("rotula cada pieza con «Pieza N» y su código, con acento a la izquierda", () => {
+    renderBoard();
+    expect(
+      screen.getByRole("list", { name: "Piezas de la guía" }),
+    ).toBeInTheDocument();
+    const card = screen.getByTestId("pieza-RES-00001-2");
+    expect(within(card).getByTestId("rotulo-pieza")).toHaveTextContent(
+      "Pieza 2 · RES-00001-2",
+    );
+    expect(card).toHaveClass("border-l-4");
+  });
+
+  it("separa las insignias de estado (informan) de los botones de acción", () => {
+    renderBoard();
+    const card = screen.getByTestId("pieza-RES-00001-1");
+    const actions = within(card).getByRole("group", {
+      name: "Acciones de RES-00001-1",
+    });
+    expect(actions).toHaveTextContent(/^Acciones/);
+    // El estado y la ubicación son insignias fuera del grupo, no botones.
+    expect(within(card).getByText("Sin enviar")).not.toHaveRole("button");
+    expect(actions).not.toContainElement(within(card).getByText("Sin enviar"));
+  });
+});
+
 describe("PiecesBoard: precio de venta (D58)", () => {
   const renderWith = (role: "ventas" | "logistica") =>
     render(

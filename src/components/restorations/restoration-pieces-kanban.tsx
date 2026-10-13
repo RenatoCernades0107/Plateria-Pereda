@@ -14,6 +14,7 @@ import {
 import type { AppRole } from "@/lib/roles";
 import type { PieceDetail } from "@/server/restorations/queries";
 
+import { PIECE_ACCENT_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, UrgentBadge } from "./status-badges";
@@ -60,7 +61,11 @@ export function RestorationPiecesKanban({
           items: pieces.filter((p) => p.status === status),
         }))}
         renderCard={(piece) => (
-          <KanbanCard key={piece.id} data-testid={`tarjeta-${piece.code}`}>
+          <KanbanCard
+            key={piece.id}
+            data-testid={`tarjeta-${piece.code}`}
+            className={PIECE_ACCENT_CLASS}
+          >
             <div className="flex items-start justify-between gap-2">
               <div className="flex min-w-0 items-start gap-2">
                 {isSelectable(piece, role) ? (

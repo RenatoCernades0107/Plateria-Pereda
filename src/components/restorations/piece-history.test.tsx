@@ -5,6 +5,7 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import {
   LogisticsPieceSummary,
+  PieceTimelineDetails,
   RestorationStatusSummary,
 } from "./piece-history";
 
@@ -77,5 +78,28 @@ describe("RestorationStatusSummary", () => {
   it("sin cambios lo indica", () => {
     render(<RestorationStatusSummary pieces={[]} events={[]} />);
     expect(screen.getByText("Sin cambios de estado.")).toBeInTheDocument();
+  });
+});
+
+describe("PieceTimelineDetails", () => {
+  it("se despliega desde un enlace con ícono que dice qué muestra", () => {
+    render(
+      <PieceTimelineDetails
+        piece={
+          {
+            ...piece,
+            status: "registrada",
+            createdAt: "2026-10-01T15:00:00Z",
+            deliveredAt: null,
+          } as PieceDetail
+        }
+        events={[]}
+        now={new Date("2026-10-02T15:00:00Z")}
+      />,
+    );
+    const toggle = screen.getByText("Línea de tiempo");
+    expect(toggle.tagName).toBe("SUMMARY");
+    expect(toggle).toHaveClass("text-primary", "hover:underline");
+    expect(screen.getByTestId("linea-tiempo")).not.toHaveAttribute("open");
   });
 });

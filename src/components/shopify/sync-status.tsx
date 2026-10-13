@@ -45,15 +45,21 @@ export function SyncStatus({
 }) {
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const withDetail = Boolean(lastError) && status !== "ok";
+  // Con detalle del error, el cursor de ayuda indica que hay más información.
   const badge = (
-    <Badge variant={VARIANTS[status]} data-testid="estado-shopify">
+    <Badge
+      variant={VARIANTS[status]}
+      data-testid="estado-shopify"
+      className={withDetail ? "cursor-help" : undefined}
+    >
       Shopify: {LABELS[status]}
     </Badge>
   );
 
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      {lastError && status !== "ok" ? (
+      {withDetail ? (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>

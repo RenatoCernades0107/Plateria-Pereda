@@ -111,6 +111,8 @@ describe("RestorationPiecesKanban", () => {
     expect(card).toHaveTextContent("Urgente");
     expect(card).toHaveTextContent("En tienda");
     expect(card).toHaveTextContent("Sin taller");
+    // Acento de pieza, como en la lista: es hija de la guía.
+    expect(card).toHaveClass("border-l-4");
 
     const sent = within(
       screen.getByTestId("columna-enviada_taller"),

@@ -47,6 +47,7 @@ import {
   returnPiecesToClient,
 } from "@/server/restorations/status-actions";
 
+import { ROW_LABEL_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
@@ -318,7 +319,9 @@ export function PieceStatusPanel({
 
   return (
     <div className="space-y-2">
+      {/* Estado y ubicación: solo informan (insignias, no se pulsan). */}
       <div className="flex flex-wrap items-center gap-2">
+        <span className={ROW_LABEL_CLASS}>Estado</span>
         <PieceStatusBadge status={optimistic.status} />
         <LocationBadge location={optimistic.location} />
         {optimistic.urgent ? <UrgentBadge /> : null}
@@ -331,10 +334,14 @@ export function PieceStatusPanel({
       </div>
       {transitions.length > 0 || arrival || receive || giveBack ? (
         <div
-          className="flex flex-wrap gap-2"
+          className="flex flex-wrap items-center gap-2"
           aria-label={`Acciones de ${piece.code}`}
           role="group"
         >
+          {/* Rótulo visible; el grupo ya tiene su nombre accesible. */}
+          <span className={ROW_LABEL_CLASS} aria-hidden>
+            Acciones
+          </span>
           {arrival ? (
             <Button
               size="sm"

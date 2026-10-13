@@ -21,6 +21,11 @@ import {
   PieceTimelineDetails,
   RestorationStatusSummary,
 } from "@/components/restorations/piece-history";
+import {
+  GUIDE_CARD_CLASS,
+  GuideEyebrow,
+  PiecesHeading,
+} from "@/components/restorations/guide-labels";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
@@ -53,6 +58,7 @@ import {
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { isClosedStatus } from "@/domain/piece-state-machine";
 import { serverEnv } from "@/lib/env.server";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
@@ -218,151 +224,180 @@ export default async function RestauracionDetallePage({
         </Link>
       </Button>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-heading text-2xl font-semibold tracking-tight">
-            {restoration.code}
-          </h1>
-          <p className="text-sm">
-            <Link
-              href={`/clientes/${restoration.client.id}`}
-              className="font-medium underline-offset-4 hover:underline"
+      {/* La guía (la restauración) en su propia tarjeta; sus piezas van debajo. */}
+      <section
+        aria-labelledby="codigo-guia"
+        className={cn(GUIDE_CARD_CLASS, "space-y-4")}
+        data-testid="guia"
+      >
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <GuideEyebrow />
+            <h1
+              id="codigo-guia"
+              className="text-heading text-2xl font-semibold tracking-tight"
             >
-              {restoration.client.name}
-            </Link>
-            {restoration.contact ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · Contacto: {restoration.contact.name}
+              {restoration.code}
+            </h1>
+            <p className="text-sm">
+              <Link
+                href={`/clientes/${restoration.client.id}`}
+                className="font-medium underline-offset-4 hover:underline"
+              >
+                {restoration.client.name}
+              </Link>
+              {restoration.contact ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · Contacto: {restoration.contact.name}
+                </span>
+              ) : null}
+              {phone ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {formatPhone(phone)}
+                </span>
+              ) : null}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span data-testid="estado-restauracion" className="contents">
+                <RestorationStatusBadge status={restoration.status} />
               </span>
-            ) : null}
-            {phone ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · {formatPhone(phone)}
-              </span>
-            ) : null}
-          </p>
+              {restoration.money ? (
+                <Badge variant="outline" data-testid="estado-pago">
+                  {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
+                </Badge>
+              ) : null}
+              <Badge variant="outline">
+                {PAYMENT_TYPE_LABELS[restoration.paymentType]}
+                {restoration.money?.depositPercent
+                  ? ` (${restoration.money.depositPercent} %)`
+                  : ""}
+              </Badge>
+              {restoration.money ? (
+                <Badge variant="outline" data-testid="igv">
+                  {igvLabel(restoration.money.pricesIncludeIgv)}
+                </Badge>
+              ) : null}
+              {restoration.shopifyOrderName ? (
+                // Con enlace al admin se ve como enlace (color, ícono y subrayado);
+                // sin él, es una insignia informativa más.
+                <Badge
+                  variant={orderUrl ? "outline" : "secondary"}
+                  asChild={Boolean(orderUrl)}
+                  className={
+                    orderUrl ? "border-primary/40 text-primary" : undefined
+                  }
+                >
+                  {orderUrl ? (
+                    <a
+                      href={orderUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Abrir la orden en Shopify (pestaña nueva)"
+                      data-testid="orden-shopify"
+                    >
+                      Orden {restoration.shopifyOrderName}
+                      <ExternalLink aria-hidden />
+                    </a>
+                  ) : (
+                    <span data-testid="orden-shopify">
+                      Orden {restoration.shopifyOrderName}
+                    </span>
+                  )}
+                </Badge>
+              ) : null}
+              {sync ? (
+                <SyncStatus
+                  jobId={sync.jobId}
+                  status={sync.status}
+                  lastError={sync.lastError}
+                />
+              ) : null}
+              <Badge
+                variant="outline"
+                data-testid="origen"
+                className={
+                  restoration.origin === "whatsapp"
+                    ? WHATSAPP_BADGE_CLASS
+                    : undefined
+                }
+              >
+                {restoration.origin === "whatsapp" ? <WhatsAppIcon /> : null}
+                {RESTORATION_ORIGIN_LABELS[restoration.origin]}
+                {quote ? (
+                  <>
+                    {" · desde "}
+                    <Link
+                      href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
+                      className="underline underline-offset-4"
+                    >
+                      {quote}
+                    </Link>
+                  </>
+                ) : null}
+              </Badge>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <span data-testid="estado-restauracion" className="contents">
-              <RestorationStatusBadge status={restoration.status} />
-            </span>
-            {restoration.money ? (
-              <Badge variant="outline" data-testid="estado-pago">
-                {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
-              </Badge>
-            ) : null}
-            <Badge variant="outline">
-              {PAYMENT_TYPE_LABELS[restoration.paymentType]}
-              {restoration.money?.depositPercent
-                ? ` (${restoration.money.depositPercent} %)`
-                : ""}
-            </Badge>
-            {restoration.money ? (
-              <Badge variant="outline" data-testid="igv">
-                {igvLabel(restoration.money.pricesIncludeIgv)}
-              </Badge>
-            ) : null}
-            {restoration.shopifyOrderName ? (
-              <Badge variant="secondary" asChild={Boolean(orderUrl)}>
-                {orderUrl ? (
-                  <a
-                    href={orderUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    data-testid="orden-shopify"
-                  >
-                    Orden {restoration.shopifyOrderName}
-                    <ExternalLink aria-hidden />
-                  </a>
-                ) : (
-                  <span data-testid="orden-shopify">
-                    Orden {restoration.shopifyOrderName}
-                  </span>
-                )}
-              </Badge>
-            ) : null}
-            {sync ? (
-              <SyncStatus
-                jobId={sync.jobId}
-                status={sync.status}
-                lastError={sync.lastError}
+            {editing ? (
+              <EditRestorationDialog
+                restorationId={restoration.id}
+                initial={{
+                  contactId: restoration.contact?.id ?? null,
+                  paymentType: restoration.paymentType,
+                  depositPercent: restoration.money?.depositPercent ?? null,
+                  pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
+                  notes: restoration.notes,
+                }}
+                contacts={editing.contacts}
+                hasOrder={restoration.hasOrder}
+                hasPayments={payments.length > 0}
               />
             ) : null}
-            <Badge
-              variant="outline"
-              data-testid="origen"
-              className={
-                restoration.origin === "whatsapp"
-                  ? WHATSAPP_BADGE_CLASS
-                  : undefined
-              }
-            >
-              {restoration.origin === "whatsapp" ? <WhatsAppIcon /> : null}
-              {RESTORATION_ORIGIN_LABELS[restoration.origin]}
-              {quote ? (
-                <>
-                  {" · desde "}
-                  <Link
-                    href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
-                    className="underline underline-offset-4"
-                  >
-                    {quote}
-                  </Link>
-                </>
-              ) : null}
-            </Badge>
+            {message ? (
+              <QuoteMessageButton
+                message={message}
+                phone={phone}
+                autoOpen={justCreated}
+              />
+            ) : null}
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {editing ? (
-            <EditRestorationDialog
-              restorationId={restoration.id}
-              initial={{
-                contactId: restoration.contact?.id ?? null,
-                paymentType: restoration.paymentType,
-                depositPercent: restoration.money?.depositPercent ?? null,
-                pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
-                notes: restoration.notes,
-              }}
-              contacts={editing.contacts}
-              hasOrder={restoration.hasOrder}
-              hasPayments={payments.length > 0}
-            />
-          ) : null}
-          {message ? (
-            <QuoteMessageButton
-              message={message}
-              phone={phone}
-              autoOpen={justCreated}
-            />
-          ) : null}
-        </div>
-      </header>
+        </header>
 
-      {restoration.money ? (
-        <div className="space-y-1">
-          <MoneySummary
-            totalCents={restoration.money.totalCents}
-            paidCents={restoration.money.paidCents}
-            igv={{
-              ...igvTotals(
-                restoration.pieces
-                  .filter((p) => !isClosedStatus(p.status))
-                  .map((p) => p.priceCents ?? 0),
-                restoration.money.pricesIncludeIgv,
-              ),
-              included: restoration.money.pricesIncludeIgv,
-            }}
-          />
-          {restoration.money.expectedDepositCents > 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Adelanto esperado:{" "}
-              {formatCents(restoration.money.expectedDepositCents)}
+        {restoration.money ? (
+          <div className="space-y-1 border-t pt-4">
+            <MoneySummary
+              totalCents={restoration.money.totalCents}
+              paidCents={restoration.money.paidCents}
+              igv={{
+                ...igvTotals(
+                  restoration.pieces
+                    .filter((p) => !isClosedStatus(p.status))
+                    .map((p) => p.priceCents ?? 0),
+                  restoration.money.pricesIncludeIgv,
+                ),
+                included: restoration.money.pricesIncludeIgv,
+              }}
+            />
+            {restoration.money.expectedDepositCents > 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Adelanto esperado:{" "}
+                {formatCents(restoration.money.expectedDepositCents)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {restoration.notes ? (
+          <div className="space-y-1 border-t pt-4">
+            <p className="text-muted-foreground text-xs font-medium">
+              Notas generales
             </p>
-          ) : null}
-        </div>
-      ) : null}
+            <p className="text-sm whitespace-pre-line">{restoration.notes}</p>
+          </div>
+        ) : null}
+      </section>
 
       {restoration.money &&
       restoration.hasOrder &&
@@ -392,12 +427,6 @@ export default async function RestauracionDetallePage({
         </p>
       ) : null}
 
-      {restoration.notes ? (
-        <p className="rounded-md border p-3 text-sm whitespace-pre-line">
-          {restoration.notes}
-        </p>
-      ) : null}
-
       <Tabs defaultValue="piezas">
         <TabsList>
           <TabsTrigger value="piezas">
@@ -413,22 +442,25 @@ export default async function RestauracionDetallePage({
         </TabsList>
         <TabsContent value="piezas" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <ViewToggle
-              view={piecesView === "kanban" ? "kanban" : "tabla"}
-              tableLabel="Lista"
-              tableHref={restorationPiecesHref(restoration.id, "lista")}
-              kanbanHref={restorationPiecesHref(restoration.id, "kanban")}
-            />
-            {editing && editableFields(ctx).canAddPieces ? (
-              <PieceDialog
-                restorationId={restoration.id}
-                editable={editableFields(ctx).piece}
-                priceHint={SALE_PRICE_HINT}
-                workshops={workshops}
-                materials={editing.materials}
-                services={editing.services}
+            <PiecesHeading count={restoration.pieces.length} />
+            <div className="flex flex-wrap items-center gap-2">
+              <ViewToggle
+                view={piecesView === "kanban" ? "kanban" : "tabla"}
+                tableLabel="Lista"
+                tableHref={restorationPiecesHref(restoration.id, "lista")}
+                kanbanHref={restorationPiecesHref(restoration.id, "kanban")}
               />
-            ) : null}
+              {editing && editableFields(ctx).canAddPieces ? (
+                <PieceDialog
+                  restorationId={restoration.id}
+                  editable={editableFields(ctx).piece}
+                  priceHint={SALE_PRICE_HINT}
+                  workshops={workshops}
+                  materials={editing.materials}
+                  services={editing.services}
+                />
+              ) : null}
+            </div>
           </div>
           {piecesView === "kanban" ? (
             <RestorationPiecesKanban

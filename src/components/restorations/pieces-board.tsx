@@ -9,9 +9,11 @@ import { can } from "@/domain/permissions";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import { pieceAnchor } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PieceDialog } from "./edit-dialogs";
+import { PIECE_ACCENT_CLASS, PieceEyebrow } from "./guide-labels";
 import type { CatalogOption, WorkshopOption } from "./piece-fields";
 import { PieceStatusPanel } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
@@ -113,14 +115,17 @@ export function PiecesBoard({
         </label>
       ) : null}
 
-      <ul className="divide-y rounded-lg border">
+      <ul className="space-y-3" aria-label="Piezas de la guía">
         {pieces.map((piece) => {
           const editable = editing?.editable[piece.id] ?? [];
           return (
             <li
               key={piece.id}
               id={pieceAnchor(piece.id)}
-              className="scroll-mt-4 space-y-2 p-4"
+              className={cn(
+                "bg-card scroll-mt-4 space-y-3 rounded-lg border p-4",
+                PIECE_ACCENT_CLASS,
+              )}
               data-testid={`pieza-${piece.code}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -134,10 +139,8 @@ export function PiecesBoard({
                       onChange={(e) => toggle(piece.id, e.target.checked)}
                     />
                   ) : null}
-                  <div className="min-w-0">
-                    <p className="text-muted-foreground text-xs">
-                      {piece.code}
-                    </p>
+                  <div className="min-w-0 space-y-0.5">
+                    <PieceEyebrow number={piece.number} code={piece.code} />
                     <p className="text-heading font-medium break-words">
                       {piece.description}
                     </p>
@@ -170,7 +173,7 @@ export function PiecesBoard({
               ) : null}
               {extra?.[piece.id]}
               {editing && editable.length > 0 ? (
-                <div className="flex flex-wrap justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
                   {editing.priceChange?.[piece.id] ? (
                     <PriceChangeDialog
                       restorationId={restorationId}
