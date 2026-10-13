@@ -428,7 +428,9 @@ export function PieceStatusPanel({
       ) : null}
       {approvalPayment ? (
         <ApproveWithPaymentDialog
-          key={paymentDialog === "aprobar" ? "abierto" : "cerrado"}
+          key={
+            paymentDialog === "aprobar" ? "aprobar-abierto" : "aprobar-cerrado"
+          }
           open={paymentDialog === "aprobar"}
           onOpenChange={(open) => !open && setPaymentDialog(null)}
           restorationId={restorationId}
@@ -440,7 +442,11 @@ export function PieceStatusPanel({
       ) : null}
       {balanceDue && canConfirmBalance ? (
         <DeliverWithBalanceDialog
-          key={paymentDialog === "entregar" ? "abierto" : "cerrado"}
+          key={
+            paymentDialog === "entregar"
+              ? "entregar-abierto"
+              : "entregar-cerrado"
+          }
           open={paymentDialog === "entregar"}
           onOpenChange={(open) => !open && setPaymentDialog(null)}
           restorationId={restorationId}
@@ -450,7 +456,7 @@ export function PieceStatusPanel({
         />
       ) : null}
       <StatusChangeDialog
-        key={dialog?.to ?? "cerrado"}
+        key={dialog?.to ?? "estado-cerrado"}
         open={dialog !== null}
         onOpenChange={(open) => !open && setDialog(null)}
         change={dialog}
