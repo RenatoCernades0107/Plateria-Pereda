@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(10);
 
 -- Estado general "Parcialmente aprobada" (P54/D61).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
@@ -63,6 +63,11 @@ reset role;
 select is(
   (select status::text from public.restorations where id = '00000000-0000-0000-0000-00000000ba30'),
   'aprobada', 'todas las vivas aprobadas: Aprobada'
+);
+
+select throws_ok(
+  $$ update public.restorations set status = 'en_proceso' where id = '00000000-0000-0000-0000-00000000ba30' $$,
+  '23514', null, 'En proceso ya no se usa (P56)'
 );
 
 select * from finish();

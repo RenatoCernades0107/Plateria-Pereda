@@ -5,7 +5,7 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
  * avanza; P21 con su propuesta; P47: sin "Recibida" ni "Devuelta por el taller";
  * P48: ubicaciones Por WhatsApp → Sin enviar → En taller → En tienda → Entregada y
  * restauración Rechazada; P50: Observación queda Sin enviar; P54: Parcialmente
- * aprobada).
+ * aprobada; P56: sin "En proceso").
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -15,7 +15,6 @@ export const RESTORATION_STATUSES = [
   "registrada",
   "parcialmente_aprobada",
   "aprobada",
-  "en_proceso",
   "parcialmente_lista",
   "lista",
   "completada",
@@ -24,11 +23,20 @@ export const RESTORATION_STATUSES = [
 ] as const;
 export type RestorationStatus = (typeof RESTORATION_STATUSES)[number];
 
+/**
+ * Estado general leído de la BD. "en_proceso" se retiró (P56): queda en el enum de
+ * Postgres sin uso (un check lo impide); si llegara, se muestra como Aprobada.
+ */
+export function toRestorationStatus(
+  value: RestorationStatus | "en_proceso",
+): RestorationStatus {
+  return value === "en_proceso" ? "aprobada" : value;
+}
+
 export const RESTORATION_STATUS_LABELS: Record<RestorationStatus, string> = {
   registrada: "Registrada",
   parcialmente_aprobada: "Parcialmente aprobada",
   aprobada: "Aprobada",
-  en_proceso: "En proceso",
   parcialmente_lista: "Parcialmente lista",
   lista: "Lista",
   completada: "Completada",
@@ -134,7 +142,6 @@ export function deriveRestorationStatus(
   if (active.every((p) => p.status === "entregada")) return "completada";
   if (active.every(isBack)) return "lista";
   if (active.some(isBack)) return "parcialmente_lista";
-  if (active.some((p) => p.firstSentAt)) return "en_proceso";
   if (active.every((p) => p.approvedAt)) return "aprobada";
   if (active.some((p) => p.approvedAt)) return "parcialmente_aprobada";
   return "registrada";
@@ -145,7 +152,7 @@ const STATUS_RANK: Record<RestorationStatus, number> = {
   registrada: 0,
   parcialmente_aprobada: 1,
   aprobada: 2,
-  en_proceso: 3,
+  // 3: "en_proceso", retirado (P56); el valor sigue en el enum de la BD sin uso.
   parcialmente_lista: 4,
   lista: 5,
   completada: 6,

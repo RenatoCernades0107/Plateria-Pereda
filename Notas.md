@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, P55, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, P55, P56, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -554,6 +554,10 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Respuesta (2026-10-12):** ✅ (1) La tabla se ve **como una hoja de cálculo** con los datos importantes de la pieza y, **primero, su foto de antes**; **logística ingresa el costo de servicio** y **el admin, viéndolo, el precio de venta**. (2) Se filtra por **número de guía**. (3) Al entrar a una pieza se ve su **detalle completo**, con una opción **explícita para ir a la guía**.
 - **Cómo queda:** los montos siguen las reglas de cada rol: el costo de servicio lo ven admin y logística; el precio de venta, admin y ventas (solo el admin lo cambia, D58). La foto es la primera imagen "Antes" de la pieza; sin ella se indica "Sin foto de antes". El número de guía acepta "123", "RES-123" o "RES-00123".
 
+### P56 · Quitar el estado "En proceso" (2026-10-13)
+- **Respuesta (2026-10-13):** ✅ El estado general de la restauración ya no tiene "En proceso". Queda Registrada → Parcialmente aprobada → Aprobada → Parcialmente lista → Lista → Completada (y Anulada / Rechazada).
+- **Cómo queda:** mientras las piezas están en el taller la guía sigue Aprobada (o Parcialmente aprobada); pasa a Parcialmente lista cuando vuelve la primera. Las guías que estaban En proceso pasaron a Aprobada o Parcialmente aprobada. El valor sigue en el enum de la BD sin uso (un check impide guardarlo).
+
 ---
 
 ## Preguntas para el negocio
@@ -654,6 +658,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D62 | Vista de piezas tipo hoja: foto "Antes" primero, costo de servicio (logística y admin) y precio de venta (admin) en la tabla, filtro por número de guía y detalle de la pieza con acceso a su guía | P55 |
 | D63 | Arrastrar y soltar solo en los kanban de piezas, con las mismas reglas que los botones (máquina de estados por rol, nota, taller y pagos) y "Mover a…" como alternativa accesible. El kanban de guías no se arrastra: su estado se calcula de las piezas | Pedido del usuario (2026-10-13), Paso 12.5 |
 | D64 | Toda vista de lista se ve como una hoja de cálculo (tabla en escritorio; tarjetas solo en el celular donde ya las había). Las piezas de la guía van en tabla con un menú "Acciones" por fila; su línea de tiempo queda en el detalle de la pieza | Pedido del 2026-10-13 |
+| D65 | Sin estado general "En proceso": con piezas en el taller la guía queda Aprobada o Parcialmente aprobada | P56, ajusta §7.3 |
 
 ---
 
@@ -678,6 +683,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-12 | P54 | Nuevo estado general Parcialmente aprobada (alguna pieza aprobada y otras todavía no). |
 | 2026-10-12 | P55 | Vista de piezas tipo hoja con foto, costo y precio; filtro por número de guía; detalle de la pieza con acceso a la guía. |
 | 2026-10-13 | D64 | "Todo lo que esté como vista lista debe ser como el Excel": las piezas de la guía en tabla con menú de acciones; la línea de tiempo, en el detalle de la pieza. |
+| 2026-10-13 | P56 | Se quita el estado general "En proceso". |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

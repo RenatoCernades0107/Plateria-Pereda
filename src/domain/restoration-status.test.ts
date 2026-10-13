@@ -13,6 +13,7 @@ import {
   PIECE_LOCATIONS,
   RESTORATION_STATUS_LABELS,
   RESTORATION_STATUSES,
+  toRestorationStatus,
 } from "./restoration-status";
 
 const date = (value: string | null) => (value ? new Date(value) : null);
@@ -172,6 +173,14 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
   });
 });
 
+describe("toRestorationStatus (P56)", () => {
+  it("el valor retirado En proceso se muestra como Aprobada", () => {
+    expect(RESTORATION_STATUSES).not.toContain("en_proceso");
+    expect(toRestorationStatus("en_proceso")).toBe("aprobada");
+    expect(toRestorationStatus("lista")).toBe("lista");
+  });
+});
+
 describe("etiquetas", () => {
   it("todos los estados generales y ubicaciones tienen etiqueta", () => {
     expect(Object.keys(RESTORATION_STATUS_LABELS).sort()).toEqual(
@@ -185,8 +194,8 @@ describe("etiquetas", () => {
 
 describe("advanceRestorationStatus (P19: solo avanza)", () => {
   it("avanza cuando lo calculado es posterior", () => {
-    expect(advanceRestorationStatus("aprobada", "en_proceso")).toBe(
-      "en_proceso",
+    expect(advanceRestorationStatus("aprobada", "parcialmente_lista")).toBe(
+      "parcialmente_lista",
     );
     expect(advanceRestorationStatus("lista", "completada")).toBe("completada");
     expect(
@@ -204,7 +213,7 @@ describe("advanceRestorationStatus (P19: solo avanza)", () => {
   });
 
   it("no retrocede si una pieza lista se observa y vuelve al taller", () => {
-    expect(advanceRestorationStatus("lista", "en_proceso")).toBe("lista");
+    expect(advanceRestorationStatus("lista", "aprobada")).toBe("lista");
     expect(advanceRestorationStatus("completada", "parcialmente_lista")).toBe(
       "completada",
     );
@@ -213,7 +222,7 @@ describe("advanceRestorationStatus (P19: solo avanza)", () => {
   });
 
   it("si se anulan todas las piezas queda Anulada, y Anulada es final", () => {
-    expect(advanceRestorationStatus("en_proceso", "anulada")).toBe("anulada");
+    expect(advanceRestorationStatus("aprobada", "anulada")).toBe("anulada");
     expect(advanceRestorationStatus("anulada", "registrada")).toBe("anulada");
   });
 });

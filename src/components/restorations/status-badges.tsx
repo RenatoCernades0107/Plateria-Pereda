@@ -91,7 +91,6 @@ const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
   registrada: "outline",
   parcialmente_aprobada: "secondary",
   aprobada: "secondary",
-  en_proceso: "secondary",
   parcialmente_lista: "default",
   lista: "default",
   completada: "default",

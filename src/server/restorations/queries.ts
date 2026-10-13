@@ -3,10 +3,11 @@ import "server-only";
 import type { PaymentType } from "@/domain/money";
 import { toCents, type Cents } from "@/domain/money";
 import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
-import type {
-  PieceLocation,
-  RestorationOrigin,
-  RestorationStatus,
+import {
+  toRestorationStatus,
+  type PieceLocation,
+  type RestorationOrigin,
+  type RestorationStatus,
 } from "@/domain/restoration-status";
 import {
   listPiecesBoardArgs,
@@ -153,7 +154,7 @@ export async function getRestorationDetail(
   return {
     id: r.id,
     code: r.code!,
-    status: r.status!,
+    status: toRestorationStatus(r.status!),
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
@@ -330,7 +331,7 @@ export async function listRestorations(
       clientName: r.client_name ?? "",
       documentNumber: r.document_number,
       contactName: r.contact_name,
-      status: r.status,
+      status: toRestorationStatus(r.status),
       paymentStatus: r.payment_status,
       paymentType: r.payment_type,
       piecesCount: r.pieces_count,

@@ -180,7 +180,7 @@
           "readyForDelivery": false
         }
       ],
-      "expected": "en_proceso",
+      "expected": "parcialmente_aprobada",
       "readyForOrder": false
     },
     {
@@ -201,7 +201,7 @@
           "readyForDelivery": false
         }
       ],
-      "expected": "en_proceso",
+      "expected": "aprobada",
       "readyForOrder": true
     },
     {
@@ -362,7 +362,7 @@
           "readyForDelivery": false
         }
       ],
-      "expected": "en_proceso",
+      "expected": "aprobada",
       "readyForOrder": true
     },
     {
@@ -569,7 +569,7 @@
       "readyForOrder": false
     },
     {
-      "name": "una aprobada, una en el taller y otra por aprobar: manda En proceso",
+      "name": "una aprobada, una en el taller y otra por aprobar: Parcialmente aprobada (sin En proceso, P56)",
       "pieces": [
         {
           "status": "aprobada",
@@ -593,7 +593,7 @@
           "readyForDelivery": false
         }
       ],
-      "expected": "en_proceso",
+      "expected": "parcialmente_aprobada",
       "readyForOrder": false
     },
     {

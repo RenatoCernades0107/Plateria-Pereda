@@ -237,7 +237,7 @@ Recorrido físico: **Por WhatsApp** → **Sin enviar** → **En taller** → **E
 
 - Se envía al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
 
-### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅, P54 ✅)
+### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅, P54 ✅, P56 ✅)
 
 Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa en este orden:
 
@@ -245,10 +245,11 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 2. Todas entregadas → **Completada**
 3. Todas de vuelta del taller o entregadas → **Lista**
 4. Alguna de vuelta del taller o entregada → **Parcialmente lista**
-5. Alguna fue enviada al taller al menos una vez (`first_sent_at` con valor) → **En proceso**
-6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
-7. Alguna fue aprobada (y otras todavía no) → **Parcialmente aprobada** (P54)
-8. Si no → **Registrada**
+5. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
+6. Alguna fue aprobada (y otras todavía no) → **Parcialmente aprobada** (P54)
+7. Si no → **Registrada**
+
+_(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el taller la guía queda Aprobada o Parcialmente aprobada.)_
 
 - El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Rechazada y Anulada son finales.
 - Logística no ve las restauraciones pasadas (Completada, Anulada, y Rechazada sin piezas por devolver; D24, P48).
@@ -1151,6 +1152,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - [x] Otras listas que eran tarjetas en la computadora pasan a tabla (`Table` en escritorio, tarjetas `md:hidden` en el celular, como clientes y restauraciones): **contactos** de la empresa, **piezas cotizadas** de una cotización de WhatsApp (con fila de total) y **catálogos** (materiales, servicios, métodos de pago).
 - **Unit:** columnas de contactos y catálogos; acciones dentro de la fila de la tabla. **E2E:** clientes, cotizaciones de WhatsApp y catálogos (las tarjetas del celular usan `*-movil-*`).
 - Commit: `feat(ui): contactos, ítems de cotización y catálogos en tabla`
+
+#### Paso 12.7 — Sin el estado general "En proceso" (P56 ✅, 2026-10-13)
+- [x] El estado general ya no pasa a "En proceso" al enviar una pieza al taller (§7.3); las guías que estaban así pasan a Aprobada o Parcialmente aprobada.
+- [x] Etiqueta, insignia, columna del kanban de guías, filtro y CSV sin "En proceso"; un enlace viejo con `estado=en_proceso` se ignora.
+- **Unit / integración:** escenarios compartidos TS/BD actualizados; `toRestorationStatus`.
+- **BD:** `14_estados_piezas` (en el taller la guía sigue Aprobada) y `32_parcialmente_aprobada` (no se puede guardar En proceso).
+- **E2E:** filtros y kanban de guías con Parcialmente lista; enviar al taller deja la guía Aprobada.
+- Hecho (2026-10-13): migración `20261014160000_sin_en_proceso.sql` (`derive_restoration_status` sin la rama, recálculo de las guías En proceso y check `restorations_status_sin_en_proceso`). El valor queda en el enum de Postgres sin uso: quitarlo obligaría a recrear el tipo y todas las funciones y vistas que lo usan.
+- Commit: `feat(restauraciones): quita el estado general «En proceso»`
 
 ### Fase 13 — Dashboard
 

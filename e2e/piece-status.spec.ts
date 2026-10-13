@@ -143,7 +143,8 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, code)).toContainText("Interno");
     await expect(card(page, code)).toContainText("En taller");
     await expect(card(page, code)).toContainText(workshopName);
-    await expect(restorationStatus(page)).toHaveText("En proceso");
+    // Sin "En proceso" (P56): mientras está en el taller la guía sigue Aprobada.
+    await expect(restorationStatus(page)).toHaveText("Aprobada");
 
     await pieceAction(page, code, "Recibir del taller");
     await expect(card(page, code)).toContainText("En tienda");

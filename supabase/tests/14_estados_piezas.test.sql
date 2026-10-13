@@ -123,8 +123,8 @@ select results_eq(
        p.last_sent_at is not null, p.ready_for_delivery
      from public.restorations r join public.pieces p on p.restoration_id = r.id
      where p.id = '00000000-0000-0000-0000-00000000aa41' $$,
-  $$ values ('en_proceso', 'en_taller', '00000000-0000-0000-0000-00000000aa10', true, true, false) $$,
-  'en el taller: restauración En proceso, pieza En taller con su taller y fechas de envío'
+  $$ values ('aprobada', 'en_taller', '00000000-0000-0000-0000-00000000aa10', true, true, false) $$,
+  'en el taller: la restauración sigue Aprobada (sin En proceso, P56), pieza En taller con su taller y fechas de envío'
 );
 
 set local role authenticated;
@@ -390,11 +390,11 @@ select is(
 );
 
 select is(
-  public.advance_restoration_status('lista', 'en_proceso')::text, 'lista',
+  public.advance_restoration_status('lista', 'aprobada')::text, 'lista',
   'advance_restoration_status no retrocede'
 );
 select is(
-  public.advance_restoration_status('en_proceso', 'anulada')::text, 'anulada',
+  public.advance_restoration_status('aprobada', 'anulada')::text, 'anulada',
   'si se anulan todas las piezas queda Anulada'
 );
 

@@ -13,7 +13,7 @@ const item: RestorationListItem = {
   clientName: "Ana Pérez",
   documentNumber: null,
   contactName: null,
-  status: "en_proceso",
+  status: "parcialmente_lista",
   paymentStatus: "parcial",
   paymentType: "a_cuenta",
   piecesCount: 2,
@@ -38,7 +38,7 @@ describe("RestorationsList", () => {
     expect(
       within(row).getByRole("link", { name: "RES-00001" }),
     ).toHaveAttribute("href", "/restauraciones/r1");
-    expect(row).toHaveTextContent("En proceso");
+    expect(row).toHaveTextContent("Parcialmente lista");
     expect(row).toHaveTextContent("Pago parcial");
     expect(row).toHaveTextContent("S/ 1,234.50");
     expect(

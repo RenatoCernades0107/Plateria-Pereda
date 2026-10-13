@@ -10,7 +10,7 @@ describe("restorationsCsv", () => {
         clientName: 'Joyería "Andina", S.A.C.',
         documentNumber: "20100047218",
         contactName: null,
-        status: "en_proceso",
+        status: "parcialmente_lista",
         paymentStatus: "parcial",
         paymentType: "a_cuenta",
         piecesCount: 3,
@@ -24,7 +24,7 @@ describe("restorationsCsv", () => {
     expect(csv.startsWith("﻿Código,Fecha,Cliente")).toBe(true);
     const [, row] = csv.slice(1).split("\r\n");
     expect(row).toBe(
-      'RES-00001,2026-09-30,"Joyería ""Andina"", S.A.C.",20100047218,,En proceso,Pago parcial,A cuenta,3,1234.50,617.25,617.25,WhatsApp',
+      'RES-00001,2026-09-30,"Joyería ""Andina"", S.A.C.",20100047218,,Parcialmente lista,Pago parcial,A cuenta,3,1234.50,617.25,617.25,WhatsApp',
     );
   });
 
