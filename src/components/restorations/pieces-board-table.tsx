@@ -156,9 +156,6 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Servicio
               </th>
-              <th scope="col" className={head}>
-                Material · medida · peso
-              </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>
                   Costo servicio
@@ -169,6 +166,9 @@ export function PiecesBoardTable({
                   Precio venta
                 </th>
               ) : null}
+              <th scope="col" className={head}>
+                Material · medida · peso
+              </th>
               <th scope="col" className={head}>
                 Estado
               </th>
@@ -242,15 +242,6 @@ export function PiecesBoardTable({
                     <span className="text-muted-foreground">—</span>
                   )}
                 </td>
-                <td className={cn(cell, "text-muted-foreground max-w-40")}>
-                  {[
-                    piece.materialName,
-                    piece.measure,
-                    weight(piece.weightGrams),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
-                </td>
                 {showCost ? (
                   <td className={cn(cell, "text-right")}>
                     <ServiceCostInput
@@ -269,6 +260,15 @@ export function PiecesBoardTable({
                     />
                   </td>
                 ) : null}
+                <td className={cn(cell, "text-muted-foreground max-w-40")}>
+                  {[
+                    piece.materialName,
+                    piece.measure,
+                    weight(piece.weightGrams),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </td>
                 <td className={cell}>
                   <div className="flex flex-col items-start gap-1">
                     <PieceStatusBadge status={piece.status} />
