@@ -17,6 +17,7 @@ import {
 } from "@/domain/piece-board-filters";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { boardBalanceDue } from "@/server/restorations/board-balance";
 import { listPiecesBoard } from "@/server/restorations/queries";
 
 export const metadata: Metadata = { title: "Piezas" };
@@ -36,6 +37,9 @@ export default async function PiezasPage({
       .order("name"),
   ]);
   if (workshops.error) throw workshops.error;
+  // "Entregar" desde una fila de la tabla pide confirmar si falta cobrar el saldo.
+  const balanceDue =
+    filters.view === "kanban" ? [] : await boardBalanceDue(items);
 
   return (
     <div className="space-y-4">
@@ -82,6 +86,7 @@ export default async function PiezasPage({
       ) : (
         <>
           <PiecesBoardTable
+            balanceDue={balanceDue}
             pieces={items}
             role={user.role}
             workshops={workshops.data}

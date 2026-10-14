@@ -1,8 +1,14 @@
 "use client";
 
-import { AlertTriangle, Check, Loader2, Pencil } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+} from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +22,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -43,6 +56,7 @@ import {
   WORKSHOP_LOCKED,
 } from "./pieces-bulk-bar";
 import { PiecesExportButtons } from "./pieces-export";
+import { usePieceActions, type PieceAction } from "./piece-status-actions";
 import {
   LocationBadge,
   PieceStatusBadge,
@@ -184,6 +198,233 @@ function WorkshopCell({
 }
 
 /**
+ * Menú discreto (⋯) de una fila con lo que el rol puede hacer con la pieza ahora:
+ * los cambios de estado permitidos y llegada, vuelta del taller o devolución. Lo
+ * elegido se hace cuando el menú terminó de cerrarse, así el diálogo que abra (nota,
+ * taller, confirmación, entrega con saldo) recibe el foco.
+ */
+function PieceActionsMenu({
+  code,
+  actions,
+}: {
+  code: string;
+  actions: PieceAction[];
+}) {
+  const chosen = useRef<(() => void) | null>(null);
+  if (actions.length === 0) return null;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="print:hidden"
+          aria-label={`Cambiar estado de ${code}`}
+          title="Cambiar estado"
+        >
+          <MoreHorizontal aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="min-w-48"
+        onCloseAutoFocus={() => {
+          const action = chosen.current;
+          chosen.current = null;
+          action?.();
+        }}
+      >
+        <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+        {actions.map((a) => (
+          <DropdownMenuItem
+            key={a.key}
+            disabled={a.disabled}
+            variant={a.destructive ? "destructive" : "default"}
+            onSelect={() => {
+              chosen.current = a.onSelect;
+            }}
+          >
+            {a.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * Fila de la tabla. El estado se cambia desde aquí con las mismas reglas y diálogos
+ * que en el detalle de la pieza (`usePieceActions`); el cambio se ve al instante.
+ * Sin datos de pagos de la guía, aprobar la última pieza no ofrece el adelanto (como
+ * en el kanban y las acciones masivas); entregar con saldo pendiente sí pide
+ * confirmarlo y la BD lo exige igual.
+ */
+function BoardRow({
+  piece,
+  role,
+  workshops,
+  selected,
+  onToggle,
+  showCost,
+  showPrice,
+  editingPrices,
+  assignTaller,
+  balanceDue,
+}: {
+  piece: BoardPiece;
+  role: AppRole;
+  workshops: WorkshopOption[];
+  selected: boolean;
+  onToggle: (on: boolean) => void;
+  showCost: boolean;
+  showPrice: boolean;
+  editingPrices: boolean;
+  assignTaller: boolean;
+  balanceDue: boolean;
+}) {
+  const {
+    piece: live,
+    pending,
+    actions,
+    balanceWarning,
+    dialogs,
+  } = usePieceActions({
+    restorationId: piece.restorationId,
+    piece,
+    role,
+    workshops,
+    balanceDue,
+  });
+  const cell = "px-3 py-2 align-top";
+
+  return (
+    <>
+      <tr
+        className={cn(
+          "hover:bg-muted/30 cursor-pointer",
+          isLongInWorkshop(piece) && "bg-destructive/5",
+        )}
+        data-testid={`pieza-${piece.code}`}
+        onClick={navigateRow}
+      >
+        <td className={cell}>
+          {isSelectable(piece, role) ? (
+            <input
+              type="checkbox"
+              className="accent-primary mt-1 size-4"
+              aria-label={`Elegir ${piece.code}`}
+              checked={selected}
+              onChange={(e) => onToggle(e.target.checked)}
+            />
+          ) : null}
+        </td>
+        <td className={cell}>
+          <PiecePhoto code={piece.code} url={piece.photoUrl} />
+        </td>
+        <td className={cn(cell, "whitespace-nowrap")}>
+          <Link
+            href={pieceHref(piece)}
+            data-primary-link
+            className="text-heading font-medium underline-offset-4 hover:underline"
+          >
+            {piece.code}
+          </Link>
+          {piece.urgent ? (
+            <div className="mt-1">
+              <UrgentBadge />
+            </div>
+          ) : null}
+        </td>
+        <td className={cn(cell, "max-w-44")}>
+          <Link
+            href={`/restauraciones/${piece.restorationId}`}
+            className="whitespace-nowrap underline-offset-4 hover:underline"
+            aria-label={`Ver guía ${piece.restorationCode}`}
+          >
+            {piece.restorationCode}
+          </Link>
+          <p className="text-muted-foreground text-xs">{piece.clientName}</p>
+        </td>
+        <td className={cn(cell, "max-w-60 min-w-44")}>
+          <p className="break-words">{piece.description}</p>
+          {piece.lastObservation ? (
+            <p className="mt-1 text-xs break-words">
+              <span className="text-muted-foreground">
+                Última observación:{" "}
+              </span>
+              {piece.lastObservation}
+            </p>
+          ) : null}
+        </td>
+        <td className={cn(cell, "max-w-36")}>
+          {piece.serviceName || (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </td>
+        {showCost ? (
+          <td className={cn(cell, "text-right")} data-row-click="ignore">
+            <ServiceCostCell piece={piece} cents={piece.serviceCostCents} />
+          </td>
+        ) : null}
+        {showPrice ? (
+          <td className={cn(cell, "text-right")} data-row-click="ignore">
+            <BoardSalePriceCell
+              piece={piece}
+              cents={piece.priceCents}
+              hasOrder={piece.hasOrder}
+              editing={editingPrices}
+            />
+          </td>
+        ) : null}
+        <td className={cn(cell, "text-muted-foreground max-w-40")}>
+          {materialSummary(piece)}
+        </td>
+        <td className={cell}>
+          <div className="flex items-center gap-1">
+            <PieceStatusBadge status={live.status} />
+            <PieceActionsMenu code={piece.code} actions={actions} />
+            {pending ? (
+              <Loader2
+                className="text-muted-foreground size-4 animate-spin"
+                aria-label="Guardando"
+              />
+            ) : null}
+          </div>
+          {balanceWarning ? (
+            <p className="text-destructive mt-1 text-xs">
+              Falta cobrar el saldo
+            </p>
+          ) : null}
+        </td>
+        <td className={cell}>
+          <LocationBadge location={live.location} />
+        </td>
+        <td className={cell}>
+          <StatusAge
+            // Recién cambiado (optimista): cuenta desde hoy.
+            piece={
+              live.status === piece.status ? piece : { ...live, statusDays: 0 }
+            }
+            compact
+          />
+        </td>
+        <td className={cell}>
+          <WorkshopCell
+            piece={piece}
+            workshops={workshops}
+            editable={assignTaller && !WORKSHOP_LOCKED.includes(live.status)}
+          />
+        </td>
+        <td className={cell}>
+          <Days piece={piece} />
+        </td>
+      </tr>
+      {dialogs}
+    </>
+  );
+}
+
+/**
  * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
  * "Antes" de cada pieza y sus datos principales; logística y el admin ingresan el
  * costo de servicio y, viéndolo, el admin pone el precio de venta (D58). Ventas ve el
@@ -194,10 +435,13 @@ export function PiecesBoardTable({
   pieces,
   role,
   workshops,
+  balanceDue = [],
 }: {
   pieces: BoardPiece[];
   role: AppRole;
   workshops: WorkshopOption[];
+  /** Restauraciones a las que les falta cobrar el saldo para entregar (P45). */
+  balanceDue?: string[];
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const chosen = pieces.filter((p) => selected.includes(p.id));
@@ -221,7 +465,6 @@ export function PiecesBoardTable({
   }
 
   const head = "px-3 py-2 text-left font-medium whitespace-nowrap";
-  const cell = "px-3 py-2 align-top";
 
   return (
     <div className="space-y-3">
@@ -315,120 +558,19 @@ export function PiecesBoardTable({
           </thead>
           <tbody className="divide-y">
             {pieces.map((piece) => (
-              <tr
+              <BoardRow
                 key={piece.id}
-                className={cn(
-                  "hover:bg-muted/30 cursor-pointer",
-                  isLongInWorkshop(piece) && "bg-destructive/5",
-                )}
-                data-testid={`pieza-${piece.code}`}
-                onClick={navigateRow}
-              >
-                <td className={cell}>
-                  {isSelectable(piece, role) ? (
-                    <input
-                      type="checkbox"
-                      className="accent-primary mt-1 size-4"
-                      aria-label={`Elegir ${piece.code}`}
-                      checked={selected.includes(piece.id)}
-                      onChange={(e) => toggle(piece.id, e.target.checked)}
-                    />
-                  ) : null}
-                </td>
-                <td className={cell}>
-                  <PiecePhoto code={piece.code} url={piece.photoUrl} />
-                </td>
-                <td className={cn(cell, "whitespace-nowrap")}>
-                  <Link
-                    href={pieceHref(piece)}
-                    data-primary-link
-                    className="text-heading font-medium underline-offset-4 hover:underline"
-                  >
-                    {piece.code}
-                  </Link>
-                  {piece.urgent ? (
-                    <div className="mt-1">
-                      <UrgentBadge />
-                    </div>
-                  ) : null}
-                </td>
-                <td className={cn(cell, "max-w-44")}>
-                  <Link
-                    href={`/restauraciones/${piece.restorationId}`}
-                    className="whitespace-nowrap underline-offset-4 hover:underline"
-                    aria-label={`Ver guía ${piece.restorationCode}`}
-                  >
-                    {piece.restorationCode}
-                  </Link>
-                  <p className="text-muted-foreground text-xs">
-                    {piece.clientName}
-                  </p>
-                </td>
-                <td className={cn(cell, "max-w-60 min-w-44")}>
-                  <p className="break-words">{piece.description}</p>
-                  {piece.lastObservation ? (
-                    <p className="mt-1 text-xs break-words">
-                      <span className="text-muted-foreground">
-                        Última observación:{" "}
-                      </span>
-                      {piece.lastObservation}
-                    </p>
-                  ) : null}
-                </td>
-                <td className={cn(cell, "max-w-36")}>
-                  {piece.serviceName || (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </td>
-                {showCost ? (
-                  <td
-                    className={cn(cell, "text-right")}
-                    data-row-click="ignore"
-                  >
-                    <ServiceCostCell
-                      piece={piece}
-                      cents={piece.serviceCostCents}
-                    />
-                  </td>
-                ) : null}
-                {showPrice ? (
-                  <td
-                    className={cn(cell, "text-right")}
-                    data-row-click="ignore"
-                  >
-                    <BoardSalePriceCell
-                      piece={piece}
-                      cents={piece.priceCents}
-                      hasOrder={piece.hasOrder}
-                      editing={editPrice && editingPrices}
-                    />
-                  </td>
-                ) : null}
-                <td className={cn(cell, "text-muted-foreground max-w-40")}>
-                  {materialSummary(piece)}
-                </td>
-                <td className={cell}>
-                  <PieceStatusBadge status={piece.status} />
-                </td>
-                <td className={cell}>
-                  <LocationBadge location={piece.location} />
-                </td>
-                <td className={cell}>
-                  <StatusAge piece={piece} compact />
-                </td>
-                <td className={cell}>
-                  <WorkshopCell
-                    piece={piece}
-                    workshops={workshops}
-                    editable={
-                      assignTaller && !WORKSHOP_LOCKED.includes(piece.status)
-                    }
-                  />
-                </td>
-                <td className={cell}>
-                  <Days piece={piece} />
-                </td>
-              </tr>
+                piece={piece}
+                role={role}
+                workshops={workshops}
+                selected={selected.includes(piece.id)}
+                onToggle={(on) => toggle(piece.id, on)}
+                showCost={showCost}
+                showPrice={showPrice}
+                editingPrices={editPrice && editingPrices}
+                assignTaller={assignTaller}
+                balanceDue={balanceDue.includes(piece.restorationId)}
+              />
             ))}
           </tbody>
         </table>

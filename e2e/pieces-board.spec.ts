@@ -441,4 +441,29 @@ test.describe("Vista de piezas", () => {
     await expect(page.getByTestId(`historial-${before!.code}`)).toBeVisible();
     await expect(page.getByTestId(`historial-${today!.code}`)).toBeVisible();
   });
+
+  test("cambia el estado desde la fila de la tabla, con su diálogo si pide datos", async ({
+    page,
+    loginAs,
+  }) => {
+    const { pieces } = await seedReceived(1, "Fila estado");
+    const code = pieces[0]!.code;
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=Fila estado`);
+    const row = page.getByTestId(`pieza-${code}`);
+    await row
+      .getByRole("button", { name: `Cambiar estado de ${code}` })
+      .click();
+    await page.getByRole("menuitem", { name: "Enviar al taller" }).click();
+    const dialog = page.getByRole("dialog", {
+      name: `Enviar al taller: ${code}`,
+    });
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .click();
+    await expect(row).toContainText("En restauración");
+    await expect(row).toContainText(workshopName);
+  });
 });

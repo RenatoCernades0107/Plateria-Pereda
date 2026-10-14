@@ -19,6 +19,10 @@ vi.mock("@/server/service-cost-actions", () => ({
 vi.mock("@/server/sale-price-actions", () => ({
   setPieceSalePrice: vi.fn(async () => ({ ok: true })),
 }));
+vi.mock("@/server/payments/actions", () => ({
+  approveWithPayment: vi.fn(),
+  deliverWithBalance: vi.fn(),
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const base: BoardPiece = {
@@ -397,5 +401,107 @@ describe("PiecesBoardTable", () => {
     expect(
       screen.getByText("No hay piezas con esos filtros."),
     ).toBeInTheDocument();
+  });
+
+  describe("cambiar el estado desde la fila", () => {
+    it("muestra solo los cambios permitidos y aplica los directos", async () => {
+      const { changePieceStatus } =
+        await import("@/server/restorations/status-actions");
+      vi.mocked(changePieceStatus).mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable
+          role="admin"
+          workshops={[]}
+          pieces={[{ ...base, status: "registrada" }]}
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Cambiar estado de RES-00001-1" }),
+      );
+      const items = screen
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent);
+      expect(items).toEqual(["Poner en consulta", "Aprobar", "Anular"]);
+      await user.click(screen.getByRole("menuitem", { name: "Aprobar" }));
+      expect(changePieceStatus).toHaveBeenCalledWith(
+        "r1",
+        ["p1"],
+        "aprobada",
+        null,
+        null,
+      );
+    });
+
+    it("lo que pide datos abre su diálogo (taller para enviar)", async () => {
+      const { changePieceStatus } =
+        await import("@/server/restorations/status-actions");
+      vi.mocked(changePieceStatus).mockClear();
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable
+          role="logistica"
+          workshops={[{ id: "w1", name: "Taller Central" }]}
+          pieces={[base]}
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Cambiar estado de RES-00001-1" }),
+      );
+      await user.click(
+        screen.getByRole("menuitem", { name: "Enviar al taller" }),
+      );
+      const dialog = await screen.findByRole("dialog", {
+        name: "Enviar al taller: RES-00001-1",
+      });
+      expect(within(dialog).getByLabelText("Taller")).toBeInTheDocument();
+      expect(changePieceStatus).not.toHaveBeenCalled();
+    });
+
+    it("sin acciones para el rol no muestra el menú", () => {
+      render(
+        <PiecesBoardTable
+          role="logistica"
+          workshops={[]}
+          pieces={[{ ...base, status: "registrada" }]}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: "Cambiar estado de RES-00001-1" }),
+      ).toBeNull();
+    });
+
+    it("con saldo pendiente, entregar pide confirmarlo", async () => {
+      const { changePieceStatus } =
+        await import("@/server/restorations/status-actions");
+      vi.mocked(changePieceStatus).mockClear();
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable
+          role="ventas"
+          workshops={[]}
+          balanceDue={["r1"]}
+          pieces={[
+            {
+              ...base,
+              status: "enviada_taller",
+              location: "en_tienda",
+              readyForDelivery: true,
+            },
+          ]}
+        />,
+      );
+      expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
+        "Falta cobrar el saldo",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Cambiar estado de RES-00001-1" }),
+      );
+      await user.click(screen.getByRole("menuitem", { name: "Entregar" }));
+      expect(
+        await screen.findByRole("dialog", { name: "Falta cobrar el saldo" }),
+      ).toBeInTheDocument();
+      expect(changePieceStatus).not.toHaveBeenCalled();
+    });
   });
 });
