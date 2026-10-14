@@ -186,7 +186,7 @@ test.describe("Restauraciones", () => {
     ).toBeVisible();
     // El servicio es obligatorio (D59).
     await expect(page.getByText("Elige o escribe el servicio")).toBeVisible();
-    // El precio de venta es opcional: queda "Sin asignar" (D58).
+    // El precio de venta es opcional: queda "Por definir" (D58).
     await expect(page.getByText("Ingresa el precio")).toHaveCount(0);
     // El IGV ya viene respondido: por defecto no incluido (D59).
     await expect(page.getByLabel(/No, se suma el IGV/)).toBeChecked();
@@ -270,7 +270,7 @@ test.describe("Restauraciones", () => {
     await expect(card.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
       "placeholder",
-      "Sin asignar",
+      "Por definir",
     );
     await expect(
       card.getByText("Solo el administrador asigna el precio de venta."),

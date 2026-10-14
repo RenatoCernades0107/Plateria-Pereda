@@ -11,7 +11,14 @@ import {
   ZoomIn,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import {
+  type KeyboardEvent,
+  type TouchEvent,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   FILE_CATEGORY_LABELS,
+  type FileCategory,
   formatFileSize,
   groupByCategory,
 } from "@/domain/files";
@@ -38,6 +46,39 @@ import type { FileTarget } from "./types";
 /** Los navegadores (salvo Safari) no muestran HEIC: se ve como archivo para descargar. */
 const VIEWABLE = new Set(["image/jpeg", "image/png", "image/webp"]);
 const viewable = (f: RestorationFile) => VIEWABLE.has(f.mimeType) && !!f.url;
+
+/** Qué recorre el visor: las fotos del destino o sus demás archivos (PDF, HEIC). */
+type ViewKind = "images" | "others";
+
+/** Distancia horizontal mínima (px) para que deslizar cambie de foto. */
+const SWIPE_PX = 40;
+
+/** Flechas ← → del teclado y deslizar con el dedo para pasar de foto. */
+function useStepper(onPrev?: () => void, onNext?: () => void) {
+  const touchX = useRef<number | null>(null);
+  return {
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && onPrev) {
+        e.preventDefault();
+        onPrev();
+      } else if (e.key === "ArrowRight" && onNext) {
+        e.preventDefault();
+        onNext();
+      }
+    },
+    onTouchStart: (e: TouchEvent) => {
+      touchX.current = e.touches[0]?.clientX ?? null;
+    },
+    onTouchEnd: (e: TouchEvent) => {
+      const start = touchX.current;
+      touchX.current = null;
+      const end = e.changedTouches[0]?.clientX;
+      if (start === null || end === undefined) return;
+      if (end - start > SWIPE_PX) onPrev?.();
+      else if (start - end > SWIPE_PX) onNext?.();
+    },
+  };
+}
 
 function Thumbnail({
   file,
@@ -54,6 +95,7 @@ function Thumbnail({
         src={file.url!}
         alt={file.name}
         loading="lazy"
+        draggable={false}
         className={cn("bg-muted size-full object-cover", className)}
       />
     );
@@ -93,8 +135,11 @@ function Comparison({
   ) => (
     <figure className="min-w-0 space-y-2">
       <figcaption className="font-medium">{label}</figcaption>
-      <div className="aspect-square overflow-hidden rounded-md border">
-        <Thumbnail file={files[index]!} className="object-contain" />
+      <div className="bg-muted/60 aspect-square overflow-hidden rounded-md border">
+        <Thumbnail
+          file={files[index]!}
+          className="bg-transparent object-contain"
+        />
       </div>
       {files.length > 1 ? (
         <div className="flex flex-wrap gap-1">
@@ -106,8 +151,8 @@ function Comparison({
               aria-pressed={i === index}
               onClick={() => select(i)}
               className={cn(
-                "size-12 overflow-hidden rounded border",
-                i === index && "ring-primary ring-2",
+                "size-12 overflow-hidden rounded-md border-2 border-transparent",
+                i === index && "border-primary",
               )}
             >
               <Thumbnail file={f} />
@@ -151,7 +196,7 @@ function useDeleteFile(file: RestorationFile, onDone: () => void) {
   return { remove, pending, error };
 }
 
-/** Confirmación antes de borrar desde la miniatura. */
+/** Confirmación antes de borrar desde la galería. */
 function DeleteDialog({
   file,
   onClose,
@@ -206,8 +251,8 @@ function DeleteDialog({
 }
 
 /**
- * Visor ampliado (lightbox): la foto grande, con anterior/siguiente (botones y
- * flechas del teclado) entre los archivos del mismo destino, descarga y borrado.
+ * Visor ampliado (lightbox): la foto grande, con anterior/siguiente (botones,
+ * flechas del teclado y deslizar) entre las fotos del mismo destino, descarga y borrado.
  */
 function Viewer({
   files,
@@ -230,16 +275,17 @@ function Viewer({
     if (total < 2) return;
     onNavigate((index + step + total) % total);
   };
+  const stepper = useStepper(
+    () => go(-1),
+    () => go(1),
+  );
 
   return (
     <Dialog open onOpenChange={(open) => (open ? null : onClose())}>
       <DialogContent
         className="sm:max-w-4xl"
         data-testid="visor"
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft") go(-1);
-          if (event.key === "ArrowRight") go(1);
-        }}
+        onKeyDown={stepper.onKeyDown}
       >
         <DialogHeader>
           <DialogTitle className="pr-6 break-all">{file.name}</DialogTitle>
@@ -251,7 +297,11 @@ function Viewer({
             {formatDateTime(file.createdAt)}
           </DialogDescription>
         </DialogHeader>
-        <div className="relative">
+        <div
+          className="relative"
+          onTouchStart={stepper.onTouchStart}
+          onTouchEnd={stepper.onTouchEnd}
+        >
           {viewable(file) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -339,67 +389,367 @@ function Viewer({
   );
 }
 
-/** Miniatura que abre el visor, con su botón de borrar (si se puede). */
-function GalleryItem({
-  file,
+/** Etiqueta de clasificación sobre la foto: «Después» resalta con el color principal. */
+function CategoryBadge({
+  category,
+  className,
+}: {
+  category: FileCategory;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium shadow-sm",
+        category === "despues"
+          ? "bg-primary text-primary-foreground"
+          : "bg-background/90 text-foreground border",
+        className,
+      )}
+    >
+      {FILE_CATEGORY_LABELS[category]}
+    </span>
+  );
+}
+
+/** Botón redondo semitransparente que va encima de la foto. */
+const OVERLAY_BUTTON =
+  "bg-background/85 text-foreground hover:bg-background absolute rounded-full shadow-sm backdrop-blur-sm";
+
+/**
+ * Las fotos de un destino, al estilo de una ficha de producto: una grande (con su
+ * clasificación, flechas, teclado y deslizar), un selector Antes / Después con
+ * cuántas hay y las miniaturas debajo, agrupadas por clasificación. Lo que no se ve
+ * como foto (PDF, HEIC) va aparte, en una lista compacta.
+ */
+function TargetSection({
+  target,
+  files,
+  showLabel,
   canDelete,
   onOpen,
   onDelete,
+  onCompare,
 }: {
-  file: RestorationFile;
-  canDelete: boolean;
-  onOpen: () => void;
-  onDelete: () => void;
+  target: FileTarget;
+  files: RestorationFile[];
+  showLabel: boolean;
+  canDelete: (file: RestorationFile) => boolean;
+  onOpen: (file: RestorationFile, kind: ViewKind) => void;
+  onDelete: (file: RestorationFile) => void;
+  onCompare?: () => void;
 }) {
-  const image = viewable(file);
+  const groups = groupByCategory(files.filter(viewable));
+  const images = groups.flatMap((g) => g.files);
+  const others = groupByCategory(files.filter((f) => !viewable(f))).flatMap(
+    (g) => g.files,
+  );
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Si la foto elegida se borró, vuelve a la primera.
+  const index = Math.max(
+    0,
+    images.findIndex((f) => f.id === selectedId),
+  );
+  const current = images[index];
+  const many = images.length > 1;
+
+  const select = (i: number) => {
+    const n = images.length;
+    if (n > 0) setSelectedId(images[(i + n) % n]!.id);
+  };
+  const prev = many ? () => select(index - 1) : undefined;
+  const next = many ? () => select(index + 1) : undefined;
+  const stepper = useStepper(prev, next);
+
+  // Lleva la miniatura elegida a la vista dentro de la tira, sin mover la página.
+  const strip = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = strip.current;
+    if (!selectedId || !box) return;
+    const thumb = box.querySelector<HTMLElement>(
+      `[data-file-id="${selectedId}"]`,
+    );
+    if (!thumb) return;
+    const left = thumb.offsetLeft - box.clientWidth / 2 + thumb.clientWidth / 2;
+    box.scrollTo?.({ left, behavior: "smooth" });
+  }, [selectedId]);
+
+  const headingId = `archivos-${target.id ?? "general"}`;
+
   return (
-    <li className="group relative" data-testid="miniatura">
-      <button
-        type="button"
-        aria-label={`Ver ${file.name}`}
-        title={image ? "Ver en grande" : "Ver archivo"}
-        onClick={onOpen}
+    <section
+      aria-labelledby={headingId}
+      className="min-w-0 space-y-3"
+      data-testid={headingId}
+    >
+      <div
         className={cn(
-          "focus-visible:ring-ring relative block aspect-square w-full overflow-hidden rounded-md border transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:outline-none",
-          image ? "cursor-zoom-in" : "cursor-pointer",
+          "flex flex-wrap items-center justify-between gap-2",
+          !showLabel && !onCompare && "sr-only",
         )}
       >
-        <Thumbnail
-          file={file}
-          className={cn(
-            image && "transition-transform duration-200 group-hover:scale-105",
-          )}
-        />
-        {image ? (
-          <span
-            aria-hidden
-            className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100"
-          >
-            <ZoomIn className="size-6 drop-shadow" />
-          </span>
-        ) : null}
-      </button>
-      {canDelete ? (
-        <Button
-          type="button"
-          size="icon"
-          variant="destructive"
-          aria-label={`Borrar ${file.name}`}
-          title="Borrar"
-          onClick={onDelete}
-          className="absolute top-1 right-1 size-7 rounded-full shadow transition-opacity focus-visible:opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+        <h2
+          id={headingId}
+          className={cn("min-w-0 font-semibold", !showLabel && "sr-only")}
         >
-          <Trash2 className="size-3.5" />
-        </Button>
+          {target.label}
+        </h2>
+        {onCompare ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onCompare}
+            className={cn(!showLabel && "ml-auto")}
+          >
+            <Columns2 />
+            Comparar antes y después
+          </Button>
+        ) : null}
+      </div>
+
+      {current ? (
+        <div className="space-y-2.5">
+          <div
+            role="group"
+            aria-roledescription="carrusel"
+            aria-label="Fotos"
+            tabIndex={many ? 0 : undefined}
+            onKeyDown={stepper.onKeyDown}
+            onTouchStart={stepper.onTouchStart}
+            onTouchEnd={stepper.onTouchEnd}
+            className="bg-muted/60 focus-visible:ring-ring/50 group relative aspect-[4/3] w-full overflow-hidden rounded-lg border outline-none focus-visible:ring-[3px]"
+            data-testid="foto-principal"
+          >
+            <button
+              type="button"
+              aria-label={`Ver ${current.name}`}
+              title="Ver en grande"
+              onClick={() => onOpen(current, "images")}
+              className="block size-full cursor-zoom-in"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={current.id}
+                src={current.url!}
+                alt={current.name}
+                draggable={false}
+                className="size-full object-contain"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/10 group-hover:opacity-100"
+              >
+                <ZoomIn className="size-7 drop-shadow" />
+              </span>
+            </button>
+            <CategoryBadge
+              category={current.category}
+              className="pointer-events-none absolute top-2 left-2"
+            />
+            {canDelete(current) ? (
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="outline"
+                aria-label={`Borrar ${current.name}`}
+                title="Borrar"
+                onClick={() => onDelete(current)}
+                className={cn(
+                  OVERLAY_BUTTON,
+                  "hover:text-destructive top-2 right-2",
+                )}
+              >
+                <Trash2 />
+              </Button>
+            ) : null}
+            {prev ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Foto anterior"
+                onClick={prev}
+                className={cn(
+                  OVERLAY_BUTTON,
+                  "top-1/2 left-2 -translate-y-1/2",
+                )}
+              >
+                <ChevronLeft className="size-5" />
+              </Button>
+            ) : null}
+            {next ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                aria-label="Foto siguiente"
+                onClick={next}
+                className={cn(
+                  OVERLAY_BUTTON,
+                  "top-1/2 right-2 -translate-y-1/2",
+                )}
+              >
+                <ChevronRight className="size-5" />
+              </Button>
+            ) : null}
+            {many ? (
+              <span
+                aria-live="polite"
+                className="bg-background/85 pointer-events-none absolute right-2 bottom-2 rounded-full px-2 py-0.5 text-xs tabular-nums shadow-sm"
+              >
+                {index + 1} de {images.length}
+              </span>
+            ) : null}
+          </div>
+
+          {groups.length > 1 ? (
+            <div
+              role="group"
+              aria-label="Clasificación"
+              className="bg-muted inline-flex max-w-full gap-1 overflow-x-auto rounded-lg p-1"
+            >
+              {groups.map((g) => {
+                const active = g.category === current.category;
+                return (
+                  <button
+                    key={g.category}
+                    type="button"
+                    aria-pressed={active}
+                    aria-label={`${FILE_CATEGORY_LABELS[g.category]} (${g.files.length})`}
+                    onClick={() => setSelectedId(g.files[0]!.id)}
+                    className={cn(
+                      "focus-visible:ring-ring/50 inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px]",
+                      active
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {FILE_CATEGORY_LABELS[g.category]}
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 text-xs tabular-nums",
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background/70",
+                      )}
+                    >
+                      {g.files.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {many ? (
+            <div
+              ref={strip}
+              className="relative flex snap-x gap-3 overflow-x-auto pb-1"
+            >
+              {groups.map((g) => (
+                <div
+                  key={g.category}
+                  role="group"
+                  aria-label={`${FILE_CATEGORY_LABELS[g.category]} (${g.files.length})`}
+                  className="flex shrink-0 flex-col gap-1"
+                >
+                  <span
+                    aria-hidden
+                    className="text-muted-foreground text-xs font-medium"
+                  >
+                    {FILE_CATEGORY_LABELS[g.category]}
+                  </span>
+                  <ul className="flex gap-1.5">
+                    {g.files.map((f) => {
+                      const selected = f.id === current.id;
+                      return (
+                        <li
+                          key={f.id}
+                          className="snap-start"
+                          data-testid="miniatura"
+                        >
+                          <button
+                            type="button"
+                            data-file-id={f.id}
+                            aria-label={`Mostrar ${f.name}`}
+                            aria-current={selected ? "true" : undefined}
+                            onClick={() => setSelectedId(f.id)}
+                            className={cn(
+                              "focus-visible:ring-ring/50 block size-14 overflow-hidden rounded-md border-2 transition outline-none focus-visible:ring-[3px] sm:size-16",
+                              selected
+                                ? "border-primary"
+                                : "border-transparent opacity-70 hover:opacity-100",
+                            )}
+                          >
+                            <Thumbnail file={f} />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       ) : null}
-    </li>
+
+      {others.length > 0 ? (
+        <ul aria-label="Archivos" className="divide-y rounded-lg border">
+          {others.map((f) => {
+            const Icon =
+              f.mimeType === "application/pdf" ? FileText : ImageIcon;
+            return (
+              <li key={f.id} className="flex items-center gap-1 pr-2">
+                <button
+                  type="button"
+                  aria-label={`Ver ${f.name}`}
+                  title="Ver archivo"
+                  onClick={() => onOpen(f, "others")}
+                  className="hover:bg-accent/60 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left outline-none focus-visible:ring-[3px]"
+                >
+                  <span className="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-md">
+                    <Icon className="size-4" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">
+                      {f.name}
+                    </span>
+                    <span className="text-muted-foreground block text-xs">
+                      {FILE_CATEGORY_LABELS[f.category]} ·{" "}
+                      {formatFileSize(f.sizeBytes)}
+                    </span>
+                  </span>
+                </button>
+                {canDelete(f) ? (
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`Borrar ${f.name}`}
+                    title="Borrar"
+                    onClick={() => onDelete(f)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 />
+                  </Button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 
 /**
- * Galería de la restauración (Paso 10.2): por destino (general y cada pieza) y por
- * clasificación; visor ampliado con anterior/siguiente, descarga, comparación
- * antes/después y borrado con confirmación (admin o quien lo subió, P32).
+ * Galería de la restauración (Paso 10.2): por destino (general y cada pieza), una
+ * foto grande con flechas y miniaturas por clasificación; visor ampliado con
+ * anterior/siguiente, descarga, comparación antes/después y borrado con
+ * confirmación (admin o quien lo subió, P32). Se adapta a columnas angostas.
  */
 export function FileGallery({
   files,
@@ -408,6 +758,7 @@ export function FileGallery({
   isAdmin,
   emptyText = "Aún no hay fotos ni archivos.",
   className,
+  showTargetLabels = true,
 }: {
   files: RestorationFile[];
   targets: FileTarget[];
@@ -415,9 +766,15 @@ export function FileGallery({
   isAdmin: boolean;
   emptyText?: string;
   className?: string;
+  /**
+   * Muestra el nombre de cada destino («RES-00001-1 · Fuente») sobre sus fotos. Con
+   * false queda solo para lectores de pantalla (p. ej. en la ficha de la pieza).
+   */
+  showTargetLabels?: boolean;
 }) {
   const [viewing, setViewing] = useState<{
     target: string | null;
+    kind: ViewKind;
     id: string;
   } | null>(null);
   const [deleting, setDeleting] = useState<RestorationFile | null>(null);
@@ -425,26 +782,24 @@ export function FileGallery({
   const canDelete = (f: RestorationFile) =>
     isAdmin || f.createdBy === currentUserId;
 
-  // Cada destino con sus archivos en el orden en que se ven (por clasificación).
   const sections = targets
-    .map((target) => {
-      const groups = groupByCategory(
-        files.filter((f) => f.pieceId === target.id),
-      );
-      return { target, groups, ordered: groups.flatMap((g) => g.files) };
-    })
-    .filter((s) => s.ordered.length > 0);
+    .map((target) => ({
+      target,
+      files: files.filter((f) => f.pieceId === target.id),
+    }))
+    .filter((s) => s.files.length > 0);
 
   if (sections.length === 0)
     return (
-      <p
+      <div
         className={cn(
-          "text-muted-foreground rounded-md border border-dashed p-6 text-center text-sm",
+          "text-muted-foreground flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center text-sm",
           className,
         )}
       >
-        {emptyText}
-      </p>
+        <ImageIcon className="size-8 opacity-50" aria-hidden />
+        <p>{emptyText}</p>
+      </div>
     );
 
   const comparable = (list: RestorationFile[]) => ({
@@ -452,60 +807,39 @@ export function FileGallery({
     after: list.filter((f) => f.category === "despues" && viewable(f)),
   });
 
+  // El visor recorre lo mismo que se ve junto: las fotos, o los demás archivos.
   const viewList = viewing
-    ? (sections.find((s) => s.target.id === viewing.target)?.ordered ?? [])
+    ? groupByCategory(
+        (
+          sections.find((s) => s.target.id === viewing.target)?.files ?? []
+        ).filter((f) => viewable(f) === (viewing.kind === "images")),
+      ).flatMap((g) => g.files)
     : [];
   const viewIndex = viewing
     ? viewList.findIndex((f) => f.id === viewing.id)
     : -1;
 
   return (
-    <div className={cn("space-y-5", className)}>
-      {sections.map(({ target, groups, ordered }) => {
-        const pair = comparable(ordered);
-        const headingId = `archivos-${target.id ?? "general"}`;
+    <div className={cn("space-y-8", className)}>
+      {sections.map(({ target, files: list }) => {
+        const pair = comparable(list);
         return (
-          <section
+          <TargetSection
             key={target.id ?? "general"}
-            aria-labelledby={headingId}
-            className="space-y-3"
-            data-testid={headingId}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id={headingId} className="font-semibold">
-                {target.label}
-              </h2>
-              {pair.before.length > 0 && pair.after.length > 0 ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setComparing(target)}
-                >
-                  <Columns2 />
-                  Comparar antes y después
-                </Button>
-              ) : null}
-            </div>
-            {groups.map((group) => (
-              <div key={group.category} className="space-y-1.5">
-                <h3 className="text-muted-foreground text-sm font-medium">
-                  {FILE_CATEGORY_LABELS[group.category]} ({group.files.length})
-                </h3>
-                <ul className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2">
-                  {group.files.map((f) => (
-                    <GalleryItem
-                      key={f.id}
-                      file={f}
-                      canDelete={canDelete(f)}
-                      onOpen={() => setViewing({ target: target.id, id: f.id })}
-                      onDelete={() => setDeleting(f)}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
+            target={target}
+            files={list}
+            showLabel={showTargetLabels}
+            canDelete={canDelete}
+            onOpen={(f, kind) =>
+              setViewing({ target: target.id, kind, id: f.id })
+            }
+            onDelete={setDeleting}
+            onCompare={
+              pair.before.length > 0 && pair.after.length > 0
+                ? () => setComparing(target)
+                : undefined
+            }
+          />
         );
       })}
       {viewing && viewIndex >= 0 ? (
@@ -513,9 +847,7 @@ export function FileGallery({
           files={viewList}
           index={viewIndex}
           canDelete={canDelete}
-          onNavigate={(i) =>
-            setViewing({ target: viewing.target, id: viewList[i]!.id })
-          }
+          onNavigate={(i) => setViewing({ ...viewing, id: viewList[i]!.id })}
           onClose={() => setViewing(null)}
         />
       ) : null}

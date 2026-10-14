@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -111,25 +111,37 @@ export function PiecesKanban({
                   {piece.workshopName ?? "Sin taller"}
                 </span>
               </div>
-              <StatusAge piece={piece} />
-              {piece.workshopDays > 0 || piece.workshopOngoing ? (
-                <p
-                  className={cn(
-                    "inline-flex items-center gap-1 text-xs",
-                    long && "text-destructive font-medium",
-                  )}
-                >
-                  {long ? (
-                    <AlertTriangle
-                      className="size-3.5"
-                      aria-label="Muchos días en el taller"
-                    />
-                  ) : null}
-                  {piece.workshopDays}{" "}
-                  {piece.workshopDays === 1 ? "día" : "días"} en taller
-                  {piece.workshopOngoing ? " (en curso)" : ""}
-                </p>
-              ) : null}
+              {/* Fila de tiempos: cada dato es su propio elemento y se separan con
+                  `gap`; en una tarjeta angosta el segundo baja a otra línea. */}
+              <div
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                data-testid="tiempos-pieza"
+              >
+                <StatusAge piece={piece} />
+                {piece.workshopDays > 0 || piece.workshopOngoing ? (
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 whitespace-nowrap",
+                      long
+                        ? "text-destructive font-medium"
+                        : "text-muted-foreground",
+                    )}
+                    data-testid="dias-en-taller"
+                  >
+                    {long ? (
+                      <AlertTriangle
+                        className="size-3.5"
+                        aria-label="Muchos días en el taller"
+                      />
+                    ) : (
+                      <Wrench className="size-3.5" aria-hidden />
+                    )}
+                    {piece.workshopDays}{" "}
+                    {piece.workshopDays === 1 ? "día" : "días"} en taller
+                    {piece.workshopOngoing ? " (en curso)" : ""}
+                  </span>
+                ) : null}
+              </div>
               {piece.lastObservation ? (
                 <p className="text-xs break-words">
                   <span className="text-muted-foreground">Observación: </span>

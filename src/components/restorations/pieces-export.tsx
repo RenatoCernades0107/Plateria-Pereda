@@ -27,7 +27,7 @@ export function exportRow(piece: BoardPiece, showPrice: boolean) {
     workshop: piece.workshopName ?? "Sin taller",
     price: showPrice
       ? piece.priceCents === null
-        ? "Sin asignar"
+        ? "Por definir"
         : formatCents(piece.priceCents)
       : null,
   };

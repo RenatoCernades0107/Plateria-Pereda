@@ -130,20 +130,20 @@ describe("RestorationPiecesKanban", () => {
     );
   });
 
-  it("muestra el precio a quien ve montos, o «Sin asignar» si aún no tiene", () => {
+  it("muestra el precio a quien ve montos, o «Por definir» si aún no tiene", () => {
     renderKanban("ventas");
     expect(
       within(screen.getByTestId("tarjeta-RES-00012-1")).getByTestId("precio"),
     ).toHaveTextContent(`Precio: ${formatCents(12_000)}`);
     expect(
       within(screen.getByTestId("tarjeta-RES-00012-4")).getByTestId("precio"),
-    ).toHaveTextContent("Sin asignar");
+    ).toHaveTextContent("Por definir");
   });
 
   it("no muestra precios a logística", () => {
     renderKanban("logistica");
     expect(screen.queryAllByTestId("precio")).toHaveLength(0);
-    expect(screen.queryByText("Sin asignar")).toBeNull();
+    expect(screen.queryByText("Por definir")).toBeNull();
   });
 
   it("al elegir piezas aparece la barra de acciones masivas", async () => {

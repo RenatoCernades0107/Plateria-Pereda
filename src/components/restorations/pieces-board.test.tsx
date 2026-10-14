@@ -284,7 +284,7 @@ describe("PiecesBoard: menú «Acciones» de cada pieza", () => {
 describe("PiecesBoard: precio de venta (D58)", () => {
   const pieces = [piece(1, { priceCents: 12_050 }), piece(2)];
 
-  it("ventas ve el precio o «Sin asignar»", () => {
+  it("ventas ve el precio o «Por definir»", () => {
     renderBoard(pieces, { role: "ventas" });
     expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
       "S/ 120.50",
@@ -293,7 +293,7 @@ describe("PiecesBoard: precio de venta (D58)", () => {
       within(screen.getByTestId("pieza-RES-00001-2")).getByTestId(
         "precio-sin-asignar",
       ),
-    ).toHaveTextContent("Sin asignar");
+    ).toHaveTextContent("Por definir");
     expect(
       screen.queryByLabelText("Precio de venta de RES-00001-2"),
     ).toBeNull();
@@ -303,7 +303,7 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     const user = userEvent.setup();
     renderBoard(pieces, { role: "admin", editing: editingFor(pieces) });
     expect(screen.getByTestId("pieza-RES-00001-2")).toHaveTextContent(
-      "Sin asignar",
+      "Por definir",
     );
     await user.click(
       screen.getByRole("button", {

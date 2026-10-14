@@ -191,6 +191,36 @@ export function ServiceCostCell({
 }
 
 /**
+ * Costo de servicio en la tabla de piezas: el monto con su lápiz salvo en el modo
+ * «Editar costo de servicio» (admin y logística), donde todas las filas muestran el
+ * campo con su botón de guardar, como en «Editar precio de venta».
+ */
+export function BoardServiceCostCell({
+  piece,
+  cents,
+  editing,
+}: {
+  piece: MoneyPiece;
+  cents: Cents | null;
+  editing: boolean;
+}) {
+  if (!editing) return <ServiceCostCell piece={piece} cents={cents} />;
+  return (
+    <MoneyCell
+      // Al entrar al modo edición el campo parte del costo guardado.
+      key={`${editing}-${cents}`}
+      cents={cents}
+      editable
+      emptyText="Por definir"
+      inputLabel={`Costo de servicio de ${piece.code}`}
+      saveLabel={`Guardar costo de ${piece.code}`}
+      savedMessage={`Costo de ${piece.code} guardado.`}
+      onSave={(value) => setPieceServiceCost(piece.id, value)}
+    />
+  );
+}
+
+/**
  * Precio de venta: el admin lo asigna con el lápiz (D58); con la orden de Shopify
  * creada un precio ya asignado se cambia con motivo ("Cambiar precio", P12). Ventas
  * solo lo ve.
@@ -210,7 +240,7 @@ export function SalePriceCell({
 }) {
   if (!editable) {
     return cents === null ? (
-      <span className="text-muted-foreground">Sin asignar</span>
+      <span className="text-muted-foreground">Por definir</span>
     ) : (
       <span className="tabular-nums">{formatCents(cents)}</span>
     );
@@ -235,7 +265,7 @@ export function SalePriceCell({
     <MoneyEditCell
       cents={cents}
       align={align}
-      emptyText="Sin asignar"
+      emptyText="Por definir"
       fieldLabel="Precio de venta (S/)"
       title={`Precio de venta de ${piece.code}`}
       description="Precio que se cobra al cliente por esta pieza. Déjalo vacío si aún no se asigna."
@@ -251,7 +281,7 @@ export function SalePriceCell({
 
 /**
  * Precio de venta en la tabla de piezas: texto de solo lectura salvo en el modo
- * «Editar precios» (solo admin), donde todas las filas muestran el campo. Si la orden
+ * «Editar precio de venta» (solo admin), donde todas las filas muestran el campo. Si la orden
  * de Shopify ya está creada, guardar abre el cambio de precio con motivo (P12).
  */
 export function BoardSalePriceCell({
@@ -274,7 +304,7 @@ export function BoardSalePriceCell({
         key={`${editing}-${cents}`}
         cents={cents}
         editable={editing}
-        emptyText="Sin asignar"
+        emptyText="Por definir"
         inputLabel={`Precio de venta de ${piece.code}`}
         saveLabel={`Guardar precio de ${piece.code}`}
         savedMessage={`Precio de ${piece.code} guardado.`}

@@ -398,7 +398,7 @@ export function PieceDialog({
               services={services}
               editable={editable}
               priceHint={priceHint}
-              pricePlaceholder="Sin asignar"
+              pricePlaceholder="Por definir"
               // Ventas no elige taller al agregar una pieza y lo ve al editarla (D60).
               showWorkshop={
                 Boolean(piece) || !editable || editable.includes("workshopId")

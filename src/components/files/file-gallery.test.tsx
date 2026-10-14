@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -137,5 +143,183 @@ describe("FileGallery", () => {
     await user.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  describe("foto principal y miniaturas", () => {
+    const setup = (files: RestorationFile[], props = {}) => {
+      render(
+        <FileGallery
+          files={files}
+          targets={[{ id: null, label: "General (todas las piezas)" }, target]}
+          currentUserId="u1"
+          isAdmin={false}
+          {...props}
+        />,
+      );
+      return screen.getByRole("region", { name: target.label });
+    };
+    const carousel = (section: HTMLElement) =>
+      within(section).getByRole("group", { name: "Fotos" });
+    const main = (section: HTMLElement) =>
+      within(carousel(section)).getByRole("button", { name: /^Ver / });
+
+    it("muestra una foto grande con su clasificación y se recorre con flechas, teclado y miniaturas", async () => {
+      const user = userEvent.setup();
+      const section = setup([
+        photo("despues", "u1", "despues"),
+        photo("antes-1"),
+        photo("antes-2"),
+      ]);
+
+      // Antes primero, aunque se haya subido después.
+      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
+      expect(carousel(section)).toHaveTextContent("Antes");
+      expect(carousel(section)).toHaveTextContent("1 de 3");
+
+      await user.click(
+        within(section).getByRole("button", { name: "Foto siguiente" }),
+      );
+      expect(main(section)).toHaveAccessibleName("Ver antes-2.png");
+
+      fireEvent.keyDown(carousel(section), { key: "ArrowRight" });
+      expect(main(section)).toHaveAccessibleName("Ver despues.png");
+      expect(carousel(section)).toHaveTextContent("Después");
+      expect(carousel(section)).toHaveTextContent("3 de 3");
+
+      // Da la vuelta, en los dos sentidos.
+      fireEvent.keyDown(carousel(section), { key: "ArrowRight" });
+      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
+      fireEvent.keyDown(carousel(section), { key: "ArrowLeft" });
+      expect(main(section)).toHaveAccessibleName("Ver despues.png");
+
+      // Deslizar con el dedo hacia la derecha va a la anterior.
+      fireEvent.touchStart(carousel(section), {
+        touches: [{ clientX: 200 }],
+      });
+      fireEvent.touchEnd(carousel(section), {
+        changedTouches: [{ clientX: 300 }],
+      });
+      expect(main(section)).toHaveAccessibleName("Ver antes-2.png");
+
+      const thumb = within(section).getByRole("button", {
+        name: "Mostrar antes-1.png",
+      });
+      await user.click(thumb);
+      expect(thumb).toHaveAttribute("aria-current", "true");
+      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
+      expect(
+        within(section).getByRole("group", { name: "Antes (2)" }),
+      ).toHaveTextContent("Antes");
+      expect(
+        within(section).getByRole("group", { name: "Después (1)" }),
+      ).toBeInTheDocument();
+    });
+
+    it("el selector Antes / Después muestra cuántas hay y salta al grupo", async () => {
+      const user = userEvent.setup();
+      const section = setup([
+        photo("antes-1"),
+        photo("antes-2"),
+        photo("despues", "u1", "despues"),
+      ]);
+      const toggle = within(section).getByRole("group", {
+        name: "Clasificación",
+      });
+      const antes = within(toggle).getByRole("button", { name: "Antes (2)" });
+      const despues = within(toggle).getByRole("button", {
+        name: "Después (1)",
+      });
+      expect(antes).toHaveAttribute("aria-pressed", "true");
+
+      await user.click(despues);
+      expect(despues).toHaveAttribute("aria-pressed", "true");
+      expect(main(section)).toHaveAccessibleName("Ver despues.png");
+
+      // El visor ampliado empieza en la foto que se está viendo.
+      await user.click(main(section));
+      expect(screen.getByRole("dialog")).toHaveTextContent("3 de 3");
+    });
+
+    it("con una sola foto no hay flechas, miniaturas, selector ni comparación", () => {
+      const section = setup([photo("sola")]);
+      expect(main(section)).toHaveAccessibleName("Ver sola.png");
+      expect(
+        within(section).queryByRole("button", { name: "Foto siguiente" }),
+      ).toBeNull();
+      expect(
+        within(section).queryByRole("group", { name: "Clasificación" }),
+      ).toBeNull();
+      expect(
+        within(section).queryByRole("button", { name: /^Mostrar / }),
+      ).toBeNull();
+      expect(
+        within(section).queryByRole("button", {
+          name: "Comparar antes y después",
+        }),
+      ).toBeNull();
+    });
+
+    it("compara antes y después cuando hay de los dos", async () => {
+      const user = userEvent.setup();
+      const section = setup([
+        photo("antes"),
+        photo("despues", "u1", "despues"),
+      ]);
+      await user.click(
+        within(section).getByRole("button", {
+          name: "Comparar antes y después",
+        }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent(`Antes y después · ${target.label}`);
+      expect(within(dialog).getByAltText("antes.png")).toBeInTheDocument();
+      expect(within(dialog).getByAltText("despues.png")).toBeInTheDocument();
+    });
+
+    it("los PDF y HEIC van en una lista aparte; sin fotos no hay foto principal", async () => {
+      const user = userEvent.setup();
+      const section = setup([
+        {
+          ...photo("guia", "u1", "documento"),
+          name: "guia.pdf",
+          mimeType: "application/pdf",
+        },
+        {
+          ...photo("foto", "u2", "otro"),
+          name: "foto.heic",
+          mimeType: "image/heic",
+        },
+      ]);
+      expect(
+        within(section).queryByRole("group", { name: "Fotos" }),
+      ).toBeNull();
+      const list = within(section).getByRole("list", { name: "Archivos" });
+      expect(list).toHaveTextContent("guia.pdf");
+      expect(list).toHaveTextContent("Documento · 1 KB");
+      expect(list).toHaveTextContent("foto.heic");
+      // Se borra lo propio, no lo ajeno.
+      expect(
+        within(list).getByRole("button", { name: "Borrar guia.pdf" }),
+      ).toBeVisible();
+      expect(
+        within(list).queryByRole("button", { name: "Borrar foto.heic" }),
+      ).toBeNull();
+
+      await user.click(
+        within(list).getByRole("button", { name: "Ver guia.pdf" }),
+      );
+      const viewer = screen.getByRole("dialog");
+      expect(
+        within(viewer).getByRole("link", { name: "Descargar" }),
+      ).toBeVisible();
+      expect(within(viewer).getByRole("link", { name: "Abrir" })).toBeVisible();
+    });
+
+    it("puede ocultar el nombre del destino sin perder la región accesible", () => {
+      const section = setup([photo("a")], { showTargetLabels: false });
+      expect(
+        within(section).getByRole("heading", { name: target.label }),
+      ).toHaveClass("sr-only");
+    });
   });
 });
