@@ -47,6 +47,7 @@ const base: BoardPiece = {
   priceCents: null,
   hasOrder: false,
   photoUrl: "https://example.test/antes.jpg",
+  statusDays: 2,
 };
 
 describe("PiecesBoardTable", () => {
@@ -143,6 +144,10 @@ describe("PiecesBoardTable", () => {
     const { setPieceSalePrice } = await import("@/server/sale-price-actions");
     const user = userEvent.setup();
     render(<PiecesBoardTable role="admin" workshops={[]} pieces={[base]} />);
+    expect(
+      screen.queryByLabelText("Precio de venta de RES-00001-1"),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Editar precios" }));
     const price = screen.getByLabelText("Precio de venta de RES-00001-1");
     expect(price).toHaveAttribute("placeholder", "Sin asignar");
     await user.type(price, "150");
@@ -152,7 +157,8 @@ describe("PiecesBoardTable", () => {
     expect(setPieceSalePrice).toHaveBeenCalledWith("p1", "150");
   });
 
-  it("con la orden creada el admin cambia el precio con motivo", () => {
+  it("con la orden creada el admin cambia el precio con motivo", async () => {
+    const user = userEvent.setup();
     render(
       <PiecesBoardTable
         role="admin"
@@ -163,8 +169,55 @@ describe("PiecesBoardTable", () => {
     const row = screen.getByTestId("pieza-RES-00001-1");
     expect(row).toHaveTextContent("S/ 150.00");
     expect(
-      within(row).getByRole("button", { name: "Cambiar precio" }),
+      within(row).queryByRole("button", { name: "Cambiar precio" }),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Editar precios" }));
+    const price = within(row).getByLabelText("Precio de venta de RES-00001-1");
+    await user.clear(price);
+    await user.type(price, "180");
+    await user.click(
+      within(row).getByRole("button", {
+        name: "Guardar precio de RES-00001-1",
+      }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Nuevo precio (S/)")).toHaveValue(
+      "180.00",
+    );
+  });
+
+  it("logística asigna el taller desde la fila", () => {
+    render(
+      <PiecesBoardTable
+        role="logistica"
+        workshops={[{ id: "w1", name: "Taller Central" }]}
+        pieces={[
+          base,
+          {
+            ...base,
+            id: "p2",
+            code: "RES-00001-2",
+            status: "enviada_taller",
+            workshopName: "Taller Central",
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Taller de RES-00001-1" }),
     ).toBeInTheDocument();
+    // En el taller no se cambia.
+    expect(
+      screen.queryByRole("combobox", { name: "Taller de RES-00001-2" }),
+    ).toBeNull();
+  });
+
+  it("ventas no asigna taller ni ve «Editar precios»", () => {
+    render(<PiecesBoardTable role="ventas" workshops={[]} pieces={[base]} />);
+    expect(
+      screen.queryByRole("combobox", { name: "Taller de RES-00001-1" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Editar precios" })).toBeNull();
   });
 
   it("ventas ve el precio sin editarlo y no ve el costo", () => {

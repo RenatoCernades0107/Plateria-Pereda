@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
   Table,
   TableBody,
@@ -52,7 +53,7 @@ export function WhatsappQuotesList({
     <>
       <ul className="space-y-2 md:hidden">
         {quotes.map((q) => (
-          <li
+          <ClickableItem
             key={q.id}
             className="rounded-lg border p-3"
             data-testid={`cotizacion-${q.code}`}
@@ -60,6 +61,7 @@ export function WhatsappQuotesList({
             <div className="flex items-start justify-between gap-2">
               <Link
                 href={`/cotizaciones-whatsapp/${q.id}`}
+                data-primary-link
                 className="text-heading font-medium underline-offset-4 hover:underline"
               >
                 {q.code}
@@ -73,7 +75,7 @@ export function WhatsappQuotesList({
             <p className="text-sm font-medium tabular-nums">
               {formatCents(q.totalCents)}
             </p>
-          </li>
+          </ClickableItem>
         ))}
       </ul>
       <div className="hidden rounded-md border md:block">
@@ -90,10 +92,11 @@ export function WhatsappQuotesList({
           </TableHeader>
           <TableBody>
             {quotes.map((q) => (
-              <TableRow key={q.id} data-testid={`cotizacion-${q.code}`}>
+              <ClickableRow key={q.id} data-testid={`cotizacion-${q.code}`}>
                 <TableCell>
                   <Link
                     href={`/cotizaciones-whatsapp/${q.id}`}
+                    data-primary-link
                     className="text-heading font-medium underline-offset-4 hover:underline"
                   >
                     {q.code}
@@ -108,7 +111,7 @@ export function WhatsappQuotesList({
                 <TableCell className="text-right tabular-nums">
                   {formatCents(q.totalCents)}
                 </TableCell>
-              </TableRow>
+              </ClickableRow>
             ))}
           </TableBody>
         </Table>

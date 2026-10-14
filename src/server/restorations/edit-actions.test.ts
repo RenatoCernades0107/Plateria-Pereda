@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     error: null as { code: string; message?: string } | null,
   },
   insertError: null as { code: string; message?: string } | null,
+  total: { data: { total: 1000 } as object | null, error: null },
   revalidate: vi.fn(),
 }));
 
@@ -23,6 +24,9 @@ vi.mock("@/server/auth", () => ({
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     from: () => ({
+      select: () => ({
+        eq: () => ({ maybeSingle: async () => mocks.total }),
+      }),
       update: (row: object) => {
         mocks.update(row);
         const chain = {
@@ -66,14 +70,15 @@ describe("edición de restauraciones", () => {
       fn.mockReset();
     mocks.result = { data: [{ id: "r1", restoration_id: "r1" }], error: null };
     mocks.insertError = null;
+    mocks.total = { data: { total: 1000 }, error: null };
   });
 
-  it("updateRestoration guarda contacto, tipo, % y notas; el % solo en A cuenta", async () => {
+  it("updateRestoration guarda contacto, tipo, adelanto y notas; el adelanto solo en A cuenta", async () => {
     expect(
       await updateRestoration("r1", {
         contactId: null,
         paymentType: "credito",
-        depositPercent: "50",
+        depositAmount: "50",
         pricesIncludeIgv: "no",
         notes: "Nota",
       }),
@@ -82,6 +87,7 @@ describe("edición de restauraciones", () => {
       contact_id: null,
       payment_type: "credito",
       deposit_percent: null,
+      deposit_amount: null,
       prices_include_igv: false,
       notes: "Nota",
     });
@@ -91,11 +97,43 @@ describe("edición de restauraciones", () => {
       await updateRestoration("r1", {
         contactId: null,
         paymentType: "a_cuenta",
-        depositPercent: "0",
+        depositAmount: "-1",
         pricesIncludeIgv: "si",
         notes: "",
       }),
-    ).toEqual({ error: "Revisa los datos ingresados." });
+    ).toEqual({ error: "El adelanto no puede ser negativo." });
+  });
+
+  it("updateRestoration guarda el adelanto en soles y no deja superar el total", async () => {
+    const edit = {
+      contactId: null,
+      paymentType: "a_cuenta" as const,
+      pricesIncludeIgv: "si" as const,
+      notes: "",
+    };
+    expect(
+      await updateRestoration("r1", { ...edit, depositAmount: "250.50" }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deposit_amount: 250.5, deposit_percent: null }),
+    );
+
+    mocks.update.mockReset();
+    expect(
+      await updateRestoration("r1", { ...edit, depositAmount: "1000.01" }),
+    ).toEqual({
+      error: "El adelanto no puede ser mayor que el total (S/ 1,000.00).",
+    });
+    expect(mocks.update).not.toHaveBeenCalled();
+
+    // Sin precios asignados (total 0) se guarda el monto en soles.
+    mocks.total = { data: { total: 0 }, error: null };
+    expect(
+      await updateRestoration("r1", { ...edit, depositAmount: "5000" }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ deposit_amount: 5000 }),
+    );
   });
 
   it("updatePiece convierte el precio y muestra las reglas de la BD", async () => {

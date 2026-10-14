@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
   Table,
   TableBody,
@@ -32,6 +33,7 @@ function Code({ quote }: { quote: QuoteListItem }) {
   return (
     <Link
       href={`/cotizaciones/${quote.id}`}
+      data-primary-link
       className="text-heading font-medium underline-offset-4 hover:underline"
     >
       {quote.code}
@@ -74,7 +76,7 @@ export function QuotesList({
         </TableHeader>
         <TableBody>
           {quotes.map((q) => (
-            <TableRow key={q.id} data-testid={`cotizacion-${q.code}`}>
+            <ClickableRow key={q.id} data-testid={`cotizacion-${q.code}`}>
               <TableCell>
                 <Code quote={q} />
               </TableCell>
@@ -91,14 +93,14 @@ export function QuotesList({
               <TableCell className="text-right tabular-nums">
                 {formatCents(q.total)}
               </TableCell>
-            </TableRow>
+            </ClickableRow>
           ))}
         </TableBody>
       </Table>
 
       <ul className="space-y-3 md:hidden" aria-label="Cotizaciones">
         {quotes.map((q) => (
-          <li
+          <ClickableItem
             key={q.id}
             className="space-y-2 rounded-lg border p-4"
             data-testid={`cotizacion-movil-${q.code}`}
@@ -114,7 +116,7 @@ export function QuotesList({
                 {formatCents(q.total)}
               </span>
             </div>
-          </li>
+          </ClickableItem>
         ))}
       </ul>
     </>

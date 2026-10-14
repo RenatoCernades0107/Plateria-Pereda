@@ -21,6 +21,11 @@ export function fakeSupabase(
     from: vi.fn(() => ({ select })),
     auth: {
       getUser: vi.fn(async () => ({ data: { user: options.user ?? null } })),
+      getClaims: vi.fn(async () => ({
+        data: options.user
+          ? { claims: { sub: options.user.id, email: options.user.email } }
+          : null,
+      })),
       signInWithPassword: vi.fn(),
       signOut: vi.fn(async () => ({ error: null })),
       resetPasswordForEmail: vi.fn(async () => ({ error: null })),

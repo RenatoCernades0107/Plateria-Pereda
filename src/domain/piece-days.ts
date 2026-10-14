@@ -48,8 +48,8 @@ export type StatusHistoryEntry = {
 };
 
 /**
- * Suma de los viajes al taller: de cada envío (Interno) hasta su "Recibir del
- * taller", o hasta un cambio de estado fuera de Interno (p. ej. "No tiene arreglo");
+ * Suma de los viajes al taller: de cada envío (En restauración) hasta su "Recibir del
+ * taller", o hasta un cambio de estado fuera de En restauración (p. ej. "No tiene arreglo");
  * incluye reenvíos por observación (P47). Si la pieza sigue en el taller, el último
  * viaje se cuenta hasta `now`.
  */

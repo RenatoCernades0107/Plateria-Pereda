@@ -140,7 +140,7 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, code)).toContainText("Interno");
+    await expect(card(page, code)).toContainText("En restauración");
     await expect(card(page, code)).toContainText("En taller");
     await expect(card(page, code)).toContainText(workshopName);
     // Sin "En proceso" (P56): mientras está en el taller la guía sigue Aprobada.
@@ -148,7 +148,7 @@ test.describe("Estados de las piezas", () => {
 
     await pieceAction(page, code, "Recibir del taller");
     await expect(card(page, code)).toContainText("En tienda");
-    await expect(card(page, code)).toContainText("Interno");
+    await expect(card(page, code)).toContainText("En restauración");
     await expect(restorationStatus(page)).toHaveText("Lista");
 
     // La entrega la hace ventas: completada, logística ya no la ve (D24).
@@ -240,7 +240,7 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, code)).toContainText("Interno");
+    await expect(card(page, code)).toContainText("En restauración");
     await expect(card(page, code)).toContainText("En taller");
   });
 
@@ -373,8 +373,8 @@ test.describe("Estados de las piezas", () => {
     await dialog
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
-    await expect(card(page, `${r.code}-1`)).toContainText("Interno");
-    await expect(card(page, `${r.code}-2`)).toContainText("Interno");
+    await expect(card(page, `${r.code}-1`)).toContainText("En restauración");
+    await expect(card(page, `${r.code}-2`)).toContainText("En restauración");
   });
 
   test("cada rol ve solo sus acciones", async ({ page, loginAs }) => {

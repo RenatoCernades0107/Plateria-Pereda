@@ -212,9 +212,12 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
         page.getByTestId("columna-enviada_taller"),
       );
       await expect(
-        page.getByText("No se puede pasar de «Registrada» a «Interno».", {
-          exact: true,
-        }),
+        page.getByText(
+          "No se puede pasar de «Registrada» a «En restauración».",
+          {
+            exact: true,
+          },
+        ),
       ).toBeVisible();
       await expect(
         page

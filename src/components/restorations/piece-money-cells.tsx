@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
+
 import { MoneyCell } from "@/components/money-cell";
-import { formatCents, type Cents } from "@/domain/money";
+import { formatCents, parseMoney, type Cents } from "@/domain/money";
 import { setPieceSalePrice } from "@/server/sale-price-actions";
 import { setPieceServiceCost } from "@/server/service-cost-actions";
 
@@ -66,5 +68,58 @@ export function SalePriceInput({
       savedMessage={`Precio de ${piece.code} guardado.`}
       onSave={(value) => setPieceSalePrice(piece.id, value)}
     />
+  );
+}
+
+/**
+ * Precio de venta en la tabla de piezas: texto de solo lectura salvo en el modo
+ * «Editar precios» (solo admin), donde todas las filas muestran el campo. Si la orden
+ * de Shopify ya está creada, guardar abre el cambio de precio con motivo (P12).
+ */
+export function BoardSalePriceCell({
+  piece,
+  cents,
+  hasOrder,
+  editing,
+}: {
+  piece: MoneyPiece;
+  cents: Cents | null;
+  hasOrder: boolean;
+  editing: boolean;
+}) {
+  const [proposed, setProposed] = useState<Cents | null>(null);
+  const withReason = hasOrder && cents !== null;
+  return (
+    <>
+      <MoneyCell
+        // Al entrar o salir del modo edición el campo vuelve al precio guardado.
+        key={`${editing}-${cents}`}
+        cents={cents}
+        editable={editing}
+        emptyText="Sin asignar"
+        inputLabel={`Precio de venta de ${piece.code}`}
+        saveLabel={`Guardar precio de ${piece.code}`}
+        savedMessage={`Precio de ${piece.code} guardado.`}
+        onSave={async (value) => {
+          if (!withReason) return setPieceSalePrice(piece.id, value);
+          const next = parseMoney(value.trim());
+          if (next === null) {
+            return { error: "Ingresa un monto válido (hasta 2 decimales)." };
+          }
+          setProposed(next);
+          return { pending: true };
+        }}
+      />
+      {withReason && proposed !== null ? (
+        <PriceChangeDialog
+          key={proposed}
+          restorationId={piece.restorationId}
+          piece={{ id: piece.id, code: piece.code, priceCents: cents }}
+          proposedCents={proposed}
+          open
+          onOpenChange={(open) => !open && setProposed(null)}
+        />
+      ) : null}
+    </>
   );
 }

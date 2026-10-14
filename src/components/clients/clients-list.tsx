@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
+import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
   Table,
   TableBody,
@@ -60,6 +61,7 @@ function Name({ client }: { client: ClientListItem }) {
     <span className="flex flex-wrap items-center gap-2">
       <Link
         href={`/clientes/${client.id}`}
+        data-primary-link
         className="text-heading font-medium underline-offset-4 hover:underline"
       >
         {client.displayName}
@@ -100,7 +102,7 @@ export function ClientsList({
         </TableHeader>
         <TableBody>
           {clients.map((c) => (
-            <TableRow key={c.id} data-testid={`cliente-${c.displayName}`}>
+            <ClickableRow key={c.id} data-testid={`cliente-${c.displayName}`}>
               <TableCell>
                 <div className="flex flex-col">
                   <Name client={c} />
@@ -117,14 +119,14 @@ export function ClientsList({
               <TableCell>
                 <Sync client={c} canRetry={canRetry} />
               </TableCell>
-            </TableRow>
+            </ClickableRow>
           ))}
         </TableBody>
       </Table>
 
       <ul className="space-y-3 md:hidden" aria-label="Clientes">
         {clients.map((c) => (
-          <li
+          <ClickableItem
             key={c.id}
             className="space-y-2 rounded-lg border p-4"
             data-testid={`cliente-movil-${c.displayName}`}
@@ -143,7 +145,7 @@ export function ClientsList({
               {c.email ? <p className="truncate">{c.email}</p> : null}
             </div>
             <Sync client={c} canRetry={canRetry} />
-          </li>
+          </ClickableItem>
         ))}
       </ul>
     </>

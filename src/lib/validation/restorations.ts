@@ -1,6 +1,13 @@
 import { z } from "zod";
 
-import { parseMoney, PAYMENT_TYPES } from "@/domain/money";
+import { igvTotals } from "@/domain/igv";
+import {
+  DEPOSIT_NEGATIVE_ERROR,
+  depositAmountError,
+  MAX_CENTS,
+  parseMoney,
+  PAYMENT_TYPES,
+} from "@/domain/money";
 import type { PieceStatus } from "@/domain/piece-state-machine";
 
 /**
@@ -172,6 +179,74 @@ const depositPercent = z.preprocess(
 );
 
 /**
+ * Adelanto "A cuenta" en soles (opcional): vacío = sin adelanto (null). Se guarda en
+ * céntimos; el % se calcula cuando las piezas tienen precio.
+ */
+export const depositAmount = z.preprocess(
+  (v) => (v == null ? "" : typeof v === "number" ? String(v) : v),
+  z
+    .string()
+    .trim()
+    .transform((value, ctx): number | null => {
+      if (value === "") return null;
+      if (/^-/.test(value.replace(/^S\/\s*/i, ""))) {
+        ctx.addIssue({ code: "custom", message: DEPOSIT_NEGATIVE_ERROR });
+        return z.NEVER;
+      }
+      const cents = parseMoney(value);
+      if (cents === null || cents > MAX_CENTS) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Ingresa el adelanto en soles (hasta 2 decimales)",
+        });
+        return z.NEVER;
+      }
+      return cents;
+    }),
+);
+
+/**
+ * Mensaje para el usuario cuando falla la validación en el servidor: el del adelanto
+ * si es ese el problema (negativo, mal escrito o mayor que el total); si no, genérico.
+ */
+export function invalidInputMessage(error: z.ZodError): string {
+  const deposit = error.issues.find((i) => i.path[0] === "depositAmount");
+  return deposit ? `${deposit.message}.` : "Revisa los datos ingresados.";
+}
+
+/**
+ * El adelanto no puede superar el total de las piezas con precio (con IGV). Corre
+ * aunque otros campos tengan errores (`when`), así el aviso aparece de inmediato; por
+ * eso lee los valores con cuidado (una pieza inválida cuenta 0).
+ */
+function checkDepositAgainstPieces(
+  v: {
+    depositAmount: unknown;
+    pricesIncludeIgv: unknown;
+    pieces: unknown;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (typeof v.depositAmount !== "number") return;
+  const pieces = Array.isArray(v.pieces) ? v.pieces : [];
+  const { total } = igvTotals(
+    pieces.map((p: { priceCents?: unknown } | null) =>
+      typeof p?.priceCents === "number" ? p.priceCents : 0,
+    ),
+    v.pricesIncludeIgv === true || v.pricesIncludeIgv === "si",
+  );
+  const message = depositAmountError(v.depositAmount, total);
+  if (message)
+    ctx.addIssue({ code: "custom", path: ["depositAmount"], message });
+}
+
+/** Opciones del chequeo: corre mientras el adelanto en sí sea válido. */
+const depositCheckParams = {
+  when: (payload: { issues: readonly { path?: PropertyKey[] }[] }) =>
+    !payload.issues.some((i) => i.path?.[0] === "depositAmount"),
+};
+
+/**
  * "¿El precio incluye IGV?" (P13): obligatorio. Los formularios nuevos parten de
  * "No" (D59); si no lo incluye, cada pieza se cobra con el 18 % encima.
  */
@@ -195,19 +270,22 @@ const restorationFields = {
 };
 
 /**
- * El % de adelanto (opcional) solo se valida y se guarda si el pago es "A cuenta"; en los
- * demás tipos el campo se oculta y queda en null.
+ * El adelanto en soles (opcional) solo se valida y se guarda si el pago es "A cuenta";
+ * no puede ser negativo ni mayor que el total de las piezas con precio. En los demás
+ * tipos el campo se oculta y queda en null.
  */
 export const restorationSchema = z.discriminatedUnion("paymentType", [
-  z.object({
-    ...restorationFields,
-    paymentType: z.literal("a_cuenta"),
-    depositPercent,
-  }),
+  z
+    .object({
+      ...restorationFields,
+      paymentType: z.literal("a_cuenta"),
+      depositAmount,
+    })
+    .superRefine(checkDepositAgainstPieces, depositCheckParams),
   z.object({
     ...restorationFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
-    depositPercent: z.unknown().transform(() => null),
+    depositAmount: z.unknown().transform(() => null),
   }),
 ]);
 
@@ -244,15 +322,17 @@ const copyFields = {
  * registro, más el estado inicial de cada pieza.
  */
 export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
-  z.object({
-    ...copyFields,
-    paymentType: z.literal("a_cuenta"),
-    depositPercent,
-  }),
+  z
+    .object({
+      ...copyFields,
+      paymentType: z.literal("a_cuenta"),
+      depositAmount,
+    })
+    .superRefine(checkDepositAgainstPieces, depositCheckParams),
   z.object({
     ...copyFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
-    depositPercent: z.unknown().transform(() => null),
+    depositAmount: z.unknown().transform(() => null),
   }),
 ]);
 
@@ -267,12 +347,12 @@ export const restorationEditSchema = z.discriminatedUnion("paymentType", [
   z.object({
     ...editFields,
     paymentType: z.literal("a_cuenta"),
-    depositPercent,
+    depositAmount,
   }),
   z.object({
     ...editFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
-    depositPercent: z.unknown().transform(() => null),
+    depositAmount: z.unknown().transform(() => null),
   }),
 ]);
 

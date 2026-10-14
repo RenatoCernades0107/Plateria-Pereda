@@ -109,6 +109,8 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "A cuenta" }));
+    expect(deposit).toHaveTextContent("S/ 0.00");
+    await user.type(screen.getByLabelText("Adelanto (S/) (opcional)"), "50");
     expect(deposit).toHaveTextContent("S/ 50.00");
 
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
@@ -262,7 +264,7 @@ describe("RestorationForm", () => {
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it("el % de adelanto solo se pide en A cuenta", async () => {
+  it("el adelanto en soles solo se pide en A cuenta", async () => {
     const user = userEvent.setup();
     renderForm();
     await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
@@ -270,7 +272,7 @@ describe("RestorationForm", () => {
     expect(screen.getByLabelText("Tipo de pago")).toHaveTextContent(
       "Por definir",
     );
-    expect(screen.queryByLabelText("Adelanto (%) (opcional)")).toBeNull();
+    expect(screen.queryByLabelText("Adelanto (S/) (opcional)")).toBeNull();
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
     await user.type(
       within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
@@ -279,7 +281,7 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "Al crédito" }));
-    expect(screen.queryByLabelText("Adelanto (%) (opcional)")).toBeNull();
+    expect(screen.queryByLabelText("Adelanto (S/) (opcional)")).toBeNull();
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("S/ 0.00");
 
     await user.click(screen.getByLabelText("Tipo de pago"));
@@ -290,15 +292,62 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "A cuenta" }));
-    const percent = screen.getByLabelText("Adelanto (%) (opcional)");
-    expect(percent).toHaveValue("50");
-    await user.clear(percent);
-    await user.type(percent, "0");
+    const amount = screen.getByLabelText("Adelanto (S/) (opcional)");
+    expect(amount).toHaveValue("");
+    // Vacío sugiere el % por defecto de la configuración.
+    expect(screen.getByTestId("adelanto-porcentaje")).toHaveTextContent(
+      "Sugerido (50 %): S/ 40.00",
+    );
+    await user.type(amount, "20");
+    expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent(
+      "S/ 20.00",
+    );
+    expect(screen.getByTestId("adelanto-porcentaje")).toHaveTextContent(
+      "25 % del total · Saldo: S/ 60.00",
+    );
+    await user.clear(amount);
+    await user.type(amount, "abc");
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
 
     // El adelanto es opcional: vacío = sin adelanto.
-    await user.clear(percent);
+    await user.clear(amount);
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("S/ 0.00");
+  });
+
+  it("muestra errores claros del adelanto mientras se escribe", async () => {
+    mocks.create.mockResolvedValue({ ok: true, id: "r1", code: "RES-00001" });
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByLabelText(/Sí, el precio incluye IGV/));
+    await user.click(screen.getByLabelText("Tipo de pago"));
+    await user.click(await screen.findByRole("option", { name: "A cuenta" }));
+    const amount = screen.getByLabelText("Adelanto (S/) (opcional)");
+
+    // Sin precios todavía: se guarda el monto y el % se calcula después.
+    await user.type(amount, "300");
+    expect(screen.getByTestId("adelanto-porcentaje")).toHaveTextContent(
+      "Aún no hay precios: el % y el saldo se calculan cuando se asignen.",
+    );
+
+    await user.type(
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      "100",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Registrar restauración" }),
+    );
+    expect(
+      await screen.findByText(
+        "El adelanto no puede ser mayor que el total (S/ 100.00)",
+      ),
+    ).toBeVisible();
+
+    await user.clear(amount);
+    await user.type(amount, "-5");
+    expect(
+      await screen.findByText("El adelanto no puede ser negativo"),
+    ).toBeVisible();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });
 
@@ -391,6 +440,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
         customerName: "Ana Pérez",
         paymentType: "sin_definir",
         depositPercent: "",
+        depositAmount: "",
         pricesIncludeIgv: "no",
       }),
     );

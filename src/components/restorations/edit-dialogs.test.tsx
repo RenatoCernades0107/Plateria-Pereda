@@ -242,7 +242,7 @@ describe("PieceDialog: precio de venta sin asignar (D58)", () => {
 });
 
 describe("EditRestorationDialog", () => {
-  it("cambia el tipo de pago y oculta el % fuera de A cuenta", async () => {
+  it("cambia el tipo de pago y oculta el adelanto fuera de A cuenta", async () => {
     const user = userEvent.setup();
     render(
       <EditRestorationDialog
@@ -250,7 +250,8 @@ describe("EditRestorationDialog", () => {
         initial={{
           contactId: "00000000-0000-0000-0000-0000000000c1",
           paymentType: "a_cuenta",
-          depositPercent: 30,
+          depositAmountCents: 30000,
+          totalCents: 100000,
           pricesIncludeIgv: true,
           notes: "",
         }}
@@ -268,8 +269,11 @@ describe("EditRestorationDialog", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Notas generales")).toBeVisible();
     expect(
-      within(dialog).getByLabelText("Adelanto (%) (opcional)"),
-    ).toHaveValue("30");
+      within(dialog).getByLabelText("Adelanto (S/) (opcional)"),
+    ).toHaveValue("300.00");
+    expect(within(dialog).getByTestId("adelanto-porcentaje")).toHaveTextContent(
+      "30 % del total · Saldo: S/ 700.00",
+    );
     expect(within(dialog).getByLabelText("Contacto")).toHaveTextContent(
       "Luis Rojas",
     );
@@ -277,7 +281,7 @@ describe("EditRestorationDialog", () => {
     await user.click(within(dialog).getByLabelText("Tipo de pago"));
     await user.click(await screen.findByRole("option", { name: "Al contado" }));
     expect(
-      within(dialog).queryByLabelText("Adelanto (%) (opcional)"),
+      within(dialog).queryByLabelText("Adelanto (S/) (opcional)"),
     ).toBeNull();
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),

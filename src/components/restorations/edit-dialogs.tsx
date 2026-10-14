@@ -39,10 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DEFAULT_DEPOSIT_PERCENT,
+  depositAmountHint,
+  depositAmountLiveError,
   PAYMENT_TYPE_LABELS,
   PAYMENT_TYPES,
   toDecimalString,
+  type Cents,
   type PaymentType,
 } from "@/domain/money";
 import type { PieceEditableField } from "@/domain/restoration-edit";
@@ -73,13 +75,13 @@ const NONE = "ninguno";
 type RestorationValues = {
   contactId: string | null;
   paymentType: PaymentType;
-  depositPercent: string;
+  depositAmount: string;
   pricesIncludeIgv: "si" | "no";
   notes: string;
 };
 
 /**
- * Edición de contacto, tipo y % de adelanto, IGV y notas generales (no tocan
+ * Edición de contacto, tipo y adelanto (en soles), IGV y notas generales (no tocan
  * Shopify, P12). Si
  * el precio incluye IGV solo se cambia antes de crear la orden (P13).
  */
@@ -94,7 +96,10 @@ export function EditRestorationDialog({
   initial: {
     contactId: string | null;
     paymentType: PaymentType;
-    depositPercent: number | null;
+    /** Adelanto "A cuenta" en céntimos; null si no tiene. */
+    depositAmountCents: Cents | null;
+    /** Total actual: con precios, el % del adelanto se calcula solo. */
+    totalCents: Cents;
     pricesIncludeIgv: boolean;
     notes: string;
   };
@@ -113,17 +118,24 @@ export function EditRestorationDialog({
     defaultValues: {
       contactId: initial.contactId,
       paymentType: initial.paymentType,
-      depositPercent:
-        initial.depositPercent === null
-          ? initial.paymentType === "a_cuenta"
-            ? ""
-            : String(DEFAULT_DEPOSIT_PERCENT)
-          : String(initial.depositPercent),
+      depositAmount:
+        initial.depositAmountCents === null
+          ? ""
+          : toDecimalString(initial.depositAmountCents),
       pricesIncludeIgv: igvChoice(initial.pricesIncludeIgv),
       notes: initial.notes,
     },
   });
   const paymentType = useWatch({ control: form.control, name: "paymentType" });
+  const depositText = useWatch({
+    control: form.control,
+    name: "depositAmount",
+  });
+  const depositLiveError =
+    paymentType === "a_cuenta"
+      ? depositAmountLiveError(depositText ?? "", initial.totalCents)
+      : null;
+  const depositHint = depositAmountHint(depositText, initial.totalCents);
 
   const onSubmit = form.handleSubmit(() => {
     setError(null);
@@ -220,12 +232,27 @@ export function EditRestorationDialog({
                 )}
               />
               {paymentType === "a_cuenta" ? (
-                <TextField
-                  form={form}
-                  name="depositPercent"
-                  label="Adelanto (%) (opcional)"
-                  inputMode="numeric"
-                />
+                <div className="space-y-1">
+                  <TextField
+                    form={form}
+                    name="depositAmount"
+                    label="Adelanto (S/) (opcional)"
+                    inputMode="numeric"
+                  />
+                  {depositHint ? (
+                    <p
+                      className="text-muted-foreground text-xs"
+                      data-testid="adelanto-porcentaje"
+                    >
+                      {depositHint}
+                    </p>
+                  ) : null}
+                  {depositLiveError && !form.formState.errors.depositAmount ? (
+                    <p className="text-destructive text-xs" role="alert">
+                      {depositLiveError}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <IgvField

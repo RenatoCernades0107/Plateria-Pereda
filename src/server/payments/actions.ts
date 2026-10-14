@@ -7,6 +7,7 @@ import { MAX_CENTS, toDecimalString } from "@/domain/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { checkRequirements } from "@/server/restorations/requirements";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type PaymentActionResult = { ok: true } | { error: string };
@@ -91,6 +92,8 @@ export async function approveWithPayment(
   if (parsed && !parsed.success)
     return { error: "Revisa el monto, el método y la fecha." };
   const supabase = await createClient();
+  const missing = await checkRequirements(supabase, "aprobada", pieceIds);
+  if (missing) return { error: missing };
   const { error } = await supabase.rpc("change_piece_status", {
     p_piece_ids: pieceIds,
     p_to: "aprobada",
@@ -159,6 +162,8 @@ export async function deliverWithBalance(
   await requirePermission("pagos.registrar");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
+  const missing = await checkRequirements(supabase, "entregada", pieceIds);
+  if (missing) return { error: missing };
   const { error } = await supabase.rpc("deliver_pieces_with_balance", {
     p_piece_ids: pieceIds,
     p_note: note ?? undefined,

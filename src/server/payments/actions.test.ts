@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   calls: [] as unknown[][],
   error: null as { code?: string; message?: string } | null,
   rpcError: null as { code?: string; message?: string } | null,
+  missing: null as string | null,
   orderId: "gid://shopify/Order/1" as string | null,
   scheduled: 0,
 }));
@@ -17,6 +18,9 @@ vi.mock("@/server/shopify-sync/run", () => ({
   },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/server/restorations/requirements", () => ({
+  checkRequirements: async () => mocks.missing,
+}));
 const client = {
   from: (table: string) => ({
     insert: async (rows: unknown) => {
@@ -59,6 +63,7 @@ describe("acciones de pagos (11.2)", () => {
     mocks.calls = [];
     mocks.error = null;
     mocks.rpcError = null;
+    mocks.missing = null;
     mocks.orderId = "gid://shopify/Order/1";
     mocks.scheduled = 0;
   });
@@ -113,6 +118,18 @@ describe("acciones de pagos (11.2)", () => {
     expect(
       await approveWithPayment(R, ["p1"], { paidOn: "", rows: [] }),
     ).toHaveProperty("error");
+  });
+
+  it("no aprueba ni entrega si faltan campos obligatorios (K10)", async () => {
+    mocks.missing =
+      "Falta el precio de venta de P-1 para pasarla a «Aprobada».";
+    expect(await approveWithPayment(R, ["p1"], pay)).toEqual({
+      error: mocks.missing,
+    });
+    expect(await deliverWithBalance(R, ["p1"], null)).toEqual({
+      error: mocks.missing,
+    });
+    expect(mocks.calls).toEqual([]);
   });
 
   it("si falla aprobar no registra el pago; si falla el pago, avisa", async () => {

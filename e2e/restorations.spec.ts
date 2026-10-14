@@ -120,6 +120,9 @@ test.describe("Restauraciones", () => {
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("—");
     await page.getByLabel("Tipo de pago").click();
     await page.getByRole("option", { name: "A cuenta" }).click();
+    // "A cuenta": el adelanto se escribe en soles (vacío = sin adelanto).
+    await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 0.00");
+    await page.getByLabel("Adelanto (S/) (opcional)").fill("1,218");
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText(
       "S/ 1,218.00",
     );

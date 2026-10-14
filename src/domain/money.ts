@@ -122,3 +122,74 @@ export function expectedDeposit(
       return 0;
   }
 }
+
+/** Mensajes del adelanto "A cuenta" en soles. */
+export const DEPOSIT_NEGATIVE_ERROR = "El adelanto no puede ser negativo";
+export const depositOverTotalError = (total: Cents) =>
+  `El adelanto no puede ser mayor que el total (${formatCents(total)})`;
+
+/**
+ * Adelanto "A cuenta" escrito en soles: no puede ser negativo ni, si ya hay precios
+ * (total > 0), mayor que el total. Sin precios todavía cualquier monto vale: se
+ * guarda en soles y el % se calcula cuando se asignen. Null si es válido.
+ */
+export function depositAmountError(
+  deposit: Cents,
+  total: Cents,
+): string | null {
+  if (deposit < 0) return DEPOSIT_NEGATIVE_ERROR;
+  if (total > 0 && deposit > total) return depositOverTotalError(total);
+  return null;
+}
+
+/**
+ * % del total que representa el adelanto (2 decimales). Null mientras no haya total
+ * (piezas sin precio asignado).
+ */
+export function depositPercentOf(deposit: Cents, total: Cents): number | null {
+  if (total <= 0) return null;
+  return Math.round((deposit * 10_000) / total) / 100;
+}
+
+/**
+ * Saldo después del adelanto: total - adelanto. Null mientras no haya total (sin
+ * precios asignados); cuando se asignan, el saldo se calcula solo.
+ */
+export function balanceAfterDeposit(
+  total: Cents,
+  deposit: Cents,
+): Cents | null {
+  if (total <= 0) return null;
+  return total - deposit;
+}
+
+/**
+ * Ayuda bajo el campo "Adelanto (S/)": con precios, el % del total y el saldo; sin
+ * precios, que se calcularán al asignarlos. Null si el campo está vacío, mal escrito
+ * o supera el total (eso lo dice el error de validación).
+ */
+export function depositAmountHint(text: string, total: Cents): string | null {
+  if (text.trim() === "") return null;
+  const deposit = parseMoney(text);
+  if (deposit === null || depositAmountError(deposit, total)) return null;
+  const percent = depositPercentOf(deposit, total);
+  const balance = balanceAfterDeposit(total, deposit);
+  if (percent === null || balance === null)
+    return "Aún no hay precios: el % y el saldo se calculan cuando se asignen.";
+  return `${percent} % del total · Saldo: ${formatCents(balance)}`;
+}
+
+/**
+ * Error del campo "Adelanto (S/)" mientras se escribe (negativo o mayor que el total).
+ * Null si está vacío, es válido o aún no es un monto (eso lo dice la validación).
+ */
+export function depositAmountLiveError(
+  text: string,
+  total: Cents,
+): string | null {
+  const value = text.replace(/^\s*S\/\s*/i, "").trim();
+  if (value === "") return null;
+  if (value.startsWith("-")) return DEPOSIT_NEGATIVE_ERROR;
+  const deposit = parseMoney(value);
+  return deposit === null ? null : depositAmountError(deposit, total);
+}

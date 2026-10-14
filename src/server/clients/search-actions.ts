@@ -17,6 +17,24 @@ export type ClientSearchResult = {
 };
 
 const LIMIT = 10;
+/** Shopify no debe frenar los resultados del sistema: pasado este tiempo se omite. */
+const SHOPIFY_TIMEOUT_MS = 2500;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 /**
  * Busca en el sistema (clientes y contactos activos) y en Shopify (clientes que aún no
@@ -54,8 +72,10 @@ export async function searchClients(
       .or(`display_name.ilike.${like},email.ilike.${like}${phoneFilter}`)
       .order("display_name")
       .limit(LIMIT),
-    getShopifyGateway()
-      .searchCustomers(text, { first: LIMIT })
+    withTimeout(
+      getShopifyGateway().searchCustomers(text, { first: LIMIT }),
+      SHOPIFY_TIMEOUT_MS,
+    )
       .then((page) => page.items)
       .catch(() => null),
   ]);

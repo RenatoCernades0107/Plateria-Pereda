@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  balanceAfterDeposit,
+  depositAmountError,
+  depositAmountHint,
+  depositAmountLiveError,
+  depositPercentOf,
   expectedDeposit,
   formatCents,
   MAX_CENTS,
@@ -124,5 +129,59 @@ describe("tipo de pago por definir", () => {
   it("no espera adelanto", () => {
     expect(expectedDeposit(20_000, "sin_definir")).toBe(0);
     expect(expectedDeposit(20_000, "sin_definir", 50)).toBe(0);
+  });
+});
+
+describe("adelanto a cuenta en soles", () => {
+  it("rechaza el adelanto negativo o mayor que el total", () => {
+    expect(depositAmountError(-1, 10000)).toBe(
+      "El adelanto no puede ser negativo",
+    );
+    expect(depositAmountError(10001, 10000)).toBe(
+      "El adelanto no puede ser mayor que el total (S/ 100.00)",
+    );
+    expect(depositAmountError(10000, 10000)).toBeNull();
+    expect(depositAmountError(0, 10000)).toBeNull();
+  });
+
+  it("sin precios (total 0) acepta cualquier adelanto", () => {
+    expect(depositAmountError(50000, 0)).toBeNull();
+  });
+
+  it("calcula el % solo cuando hay total", () => {
+    expect(depositPercentOf(5000, 10000)).toBe(50);
+    expect(depositPercentOf(10000, 30000)).toBe(33.33);
+    expect(depositPercentOf(5000, 0)).toBeNull();
+  });
+
+  it("el saldo es total - adelanto cuando hay precios", () => {
+    expect(balanceAfterDeposit(30000, 10000)).toBe(20000);
+    expect(balanceAfterDeposit(0, 10000)).toBeNull();
+  });
+
+  it("arma la ayuda del campo", () => {
+    expect(depositAmountHint("", 10000)).toBeNull();
+    expect(depositAmountHint("abc", 10000)).toBeNull();
+    expect(depositAmountHint("200", 10000)).toBeNull();
+    expect(depositAmountHint("25", 10000)).toBe(
+      "25 % del total · Saldo: S/ 75.00",
+    );
+    expect(depositAmountHint("25", 0)).toBe(
+      "Aún no hay precios: el % y el saldo se calculan cuando se asignen.",
+    );
+  });
+});
+
+describe("depositAmountLiveError", () => {
+  it("avisa del negativo y del exceso mientras se escribe", () => {
+    expect(depositAmountLiveError("", 10000)).toBeNull();
+    expect(depositAmountLiveError("-5", 10000)).toBe(
+      "El adelanto no puede ser negativo",
+    );
+    expect(depositAmountLiveError("S/ 150", 10000)).toBe(
+      "El adelanto no puede ser mayor que el total (S/ 100.00)",
+    );
+    expect(depositAmountLiveError("150", 0)).toBeNull();
+    expect(depositAmountLiveError("abc", 10000)).toBeNull();
   });
 });

@@ -83,7 +83,7 @@ export type PieceForLocation = {
   returnedAt?: Date | null;
 };
 
-/** En Interno y ya de vuelta del taller (la última vuelta es posterior al último envío). */
+/** En En restauración y ya de vuelta del taller (la última vuelta es posterior al último envío). */
 export function isBackFromWorkshop(piece: PieceForLocation): boolean {
   return (
     piece.status === "enviada_taller" &&
@@ -118,7 +118,7 @@ export type PieceForRestorationStatus = {
   status: PieceStatus;
   approvedAt: Date | null;
   firstSentAt: Date | null;
-  /** En Interno y ya de vuelta del taller. */
+  /** En En restauración y ya de vuelta del taller. */
   readyForDelivery: boolean;
 };
 
@@ -231,4 +231,36 @@ export function missingSalePrices(
     codes,
     message: `Faltan precios de venta para crear la orden de Shopify: ${codes.join(", ")}.`,
   };
+}
+
+/** Avance de un estado parcial: "2/6 aprobadas" o "2/6 listas". */
+export type PartialProgress = { done: number; total: number; label: string };
+
+/**
+ * Cuántas piezas vivas (sin anuladas, rechazadas ni sin arreglo) ya llegaron al
+ * paso en los estados parciales; null en los demás estados.
+ */
+export function partialProgress(
+  status: RestorationStatus,
+  pieces: readonly PieceForRestorationStatus[],
+): PartialProgress | null {
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
+  if (active.length === 0) return null;
+  if (status === "parcialmente_aprobada")
+    return {
+      done: active.filter((p) => p.approvedAt).length,
+      total: active.length,
+      label: "aprobadas",
+    };
+  if (status === "parcialmente_lista")
+    return {
+      done: active.filter(isBack).length,
+      total: active.length,
+      label: "listas",
+    };
+  return null;
+}
+
+export function formatPartialProgress(progress: PartialProgress): string {
+  return `${progress.done}/${progress.total} ${progress.label}`;
 }

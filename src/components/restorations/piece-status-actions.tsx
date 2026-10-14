@@ -72,7 +72,7 @@ export type StatusPiece = {
   location: PieceLocation;
   arrivedAt: string | null;
   workshopId: string | null;
-  /** En Interno y ya de vuelta del taller (P47). */
+  /** En En restauración y ya de vuelta del taller (P47). */
   readyForDelivery: boolean;
   returnedAt: string | null;
   urgent: boolean;
