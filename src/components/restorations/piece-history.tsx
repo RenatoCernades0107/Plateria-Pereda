@@ -1,7 +1,8 @@
-import { ChevronRight, History } from "lucide-react";
+import { History } from "lucide-react";
 
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type {
   LogisticsPieceInfo,
   PieceDetail,
@@ -10,42 +11,47 @@ import type {
 
 import { Timeline } from "./timeline";
 
-/** Línea de tiempo plegable de una pieza (admin y ventas, Paso 8.5). */
-export function PieceTimelineDetails({
+/**
+ * Línea de tiempo de una pieza (admin y ventas, Paso 8.5): siempre a la vista, en
+ * horizontal, con los colores de cada estado.
+ */
+export function PieceTimelineStrip({
   piece,
   events,
   now,
+  className,
 }: {
   piece: PieceDetail;
   events: PieceTimelineEvent[];
   now: Date;
+  className?: string;
 }) {
   return (
-    <details
-      className="group rounded-md border p-3 text-sm"
+    <section
+      className={cn(
+        "bg-card space-y-2 rounded-lg border p-3 sm:p-4",
+        className,
+      )}
+      aria-labelledby="linea-tiempo-titulo"
       data-testid="linea-tiempo"
     >
-      {/* Solo muestra información: se ve como un enlace que se despliega, no como botón. */}
-      <summary className="text-primary flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium underline-offset-4 hover:underline [&::-webkit-details-marker]:hidden">
-        <ChevronRight
-          aria-hidden
-          className="size-4 transition-transform group-open:rotate-90"
-        />
+      <h2
+        id="linea-tiempo-titulo"
+        className="text-heading flex items-center gap-1.5 font-semibold"
+      >
         <History aria-hidden className="size-4" />
         Línea de tiempo
-      </summary>
-      <div className="pt-3">
-        <Timeline
-          events={events}
-          piece={{
-            status: piece.status,
-            registeredAt: piece.createdAt,
-            deliveredAt: piece.deliveredAt,
-          }}
-          now={now}
-        />
-      </div>
-    </details>
+      </h2>
+      <Timeline
+        events={events}
+        piece={{
+          status: piece.status,
+          registeredAt: piece.createdAt,
+          deliveredAt: piece.deliveredAt,
+        }}
+        now={now}
+      />
+    </section>
   );
 }
 
