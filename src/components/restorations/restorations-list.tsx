@@ -48,7 +48,7 @@ function SortHeader({
 
 function Payment({ item }: { item: RestorationListItem }) {
   return (
-    <span className="flex flex-wrap gap-1">
+    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
       {item.paymentStatus ? (
         <PaymentStatusBadge status={item.paymentStatus} />
       ) : null}

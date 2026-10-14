@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -145,7 +146,10 @@ export function CatalogItemDialog({
                 name="shopifyName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre en Shopify</FormLabel>
+                    <FormLabel>
+                      <ShopifyIcon className="text-shopify-strong size-4" />
+                      Nombre en Shopify
+                    </FormLabel>
                     <FormControl>
                       <Input autoComplete="off" {...field} />
                     </FormControl>

@@ -19,7 +19,8 @@ export type WhatsappQuoteItem = {
   serviceId: string | null;
   serviceName: string;
   weightGrams: number | null;
-  priceCents: Cents;
+  /** Null: precio por definir. */
+  priceCents: Cents | null;
   notes: string;
   /** Restauración en la que se pidió (pieza viva); null = pendiente. */
   order: {
@@ -151,7 +152,7 @@ export async function getWhatsappQuote(
       serviceId: i.service_id,
       serviceName: i.service_name,
       weightGrams: i.weight_grams === null ? null : Number(i.weight_grams),
-      priceCents: toCents(Number(i.price)),
+      priceCents: i.price === null ? null : toCents(Number(i.price)),
       notes: i.notes,
       order: orderOf.get(i.id) ?? null,
     })),

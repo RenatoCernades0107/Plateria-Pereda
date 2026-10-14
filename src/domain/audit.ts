@@ -303,6 +303,27 @@ export function formatValue(value: unknown): string {
   return String(value);
 }
 
+/** Columnas técnicas que no dicen nada a quien lee el historial. */
+const HIDDEN_FIELDS = new Set(["id", "created_by", "created_at", "updated_at"]);
+
+/** Columnas que comparten varias tablas (si la tabla no les da su propia etiqueta). */
+const COMMON_FIELDS: Record<string, FieldDef> = {
+  prices_include_igv: {
+    label: "Precio incluye IGV",
+    format: (value) => (value ? "Sí" : "No, se suma el IGV"),
+  },
+  deposit_amount: {
+    label: "Adelanto (S/)",
+    format: (value) => formatMoney(Number(value)),
+  },
+  service_cost: {
+    label: "Costo de servicio",
+    format: (value) => formatMoney(Number(value)),
+  },
+  ready_for_delivery: { label: "Lista para entregar" },
+  whatsapp_quote_item_id: { label: "Pieza cotizada por WhatsApp" },
+};
+
 function humanize(column: string): string {
   const text = column.replaceAll("_", " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -317,10 +338,10 @@ export function describeChanges(
   action: AuditAction,
   changes: AuditChanges,
 ): string[] {
-  const fields = AUDIT_ENTITIES[table]?.fields ?? {};
+  const fields = { ...COMMON_FIELDS, ...AUDIT_ENTITIES[table]?.fields };
   const known = Object.keys(fields).filter((key) => key in changes);
   const others = Object.keys(changes)
-    .filter((key) => !(key in fields))
+    .filter((key) => !(key in fields) && !HIDDEN_FIELDS.has(key))
     .sort();
 
   return [...known, ...others].map((key) => {

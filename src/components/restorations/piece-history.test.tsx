@@ -5,7 +5,7 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import {
   LogisticsPieceSummary,
-  PieceTimelineDetails,
+  PieceTimelineStrip,
   RestorationStatusSummary,
 } from "./piece-history";
 
@@ -81,25 +81,49 @@ describe("RestorationStatusSummary", () => {
   });
 });
 
-describe("PieceTimelineDetails", () => {
-  it("se despliega desde un enlace con ícono que dice qué muestra", () => {
+describe("PieceTimelineStrip", () => {
+  it("está siempre a la vista, en horizontal, con el título", () => {
     render(
-      <PieceTimelineDetails
+      <PieceTimelineStrip
         piece={
           {
             ...piece,
-            status: "registrada",
+            status: "aprobada",
             createdAt: "2026-10-01T15:00:00Z",
             deliveredAt: null,
           } as PieceDetail
         }
-        events={[]}
-        now={new Date("2026-10-02T15:00:00Z")}
+        events={[
+          {
+            pieceId: "p1",
+            event: "estado",
+            at: "2026-10-01T15:00:00Z",
+            fromStatus: null,
+            toStatus: "registrada",
+            actorName: null,
+            note: null,
+          },
+          {
+            pieceId: "p1",
+            event: "estado",
+            at: "2026-10-02T15:00:00Z",
+            fromStatus: "registrada",
+            toStatus: "aprobada",
+            actorName: "Vera Ventas",
+            note: null,
+          },
+        ]}
+        now={new Date("2026-10-03T15:00:00Z")}
       />,
     );
-    const toggle = screen.getByText("Línea de tiempo");
-    expect(toggle.tagName).toBe("SUMMARY");
-    expect(toggle).toHaveClass("text-primary", "hover:underline");
-    expect(screen.getByTestId("linea-tiempo")).not.toHaveAttribute("open");
+    expect(
+      screen.getByRole("heading", { name: "Línea de tiempo" }),
+    ).toBeVisible();
+    expect(screen.getByTestId("linea-tiempo").tagName).toBe("SECTION");
+    const steps = screen.getAllByTestId("evento");
+    expect(steps).toHaveLength(2);
+    expect(steps[1]).toHaveAttribute("aria-current", "step");
+    // Usa la insignia del estado, así comparte sus colores.
+    expect(steps[1]!.querySelector('[data-status="aprobada"]')).not.toBeNull();
   });
 });

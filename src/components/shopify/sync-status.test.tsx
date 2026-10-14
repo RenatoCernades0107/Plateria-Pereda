@@ -34,6 +34,24 @@ describe("SyncStatus", () => {
     expect(screen.getByTestId("estado-shopify")).toHaveTextContent(text);
   });
 
+  it.each([
+    ["ok", true],
+    ["pending", false],
+    ["error", false],
+  ] as const)(
+    "lleva el logotipo de Shopify (%s; verde: %s)",
+    (status, green) => {
+      render(<SyncStatus jobId={1} status={status} />);
+      const badge = screen.getByTestId("estado-shopify");
+      expect(badge.querySelector('svg[data-icon="shopify"]')).toHaveAttribute(
+        "aria-hidden",
+        "true",
+      );
+      if (green) expect(badge).toHaveClass("bg-shopify/15");
+      else expect(badge).not.toHaveClass("bg-shopify/15");
+    },
+  );
+
   it("solo ofrece reintentar cuando hubo error y se permite", () => {
     const { rerender } = render(<SyncStatus jobId={1} status="pending" />);
     expect(

@@ -18,7 +18,8 @@ export function SettingsTabs() {
       aria-label="Secciones de configuración"
       className="-mx-1 overflow-x-auto"
     >
-      <ul className="bg-muted inline-flex min-w-max gap-1 rounded-lg p-1">
+      {/* En el celular, dos columnas: así ninguna pestaña queda cortada. */}
+      <ul className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1 sm:inline-flex sm:min-w-max">
         {TABS.map((tab) => {
           const active = pathname === tab.href;
           return (
@@ -27,7 +28,7 @@ export function SettingsTabs() {
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+                  "flex justify-center rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
                   active
                     ? "bg-background text-heading shadow-sm"
                     : "text-muted-foreground hover:text-foreground",

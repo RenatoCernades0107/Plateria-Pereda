@@ -125,6 +125,48 @@ test.describe("Fotos y archivos", () => {
     );
   });
 
+  test("en el detalle de la pieza el destino es fijo, la foto se ve al lado y se borra", async ({
+    page,
+    loginAs,
+  }) => {
+    const r = await seedRestoration(`Pieza${run}`);
+    const { data: piece } = await adminClient()
+      .from("pieces")
+      .select("id")
+      .eq("restoration_id", r.id)
+      .single();
+    await loginAs("ventas");
+    await page.goto(`/piezas/${piece!.id}`);
+    await expect(page.getByText("La pieza aún no tiene fotos.")).toBeVisible();
+
+    // "Para" no se elige: es esta pieza.
+    await expect(page.getByTestId("archivo-destino-fijo")).toHaveText(
+      `${r.code}-1 · Fuente`,
+    );
+    await expect(page.getByRole("combobox", { name: "Para" })).toHaveCount(0);
+
+    await page.getByLabel("Archivos a subir").setInputFiles(png("pieza.png"));
+    await expect(page.getByText("Archivo subido.")).toBeVisible();
+    const thumb = page.getByRole("button", { name: "Ver pieza.png" });
+    await expect(thumb).toBeVisible();
+
+    // Al pulsarla se ve en grande.
+    await thumb.click();
+    await expect(
+      page.getByRole("dialog").getByRole("img", { name: "pieza.png" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // Borrar desde la miniatura pide confirmación.
+    await page.getByRole("button", { name: "Borrar pieza.png" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Sí, borrar" })
+      .click();
+    await expect(page.getByText("Archivo borrado.")).toBeVisible();
+    await expect(page.getByText("La pieza aún no tiene fotos.")).toBeVisible();
+  });
+
   test("un archivo no permitido muestra el error y no se sube", async ({
     page,
     loginAs,

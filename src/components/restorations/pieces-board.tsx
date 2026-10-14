@@ -23,7 +23,8 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PieceDialog } from "./edit-dialogs";
 import type { CatalogOption, WorkshopOption } from "./piece-fields";
-import { SalePriceInput } from "./piece-money-cells";
+import { SalePriceCell } from "./piece-money-cells";
+import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import { usePieceActions } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
@@ -48,7 +49,8 @@ const PRE_APPROVAL: readonly PieceDetail["status"][] = [
 ];
 
 const HEAD = "px-2 py-2 text-left font-medium whitespace-nowrap";
-const CELL = "px-2 py-2 align-top";
+const CELL = cn(RT.cell, "md:px-2");
+const LABELED = cn(CELL, RT.labeled);
 
 type RowProps = {
   restorationId: string;
@@ -101,11 +103,14 @@ function PieceRow({
   const editPrice =
     can(role, "piezas.precio-venta") &&
     (editable.includes("price") || priceChange);
+  const details = [piece.serviceName, materialSummary(piece)]
+    .filter((v) => v && v !== "—")
+    .join(" · ");
 
   return (
     <tr
       id={pieceAnchor(piece.id)}
-      className="hover:bg-muted/30 scroll-mt-4"
+      className={cn("hover:bg-muted/30 scroll-mt-4", RT.row)}
       data-testid={`pieza-${piece.code}`}
     >
       <td className={CELL}>{checkbox}</td>
@@ -125,24 +130,23 @@ function PieceRow({
           </div>
         ) : null}
       </td>
-      <td className={cn(CELL, "min-w-44")}>
+      <td className={cn(CELL, RT.full, "min-w-44")}>
         <p className="break-words">{piece.description}</p>
+        {details ? (
+          <p className="text-muted-foreground mt-0.5 text-xs break-words">
+            {details}
+          </p>
+        ) : null}
         {piece.notes ? (
           <p className="text-muted-foreground mt-1 text-xs break-words whitespace-pre-line">
             {piece.notes}
           </p>
         ) : null}
       </td>
-      <td className={cn(CELL, "min-w-24")}>
-        {piece.serviceName || <span className="text-muted-foreground">—</span>}
-      </td>
-      <td className={cn(CELL, "text-muted-foreground min-w-28")}>
-        {materialSummary(piece)}
-      </td>
       {showPrice ? (
-        <td className={cn(CELL, "text-right")}>
+        <td className={cn(LABELED, "md:text-right")} data-label="Precio venta">
           {editPrice ? (
-            <SalePriceInput
+            <SalePriceCell
               piece={{ id: piece.id, code: piece.code, restorationId }}
               cents={piece.priceCents}
               hasOrder={priceChange}
@@ -163,7 +167,7 @@ function PieceRow({
           )}
         </td>
       ) : null}
-      <td className={cn(CELL, "min-w-32")}>
+      <td className={cn(LABELED, "min-w-32")} data-label="Estado">
         <div className="flex flex-col items-start gap-1">
           <PieceStatusBadge status={live.status} />
           <LocationBadge location={live.location} />
@@ -178,10 +182,13 @@ function PieceRow({
           ) : null}
         </div>
       </td>
-      <td className={cn(CELL, "text-muted-foreground")}>
+      <td
+        className={cn(LABELED, "text-muted-foreground md:whitespace-nowrap")}
+        data-label="Taller"
+      >
         {piece.workshopName ?? "Sin taller"}
       </td>
-      <td className={cn(CELL, "text-right")}>
+      <td className={cn(CELL, "max-md:basis-full md:text-right")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -315,6 +322,14 @@ export function PiecesBoard({
   const lastToApprove = toApprove.length === 1 ? toApprove[0]!.id : null;
   const showPrice = can(role, "dinero.ver");
 
+  if (pieces.length === 0) {
+    return (
+      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
+        La guía aún no tiene piezas.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <PiecesBulkBar
@@ -346,10 +361,10 @@ export function PiecesBoard({
 
       {/* `relative`: los textos sr-only (absolutos) quedan dentro del desplazamiento
           y no ensanchan la página en el celular. */}
-      <div className="relative overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[60rem] border-collapse text-sm">
+      <div className={RT.wrapper}>
+        <table className={cn(RT.table, "md:min-w-[48rem]")}>
           <caption className="sr-only">Piezas de la guía</caption>
-          <thead className="bg-muted/60 text-muted-foreground border-b text-xs">
+          <thead className={RT.thead}>
             <tr>
               <th scope="col" className={cn(HEAD, "w-8")}>
                 <span className="sr-only">Elegir</span>
@@ -362,12 +377,6 @@ export function PiecesBoard({
               </th>
               <th scope="col" className={HEAD}>
                 Descripción
-              </th>
-              <th scope="col" className={HEAD}>
-                Servicio
-              </th>
-              <th scope="col" className={HEAD}>
-                Material · medida · peso
               </th>
               {showPrice ? (
                 <th scope="col" className={cn(HEAD, "text-right")}>
@@ -385,7 +394,7 @@ export function PiecesBoard({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className={RT.tbody}>
             {pieces.map((piece) => (
               <PieceRow
                 key={piece.id}

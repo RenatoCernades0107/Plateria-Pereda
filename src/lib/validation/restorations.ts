@@ -99,14 +99,6 @@ const money = z
     return cents;
   });
 
-/** Precio cotizado (cotización de WhatsApp): obligatorio. */
-const requiredPrice = z
-  .string()
-  .trim()
-  .min(1, "Ingresa el precio")
-  .pipe(money)
-  .transform((cents) => cents as number);
-
 /** Precio de venta de la pieza (D58): vacío = sin asignar (null). */
 const optionalPrice = money;
 
@@ -149,14 +141,8 @@ export const pieceSchema = z
     priceCents,
   }));
 
-/** Pieza de una cotización de WhatsApp: el precio cotizado es obligatorio. */
-export const quotePieceSchema = z
-  .object({ ...pieceFields, price: requiredPrice })
-  .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
-    ...rest,
-    weightGrams,
-    priceCents,
-  }));
+/** Pieza de una cotización de WhatsApp: el precio cotizado también es opcional. */
+export const quotePieceSchema = pieceSchema;
 
 export type PieceFormInput = z.input<typeof pieceSchema>;
 export type PieceInput = z.output<typeof pieceSchema>;
@@ -334,8 +320,12 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
 export type RestorationFormInput = z.input<typeof restorationSchema>;
 export type RestorationInput = z.output<typeof restorationSchema>;
 
-/** Pieza de la copia: el estado inicial es obligatorio y Consulta pide nota (P49). */
+/**
+ * Pieza de la copia: el estado inicial es obligatorio y Consulta pide nota (P49).
+ * Sin precio la pieza pasa a Consulta sola, con su nota (la BD lo asegura).
+ */
 const copyPieceSchema = pieceSchema.superRefine((piece, ctx) => {
+  if (piece.priceCents === null) return;
   if (!piece.initialStatus) {
     ctx.addIssue({
       code: "custom",

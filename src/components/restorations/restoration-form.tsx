@@ -203,9 +203,18 @@ function PieceCard({
             <span className="text-heading block truncate font-medium">
               {title}
             </span>
-            {showInitialStatus && piece?.initialStatus ? (
+            {showInitialStatus && (piece?.initialStatus || price === null) ? (
               <span className="text-muted-foreground block text-xs">
-                Pasa a {PIECE_STATUS_LABELS[piece.initialStatus]}
+                Pasa a{" "}
+                {
+                  PIECE_STATUS_LABELS[
+                    price === null ? "en_consulta" : piece!.initialStatus!
+                  ]
+                }
+              </span>
+            ) : !showInitialStatus && !quoteOnly && price === null ? (
+              <span className="text-muted-foreground block text-xs">
+                Sin precio: pasa a Consulta
               </span>
             ) : null}
           </span>
@@ -220,7 +229,7 @@ function PieceCard({
           {price !== null
             ? formatCents(price)
             : quoteOnly
-              ? "—"
+              ? "Por definir"
               : "Sin asignar"}
         </span>
         <Button
@@ -256,11 +265,11 @@ function PieceCard({
           services={services}
           showWorkshop={!quoteOnly && canAssignWorkshop}
           showUrgent={!quoteOnly}
-          // La cotización de WhatsApp lleva el precio cotizado (obligatorio); en la
-          // restauración el precio de venta es opcional y solo lo asigna el admin (D58).
+          // El precio es opcional: en la cotización de WhatsApp lo escribe ventas; en la
+          // restauración solo lo asigna el admin (D58). Sin precio, pasa a Consulta.
           editable={quoteOnly || canSetPrice ? undefined : PIECE_FREE_FIELDS}
           priceHint={SALE_PRICE_HINT}
-          pricePlaceholder={quoteOnly ? undefined : "Sin asignar"}
+          pricePlaceholder={quoteOnly ? "Por definir" : "Sin asignar"}
         />
       </div>
     </li>
@@ -282,6 +291,22 @@ function InitialStatusFields({
     control: form.control,
     name: `pieces.${index}.initialStatus`,
   });
+  const price = useWatch({
+    control: form.control,
+    name: `pieces.${index}.price`,
+  });
+  if (!price?.trim()) {
+    return (
+      <p
+        className="text-muted-foreground text-sm"
+        data-testid="pasa-a-consulta"
+      >
+        Sin precio: la pieza pasa a{" "}
+        <span className="text-foreground font-medium">Consulta</span> para
+        cotizarlo.
+      </p>
+    );
+  }
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <FormField
