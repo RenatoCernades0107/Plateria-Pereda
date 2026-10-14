@@ -15,8 +15,9 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
  * P22 y D59: el servicio (del catálogo o escrito libremente) y la descripción son
  * obligatorios; material, peso en gramos, medida y precio son opcionales; taller
  * opcional al registrar. El precio de venta vacío queda "Sin asignar" (lo asigna el
- * admin, D58); en las cotizaciones de WhatsApp es obligatorio (es lo que se le
- * cotiza al cliente).
+ * admin, D58); en las cotizaciones de WhatsApp también es opcional ("Por definir").
+ * Al registrar la restauración (directa o desde una cotización) la pieza sin precio
+ * pasa a Consulta (la BD lo asegura).
  * Lo obligatorio se define aquí (no en la BD) para cambiarlo sin migraciones.
  */
 

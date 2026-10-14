@@ -712,6 +712,63 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     expect(card.getByLabelText("Estado inicial")).toHaveTextContent("Consulta");
   });
 
+  it.each([
+    ["admin", true],
+    ["ventas", false],
+  ])(
+    "crea la restauración sin precio desde una pieza Por definir (%s)",
+    async (_role, canSetPrice) => {
+      mocks.copy.mockResolvedValue({ ok: true, id: "r1", code: "RES-00010" });
+      const user = userEvent.setup();
+      const unpriced = quoteItem(
+        "00000000-0000-0000-0000-0000000000d4",
+        1,
+        "Bandeja",
+        "",
+      );
+      renderForm(
+        {
+          kind: "copia",
+          quote: {
+            ...linkedQuote,
+            items: [{ ...unpriced, priceLabel: "Por definir" }],
+          },
+        },
+        canSetPrice,
+      );
+      const item = screen
+        .getByRole("checkbox", { name: "Pedir Bandeja" })
+        .closest("li")!;
+      expect(
+        within(item as HTMLElement).getByText("Por definir"),
+      ).toBeVisible();
+      const card = within(screen.getByTestId("pieza-1"));
+      expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+      // Sin precio no pide estado inicial ni nota: pasa a Consulta sola.
+      expect(card.getByTestId("pasa-a-consulta")).toBeVisible();
+      expect(card.queryByLabelText("Estado inicial")).toBeNull();
+
+      await user.click(
+        screen.getByRole("button", { name: "Crear restauración" }),
+      );
+      expect(mocks.copy).toHaveBeenCalledWith(
+        QUOTE.id,
+        expect.objectContaining({
+          pieces: [
+            expect.objectContaining({
+              description: "Bandeja",
+              price: "",
+              quoteItemId: unpriced.id,
+            }),
+          ],
+        }),
+      );
+      expect(mocks.push).toHaveBeenCalledWith(
+        "/restauraciones/r1?registrada=1",
+      );
+    },
+  );
+
   it("el registro en oficina no muestra el estado inicial", () => {
     renderForm();
     expect(
