@@ -83,6 +83,12 @@ const buttons = () =>
     .getAllByRole("button")
     .map((b) => b.textContent);
 
+/** Abre «Más acciones» y devuelve los cierres que ofrece. */
+async function moreActions(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: "Más acciones" }));
+  return screen.getAllByRole("menuitem").map((i) => i.textContent);
+}
+
 beforeEach(() => {
   for (const fn of Object.values(mocks)) fn.mockReset();
   mocks.change.mockResolvedValue({ ok: true });
@@ -92,35 +98,41 @@ beforeEach(() => {
 });
 
 describe("PieceStatusPanel", () => {
-  it("muestra solo las acciones del rol para el estado", () => {
+  it("muestra solo las acciones del rol: una principal y los cierres aparte", async () => {
+    const user = userEvent.setup();
     renderPanel("registrada", "ventas");
+    // La principal va primero; los cierres, en «Más acciones».
     expect(buttons()).toEqual([
+      "Aprobar",
       "Marcar llegada a tienda",
       "Poner en consulta",
-      "Aprobar",
-      "Anular",
+      "Más acciones",
     ]);
+    expect(screen.getByRole("button", { name: "Aprobar" })).toHaveAttribute(
+      "data-variant",
+      "default",
+    );
+    expect(
+      screen.getByRole("button", { name: "Poner en consulta" }),
+    ).toHaveAttribute("data-variant", "outline");
+    expect(await moreActions(user)).toEqual(["Anular"]);
   });
 
-  it("rotula el estado y las acciones por separado", () => {
+  it("el estado va aparte de las acciones", () => {
     renderPanel("registrada", "ventas");
     const group = screen.getByRole("group", {
       name: "Acciones de RES-00001-1",
     });
-    // El rótulo visible no cambia el nombre accesible del grupo.
-    expect(within(group).getByText("Acciones")).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
     const status = screen.getByText("Estado");
     expect(status.parentElement).toHaveTextContent("Registrada");
     expect(group).not.toContainElement(status);
   });
 
-  it("Rechazar solo aparece en Espera respuesta cliente (P50)", () => {
+  it("Rechazar solo aparece en Espera respuesta cliente (P50)", async () => {
+    const user = userEvent.setup();
     renderPanel("en_espera", "ventas");
-    expect(buttons()).toContain("Rechazar");
-    expect(buttons()).toContain("Aprobar");
+    expect(buttons()[0]).toBe("Aprobar");
+    expect(await moreActions(user)).toContain("Rechazar");
   });
 
   it("logística no consulta, aprueba ni anula", () => {
@@ -135,11 +147,7 @@ describe("PieceStatusPanel", () => {
     expect(buttons()).toEqual(["No tiene arreglo"]);
     unmount();
     renderPanel("enviada_taller", "admin", { arrivedAt: ARRIVED });
-    expect(buttons()).toEqual([
-      "Recibir del taller",
-      "No tiene arreglo",
-      "Anular",
-    ]);
+    expect(buttons()).toEqual(["Recibir del taller", "Más acciones"]);
     expect(screen.getByText("En taller")).toBeInTheDocument();
   });
 
@@ -161,7 +169,7 @@ describe("PieceStatusPanel", () => {
       arrivedAt: ARRIVED,
       readyForDelivery: true,
     });
-    expect(buttons()).toEqual(["No tiene arreglo", "Entregar", "Observar"]);
+    expect(buttons()).toEqual(["Entregar", "Observar", "Más acciones"]);
     // "En tienda" = volvió del taller (P48).
     expect(screen.getByText("En tienda")).toBeInTheDocument();
     expect(screen.getByText("En restauración")).toBeInTheDocument();
@@ -219,8 +227,11 @@ describe("PieceStatusPanel", () => {
   it("el diálogo exige la nota al anular", async () => {
     const user = userEvent.setup();
     renderPanel("aprobada", "ventas");
-    await user.click(screen.getByRole("button", { name: "Anular" }));
-    const dialog = screen.getByRole("dialog");
+    // Anular es un cierre: está en «Más acciones», no como botón.
+    expect(screen.queryByRole("button", { name: "Anular" })).toBeNull();
+    await moreActions(user);
+    await user.click(screen.getByRole("menuitem", { name: "Anular" }));
+    const dialog = await screen.findByRole("dialog");
     await user.click(
       within(dialog).getByRole("button", { name: "Confirmar: Anular" }),
     );

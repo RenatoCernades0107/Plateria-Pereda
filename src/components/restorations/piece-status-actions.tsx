@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useOptimistic, useState, useTransition } from "react";
+import { Loader2, MoreHorizontal } from "lucide-react";
+import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
@@ -19,6 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,6 +48,7 @@ import {
 } from "@/domain/piece-state-machine";
 import type { PieceLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 import {
   changePieceStatus,
   markPiecesArrived,
@@ -47,7 +56,6 @@ import {
   returnPiecesToClient,
 } from "@/server/restorations/status-actions";
 
-import { ROW_LABEL_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
@@ -455,10 +463,109 @@ export function usePieceActions({
 }
 
 /**
+ * Orden de preferencia de la acción principal (botón relleno): el siguiente paso
+ * natural del flujo. Solo una acción se destaca; el resto va como secundaria.
+ */
+const PRIMARY_ORDER = [
+  "entregada",
+  "recibir",
+  "devolver",
+  "aprobada",
+  "enviada_taller",
+  "llegada",
+  "en_espera",
+  "en_consulta",
+] as const;
+
+/**
+ * Reparte las acciones en principal, secundarias y de cierre (destructivas). Los
+ * cierres (anular, rechazar, no tiene arreglo) van aparte, en «Más acciones», salvo
+ * que no haya ninguna otra acción: entonces se muestran como botones, para no
+ * esconder la única acción posible. Todos piden confirmación en un diálogo.
+ */
+export function arrangeActions(actions: readonly PieceAction[]) {
+  const regular = actions.filter((a) => !a.destructive);
+  const closing = actions.filter((a) => a.destructive);
+  const primary =
+    PRIMARY_ORDER.map((key) => regular.find((a) => a.key === key)).find(
+      (a) => a !== undefined,
+    ) ?? null;
+  return {
+    primary,
+    secondary: regular.filter((a) => a !== primary),
+    /** Cierres en el menú «Más acciones» (si hay otras acciones). */
+    overflow: regular.length > 0 ? closing : [],
+    /** Cierres como botones (si son las únicas acciones). */
+    inlineClosing: regular.length > 0 ? [] : closing,
+  };
+}
+
+/** Insignias del detalle de la pieza: más grandes que en tablas y tarjetas. */
+const LARGE_BADGE_CLASS = "px-2.5 py-1 text-sm [&>svg]:size-3.5";
+
+/** Menú «Más acciones» con los cierres de la pieza, en rojo y apartados. */
+function MoreActionsMenu({
+  code,
+  actions,
+}: {
+  code: string;
+  actions: PieceAction[];
+}) {
+  // La acción corre al cerrarse el menú, así su diálogo recibe el foco.
+  const chosen = useRef<(() => void) | null>(null);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="text-muted-foreground"
+          title={`Más acciones de ${code}`}
+        >
+          <MoreHorizontal aria-hidden />
+          Más acciones
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="min-w-48"
+        onCloseAutoFocus={() => {
+          const action = chosen.current;
+          chosen.current = null;
+          action?.();
+        }}
+      >
+        <DropdownMenuLabel>Cerrar la pieza</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {actions.map((a) => (
+          <DropdownMenuItem
+            key={a.key}
+            disabled={a.disabled}
+            variant="destructive"
+            onSelect={() => {
+              chosen.current = a.onSelect;
+            }}
+          >
+            {a.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
  * Estado, ubicación y acciones de una pieza (detalle de la pieza). Solo muestra lo
  * que el rol puede hacer (ver `usePieceActions`).
+ *
+ * Jerarquía visual (Refactoring UI, NN/g, Material): el estado en insignias grandes y
+ * agrupadas; una sola acción principal (botón relleno), las demás secundarias (con
+ * borde) y los cierres, que no se deshacen, apartados en «Más acciones» y con
+ * confirmación.
  */
-export function PieceStatusPanel(props: PieceActionsInput) {
+export function PieceStatusPanel({
+  className,
+  ...props
+}: PieceActionsInput & { className?: string }) {
   const {
     piece: optimistic,
     pending,
@@ -467,48 +574,77 @@ export function PieceStatusPanel(props: PieceActionsInput) {
     dialogs,
   } = usePieceActions(props);
   const { piece } = props;
+  const { primary, secondary, overflow, inlineClosing } =
+    arrangeActions(actions);
 
   return (
-    <div className="space-y-2">
+    <div className={cn("space-y-4", className)}>
       {/* Estado y ubicación: solo informan (insignias, no se pulsan). */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={ROW_LABEL_CLASS}>Estado</span>
-        <PieceStatusBadge status={optimistic.status} />
-        <LocationBadge location={optimistic.location} />
-        {optimistic.urgent ? <UrgentBadge /> : null}
-        {pending ? (
-          <Loader2
-            className="text-muted-foreground size-4 animate-spin"
-            aria-label="Guardando"
+      <div className="space-y-1.5" data-testid="estado-pieza">
+        <p className="text-muted-foreground text-xs font-medium">Estado</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <PieceStatusBadge
+            status={optimistic.status}
+            className={LARGE_BADGE_CLASS}
           />
-        ) : null}
+          <LocationBadge
+            location={optimistic.location}
+            className={LARGE_BADGE_CLASS}
+          />
+          {optimistic.urgent ? (
+            <UrgentBadge className={LARGE_BADGE_CLASS} />
+          ) : null}
+          {pending ? (
+            <Loader2
+              className="text-muted-foreground size-4 animate-spin"
+              aria-label="Guardando"
+            />
+          ) : null}
+        </div>
       </div>
       {actions.length > 0 ? (
-        <div
-          className="flex flex-wrap items-center gap-2"
-          aria-label={`Acciones de ${piece.code}`}
-          role="group"
-        >
-          {/* Rótulo visible; el grupo ya tiene su nombre accesible. */}
-          <span className={ROW_LABEL_CLASS} aria-hidden>
-            Acciones
-          </span>
-          {actions.map((a) => (
-            <Button
-              key={a.key}
-              size="sm"
-              variant={a.destructive ? "ghost" : "outline"}
-              className={a.destructive ? "text-destructive" : undefined}
-              disabled={a.disabled}
-              onClick={a.onSelect}
-            >
-              {a.label}
-            </Button>
-          ))}
+        <div className="space-y-2">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            aria-label={`Acciones de ${piece.code}`}
+            role="group"
+          >
+            {primary ? (
+              <Button disabled={primary.disabled} onClick={primary.onSelect}>
+                {primary.label}
+              </Button>
+            ) : null}
+            {secondary.map((a) => (
+              <Button
+                key={a.key}
+                variant="outline"
+                disabled={a.disabled}
+                onClick={a.onSelect}
+              >
+                {a.label}
+              </Button>
+            ))}
+            {inlineClosing.map((a) => (
+              <Button
+                key={a.key}
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                disabled={a.disabled}
+                onClick={a.onSelect}
+              >
+                {a.label}
+              </Button>
+            ))}
+            {overflow.length > 0 ? (
+              <div className="ml-auto">
+                <MoreActionsMenu code={piece.code} actions={overflow} />
+              </div>
+            ) : null}
+          </div>
+          {balanceWarning ? (
+            <p className="text-destructive text-sm">Falta cobrar el saldo</p>
+          ) : null}
         </div>
-      ) : null}
-      {balanceWarning ? (
-        <p className="text-destructive text-sm">Falta cobrar el saldo</p>
       ) : null}
       {dialogs}
     </div>
