@@ -16,7 +16,7 @@ const piece = (over: Partial<RequirementFacts> = {}): RequirementFacts => ({
 });
 
 describe("campos obligatorios por estado (K10)", () => {
-  it("exige precio para aprobar, taller para enviar, costo al recibir y foto para entregar", () => {
+  it("exige precio para aprobar, taller para enviar, y nada al recibir ni al entregar", () => {
     expect(missingFields("aprobada", piece({ hasPrice: false }))).toEqual([
       "precio",
     ]);
@@ -25,9 +25,9 @@ describe("campos obligatorios por estado (K10)", () => {
     ).toEqual(["taller"]);
     expect(
       missingFields("recibir_taller", piece({ hasServiceCost: false })),
-    ).toEqual(["costo"]);
+    ).toEqual([]);
     expect(missingFields("entregada", piece({ hasAfterPhoto: false }))).toEqual(
-      ["foto_despues"],
+      [],
     );
   });
 
@@ -54,16 +54,13 @@ describe("campos obligatorios por estado (K10)", () => {
       "Falta el precio de venta de RES-00001-1 para pasarla a «Aprobada». Complétalo en el detalle de la pieza.",
     );
     expect(
-      requirementsError("recibir_taller", [piece({ hasServiceCost: false })]),
-    ).toContain("para recibirla del taller");
-    expect(
-      requirementsError("entregada", [
-        piece({ code: "A-1", hasAfterPhoto: false }),
+      requirementsError("aprobada", [
+        piece({ code: "A-1", hasPrice: false }),
         piece({ code: "A-2" }),
-        piece({ code: "A-3", hasAfterPhoto: false }),
+        piece({ code: "A-3", hasPrice: false }),
       ]),
     ).toBe(
-      "Para pasarlas a «Entregada» falta: A-1 (la foto «Después»); A-3 (la foto «Después»). Complétalo en el detalle de cada pieza.",
+      "Para pasarlas a «Aprobada» falta: A-1 (el precio de venta); A-3 (el precio de venta). Complétalo en el detalle de cada pieza.",
     );
   });
 });

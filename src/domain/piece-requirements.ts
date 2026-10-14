@@ -33,8 +33,6 @@ export const REQUIRED_FIELDS: Partial<
 > = {
   aprobada: ["precio"],
   enviada_taller: ["taller"],
-  recibir_taller: ["costo"],
-  entregada: ["foto_despues"],
 };
 
 const has = (
