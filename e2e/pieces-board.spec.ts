@@ -371,6 +371,7 @@ test.describe("Vista de piezas", () => {
     await expect(
       adminRow.getByLabel(`Costo de servicio de ${code}`),
     ).toHaveValue("45.00");
+    await page.getByRole("button", { name: "Editar precios" }).click();
     await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
     await adminRow
       .getByRole("button", { name: `Guardar precio de ${code}` })
