@@ -22,6 +22,10 @@ import {
   type RestorationFormInput,
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
+import {
+  DEPOSIT_NOT_RECORDED,
+  recordInitialDeposit,
+} from "@/server/payments/initial-deposit";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 import {
@@ -30,8 +34,9 @@ import {
   withoutWorkshops,
 } from "./create";
 
+/** `warning`: se registró, pero el adelanto no (se registra después desde Pagos). */
 export type CreateRestorationResult =
-  { ok: true; id: string; code: string } | { error: string };
+  { ok: true; id: string; code: string; warning?: string } | { error: string };
 
 const ERRORS: Record<string, string> = {
   "23503":
@@ -40,7 +45,10 @@ const ERRORS: Record<string, string> = {
   "42501": "No tienes permiso para registrar restauraciones.",
 };
 
-/** Registra una restauración con sus piezas (todo o nada, RPC `create_restoration`). */
+/**
+ * Registra una restauración con sus piezas (todo o nada, RPC `create_restoration`).
+ * Con adelanto ("A cuenta"), lo registra como pago con el método elegido.
+ */
 export async function createRestoration(
   input: RestorationFormInput,
 ): Promise<CreateRestorationResult> {
@@ -56,14 +64,27 @@ export async function createRestoration(
     pieces = withoutWorkshops(pieces);
   const data = { ...parsed.data, pieces };
 
+  const supabase = await createClient();
+  let created;
   try {
-    const created = await createRestorationRecord(await createClient(), data);
-    revalidatePath("/restauraciones");
-    return { ok: true, ...created };
+    created = await createRestorationRecord(supabase, data);
   } catch (error) {
     const code = (error as { code?: string }).code ?? "";
     return { error: ERRORS[code] ?? "No se pudo registrar la restauración." };
   }
+  revalidatePath("/restauraciones");
+  const { depositAmount, depositMethodId } = parsed.data;
+  if (depositAmount !== null && depositAmount > 0 && depositMethodId) {
+    // La restauración ya quedó: si el pago falla, se avisa y se registra desde Pagos.
+    const recorded = await recordInitialDeposit(
+      supabase,
+      created.id,
+      depositMethodId,
+    );
+    if (!recorded)
+      return { ok: true, ...created, warning: DEPOSIT_NOT_RECORDED };
+  }
+  return { ok: true, ...created };
 }
 
 export type ContactChoice = { id: string; name: string; position: string };

@@ -30,16 +30,20 @@ export default async function NuevaRestauracionPage({
   const quote = quoteId ? await getWhatsappQuote(quoteId) : null;
   if (quoteId && !quote) notFound();
   const supabase = await createClient();
-  const [settings, materials, services, workshops] = await Promise.all([
-    getSettings(),
-    listCatalog("materials", { onlyActive: true }),
-    listCatalog("services", { onlyActive: true }),
-    supabase
-      .from("workshops")
-      .select("id, name")
-      .eq("active", true)
-      .order("name"),
-  ]);
+  const [settings, materials, services, methods, workshops] = await Promise.all(
+    [
+      getSettings(),
+      listCatalog("materials", { onlyActive: true }),
+      listCatalog("services", { onlyActive: true }),
+      // Método del adelanto: se registra como pago al guardar.
+      listCatalog("payment_methods", { onlyActive: true }),
+      supabase
+        .from("workshops")
+        .select("id, name")
+        .eq("active", true)
+        .order("name"),
+    ],
+  );
   if (workshops.error) throw workshops.error;
 
   return (
@@ -72,6 +76,7 @@ export default async function NuevaRestauracionPage({
           price,
         }))}
         services={services.map(({ id, name, price }) => ({ id, name, price }))}
+        paymentMethods={methods.map(({ id, name }) => ({ id, name }))}
       />
     </div>
   );

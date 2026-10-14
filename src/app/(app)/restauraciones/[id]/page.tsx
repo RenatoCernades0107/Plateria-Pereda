@@ -88,6 +88,8 @@ export default async function RestauracionDetallePage({
 
   const query = await searchParams;
   const justCreated = query.registrada === "1";
+  // Se registró, pero el adelanto no quedó como pago (se registra desde Pagos).
+  const depositPending = query.adelanto === "pendiente";
   // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
   const piecesView = parseRestorationPiecesView(query);
   const settings = canSeeMoney ? await getSettings() : null;
@@ -405,6 +407,16 @@ export default async function RestauracionDetallePage({
         ) : null}
       </section>
 
+      {depositPending && canSeeMoney && restoration.money?.paidCents === 0 ? (
+        <p
+          role="alert"
+          className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
+        >
+          La restauración se registró, pero no se pudo registrar el adelanto.
+          Regístralo desde Pagos.
+        </p>
+      ) : null}
+
       {restoration.money &&
       restoration.hasOrder &&
       restoration.money.paidCents > restoration.money.totalCents ? (
@@ -519,7 +531,12 @@ export default async function RestauracionDetallePage({
               <div className="flex flex-wrap gap-2">
                 <RegisterPaymentDialog
                   restorationId={restoration.id}
-                  balanceCents={money.totalCents - money.paidCents}
+                  // El adelanto puede superar el saldo mientras las piezas no tienen
+                  // precio (total 0); la base acepta hasta lo que falte de él.
+                  balanceCents={Math.max(
+                    money.totalCents - money.paidCents,
+                    money.expectedDepositCents - money.paidCents,
+                  )}
                   suggested={suggested}
                   methods={paymentMethods}
                 />

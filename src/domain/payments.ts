@@ -11,7 +11,7 @@ export type PaymentKind = (typeof PAYMENT_KINDS)[number];
 /**
  * Estado de pago (P29): Pendiente (nada pagado), Parcial, Pagado (pagado ≥ total) y
  * Reembolsado (se devolvió todo lo que se había pagado). Con total 0 y nada pagado
- * queda Pendiente. Igual que `private.payment_status_for()` en la BD.
+ * queda Pendiente; con total 0 y algo pagado (el adelanto antes de los precios), Parcial. Igual que `private.payment_status_for()` en la BD.
  */
 export function derivePaymentStatus(
   total: Cents,
@@ -19,7 +19,8 @@ export function derivePaymentStatus(
   refunded: Cents = 0,
 ): PaymentStatus {
   if (paid <= 0) return refunded > 0 ? "reembolsado" : "pendiente";
-  return paid >= total ? "pagado" : "parcial";
+  // Sin total (piezas aún sin precio, D58) lo cobrado es a cuenta: Parcial.
+  return total > 0 && paid >= total ? "pagado" : "parcial";
 }
 
 export type SuggestedPayment = {

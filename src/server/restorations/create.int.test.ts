@@ -58,6 +58,8 @@ describe("registro de restauraciones", () => {
       contactId: null,
       paymentType: "a_cuenta",
       depositAmount: "0.18",
+      // El adelanto como pago lo registra la acción (createRestoration), no el RPC.
+      depositMethodId: "00000000-0000-0000-0000-0000000000aa",
       // Sin IGV (P13): cada pieza + 18 % redondeado, igual que igvTotals().
       pricesIncludeIgv: "no",
       notes: "Prueba de integración",
@@ -180,6 +182,7 @@ describe("registro de restauraciones", () => {
         contactId: null,
         paymentType: "contado",
         depositAmount: null,
+        depositMethodId: null,
         pricesIncludeIgv: true,
         notes: "",
         pieces: [],

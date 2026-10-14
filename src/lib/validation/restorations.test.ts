@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   copyRestorationSchema,
+  DEPOSIT_METHOD_ERROR,
   invalidInputMessage,
   MAX_PIECES,
   pieceSchema,
@@ -15,6 +16,7 @@ const CLIENT = "6f1c9a52-1b7e-4c1a-9d3e-2a4b5c6d7e8f";
 const CONTACT = "0e5d1f7a-3c2b-4a1d-8e9f-1a2b3c4d5e6f";
 const WORKSHOP = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const SILVER = "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e";
+const YAPE = "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f";
 
 const piece: PieceFormInput = {
   workshopId: "",
@@ -32,6 +34,7 @@ const restoration = {
   contactId: "",
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
+  depositMethodId: YAPE,
   pricesIncludeIgv: "si" as const,
   notes: "",
   pieces: [piece],
@@ -341,6 +344,59 @@ describe("restorationSchema", () => {
     });
   });
 
+  it("con adelanto exige el método con que se pagó (se registra como pago)", () => {
+    expect(restorationSchema.parse(restoration).depositMethodId).toBe(YAPE);
+    for (const depositMethodId of ["", null, undefined])
+      expect(
+        errorsOf(restorationSchema, { ...restoration, depositMethodId }),
+      ).toEqual({ depositMethodId: DEPOSIT_METHOD_ERROR });
+    expect(
+      errorsOf(restorationSchema, { ...restoration, depositMethodId: "x" }),
+    ).toHaveProperty("depositMethodId");
+    // Se muestra junto con los demás errores del formulario.
+    expect(
+      errorsOf(restorationSchema, {
+        ...restoration,
+        clientId: "",
+        depositMethodId: "",
+      }),
+    ).toEqual({
+      clientId: "Elige un cliente",
+      depositMethodId: DEPOSIT_METHOD_ERROR,
+    });
+    expect(
+      invalidInputMessage(
+        restorationSchema.safeParse({ ...restoration, depositMethodId: "" })
+          .error!,
+      ),
+    ).toBe(`${DEPOSIT_METHOD_ERROR}.`);
+  });
+
+  it("sin adelanto (vacío o 0) no pide método; en otros tipos se descarta", () => {
+    for (const depositAmount of ["", "0"])
+      expect(
+        restorationSchema.parse({
+          ...restoration,
+          depositAmount,
+          depositMethodId: "",
+        }).depositMethodId,
+      ).toBeNull();
+    // Sin la clave (como envían otros llamadores).
+    const withoutMethod: Partial<typeof restoration> = { ...restoration };
+    delete withoutMethod.depositMethodId;
+    expect(
+      restorationSchema.parse({
+        ...withoutMethod,
+        paymentType: "contado",
+        depositAmount: "",
+      }).depositMethodId,
+    ).toBeNull();
+    expect(
+      restorationSchema.parse({ ...restoration, paymentType: "credito" })
+        .depositMethodId,
+    ).toBeNull();
+  });
+
   it("rechaza un tipo de pago desconocido", () => {
     expect(
       restorationSchema.safeParse({ ...restoration, paymentType: "trueque" })
@@ -442,6 +498,15 @@ describe("copyRestorationSchema (P49)", () => {
         ).success,
       ).toBe(false);
     }
+  });
+
+  it("con adelanto también exige su método", () => {
+    expect(
+      errorsOf(copyRestorationSchema, {
+        ...copy({ initialStatus: "aprobada" }),
+        depositMethodId: "",
+      }),
+    ).toEqual({ depositMethodId: DEPOSIT_METHOD_ERROR });
   });
 
   it("el registro en oficina no pide estado inicial", () => {

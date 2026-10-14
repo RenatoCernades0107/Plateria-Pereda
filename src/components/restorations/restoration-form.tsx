@@ -86,6 +86,8 @@ type FormValues = {
   paymentType: PaymentType;
   /** Adelanto "A cuenta" en soles: el % se calcula cuando hay precios. */
   depositAmount: string;
+  /** Método con que se pagó el adelanto: al guardar, el adelanto se registra como pago. */
+  depositMethodId: string;
   /** Solo lo lee el esquema de la cotización de WhatsApp (que no lleva pago): siempre "". */
   depositPercent: string;
   /** "¿El precio incluye IGV?" (P13): por defecto "no" en lo nuevo (D59). */
@@ -360,6 +362,13 @@ export type RestorationFormMode =
   | { kind: "editar-cotizacion"; quote: QuoteForForm }
   | { kind: "copia"; quote: QuoteForForm };
 
+/**
+ * Detalle de la restauración recién registrada; si el adelanto no se pudo registrar
+ * como pago, el detalle lo avisa (`adelanto=pendiente`).
+ */
+const createdUrl = (result: { id: string; warning?: string }) =>
+  `/restauraciones/${result.id}?registrada=1${result.warning ? "&adelanto=pendiente" : ""}`;
+
 /** Pieza cotizada como pieza del formulario de la copia (aún no llegó a la tienda). */
 const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
   ...item.piece,
@@ -377,6 +386,7 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
       customerPhone: "",
       paymentType: "sin_definir",
       depositAmount: "",
+      depositMethodId: "",
       depositPercent: "",
       // Por defecto el precio no incluye IGV: se suma el 18 % (D59).
       pricesIncludeIgv: "no",
@@ -404,6 +414,7 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
             ),
           )
         : "",
+    depositMethodId: "",
     depositPercent: "",
     pricesIncludeIgv: igvChoice(q.pricesIncludeIgv),
     notes: mode.kind === "copia" ? "" : q.notes,
@@ -427,12 +438,15 @@ export function RestorationForm({
   mode = { kind: "nueva" },
   canSetPrice = false,
   canAssignWorkshop = false,
+  paymentMethods = [],
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
   materials: CatalogOption[];
   services: CatalogOption[];
   mode?: RestorationFormMode;
+  /** Métodos de pago activos, para el adelanto (solo al registrar restauraciones). */
+  paymentMethods?: { id: string; name: string }[];
   /** Puede asignar el precio de venta de las piezas (solo admin, D58). */
   canSetPrice?: boolean;
   /** Puede elegir el taller de las piezas (logística y admin, D60). */
@@ -488,6 +502,12 @@ export function RestorationForm({
     paymentType === "a_cuenta"
       ? depositAmountLiveError(values.depositAmount ?? "", total)
       : null;
+  // Con adelanto, se cobra al registrar: se pide su método y queda como pago.
+  const withDeposit =
+    !viaWhatsapp &&
+    paymentType === "a_cuenta" &&
+    deposit !== null &&
+    deposit > 0;
   const depositHint =
     depositText === ""
       ? total > 0
@@ -578,7 +598,7 @@ export function RestorationForm({
         );
         if ("error" in result) return setError(result.error);
         setSaved(true);
-        router.push(`/restauraciones/${result.id}?registrada=1`);
+        router.push(createdUrl(result));
       } else if (mode.kind === "editar-cotizacion") {
         const result = await updateWhatsappQuote(
           mode.quote.id,
@@ -598,7 +618,7 @@ export function RestorationForm({
         const result = await createRestoration(input as RestorationFormInput);
         if ("error" in result) return setError(result.error);
         setSaved(true);
-        router.push(`/restauraciones/${result.id}?registrada=1`);
+        router.push(createdUrl(result));
       }
     });
   });
@@ -905,6 +925,38 @@ export function RestorationForm({
                     </p>
                   ) : null}
                 </div>
+              ) : null}
+              {withDeposit ? (
+                <FormField
+                  control={form.control}
+                  name="depositMethodId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Método del adelanto</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Elige el método" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {paymentMethods.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-muted-foreground text-xs">
+                        El adelanto se registra como pago al guardar.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               ) : null}
             </div>
             <IgvField form={form} name="pricesIncludeIgv" />

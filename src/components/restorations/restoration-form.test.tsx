@@ -59,6 +59,9 @@ function renderForm(
           price: 40,
         },
       ]}
+      paymentMethods={[
+        { id: "00000000-0000-0000-0000-0000000000b1", name: "Yape" },
+      ]}
     />,
   );
 }
@@ -314,6 +317,36 @@ describe("RestorationForm", () => {
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("S/ 0.00");
   });
 
+  it("con adelanto pide el método con que se pagó: se registra como pago", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getByLabelText("Tipo de pago"));
+    await user.click(await screen.findByRole("option", { name: "A cuenta" }));
+    // Sin adelanto no hay nada que cobrar.
+    expect(screen.queryByLabelText("Método del adelanto")).toBeNull();
+    await user.type(screen.getByLabelText("Adelanto (S/) (opcional)"), "100");
+    expect(screen.getByLabelText("Método del adelanto")).toBeInTheDocument();
+    expect(
+      screen.getByText("El adelanto se registra como pago al guardar."),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Registrar restauración" }),
+    );
+    expect(
+      await screen.findByText("Elige el método con que se pagó el adelanto"),
+    ).toBeVisible();
+    await user.click(screen.getByLabelText("Método del adelanto"));
+    await user.click(await screen.findByRole("option", { name: "Yape" }));
+    expect(
+      screen.queryByText("Elige el método con que se pagó el adelanto"),
+    ).toBeNull();
+    expect(mocks.create).not.toHaveBeenCalled();
+
+    await user.clear(screen.getByLabelText("Adelanto (S/) (opcional)"));
+    expect(screen.queryByLabelText("Método del adelanto")).toBeNull();
+  });
+
   it("muestra errores claros del adelanto mientras se escribe", async () => {
     mocks.create.mockResolvedValue({ ok: true, id: "r1", code: "RES-00001" });
     const user = userEvent.setup();
@@ -530,6 +563,46 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
       }),
     );
     expect(mocks.push).toHaveBeenCalledWith("/restauraciones/r1?registrada=1");
+  });
+
+  it("si el adelanto no se pudo registrar como pago, el detalle lo avisa", async () => {
+    mocks.copy.mockResolvedValue({
+      ok: true,
+      id: "r1",
+      code: "RES-00010",
+      warning: "No se registró el adelanto.",
+    });
+    const user = userEvent.setup();
+    renderForm({
+      kind: "copia",
+      quote: {
+        ...QUOTE,
+        client: {
+          source: "local",
+          kind: "persona",
+          clientId: "00000000-0000-0000-0000-0000000000e1",
+          name: "Ana Pérez",
+          documentType: null,
+          documentNumber: null,
+          phone: null,
+          email: null,
+          shopifyCustomerId: null,
+        },
+      },
+    });
+    await user.click(screen.getByLabelText("Pedir Fuente"));
+    await user.type(
+      within(screen.getByTestId("pieza-1")).getByLabelText(
+        "Nota de la consulta (obligatoria)",
+      ),
+      "Consultar al taller",
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Crear restauración" }),
+    );
+    expect(mocks.push).toHaveBeenCalledWith(
+      "/restauraciones/r1?registrada=1&adelanto=pendiente",
+    );
   });
 });
 

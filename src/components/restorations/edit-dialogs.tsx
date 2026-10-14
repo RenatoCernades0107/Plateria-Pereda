@@ -238,7 +238,14 @@ export function EditRestorationDialog({
                     name="depositAmount"
                     label="Adelanto (S/) (opcional)"
                     inputMode="numeric"
+                    disabled={hasPayments}
                   />
+                  {hasPayments ? (
+                    <p className="text-muted-foreground text-xs">
+                      Con pagos registrados ya no se cambia: los cobros van en
+                      Pagos.
+                    </p>
+                  ) : null}
                   {depositHint ? (
                     <p
                       className="text-muted-foreground text-xs"

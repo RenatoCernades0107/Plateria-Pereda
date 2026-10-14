@@ -22,6 +22,10 @@ describe("derivePaymentStatus (P29)", () => {
   it("total 0 sin pagos queda Pendiente", () => {
     expect(derivePaymentStatus(0, 0)).toBe("pendiente");
   });
+
+  it("el adelanto cobrado antes de asignar precios (total 0) queda Parcial", () => {
+    expect(derivePaymentStatus(0, 10000)).toBe("parcial");
+  });
 });
 
 describe("suggestedPayment", () => {

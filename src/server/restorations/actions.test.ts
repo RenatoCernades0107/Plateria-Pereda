@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   forbidden: false,
   role: "admin" as "admin" | "ventas",
   create: vi.fn(),
+  deposit: vi.fn(),
   revalidate: vi.fn(),
 }));
 
@@ -17,6 +18,12 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
 vi.mock("./create", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./create")>()),
   createRestorationRecord: mocks.create,
+}));
+vi.mock("@/server/payments/initial-deposit", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/server/payments/initial-deposit")
+  >()),
+  recordInitialDeposit: mocks.deposit,
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
@@ -41,6 +48,7 @@ const input = {
   contactId: null,
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
+  depositMethodId: "00000000-0000-0000-0000-0000000000aa",
   pricesIncludeIgv: "no" as const,
   notes: "",
   pieces: [piece],
@@ -51,6 +59,7 @@ describe("createRestoration", () => {
     mocks.forbidden = false;
     mocks.role = "admin";
     mocks.create.mockReset().mockResolvedValue({ id: "r1", code: "RES-00001" });
+    mocks.deposit.mockReset().mockResolvedValue(true);
     mocks.revalidate.mockReset();
   });
 
@@ -72,6 +81,45 @@ describe("createRestoration", () => {
       }),
     );
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones");
+  });
+
+  it("registra el adelanto como pago con el método elegido", async () => {
+    await createRestoration(input);
+    expect(mocks.deposit).toHaveBeenCalledWith(
+      {},
+      "r1",
+      "00000000-0000-0000-0000-0000000000aa",
+    );
+  });
+
+  it("sin adelanto no registra ningún pago", async () => {
+    await createRestoration({ ...input, depositAmount: "" });
+    await createRestoration({ ...input, depositAmount: "0" });
+    await createRestoration({
+      ...input,
+      paymentType: "contado",
+      depositAmount: "",
+    });
+    expect(mocks.create).toHaveBeenCalledTimes(3);
+    expect(mocks.deposit).not.toHaveBeenCalled();
+  });
+
+  it("exige el método del adelanto sin llamar a la BD", async () => {
+    expect(await createRestoration({ ...input, depositMethodId: "" })).toEqual({
+      error: "Elige el método con que se pagó el adelanto.",
+    });
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("si el adelanto no se registra, la restauración queda y avisa", async () => {
+    mocks.deposit.mockResolvedValueOnce(false);
+    expect(await createRestoration(input)).toEqual({
+      ok: true,
+      id: "r1",
+      code: "RES-00001",
+      warning:
+        "La restauración se registró, pero no se pudo registrar el adelanto. Regístralo desde Pagos.",
+    });
   });
 
   it("ventas registra las piezas sin precio de venta: lo asigna el admin (D58)", async () => {
@@ -130,6 +178,7 @@ describe("createRestoration", () => {
     expect(await createRestoration(input)).toEqual({
       error: "No se pudo registrar la restauración.",
     });
+    expect(mocks.deposit).not.toHaveBeenCalled();
   });
 
   it("exige permiso", async () => {

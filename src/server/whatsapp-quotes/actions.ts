@@ -15,6 +15,10 @@ import {
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
 import {
+  DEPOSIT_NOT_RECORDED,
+  recordInitialDeposit,
+} from "@/server/payments/initial-deposit";
+import {
   pieceToRpc,
   withoutSalePrices,
   withoutWorkshops,
@@ -22,8 +26,9 @@ import {
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
+/** `warning`: la restauración se creó, pero su adelanto no se registró como pago. */
 export type CreatedResult =
-  { ok: true; id: string; code: string } | { error: string };
+  { ok: true; id: string; code: string; warning?: string } | { error: string };
 
 /** Las RPC de la BD ya traen mensajes en español para estos códigos. */
 const READABLE = new Set(["23514", "42501", "23503", "22023"]);
@@ -152,9 +157,16 @@ export async function createRestorationFromQuote(
     })
     .single();
   if (error) return fail(error, "No se pudo crear la restauración.");
+  // El adelanto se registra como pago antes de que se procese la orden (la incluye).
+  const recorded =
+    v.depositAmount !== null && v.depositAmount > 0 && v.depositMethodId
+      ? await recordInitialDeposit(supabase, data.id, v.depositMethodId)
+      : true;
   // Con todas las piezas Aprobadas se encola la orden de Shopify (9.1).
   scheduleShopifySync();
   revalidatePath(`/cotizaciones-whatsapp/${quoteId}`);
   revalidatePath("/restauraciones");
-  return { ok: true, id: data.id, code: data.code };
+  return recorded
+    ? { ok: true, id: data.id, code: data.code }
+    : { ok: true, id: data.id, code: data.code, warning: DEPOSIT_NOT_RECORDED };
 }
