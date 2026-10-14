@@ -309,7 +309,7 @@ reset role;
 select pg_temp.retrodatar(pg_temp.lima(3, '17:00'));
 
 -- Hace 2 días: se entrega la bandeja, el marco queda observado y llega RES 3 (hotel,
--- crédito, aún sin precios). --------------------------------------------------------
+-- crédito, aún sin precios: pasan a Consulta). --------------------------------------------------------
 set role authenticated;
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}', false);
 
@@ -322,13 +322,14 @@ insert into public.restorations (id, client_id, contact_id, payment_type, notes)
   ('30000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000003',
    '60000000-0000-0000-0000-000000000001', 'credito', 'Factura a 30 días. Coordinar con Lucía.');
 insert into public.pieces (id, restoration_id, description, measure, material_id, material_name,
-  service_id, service_name, weight_grams)
-select v.id, '30000000-0000-0000-0000-000000000003', v.description, v.measure, m.id, m.name, s.id, s.name, v.weight
+  service_id, service_name, weight_grams, notes)
+select v.id, '30000000-0000-0000-0000-000000000003', v.description, v.measure, m.id, m.name, s.id, s.name,
+  v.weight, v.notes
 from (values
-  ('40000000-0000-0000-0000-000000000008'::uuid, 'Fuente redonda grande', '50 cm de diámetro', 'Plata 950', 'Limpieza y pulido', 1600.0, 1),
-  ('40000000-0000-0000-0000-000000000009'::uuid, 'Tetera estilo colonial', '24 cm de alto', 'Plata 925', 'Restauración integral', 950.0, 2),
-  ('40000000-0000-0000-0000-000000000010'::uuid, 'Cofre joyero', '18 x 12 cm', 'Alpaca', 'Soldadura', null, 3)
-) as v (id, description, measure, material, service, weight, orden)
+  ('40000000-0000-0000-0000-000000000008'::uuid, 'Fuente redonda grande', '50 cm de diámetro', 'Plata 950', 'Limpieza y pulido', 1600.0, '', 1),
+  ('40000000-0000-0000-0000-000000000009'::uuid, 'Tetera estilo colonial', '24 cm de alto', 'Plata 925', 'Restauración integral', 950.0, 'Falta la tapa original', 2),
+  ('40000000-0000-0000-0000-000000000010'::uuid, 'Cofre joyero', '18 x 12 cm', 'Alpaca', 'Soldadura', null, 'Bisagra rota', 3)
+) as v (id, description, measure, material, service, weight, notes, orden)
 join public.materials m on m.name = v.material
 join public.services s on s.name = v.service
 order by v.orden;
@@ -336,17 +337,18 @@ set role authenticated;
 select pg_temp.registrar_fotos('30000000-0000-0000-0000-000000000003',
   array['40000000-0000-0000-0000-000000000008', '40000000-0000-0000-0000-000000000009',
         '40000000-0000-0000-0000-000000000010']::uuid[], 'antes');
-select public.change_piece_status(array['40000000-0000-0000-0000-000000000010']::uuid[], 'en_consulta',
-  'Bisagra rota: consultar al taller si se puede cambiar.');
+-- Sin precio de venta pasan a Consulta, como al registrar desde la app.
+select public.change_piece_status(
+  array['40000000-0000-0000-0000-000000000008', '40000000-0000-0000-0000-000000000009',
+        '40000000-0000-0000-0000-000000000010']::uuid[],
+  'en_consulta', private.unpriced_note());
 
 reset role;
 select pg_temp.retrodatar(pg_temp.lima(2, '11:45'));
 
--- Ayer en la mañana: consulta por la tetera; el cofre espera la respuesta del cliente.
+-- Ayer en la mañana: el cofre espera la respuesta del cliente.
 set role authenticated;
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}', false);
-select public.change_piece_status(array['40000000-0000-0000-0000-000000000009']::uuid[], 'en_consulta',
-  'Falta la tapa original; consultar si se fabrica una nueva.');
 select public.change_piece_status(array['40000000-0000-0000-0000-000000000010']::uuid[], 'en_espera');
 
 reset role;
