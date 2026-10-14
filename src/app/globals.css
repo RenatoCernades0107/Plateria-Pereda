@@ -49,6 +49,12 @@
   --whatsapp-strong: #008069;
   --whatsapp-strong-hover: #075e54;
   --whatsapp-strong-foreground: #ffffff;
+  /* Shopify: su verde (#95bf47) para fondos tenues y bordes; su verde oscuro
+     (#5e8e3e) para íconos (3.9:1 sobre blanco) y un verde más oscuro para texto
+     sobre el tinte (7.2:1, AA). */
+  --shopify: #95bf47;
+  --shopify-strong: #5e8e3e;
+  --shopify-foreground: #36591e;
 }
 
 .dark {
@@ -88,6 +94,10 @@
   --whatsapp-strong: #25d366;
   --whatsapp-strong-hover: #1da851;
   --whatsapp-strong-foreground: #0b141a;
+  /* En oscuro, el verde claro de Shopify se lee bien (9.3:1); el texto, más claro aún. */
+  --shopify: #95bf47;
+  --shopify-strong: #95bf47;
+  --shopify-foreground: #b5d77a;
 }
 
 @theme inline {
@@ -136,6 +146,9 @@
   --color-whatsapp-strong: var(--whatsapp-strong);
   --color-whatsapp-strong-hover: var(--whatsapp-strong-hover);
   --color-whatsapp-strong-foreground: var(--whatsapp-strong-foreground);
+  --color-shopify: var(--shopify);
+  --color-shopify-strong: var(--shopify-strong);
+  --color-shopify-foreground: var(--shopify-foreground);
 }
 
 @layer base {

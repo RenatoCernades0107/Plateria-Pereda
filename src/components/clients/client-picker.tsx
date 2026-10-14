@@ -4,7 +4,6 @@ import {
   Building2,
   ChevronsUpDown,
   Loader2,
-  Store,
   User,
   UserPlus,
   Users,
@@ -12,6 +11,7 @@ import {
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -30,6 +30,7 @@ import {
 import { optionKey, type ClientOption } from "@/domain/client-search";
 import { DOCUMENT_LABELS } from "@/domain/documents";
 import { formatPhone } from "@/domain/phone";
+import { cn } from "@/lib/utils";
 import {
   importShopifyCustomer,
   searchClients,
@@ -58,11 +59,15 @@ function details(option: ClientOption): string {
 }
 
 function OptionRow({ option }: { option: ClientOption }) {
-  const Icon = option.source === "shopify" ? Store : ICONS[option.kind];
+  const fromShopify = option.source === "shopify";
+  const Icon = fromShopify ? ShopifyIcon : ICONS[option.kind];
   return (
     <span className="flex min-w-0 items-start gap-2">
       <Icon
-        className="text-muted-foreground mt-0.5 size-4 shrink-0"
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          fromShopify ? "text-shopify-strong" : "text-muted-foreground",
+        )}
         aria-hidden
       />
       <span className="flex min-w-0 flex-col">
@@ -227,7 +232,14 @@ export function ClientPicker({
                 </CommandGroup>
               ) : null}
               {!loading && remote.length > 0 ? (
-                <CommandGroup heading="En Shopify">
+                <CommandGroup
+                  heading={
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShopifyIcon className="text-shopify-strong size-3.5" />
+                      En Shopify
+                    </span>
+                  }
+                >
                   {remote.map((option) => (
                     <CommandItem
                       key={optionKey(option)}

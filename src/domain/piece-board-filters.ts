@@ -14,14 +14,17 @@ export const PIECES_KANBAN_LIMIT = 200;
 export const WORKSHOP_DAYS_ALERT = 7;
 
 /**
- * La vista solo muestra piezas en curso (P42): sin entregadas ni anuladas; las
- * rechazadas o sin arreglo solo mientras siguen en la tienda (por devolver, P47).
+ * La vista muestra piezas en curso (P42): sin anuladas; las rechazadas o sin arreglo
+ * mientras siguen en la tienda (por devolver, P47). Las entregadas (o devueltas al
+ * cliente) siguen a la vista solo el día de la entrega, en hora de Lima; desde el día
+ * siguiente están en el historial (`/piezas/historial`).
  */
 export const BOARD_LOCATIONS = [
   "por_whatsapp",
   "sin_enviar",
   "en_taller",
   "en_tienda",
+  "entregada",
 ] as const satisfies readonly PieceLocation[];
 export const BOARD_STATUSES = [
   "registrada",
@@ -30,6 +33,7 @@ export const BOARD_STATUSES = [
   "aprobada",
   "enviada_taller",
   "observada",
+  "entregada",
   "rechazada",
   "sin_arreglo",
 ] as const satisfies readonly PieceStatus[];

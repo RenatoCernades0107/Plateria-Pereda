@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,7 @@ import {
 
 const ALL = "todos";
 
-type Option = { value: string; label: string };
+type Option = { value: string; label: ReactNode };
 
 function FilterSelect({
   id,
@@ -89,7 +90,15 @@ export function AuditFiltersForm({
         value={state.actor}
         options={[
           ...actors,
-          { value: SYSTEM_ACTOR_FILTER, label: "Sistema / Shopify" },
+          {
+            value: SYSTEM_ACTOR_FILTER,
+            label: (
+              <>
+                <ShopifyIcon className="text-shopify-strong" />
+                Sistema / Shopify
+              </>
+            ),
+          },
         ]}
         onChange={(actor) => set({ actor })}
       />

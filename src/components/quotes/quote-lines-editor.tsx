@@ -2,6 +2,7 @@
 
 import { Copy, Package, Trash2 } from "lucide-react";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +94,8 @@ function LineEditor({
                 <p className="text-heading font-medium break-words">
                   {line.title}
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-muted-foreground flex items-center gap-1 text-xs">
+                  <ShopifyIcon className="text-shopify-strong size-3 shrink-0" />
                   {[line.variantTitle, line.sku && `SKU ${line.sku}`]
                     .filter(Boolean)
                     .join(" · ") || "Producto de Shopify"}

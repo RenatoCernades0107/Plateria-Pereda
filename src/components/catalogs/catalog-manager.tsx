@@ -4,6 +4,7 @@ import { Pencil, Plus } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -129,7 +130,12 @@ export function CatalogManager({
                       </TableHead>
                     ) : null}
                     {catalog.hasShopifyName ? (
-                      <TableHead>Nombre en Shopify</TableHead>
+                      <TableHead>
+                        <span className="inline-flex items-center gap-1.5">
+                          <ShopifyIcon className="text-shopify-strong size-4" />
+                          Nombre en Shopify
+                        </span>
+                      </TableHead>
                     ) : null}
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -205,7 +211,8 @@ export function CatalogManager({
                       </span>
                     ) : null}
                     {catalog.hasShopifyName && item.shopifyName ? (
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-muted-foreground inline-flex items-center gap-1 text-sm">
+                        <ShopifyIcon className="text-shopify-strong size-3.5" />
                         Shopify: {item.shopifyName}
                       </span>
                     ) : null}

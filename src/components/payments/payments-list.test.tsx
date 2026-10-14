@@ -51,6 +51,14 @@ describe("PaymentsList (11.4)", () => {
     expect(rows[0]).toHaveTextContent("En Shopify");
     expect(rows[1]).toHaveTextContent("Pendiente de envío");
     expect(rows[2]).toHaveTextContent("Hecho en Shopify");
+    // El estado de Shopify lleva su logotipo; el verde solo si ya llegó a Shopify.
+    expect(rows[0]!.querySelector('svg[data-icon="shopify"]')).not.toBeNull();
+    expect(within(rows[0]!).getByText("En Shopify")).toHaveClass(
+      "bg-shopify/15",
+    );
+    expect(within(rows[1]!).getByText("Pendiente de envío")).not.toHaveClass(
+      "bg-shopify/15",
+    );
     expect(within(rows[3]!).getByText("Reembolso")).toBeInTheDocument();
     expect(rows[3]).toHaveTextContent("Cobro de más");
     expect(rows[3]).toHaveTextContent("−S/ 30.00");

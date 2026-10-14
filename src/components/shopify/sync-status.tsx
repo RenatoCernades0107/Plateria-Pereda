@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
+import { SHOPIFY_BADGE_CLASS } from "@/components/shopify-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { retryShopifyJob } from "@/server/shopify-sync/actions";
 import type { SyncJobStatus } from "@/server/shopify-sync/jobs";
 
@@ -24,11 +27,22 @@ const LABELS: Record<SyncJobStatus, string> = {
 };
 
 const VARIANTS = {
-  ok: "secondary",
+  ok: "outline",
   pending: "outline",
   processing: "outline",
   error: "destructive",
 } as const;
+
+/**
+ * Siempre con el logotipo de Shopify: sincronizado lleva el verde de Shopify;
+ * pendiente, solo el ícono en verde; con error, el rojo de error (ícono incluido).
+ */
+const CLASSES: Record<SyncJobStatus, string | undefined> = {
+  ok: SHOPIFY_BADGE_CLASS,
+  pending: "[&>svg]:text-shopify-strong",
+  processing: "[&>svg]:text-shopify-strong",
+  error: undefined,
+};
 
 /** Estado de sincronización con Shopify de un registro, con "Reintentar" si falló. */
 export function SyncStatus({
@@ -51,8 +65,10 @@ export function SyncStatus({
     <Badge
       variant={VARIANTS[status]}
       data-testid="estado-shopify"
-      className={withDetail ? "cursor-help" : undefined}
+      data-status={status}
+      className={cn(CLASSES[status], withDetail && "cursor-help")}
     >
+      <ShopifyIcon />
       Shopify: {LABELS[status]}
     </Badge>
   );

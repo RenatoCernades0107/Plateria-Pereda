@@ -17,6 +17,16 @@ import { FILES_BUCKET } from "./queries";
 
 export type FileActionResult = { ok: true } | { error: string };
 
+/**
+ * Refresca las vistas que muestran archivos: la guía, el detalle de la pieza (si el
+ * archivo es de una pieza) y el tablero de piezas (su miniatura "Antes").
+ */
+function revalidateFileViews(restorationId: string, pieceId: string | null) {
+  revalidatePath(`/restauraciones/${restorationId}`);
+  if (pieceId) revalidatePath(`/piezas/${pieceId}`);
+  revalidatePath("/piezas");
+}
+
 const fileSchema = z
   .object({
     restorationId: z.guid(),
@@ -62,7 +72,7 @@ export async function registerRestorationFile(
     await supabase.storage.from(FILES_BUCKET).remove([v.path]);
     return { error: "No se pudo registrar el archivo." };
   }
-  revalidatePath(`/restauraciones/${v.restorationId}`);
+  revalidateFileViews(v.restorationId, v.pieceId);
   return { ok: true };
 }
 
@@ -74,7 +84,7 @@ export async function deleteRestorationFile(
   const supabase = await createClient();
   const { data: file, error } = await supabase
     .from("restoration_files")
-    .select("id, path, restoration_id")
+    .select("id, path, restoration_id, piece_id")
     .eq("id", fileId)
     .maybeSingle();
   if (error || !file) return { error: "El archivo ya no existe." };
@@ -89,6 +99,6 @@ export async function deleteRestorationFile(
     .delete()
     .eq("id", fileId);
   if (deleteError) return { error: "No se pudo borrar el archivo." };
-  revalidatePath(`/restauraciones/${file.restoration_id}`);
+  revalidateFileViews(file.restoration_id, file.piece_id);
   return { ok: true };
 }
