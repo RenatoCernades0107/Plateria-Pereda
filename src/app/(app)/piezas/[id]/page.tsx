@@ -233,6 +233,7 @@ export default async function PiezaDetallePage({
             isAdmin={user.role === "admin"}
             emptyText="La pieza aún no tiene fotos."
             className="min-w-0"
+            showTargetLabels={false}
           />
         </section>
 
