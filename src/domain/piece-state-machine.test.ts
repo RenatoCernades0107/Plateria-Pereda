@@ -70,7 +70,7 @@ const piece = (
   ...overrides,
 });
 
-/** Pieza en la tienda y, si está en Interno, ya de vuelta del taller. */
+/** Pieza en la tienda y, si está en En restauración, ya de vuelta del taller. */
 const enTienda = (
   status: PieceStatus,
   overrides: Partial<PieceSnapshot> = {},
@@ -107,7 +107,7 @@ describe("tabla de transiciones", () => {
   it("usa los nombres de la Platería (P47)", () => {
     expect(PIECE_STATUS_LABELS.en_consulta).toBe("Consulta");
     expect(PIECE_STATUS_LABELS.en_espera).toBe("Espera respuesta cliente");
-    expect(PIECE_STATUS_LABELS.enviada_taller).toBe("Interno");
+    expect(PIECE_STATUS_LABELS.enviada_taller).toBe("En restauración");
     expect(PIECE_STATUS_LABELS.observada).toBe("Observación");
     expect(PIECE_STATUS_LABELS.rechazada).toBe("Rechazado (cliente)");
     expect(PIECE_STATUS_LABELS.sin_arreglo).toBe("No tiene arreglo");
@@ -266,7 +266,7 @@ describe("applyTransition", () => {
     ).toMatchObject({ ok: true, note: null });
   });
 
-  describe("envío al taller (Interno)", () => {
+  describe("envío al taller (En restauración)", () => {
     it("exige que la pieza esté en la tienda", () => {
       expect(
         applyTransition(piece("aprobada", { workshopId: "taller-a" }), {
@@ -333,7 +333,7 @@ describe("applyTransition", () => {
     });
   });
 
-  it("desde Interno solo se entrega u observa lo que volvió del taller", () => {
+  it("desde En restauración solo se entrega u observa lo que volvió del taller", () => {
     const enTaller = piece("enviada_taller", { arrivedAt: BEFORE });
     for (const to of ["entregada", "observada"] as const) {
       expect(
@@ -475,7 +475,7 @@ describe("marcar llegada a tienda", () => {
 describe("recibir del taller", () => {
   const enTaller = piece("enviada_taller", { arrivedAt: BEFORE });
 
-  it("lo hacen logística y admin; la pieza sigue en Interno", () => {
+  it("lo hacen logística y admin; la pieza sigue en En restauración", () => {
     expect(canReceiveFromWorkshop(enTaller, "logistica")).toBe(true);
     expect(canReceiveFromWorkshop(enTaller, "admin")).toBe(true);
     expect(canReceiveFromWorkshop(enTaller, "ventas")).toBe(false);
@@ -497,7 +497,7 @@ describe("recibir del taller", () => {
     });
   });
 
-  it("no se recibe dos veces ni fuera de Interno", () => {
+  it("no se recibe dos veces ni fuera de En restauración", () => {
     const deVuelta = piece("enviada_taller", { readyForDelivery: true });
     expect(canReceiveFromWorkshop(deVuelta, "admin")).toBe(false);
     expect(receiveFromWorkshop(deVuelta, "admin", NOW)).toEqual({

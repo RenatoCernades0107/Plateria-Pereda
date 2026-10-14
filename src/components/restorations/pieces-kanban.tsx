@@ -15,7 +15,7 @@ import type { BoardPiece } from "@/server/restorations/queries";
 import type { WorkshopOption } from "./piece-fields";
 import { MoveToMenu, usePieceMoves } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, UrgentBadge } from "./status-badges";
+import { LocationBadge, StatusAge, UrgentBadge } from "./status-badges";
 
 /**
  * Tablero kanban de piezas en curso: una columna por estado (las urgentes primero en
@@ -111,6 +111,7 @@ export function PiecesKanban({
                   {piece.workshopName ?? "Sin taller"}
                 </span>
               </div>
+              <StatusAge piece={piece} />
               {piece.workshopDays > 0 || piece.workshopOngoing ? (
                 <p
                   className={cn(

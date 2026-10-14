@@ -1,10 +1,13 @@
 import "server-only";
 
 import type { PaymentType } from "@/domain/money";
-import { toCents, type Cents } from "@/domain/money";
+import { depositPercentOf, toCents, type Cents } from "@/domain/money";
+import { calendarDaysBetween } from "@/domain/piece-days";
 import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
 import {
+  partialProgress,
   toRestorationStatus,
+  type PartialProgress,
   type PieceLocation,
   type RestorationOrigin,
   type RestorationStatus,
@@ -30,7 +33,7 @@ export type PieceDetail = {
   location: PieceLocation;
   /** Marca "Urgente" (P47). */
   urgent: boolean;
-  /** En Interno y ya de vuelta del taller. */
+  /** En En restauración y ya de vuelta del taller. */
   readyForDelivery: boolean;
   description: string;
   measure: string;
@@ -55,7 +58,13 @@ export type RestorationMoney = {
   totalCents: Cents;
   paidCents: Cents;
   expectedDepositCents: Cents;
+  /**
+   * % de adelanto "A cuenta": el guardado (restauraciones antiguas) o el calculado del
+   * adelanto en soles cuando ya hay total; null si no hay.
+   */
   depositPercent: number | null;
+  /** Adelanto "A cuenta" escrito en soles; null si no se escribió (o es antiguo, en %). */
+  depositAmountCents: Cents | null;
   /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
   pricesIncludeIgv: boolean;
   paymentStatus: "pendiente" | "parcial" | "pagado" | "reembolsado";
@@ -123,7 +132,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("restorations")
           .select(
-            "total, paid, expected_deposit, deposit_percent, prices_include_igv, payment_status, shopify_order_id",
+            "total, paid, expected_deposit, deposit_percent, deposit_amount, prices_include_igv, payment_status, shopify_order_id",
           )
           .eq("id", id)
           .single()
@@ -207,10 +216,19 @@ export async function getRestorationDetail(
           totalCents: toCents(Number(money.data.total)),
           paidCents: toCents(Number(money.data.paid)),
           expectedDepositCents: toCents(Number(money.data.expected_deposit)),
-          depositPercent:
-            money.data.deposit_percent === null
+          depositAmountCents:
+            money.data.deposit_amount === null
               ? null
-              : Number(money.data.deposit_percent),
+              : toCents(Number(money.data.deposit_amount)),
+          depositPercent:
+            money.data.deposit_amount !== null
+              ? depositPercentOf(
+                  toCents(Number(money.data.deposit_amount)),
+                  toCents(Number(money.data.total)),
+                )
+              : money.data.deposit_percent === null
+                ? null
+                : Number(money.data.deposit_percent),
           pricesIncludeIgv: money.data.prices_include_igv,
           paymentStatus: money.data.payment_status,
         }
@@ -344,6 +362,47 @@ export async function listRestorations(
   };
 }
 
+/**
+ * Piezas de las restauraciones en estado parcial, para el avance del kanban
+ * ("2/6 aprobadas", "2/6 listas"). Vacío si ninguna está en estado parcial.
+ */
+export async function getPartialProgress(
+  items: readonly Pick<RestorationListItem, "id" | "status">[],
+): Promise<Map<string, PartialProgress>> {
+  const partial = items.filter(
+    (r) =>
+      r.status === "parcialmente_aprobada" || r.status === "parcialmente_lista",
+  );
+  const result = new Map<string, PartialProgress>();
+  if (partial.length === 0) return result;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pieces_operational")
+    .select(
+      "restoration_id, status, approved_at, first_sent_at, ready_for_delivery",
+    )
+    .in(
+      "restoration_id",
+      partial.map((r) => r.id),
+    );
+  if (error) throw error;
+  for (const r of partial) {
+    const progress = partialProgress(
+      r.status,
+      data
+        .filter((p) => p.restoration_id === r.id && p.status)
+        .map((p) => ({
+          status: p.status!,
+          approvedAt: p.approved_at ? new Date(p.approved_at) : null,
+          firstSentAt: p.first_sent_at ? new Date(p.first_sent_at) : null,
+          readyForDelivery: p.ready_for_delivery ?? false,
+        })),
+    );
+    if (progress) result.set(r.id, progress);
+  }
+  return result;
+}
+
 export type BoardPiece = {
   id: string;
   code: string;
@@ -375,6 +434,8 @@ export type BoardPiece = {
   hasOrder: boolean;
   /** Primera foto "Antes" de la pieza (URL firmada de corta duración). */
   photoUrl: string | null;
+  /** Días calendario en el estado actual (C5). */
+  statusDays: number;
 };
 
 /**
@@ -392,9 +453,11 @@ export async function listPiecesBoard(
   );
   if (error) throw error;
   const total = Number(data[0]?.total_count ?? 0);
-  const photos = await signedPhotoUrls(
-    data.flatMap((p) => (p.photo_path ? [p.photo_path] : [])),
-  );
+  const [photos, since] = await Promise.all([
+    signedPhotoUrls(data.flatMap((p) => (p.photo_path ? [p.photo_path] : []))),
+    statusSince(data.map((p) => p.id)),
+  ]);
+  const now = new Date();
   return {
     total,
     pages: Math.max(1, Math.ceil(total / PIECES_PAGE_SIZE)),
@@ -424,6 +487,20 @@ export async function listPiecesBoard(
       priceCents: centsOrNull(p.price),
       hasOrder: p.has_order,
       photoUrl: p.photo_path ? (photos.get(p.photo_path) ?? null) : null,
+      statusDays: since.has(p.id)
+        ? calendarDaysBetween(new Date(since.get(p.id)!), now)
+        : 0,
     })),
   };
+}
+
+/** Desde cuándo cada pieza está en su estado actual (`piece_status_since`). */
+async function statusSince(pieceIds: string[]): Promise<Map<string, string>> {
+  if (pieceIds.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("piece_status_since", {
+    p_piece_ids: pieceIds,
+  });
+  if (error) throw error;
+  return new Map(data.map((r) => [r.piece_id, r.since]));
 }

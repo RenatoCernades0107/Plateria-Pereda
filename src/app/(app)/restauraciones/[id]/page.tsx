@@ -15,6 +15,7 @@ import {
   EditRestorationDialog,
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
+import { CloseRestorationMenu } from "@/components/restorations/close-restoration-menu";
 import { MoneySummary } from "@/components/restorations/money-summary";
 import { RestorationStatusSummary } from "@/components/restorations/piece-history";
 import {
@@ -24,8 +25,11 @@ import {
 } from "@/components/restorations/guide-labels";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
-import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
-import { RestorationStatusBadge } from "@/components/restorations/status-badges";
+import { RestorationQuoteMessageButton } from "@/components/restorations/restoration-quote-message-button";
+import {
+  PaymentStatusBadge,
+  RestorationStatusBadge,
+} from "@/components/restorations/status-badges";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
@@ -33,11 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewToggle } from "@/components/view-toggle";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
-import {
-  formatCents,
-  PAYMENT_STATUS_LABELS,
-  PAYMENT_TYPE_LABELS,
-} from "@/domain/money";
+import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
 import { can } from "@/domain/permissions";
 import { igvLabel, igvTotals } from "@/domain/igv";
@@ -52,7 +52,6 @@ import {
   missingSalePrices,
   RESTORATION_ORIGIN_LABELS,
 } from "@/domain/restoration-status";
-import { buildQuoteMessage } from "@/domain/whatsapp-quote";
 import { isClosedStatus } from "@/domain/piece-state-machine";
 import { serverEnv } from "@/lib/env.server";
 import { cn } from "@/lib/utils";
@@ -92,24 +91,32 @@ export default async function RestauracionDetallePage({
   // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
   const piecesView = parseRestorationPiecesView(query);
   const settings = canSeeMoney ? await getSettings() : null;
-  const message = settings
-    ? buildQuoteMessage(settings.whatsappTemplate, {
+  // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
+  const quoteData = settings
+    ? {
         code: restoration.code,
         clientName: restoration.client.name,
         contactName: restoration.contact?.name ?? null,
-        pieces: restoration.pieces.map((p) => ({
-          description: p.description,
-          service: p.serviceName || null,
-          // Sin precio de venta (D58) el mensaje dice "por definir".
-          priceCents: p.priceCents,
-          status: p.status,
-        })),
         pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
         depositPercent: restoration.money?.depositPercent ?? 0,
         terms: settings.terms,
-      })
+      }
     : null;
+  const quotePieces = restoration.pieces.map((p) => ({
+    id: p.id,
+    code: p.code,
+    description: p.description,
+    service: p.serviceName || null,
+    // Sin precio de venta (D58) el mensaje dice "por definir".
+    priceCents: p.priceCents,
+    status: p.status,
+  }));
+  // Cerrar la guía a mano (solo Anulada o Rechazada): quien anula o rechaza piezas.
+  const canClose =
+    can(user.role, "piezas.consultar-aprobar-anular") &&
+    !["anulada", "rechazada", "completada"].includes(restoration.status) &&
+    restoration.pieces.some((p) => !isClosedStatus(p.status));
   const phone = restoration.contact?.phone ?? restoration.client.phone;
   // Orden de Shopify (9.1): enlace al admin y estado del último envío (admin y ventas).
   const orderUrl = shopifyOrderAdminUrl(
@@ -242,15 +249,22 @@ export default async function RestauracionDetallePage({
                 <RestorationStatusBadge status={restoration.status} />
               </span>
               {restoration.money ? (
-                <Badge variant="outline" data-testid="estado-pago">
-                  {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
-                </Badge>
+                <PaymentStatusBadge
+                  status={restoration.money.paymentStatus}
+                  data-testid="estado-pago"
+                />
               ) : null}
               <Badge variant="outline">
                 {PAYMENT_TYPE_LABELS[restoration.paymentType]}
-                {restoration.money?.depositPercent
-                  ? ` (${restoration.money.depositPercent} %)`
-                  : ""}
+                {restoration.money?.depositAmountCents != null
+                  ? ` (${formatCents(restoration.money.depositAmountCents)}${
+                      restoration.money.depositPercent === null
+                        ? ""
+                        : ` · ${restoration.money.depositPercent} %`
+                    })`
+                  : restoration.money?.depositPercent
+                    ? ` (${restoration.money.depositPercent} %)`
+                    : ""}
               </Badge>
               {restoration.money ? (
                 <Badge variant="outline" data-testid="igv">
@@ -324,7 +338,13 @@ export default async function RestauracionDetallePage({
                 initial={{
                   contactId: restoration.contact?.id ?? null,
                   paymentType: restoration.paymentType,
-                  depositPercent: restoration.money?.depositPercent ?? null,
+                  depositAmountCents:
+                    restoration.money?.depositAmountCents ??
+                    (restoration.paymentType === "a_cuenta" &&
+                    restoration.money?.depositPercent
+                      ? restoration.money.expectedDepositCents
+                      : null),
+                  totalCents: restoration.money?.totalCents ?? 0,
                   pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
                   notes: restoration.notes,
                 }}
@@ -333,9 +353,17 @@ export default async function RestauracionDetallePage({
                 hasPayments={payments.length > 0}
               />
             ) : null}
-            {message ? (
-              <QuoteMessageButton
-                message={message}
+            {canClose ? (
+              <CloseRestorationMenu
+                restorationId={restoration.id}
+                code={restoration.code}
+              />
+            ) : null}
+            {settings && quoteData ? (
+              <RestorationQuoteMessageButton
+                template={settings.whatsappTemplate}
+                data={quoteData}
+                pieces={quotePieces}
                 phone={phone}
                 autoOpen={justCreated}
               />

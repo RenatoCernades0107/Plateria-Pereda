@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_WHATSAPP_TEMPLATE } from "./whatsapp-template";
 import {
   buildQuoteMessage,
+  isQuoteSelectedByDefault,
   quoteAmounts,
   whatsappUrl,
   type QuoteMessageData,
@@ -209,5 +210,24 @@ describe("whatsappUrl", () => {
     expect(whatsappUrl(undefined, "x")).toBeNull();
     expect(whatsappUrl("", "x")).toBeNull();
     expect(whatsappUrl("123", "x")).toBeNull();
+  });
+});
+
+describe("piezas elegidas a mano", () => {
+  it("por defecto se marcan todas menos anuladas, rechazadas y sin arreglo", () => {
+    expect(isQuoteSelectedByDefault("registrada")).toBe(true);
+    expect(isQuoteSelectedByDefault("aprobada")).toBe(true);
+    expect(isQuoteSelectedByDefault("anulada")).toBe(false);
+    expect(isQuoteSelectedByDefault("rechazada")).toBe(false);
+  });
+
+  it("con includeClosed el mensaje y el total usan solo las piezas pasadas", () => {
+    const all = data().pieces;
+    const only = data({ pieces: [all[1]!, all[2]!], includeClosed: true });
+    expect(quoteAmounts(only).totalCents).toBe(35_000 + 99_900);
+    const text = buildQuoteMessage(DEFAULT_WHATSAPP_TEMPLATE, only);
+    expect(text).toContain("1. Candelabro");
+    expect(text).toContain("2. Bandeja rota");
+    expect(text).not.toContain("Fuente de plata");
   });
 });

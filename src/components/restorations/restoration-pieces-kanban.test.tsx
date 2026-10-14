@@ -94,7 +94,7 @@ describe("RestorationPiecesKanban", () => {
       "Consulta",
       "Espera respuesta cliente",
       "Aprobada",
-      "Interno",
+      "En restauración",
       "Observación",
       "Anulado",
     ]);
@@ -244,7 +244,9 @@ describe("RestorationPiecesKanban: mover de estado", () => {
       screen.queryByRole("button", { name: "Mover RES-00012-4 a…" }),
     ).toBeNull();
     const menu = await openMenu(user, "RES-00012-1");
-    await user.click(within(menu).getByRole("menuitem", { name: "Interno" }));
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "En restauración" }),
+    );
     const dialog = await screen.findByRole("dialog", {
       name: "Enviar al taller: RES-00012-1",
     });

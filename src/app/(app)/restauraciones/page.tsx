@@ -2,12 +2,14 @@ import { Download, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterChips } from "@/components/filter-chips";
 import { PageHeader } from "@/components/page-header";
 import { RestorationsKanban } from "@/components/restorations/restorations-kanban";
 import { RestorationsFiltersForm } from "@/components/restorations/restorations-filters-form";
 import { RestorationsList } from "@/components/restorations/restorations-list";
 import { Button } from "@/components/ui/button";
 import { ViewToggle } from "@/components/view-toggle";
+import { restorationFilterChips } from "@/domain/filter-presets";
 import { can } from "@/domain/permissions";
 import {
   parseRestorationFilters,
@@ -17,7 +19,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { getClientName } from "@/server/quotes/queries";
-import { listRestorations } from "@/server/restorations/queries";
+import {
+  getPartialProgress,
+  listRestorations,
+} from "@/server/restorations/queries";
 
 export const metadata: Metadata = { title: "Restauraciones" };
 
@@ -46,6 +51,7 @@ export default async function RestauracionesPage({
     view: "tabla",
   });
   const kanban = filters.view === "kanban";
+  const progress = kanban ? await getPartialProgress(items) : undefined;
 
   return (
     <div className="space-y-4">
@@ -78,6 +84,9 @@ export default async function RestauracionesPage({
           </div>
         ) : null}
       </div>
+      <FilterChips
+        chips={restorationFilterChips(filters, { showMoney: canEdit })}
+      />
       <RestorationsFiltersForm
         // Al navegar con otros filtros el formulario se reinicia con los de la URL.
         key={restorationFiltersHref(filters)}
@@ -93,7 +102,11 @@ export default async function RestauracionesPage({
       />
       {kanban ? (
         <>
-          <RestorationsKanban items={items} showMoney={canEdit} />
+          <RestorationsKanban
+            items={items}
+            showMoney={canEdit}
+            progress={progress}
+          />
           <p className="text-muted-foreground text-sm">
             {items.length < total
               ? `Se muestran ${items.length} de ${total} restauraciones. Usa los filtros para ver las demás.`

@@ -36,9 +36,13 @@ import {
 import type { ClientOption } from "@/domain/client-search";
 import { igvTotals, IGV_PERCENT } from "@/domain/igv";
 import {
+  depositAmountHint,
+  depositAmountLiveError,
   expectedDeposit,
   formatCents,
   parseMoney,
+  percentOf,
+  toDecimalString,
   PAYMENT_TYPE_LABELS,
   PAYMENT_TYPES,
   type PaymentType,
@@ -80,6 +84,9 @@ type FormValues = {
   customerName: string;
   customerPhone: string;
   paymentType: PaymentType;
+  /** Adelanto "A cuenta" en soles: el % se calcula cuando hay precios. */
+  depositAmount: string;
+  /** Solo lo lee el esquema de la cotización de WhatsApp (que no lleva pago): siempre "". */
   depositPercent: string;
   /** "¿El precio incluye IGV?" (P13): por defecto "no" en lo nuevo (D59). */
   pricesIncludeIgv: "" | "si" | "no";
@@ -361,10 +368,7 @@ const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
   statusNote: "",
 });
 
-function defaultsFor(
-  mode: RestorationFormMode,
-  defaultDepositPercent: number,
-): FormValues {
+function defaultsFor(mode: RestorationFormMode): FormValues {
   if (mode.kind === "nueva") {
     return {
       clientId: "",
@@ -372,7 +376,8 @@ function defaultsFor(
       customerName: "",
       customerPhone: "",
       paymentType: "sin_definir",
-      depositPercent: String(defaultDepositPercent),
+      depositAmount: "",
+      depositPercent: "",
       // Por defecto el precio no incluye IGV: se suma el 18 % (D59).
       pricesIncludeIgv: "no",
       notes: "",
@@ -386,7 +391,20 @@ function defaultsFor(
     customerName: q.customerName,
     customerPhone: q.customerPhone,
     paymentType: q.paymentType,
-    depositPercent: q.depositPercent === null ? "" : String(q.depositPercent),
+    // El % cotizado pasa a soles con el total cotizado.
+    depositAmount:
+      q.paymentType === "a_cuenta" && q.depositPercent
+        ? toDecimalString(
+            percentOf(
+              liveTotal(
+                q.items.map((i) => i.piece),
+                q.pricesIncludeIgv,
+              ),
+              q.depositPercent,
+            ),
+          )
+        : "",
+    depositPercent: "",
     pricesIncludeIgv: igvChoice(q.pricesIncludeIgv),
     notes: mode.kind === "copia" ? "" : q.notes,
     pieces:
@@ -448,7 +466,7 @@ export function RestorationForm({
             ? copyRestorationSchema
             : restorationSchema) as never,
       )(values, context, options as never) as never,
-    defaultValues: defaultsFor(mode, defaultDepositPercent),
+    defaultValues: defaultsFor(mode),
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
@@ -456,18 +474,26 @@ export function RestorationForm({
   const totals = liveTotals(values.pieces ?? [], !withoutIgv);
   const total = totals.total;
   const paymentType = values.paymentType ?? "sin_definir";
-  const percent = Number(values.depositPercent);
+  const depositText = (values.depositAmount ?? "").trim();
+  // "A cuenta": el adelanto se escribe en soles (vacío = sin adelanto).
   const deposit =
     paymentType === "sin_definir"
       ? null
-      : paymentType === "a_cuenta" &&
-          (values.depositPercent ?? "").trim() !== "" &&
-          !(percent >= 1 && percent <= 100)
-        ? null
-        : paymentType === "a_cuenta" &&
-            (values.depositPercent ?? "").trim() === ""
+      : paymentType === "a_cuenta"
+        ? depositText === ""
           ? 0
-          : expectedDeposit(total, paymentType, percent);
+          : parseMoney(depositText)
+        : expectedDeposit(total, paymentType);
+  const depositLiveError =
+    paymentType === "a_cuenta"
+      ? depositAmountLiveError(values.depositAmount ?? "", total)
+      : null;
+  const depositHint =
+    depositText === ""
+      ? total > 0
+        ? `Sugerido (${defaultDepositPercent} %): ${formatCents(percentOf(total, defaultDepositPercent))}`
+        : null
+      : depositAmountHint(depositText, total);
 
   // Contactos de la empresa ya vinculada (al editar o copiar una cotización).
   useEffect(() => {
@@ -541,6 +567,7 @@ export function RestorationForm({
     // La cotización no lleva pago: sin tipo elegido ni adelanto.
     if (viaWhatsapp) {
       input.paymentType = "sin_definir";
+      input.depositAmount = "";
       input.depositPercent = "";
     }
     startTransition(async () => {
@@ -555,14 +582,14 @@ export function RestorationForm({
       } else if (mode.kind === "editar-cotizacion") {
         const result = await updateWhatsappQuote(
           mode.quote.id,
-          input as WhatsappQuoteFormInput,
+          input as unknown as WhatsappQuoteFormInput,
         );
         if ("error" in result) return setError(result.error);
         setSaved(true);
         router.push(`/cotizaciones-whatsapp/${mode.quote.id}`);
       } else if (viaWhatsapp) {
         const result = await createWhatsappQuote(
-          input as WhatsappQuoteFormInput,
+          input as unknown as WhatsappQuoteFormInput,
         );
         if ("error" in result) return setError(result.error);
         setSaved(true);
@@ -857,12 +884,27 @@ export function RestorationForm({
                 )}
               />
               {paymentType === "a_cuenta" ? (
-                <TextField
-                  form={form}
-                  name="depositPercent"
-                  label="Adelanto (%) (opcional)"
-                  inputMode="numeric"
-                />
+                <div className="space-y-1">
+                  <TextField
+                    form={form}
+                    name="depositAmount"
+                    label="Adelanto (S/) (opcional)"
+                    inputMode="numeric"
+                  />
+                  {depositHint ? (
+                    <p
+                      className="text-muted-foreground text-xs"
+                      data-testid="adelanto-porcentaje"
+                    >
+                      {depositHint}
+                    </p>
+                  ) : null}
+                  {depositLiveError && !form.formState.errors.depositAmount ? (
+                    <p className="text-destructive text-xs" role="alert">
+                      {depositLiveError}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
             <IgvField form={form} name="pricesIncludeIgv" />

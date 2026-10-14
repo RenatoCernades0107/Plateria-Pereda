@@ -1,6 +1,8 @@
-import type { ComponentType } from "react";
+import type { ComponentProps, ComponentType } from "react";
 import {
+  AlertTriangle,
   Ban,
+  Clock,
   Hammer,
   PackageCheck,
   PackageSearch,
@@ -11,6 +13,7 @@ import {
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Badge } from "@/components/ui/badge";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
+import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/domain/money";
 import {
   PIECE_STATUS_LABELS,
   type PieceStatus,
@@ -21,6 +24,19 @@ import {
   type PieceLocation,
   type RestorationStatus,
 } from "@/domain/restoration-status";
+import {
+  AGE_TONE_LABELS,
+  statusAgeText,
+  statusAgeTone,
+  type AgeTone,
+} from "@/domain/piece-status-age";
+import {
+  PAYMENT_STATUS_BADGE,
+  PROGRESS_LABELS,
+  RESTORATION_STATUS_PROGRESS,
+  type BadgeProgress,
+  type BadgeTone,
+} from "@/domain/status-progress";
 import { cn } from "@/lib/utils";
 
 /**
@@ -118,6 +134,7 @@ export function RestorationStatusBadge({
         className,
       )}
     >
+      <ProgressIcon progress={RESTORATION_STATUS_PROGRESS[status]} />
       {RESTORATION_STATUS_LABELS[status]}
     </Badge>
   );
@@ -156,5 +173,109 @@ export function LocationBadge({
       <Icon aria-hidden />
       {PIECE_LOCATION_LABELS[location]}
     </Badge>
+  );
+}
+
+/**
+ * Progreso de una insignia (S5): círculo vacío, a medias o lleno. Lleva un texto
+ * para lectores de pantalla, así el avance no depende del color.
+ */
+export function ProgressIcon({ progress }: { progress: BadgeProgress | null }) {
+  if (!progress) return null;
+  return (
+    <svg
+      viewBox="0 0 12 12"
+      className="size-3 shrink-0"
+      role="img"
+      aria-label={PROGRESS_LABELS[progress]}
+      data-progress={progress}
+    >
+      <circle
+        cx="6"
+        cy="6"
+        r="4.5"
+        fill={progress === "complete" ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeDasharray={progress === "incomplete" ? "2 1.5" : undefined}
+      />
+      {progress === "partial" ? (
+        <path d="M6 1.5 A4.5 4.5 0 0 1 6 10.5 Z" fill="currentColor" />
+      ) : null}
+    </svg>
+  );
+}
+
+const TONES: Record<BadgeTone, string> = {
+  neutral: "border-border text-foreground",
+  info: "border-transparent bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
+  success:
+    "border-transparent bg-green-100 text-green-950 dark:bg-green-900 dark:text-green-50",
+  attention:
+    "border-transparent bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-50",
+  critical:
+    "border-transparent bg-red-100 text-red-950 dark:bg-red-900 dark:text-red-50",
+};
+
+/** Estado de pago con tono y progreso: Pendiente ○, Parcial ◐, Pagado ● (S5). */
+export function PaymentStatusBadge({
+  status,
+  className,
+  ...props
+}: { status: PaymentStatus } & Omit<ComponentProps<"span">, "children">) {
+  const { tone, progress } = PAYMENT_STATUS_BADGE[status];
+  return (
+    <Badge
+      variant="outline"
+      data-payment-status={status}
+      data-tone={tone}
+      className={cn(TONES[tone], className)}
+      {...props}
+    >
+      <ProgressIcon progress={progress} />
+      {PAYMENT_STATUS_LABELS[status]}
+    </Badge>
+  );
+}
+
+const AGE_CLASSES: Record<AgeTone, string> = {
+  neutral: "text-muted-foreground",
+  attention: "text-amber-800 dark:text-amber-300 font-medium",
+  critical: "text-destructive font-medium",
+};
+
+/**
+ * Días en el estado actual con semáforo (C5): neutro, atención o crítico según los
+ * umbrales del estado. El icono y el texto oculto dicen el tono sin depender del color.
+ */
+export function StatusAge({
+  piece,
+  className,
+}: {
+  piece: {
+    status: PieceStatus;
+    readyForDelivery?: boolean;
+    statusDays: number;
+  };
+  className?: string;
+}) {
+  const tone = statusAgeTone(piece, piece.statusDays);
+  const Icon = tone === "neutral" ? Clock : AlertTriangle;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-xs whitespace-nowrap",
+        AGE_CLASSES[tone],
+        className,
+      )}
+      data-testid="dias-en-estado"
+      data-tone={tone}
+    >
+      <Icon className="size-3.5" aria-hidden />
+      {statusAgeText(piece.statusDays)}
+      {tone === "neutral" ? null : (
+        <span className="sr-only"> ({AGE_TONE_LABELS[tone]})</span>
+      )}
+    </span>
   );
 }

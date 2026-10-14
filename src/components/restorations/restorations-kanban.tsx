@@ -3,14 +3,18 @@ import Link from "next/link";
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import { Badge } from "@/components/ui/badge";
 import { WhatsAppBadge } from "@/components/whatsapp-badge";
-import { formatCents, PAYMENT_STATUS_LABELS } from "@/domain/money";
+import { formatCents } from "@/domain/money";
 import {
+  formatPartialProgress,
   RESTORATION_STATUS_LABELS,
   RESTORATION_STATUSES,
+  type PartialProgress,
   type RestorationStatus,
 } from "@/domain/restoration-status";
 import { formatDate } from "@/lib/format";
 import type { RestorationListItem } from "@/server/restorations/queries";
+
+import { PaymentStatusBadge } from "./status-badges";
 
 /**
  * Tablero kanban de restauraciones: una columna por estado general. Logística no
@@ -20,9 +24,12 @@ import type { RestorationListItem } from "@/server/restorations/queries";
 export function RestorationsKanban({
   items,
   showMoney,
+  progress,
 }: {
   items: RestorationListItem[];
   showMoney: boolean;
+  /** Avance de las restauraciones en estado parcial ("2/6 aprobadas"). */
+  progress?: ReadonlyMap<string, PartialProgress>;
 }) {
   const statuses: readonly RestorationStatus[] = showMoney
     ? RESTORATION_STATUSES
@@ -55,6 +62,15 @@ export function RestorationsKanban({
             <span>
               {r.piecesCount} {r.piecesCount === 1 ? "pieza" : "piezas"}
             </span>
+            {progress?.get(r.id) ? (
+              <Badge
+                variant="secondary"
+                className="tabular-nums"
+                data-testid={`avance-${r.code}`}
+              >
+                {formatPartialProgress(progress.get(r.id)!)}
+              </Badge>
+            ) : null}
             {showMoney && r.totalCents !== null ? (
               <span>{formatCents(r.totalCents)}</span>
             ) : null}
@@ -62,9 +78,7 @@ export function RestorationsKanban({
               <WhatsAppBadge>WhatsApp</WhatsAppBadge>
             ) : null}
             {r.paymentStatus ? (
-              <Badge variant="outline">
-                {PAYMENT_STATUS_LABELS[r.paymentStatus]}
-              </Badge>
+              <PaymentStatusBadge status={r.paymentStatus} />
             ) : null}
           </div>
         </KanbanCard>

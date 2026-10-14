@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FilterChips } from "@/components/filter-chips";
 import { PageHeader } from "@/components/page-header";
 import { PiecesBoardFiltersForm } from "@/components/restorations/pieces-board-filters-form";
 import { PiecesKanban } from "@/components/restorations/pieces-kanban";
 import { PiecesBoardTable } from "@/components/restorations/pieces-board-table";
 import { Button } from "@/components/ui/button";
 import { ViewToggle } from "@/components/view-toggle";
+import { pieceFilterChips } from "@/domain/filter-presets";
 import {
   parsePieceBoardFilters,
   pieceBoardHref,
@@ -40,6 +42,7 @@ export default async function PiezasPage({
         title="Piezas"
         description={`Piezas en curso de todas las restauraciones. Se resaltan las que llevan ${WORKSHOP_DAYS_ALERT} días o más en el taller.`}
       />
+      <FilterChips chips={pieceFilterChips(filters)} />
       <PiecesBoardFiltersForm
         // Al navegar con otros filtros el formulario se reinicia con los de la URL.
         key={pieceBoardHref(filters)}

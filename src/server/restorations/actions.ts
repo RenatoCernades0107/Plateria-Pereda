@@ -5,9 +5,15 @@ import { revalidatePath } from "next/cache";
 import type { AppRole } from "@/lib/roles";
 import type { TablesInsert } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { toDecimalString } from "@/domain/money";
+import {
+  depositAmountError,
+  toCents,
+  toDecimalString,
+  toSoles,
+} from "@/domain/money";
 import { can } from "@/domain/permissions";
 import {
+  invalidInputMessage,
   pieceSchema,
   restorationEditSchema,
   restorationSchema,
@@ -40,7 +46,7 @@ export async function createRestoration(
 ): Promise<CreateRestorationResult> {
   const user = await requirePermission("restauraciones.editar");
   const parsed = restorationSchema.safeParse(input);
-  if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  if (!parsed.success) return { error: invalidInputMessage(parsed.error) };
   // El precio de venta lo asigna solo el admin (D58) y el taller, logística y el
   // admin (D60): ventas registra sin precio ni taller.
   let pieces = parsed.data.pieces;
@@ -103,16 +109,34 @@ export async function updateRestoration(
 ): Promise<ActionResult> {
   await requirePermission("restauraciones.editar");
   const parsed = restorationEditSchema.safeParse(input);
-  if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  if (!parsed.success) return { error: invalidInputMessage(parsed.error) };
   const v = parsed.data;
 
   const supabase = await createClient();
+  if (v.depositAmount !== null) {
+    // El adelanto no puede superar el total ya asignado (sin precios, cualquier monto).
+    const current = await supabase
+      .from("restorations")
+      .select("total")
+      .eq("id", id)
+      .maybeSingle();
+    if (current.error) return { error: "No se pudo guardar la restauración." };
+    if (!current.data) return { error: "La restauración no existe." };
+    const message = depositAmountError(
+      v.depositAmount,
+      toCents(Number(current.data.total)),
+    );
+    if (message) return { error: `${message}.` };
+  }
   const { data, error } = await supabase
     .from("restorations")
     .update({
       contact_id: v.contactId,
       payment_type: v.paymentType,
-      deposit_percent: v.depositPercent,
+      // El adelanto se guarda en soles; el % antiguo deja de usarse al editar.
+      deposit_percent: null,
+      deposit_amount:
+        v.depositAmount === null ? null : toSoles(v.depositAmount),
       prices_include_igv: v.pricesIncludeIgv,
       notes: v.notes,
     })

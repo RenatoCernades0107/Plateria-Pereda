@@ -30,7 +30,10 @@ export function MoneyCell({
   /** Nombre accesible del botón, p. ej. "Guardar costo de RES-00001-1". */
   saveLabel: string;
   savedMessage: string;
-  onSave: (value: string) => Promise<{ ok: true } | { error: string }>;
+  /** `{ pending: true }`: el guardado sigue en otro paso (p. ej. un diálogo), sin aviso. */
+  onSave: (
+    value: string,
+  ) => Promise<{ ok: true } | { error: string } | { pending: true }>;
 }) {
   const saved = cents === null ? "" : toDecimalString(cents);
   const [value, setValue] = useState(saved);
@@ -48,7 +51,7 @@ export function MoneyCell({
     startTransition(async () => {
       const result = await onSave(value);
       if ("error" in result) toast.error(result.error);
-      else toast.success(savedMessage);
+      else if ("ok" in result) toast.success(savedMessage);
     });
 
   return (

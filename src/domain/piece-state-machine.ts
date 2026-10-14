@@ -31,7 +31,7 @@ export const PIECE_STATUS_LABELS: Record<PieceStatus, string> = {
   en_consulta: "Consulta",
   en_espera: "Espera respuesta cliente",
   aprobada: "Aprobada",
-  enviada_taller: "Interno",
+  enviada_taller: "En restauración",
   observada: "Observación",
   entregada: "Entregada",
   rechazada: "Rechazado (cliente)",
@@ -145,7 +145,7 @@ export type PieceSnapshot = {
   arrivedAt: Date | null;
   workshopId: string | null;
   firstSentAt: Date | null;
-  /** En Interno y ya de vuelta del taller ("Lista para entregar"). */
+  /** En En restauración y ya de vuelta del taller ("Lista para entregar"). */
   readyForDelivery: boolean;
   /** Devuelta al cliente (rechazada o sin arreglo). */
   returnedAt: Date | null;
@@ -153,7 +153,7 @@ export type PieceSnapshot = {
 
 /**
  * Condición física de la transición (P47): al taller solo va lo que está en la
- * tienda, y desde Interno solo se entrega u observa lo que ya volvió del taller.
+ * tienda, y desde En restauración solo se entrega u observa lo que ya volvió del taller.
  */
 export function blockedBy(
   piece: Pick<PieceSnapshot, "status" | "arrivedAt" | "readyForDelivery">,
@@ -357,7 +357,7 @@ export function markArrived(
   );
 }
 
-/** "Recibir del taller": la pieza sigue en Interno, ya en la tienda (P47). */
+/** "Recibir del taller": la pieza sigue en En restauración, ya en la tienda (P47). */
 export function canReceiveFromWorkshop(
   piece: Pick<PieceSnapshot, "status" | "readyForDelivery">,
   role: AppRole,

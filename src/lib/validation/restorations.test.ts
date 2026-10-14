@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   copyRestorationSchema,
+  invalidInputMessage,
   MAX_PIECES,
   pieceSchema,
   quotePieceSchema,
@@ -30,7 +31,7 @@ const restoration = {
   clientId: CLIENT,
   contactId: "",
   paymentType: "a_cuenta" as const,
-  depositPercent: "50",
+  depositAmount: "500",
   pricesIncludeIgv: "si" as const,
   notes: "",
   pieces: [piece],
@@ -193,13 +194,13 @@ describe("pieceSchema", () => {
 });
 
 describe("restorationSchema", () => {
-  it("a cuenta guarda el % de adelanto", () => {
+  it("a cuenta guarda el adelanto en soles (céntimos)", () => {
     const result = restorationSchema.parse(restoration);
     expect(result).toMatchObject({
       clientId: CLIENT,
       contactId: null,
       paymentType: "a_cuenta",
-      depositPercent: 50,
+      depositAmount: 50000,
       pricesIncludeIgv: true,
       notes: "",
     });
@@ -216,49 +217,98 @@ describe("restorationSchema", () => {
     ).toBe(false);
   });
 
-  it("acepta un % con hasta 2 decimales", () => {
+  it("acepta el adelanto con hasta 2 decimales y con S/", () => {
     expect(
-      restorationSchema.parse({ ...restoration, depositPercent: 33.33 })
-        .depositPercent,
-    ).toBe(33.33);
+      restorationSchema.parse({ ...restoration, depositAmount: "S/ 333,33" })
+        .depositAmount,
+    ).toBe(33333);
     expect(
-      errorsOf(restorationSchema, { ...restoration, depositPercent: "33.333" }),
-    ).toEqual({ depositPercent: "Máximo dos decimales" });
+      errorsOf(restorationSchema, { ...restoration, depositAmount: "10.555" }),
+    ).toEqual({
+      depositAmount: "Ingresa el adelanto en soles (hasta 2 decimales)",
+    });
   });
 
   it.each(["", "  "])(
     "acepta el adelanto vacío (%j) como sin adelanto",
-    (depositPercent) => {
+    (depositAmount) => {
       expect(
-        restorationSchema.parse({ ...restoration, depositPercent })
-          .depositPercent,
+        restorationSchema.parse({ ...restoration, depositAmount })
+          .depositAmount,
       ).toBeNull();
     },
   );
 
-  it.each(["0", "101", "abc"])("rechaza el %% %j", (depositPercent) => {
+  it.each(["-1", "S/ -20"])(
+    "rechaza el adelanto negativo %j",
+    (depositAmount) => {
+      expect(
+        errorsOf(restorationSchema, { ...restoration, depositAmount }),
+      ).toEqual({ depositAmount: "El adelanto no puede ser negativo" });
+    },
+  );
+
+  it("rechaza un adelanto mayor que el total (con IGV)", () => {
     expect(
-      errorsOf(restorationSchema, { ...restoration, depositPercent }),
-    ).toEqual({ depositPercent: "El adelanto debe estar entre 1 y 100 %" });
+      errorsOf(restorationSchema, { ...restoration, depositAmount: "1250.51" }),
+    ).toEqual({
+      depositAmount:
+        "El adelanto no puede ser mayor que el total (S/ 1,250.50)",
+    });
+    // Sin IGV incluido el total es 1250.50 + 18 % = 1475.59.
+    expect(
+      restorationSchema.parse({
+        ...restoration,
+        pricesIncludeIgv: "no",
+        depositAmount: "1475.59",
+      }).depositAmount,
+    ).toBe(147559);
+  });
+
+  it("sin precios asignados acepta cualquier adelanto en soles", () => {
+    expect(
+      restorationSchema.parse({
+        ...restoration,
+        depositAmount: "800",
+        pieces: [{ ...piece, price: "" }],
+      }).depositAmount,
+    ).toBe(80000);
   });
 
   it.each(["contado", "credito"] as const)(
-    "%s ignora el %% de adelanto",
+    "%s ignora el adelanto",
     (paymentType) => {
       expect(
         restorationSchema.parse({
           ...restoration,
           paymentType,
-          depositPercent: "",
+          depositAmount: "-5",
           contactId: CONTACT,
         }),
       ).toMatchObject({
         paymentType,
-        depositPercent: null,
+        depositAmount: null,
         contactId: CONTACT,
       });
     },
   );
+
+  it("invalidInputMessage devuelve el error del adelanto", () => {
+    const result = restorationSchema.safeParse({
+      ...restoration,
+      depositAmount: "5000",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success)
+      expect(invalidInputMessage(result.error)).toBe(
+        "El adelanto no puede ser mayor que el total (S/ 1,250.50).",
+      );
+    const other = restorationSchema.safeParse({ ...restoration, clientId: "" });
+    if (!other.success)
+      expect(invalidInputMessage(other.error)).toBe(
+        "Revisa los datos ingresados.",
+      );
+  });
 
   it("exige cliente y al menos una pieza", () => {
     expect(
@@ -282,11 +332,11 @@ describe("restorationSchema", () => {
     expect(
       errorsOf(restorationSchema, {
         ...restoration,
-        depositPercent: "0",
+        depositAmount: "-1",
         pieces: [piece, { ...piece, price: "", description: "" }],
       }),
     ).toEqual({
-      depositPercent: "El adelanto debe estar entre 1 y 100 %",
+      depositAmount: "El adelanto no puede ser negativo",
       "pieces.1.description": "Describe la pieza (qué es y cómo está)",
     });
   });

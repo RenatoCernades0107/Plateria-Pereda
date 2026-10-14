@@ -914,6 +914,7 @@ export type Database = {
           contact_id: string | null;
           created_at: string;
           created_by: string | null;
+          deposit_amount: number | null;
           deposit_percent: number | null;
           expected_deposit: number | null;
           id: string;
@@ -937,6 +938,7 @@ export type Database = {
           contact_id?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deposit_amount?: number | null;
           deposit_percent?: number | null;
           expected_deposit?: never;
           id?: string;
@@ -960,6 +962,7 @@ export type Database = {
           contact_id?: string | null;
           created_at?: string;
           created_by?: string | null;
+          deposit_amount?: number | null;
           deposit_percent?: number | null;
           expected_deposit?: never;
           id?: string;
@@ -1686,6 +1689,7 @@ export type Database = {
         Args: {
           p_client_id: string;
           p_contact_id: string;
+          p_deposit_amount?: number;
           p_deposit_percent: number;
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
@@ -1701,6 +1705,7 @@ export type Database = {
         Args: {
           p_client_id: string;
           p_contact_id: string;
+          p_deposit_amount?: number;
           p_deposit_percent: number;
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
@@ -1961,6 +1966,24 @@ export type Database = {
           piece_id: string;
           workshop_days: number;
           workshop_ongoing: boolean;
+        }[];
+      };
+      piece_requirement_facts: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          code: string;
+          has_after_photo: boolean;
+          has_price: boolean;
+          has_service_cost: boolean;
+          piece_id: string;
+          workshop_id: string | null;
+        }[];
+      };
+      piece_status_since: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          since: string;
         }[];
       };
       price_with_igv: {

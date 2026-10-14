@@ -172,7 +172,7 @@ describe("Timeline", () => {
     expect(items[1]).toHaveTextContent("desde Registrada");
     expect(items[1]).toHaveTextContent("Sistema");
     expect(items[1]).toHaveTextContent("¿Se puede soldar el asa?");
-    expect(within(items[2]!).getByText("Interno")).toBeInTheDocument();
+    expect(within(items[2]!).getByText("En restauración")).toBeInTheDocument();
     expect(items[2]).toHaveTextContent("Luis Logística");
   });
 

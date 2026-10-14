@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { toDecimalString } from "@/domain/money";
+import { toDecimalString, toSoles } from "@/domain/money";
 import type { Database } from "@/lib/supabase/database.types";
 import type {
   PieceInput,
@@ -62,7 +62,10 @@ export async function createRestorationRecord(
       p_client_id: input.clientId,
       p_contact_id: input.contactId as string,
       p_payment_type: input.paymentType,
-      p_deposit_percent: input.depositPercent as number,
+      // El adelanto se escribe en soles; el % antiguo ya no se usa en lo nuevo.
+      p_deposit_percent: null as unknown as number,
+      p_deposit_amount:
+        input.depositAmount === null ? undefined : toSoles(input.depositAmount),
       p_notes: input.notes,
       p_pieces: input.pieces.map(pieceToRpc),
       p_prices_include_igv: input.pricesIncludeIgv,

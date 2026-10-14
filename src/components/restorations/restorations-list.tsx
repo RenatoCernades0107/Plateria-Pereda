@@ -1,8 +1,8 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import { WhatsAppBadge } from "@/components/whatsapp-badge";
+import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
   Table,
   TableBody,
@@ -11,11 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  formatCents,
-  PAYMENT_STATUS_LABELS,
-  PAYMENT_TYPE_LABELS,
-} from "@/domain/money";
+import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import {
   restorationFiltersHref,
   sortChange,
@@ -25,7 +21,7 @@ import {
 import { formatDate } from "@/lib/format";
 import type { RestorationListItem } from "@/server/restorations/queries";
 
-import { RestorationStatusBadge } from "./status-badges";
+import { PaymentStatusBadge, RestorationStatusBadge } from "./status-badges";
 
 function SortHeader({
   filters,
@@ -54,9 +50,7 @@ function Payment({ item }: { item: RestorationListItem }) {
   return (
     <span className="flex flex-wrap gap-1">
       {item.paymentStatus ? (
-        <Badge variant="outline">
-          {PAYMENT_STATUS_LABELS[item.paymentStatus]}
-        </Badge>
+        <PaymentStatusBadge status={item.paymentStatus} />
       ) : null}
       <span className="text-muted-foreground text-xs">
         {PAYMENT_TYPE_LABELS[item.paymentType]}
@@ -127,10 +121,11 @@ export function RestorationsList({
         </TableHeader>
         <TableBody>
           {items.map((r) => (
-            <TableRow key={r.id} data-testid={`restauracion-${r.code}`}>
+            <ClickableRow key={r.id} data-testid={`restauracion-${r.code}`}>
               <TableCell>
                 <Link
                   href={`/restauraciones/${r.id}`}
+                  data-primary-link
                   className="text-heading font-medium underline-offset-4 hover:underline"
                 >
                   {r.code}
@@ -168,14 +163,14 @@ export function RestorationsList({
                   </TableCell>
                 </>
               ) : null}
-            </TableRow>
+            </ClickableRow>
           ))}
         </TableBody>
       </Table>
 
       <ul className="space-y-3 md:hidden" aria-label="Restauraciones">
         {items.map((r) => (
-          <li
+          <ClickableItem
             key={r.id}
             className="space-y-2 rounded-lg border p-4"
             data-testid={`restauracion-movil-${r.code}`}
@@ -184,6 +179,7 @@ export function RestorationsList({
               <div className="min-w-0">
                 <Link
                   href={`/restauraciones/${r.id}`}
+                  data-primary-link
                   className="text-heading font-medium underline-offset-4 hover:underline"
                 >
                   {r.code}
@@ -202,7 +198,7 @@ export function RestorationsList({
               ) : null}
             </div>
             <Payment item={r} />
-          </li>
+          </ClickableItem>
         ))}
       </ul>
     </>

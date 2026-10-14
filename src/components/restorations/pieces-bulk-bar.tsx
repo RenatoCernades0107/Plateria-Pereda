@@ -119,6 +119,7 @@ export function PiecesBulkBar({
   onDone,
   statusPicker = false,
   total = chosen.length,
+  children,
 }: {
   restorationId: string | null;
   chosen: StatusPiece[];
@@ -132,6 +133,8 @@ export function PiecesBulkBar({
   statusPicker?: boolean;
   /** Piezas que se pueden elegir, para el contador "N de M". */
   total?: number;
+  /** Acciones extra de la vista (p. ej. exportar las piezas elegidas). */
+  children?: React.ReactNode;
 }) {
   const [target, setTarget] = useState<PieceStatus | null>(null);
   const [dialog, setDialog] = useState<PendingChange | null>(null);
@@ -362,6 +365,7 @@ export function PiecesBulkBar({
           </Button>
         </div>
       ) : null}
+      {children}
       {statusPicker ? null : (
         <Button size="sm" variant="ghost" onClick={onDone}>
           Quitar selección

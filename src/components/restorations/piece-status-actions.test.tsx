@@ -143,7 +143,7 @@ describe("PieceStatusPanel", () => {
     expect(screen.getByText("En taller")).toBeInTheDocument();
   });
 
-  it("recibe la pieza del taller: sigue en Interno, lista para entregar", async () => {
+  it("recibe la pieza del taller: sigue en En restauración, lista para entregar", async () => {
     const user = userEvent.setup();
     renderPanel("enviada_taller", "logistica", { arrivedAt: ARRIVED });
     await user.click(
@@ -164,7 +164,7 @@ describe("PieceStatusPanel", () => {
     expect(buttons()).toEqual(["No tiene arreglo", "Entregar", "Observar"]);
     // "En tienda" = volvió del taller (P48).
     expect(screen.getByText("En tienda")).toBeInTheDocument();
-    expect(screen.getByText("Interno")).toBeInTheDocument();
+    expect(screen.getByText("En restauración")).toBeInTheDocument();
   });
 
   it("devuelve al cliente una pieza rechazada que está en la tienda", async () => {

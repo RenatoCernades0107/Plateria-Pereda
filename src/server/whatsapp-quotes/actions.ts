@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
+import { toSoles } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import {
   copyRestorationSchema,
+  invalidInputMessage,
   whatsappQuoteSchema,
   type RestorationFormInput,
   type WhatsappQuoteFormInput,
@@ -125,7 +127,7 @@ export async function createRestorationFromQuote(
 ): Promise<CreatedResult> {
   const user = await requirePermission("restauraciones.editar");
   const parsed = copyRestorationSchema.safeParse(input);
-  if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  if (!parsed.success) return { error: invalidInputMessage(parsed.error) };
   const v = parsed.data;
   // Sin ser admin se conserva el precio cotizado y las piezas nuevas quedan sin
   // precio de venta (D58); sin el permiso del taller, sin taller (D60).
@@ -141,7 +143,9 @@ export async function createRestorationFromQuote(
       p_client_id: v.clientId,
       p_contact_id: v.contactId as string,
       p_payment_type: v.paymentType,
-      p_deposit_percent: v.depositPercent as number,
+      p_deposit_percent: null as unknown as number,
+      p_deposit_amount:
+        v.depositAmount === null ? undefined : toSoles(v.depositAmount),
       p_notes: v.notes,
       p_pieces: pieces.map(pieceToRpc),
       p_prices_include_igv: v.pricesIncludeIgv,

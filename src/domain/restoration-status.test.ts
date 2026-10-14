@@ -5,6 +5,8 @@ import scenarios from "../../tests/fixtures/restorations/derivations.json";
 import { PIECE_STATUSES, type PieceStatus } from "./piece-state-machine";
 import {
   advanceRestorationStatus,
+  formatPartialProgress,
+  partialProgress,
   deriveLocation,
   deriveRestorationStatus,
   isReadyForShopifyOrder,
@@ -224,5 +226,43 @@ describe("advanceRestorationStatus (P19: solo avanza)", () => {
   it("si se anulan todas las piezas queda Anulada, y Anulada es final", () => {
     expect(advanceRestorationStatus("aprobada", "anulada")).toBe("anulada");
     expect(advanceRestorationStatus("anulada", "registrada")).toBe("anulada");
+  });
+});
+
+describe("partialProgress", () => {
+  const p = (
+    status: PieceStatus,
+    approved: boolean,
+    readyForDelivery = false,
+  ) => ({
+    status,
+    approvedAt: approved ? new Date() : null,
+    firstSentAt: null,
+    readyForDelivery,
+  });
+
+  it("cuenta las aprobadas sin las piezas cerradas", () => {
+    const progress = partialProgress("parcialmente_aprobada", [
+      p("aprobada", true),
+      p("aprobada", true),
+      p("registrada", false),
+      p("anulada", false),
+    ]);
+    expect(progress).toEqual({ done: 2, total: 3, label: "aprobadas" });
+    expect(formatPartialProgress(progress!)).toBe("2/3 aprobadas");
+  });
+
+  it("cuenta las listas (de vuelta o entregadas)", () => {
+    expect(
+      partialProgress("parcialmente_lista", [
+        p("enviada_taller", true, true),
+        p("entregada", true),
+        p("enviada_taller", true),
+      ]),
+    ).toEqual({ done: 2, total: 3, label: "listas" });
+  });
+
+  it("no aplica a los demás estados", () => {
+    expect(partialProgress("aprobada", [p("aprobada", true)])).toBeNull();
   });
 });

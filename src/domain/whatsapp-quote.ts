@@ -44,7 +44,29 @@ export type QuoteMessageData = {
   depositPercent: number;
   /** Términos y condiciones de la configuración. */
   terms: string;
+  /**
+   * Las piezas ya vienen elegidas a mano (diálogo del detalle): se incluyen todas,
+   * aunque estén cerradas.
+   */
+  includeClosed?: boolean;
 };
+
+/** Piezas que entran en el mensaje: sin las que no se cobran, salvo elegidas a mano. */
+function chargedPieces(
+  data: Pick<QuoteMessageData, "pieces" | "includeClosed">,
+): readonly QuotePiece[] {
+  return data.includeClosed
+    ? data.pieces
+    : data.pieces.filter((p) => !isClosedStatus(p.status));
+}
+
+/**
+ * Piezas marcadas por defecto al elegir qué va en el mensaje: todas menos las
+ * anuladas y rechazadas (ni las que no tienen arreglo, que tampoco se cobran).
+ */
+export function isQuoteSelectedByDefault(status: PieceStatus): boolean {
+  return !isClosedStatus(status);
+}
 
 /** Monto sin el símbolo, porque la plantilla ya escribe "S/ " delante: "1,234.50". */
 function amount(cents: Cents): string {
@@ -62,7 +84,11 @@ function percent(value: number): string {
 export function quoteAmounts(
   data: Pick<
     QuoteMessageData,
-    "pieces" | "pricesIncludeIgv" | "paymentType" | "depositPercent"
+    | "pieces"
+    | "pricesIncludeIgv"
+    | "paymentType"
+    | "depositPercent"
+    | "includeClosed"
   >,
 ): {
   totalCents: Cents;
@@ -71,9 +97,7 @@ export function quoteAmounts(
   depositCents: Cents;
 } {
   const { total, taxableBase, igv } = igvTotals(
-    data.pieces
-      .filter((p) => !isClosedStatus(p.status))
-      .map((p) => p.priceCents ?? 0),
+    chargedPieces(data).map((p) => p.priceCents ?? 0),
     data.pricesIncludeIgv,
   );
   return {
@@ -109,17 +133,15 @@ export function quoteValues(
 ): Record<WhatsAppPlaceholder, string> {
   const { totalCents, taxableBaseCents, igvCents, depositCents } =
     quoteAmounts(data);
-  const lines = data.pieces
-    .filter((p) => !isClosedStatus(p.status))
-    .map((p, i) => {
-      const service = p.service?.trim();
-      const name = service
-        ? `${p.description.trim()} – ${service}`
-        : p.description.trim();
-      return p.priceCents === null
-        ? `${i + 1}. ${name}: precio por definir`
-        : `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
-    });
+  const lines = chargedPieces(data).map((p, i) => {
+    const service = p.service?.trim();
+    const name = service
+      ? `${p.description.trim()} – ${service}`
+      : p.description.trim();
+    return p.priceCents === null
+      ? `${i + 1}. ${name}: precio por definir`
+      : `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
+  });
   // Precios sin IGV (P13): el desglose va debajo de las piezas, así aparece con
   // cualquier plantilla que use {piezas}.
   if (!data.pricesIncludeIgv) {

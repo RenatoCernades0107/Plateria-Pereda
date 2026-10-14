@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy } from "lucide-react";
+import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
@@ -25,16 +26,26 @@ export function WhatsAppQuoteDialog({
   onOpenChange,
   message,
   phone,
+  empty = false,
+  children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   message: string;
   /** Teléfono del contacto o del cliente, en cualquier formato que acepte `normalizePhone`. */
   phone: string | null | undefined;
+  /** Sin piezas elegidas: no se puede copiar ni enviar. */
+  empty?: boolean;
+  /** Contenido antes del mensaje (p. ej. la elección de piezas). */
+  children?: ReactNode;
 }) {
   const url = whatsappUrl(phone, message);
 
   async function copy() {
+    if (empty) {
+      toast.error("Elige al menos una pieza para el mensaje.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(message);
       toast.success("Mensaje copiado.");
@@ -54,6 +65,7 @@ export function WhatsAppQuoteDialog({
               : "Cópialo para enviárselo al cliente; no tiene un teléfono válido para abrir WhatsApp."}
           </DialogDescription>
         </DialogHeader>
+        {children}
         <pre
           data-testid="mensaje-cotizacion"
           className="bg-muted max-h-[50vh] overflow-y-auto rounded-md p-3 font-sans text-sm break-words whitespace-pre-wrap"
@@ -65,7 +77,7 @@ export function WhatsAppQuoteDialog({
             <Copy />
             Copiar
           </Button>
-          {url && (
+          {url && !empty && (
             <Button
               asChild
               className="bg-whatsapp-strong text-whatsapp-strong-foreground hover:bg-whatsapp-strong-hover focus-visible:ring-whatsapp/50"

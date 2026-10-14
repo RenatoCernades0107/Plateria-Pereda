@@ -21,10 +21,12 @@ type AuthState =
 
 export const getAuthState = cache(async (): Promise<AuthState> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { status: "anonimo" };
+  // getClaims verifica el JWT localmente (claves asimétricas) sin ir al servidor de Auth
+  // en cada render; getUser hacía una petición de red extra por navegación.
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return { status: "anonimo" };
+  const user = { id: claims.sub, email: claims.email };
 
   const { data: profile } = await supabase
     .from("profiles")
