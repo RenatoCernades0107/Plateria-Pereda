@@ -94,7 +94,9 @@ export default async function RestauracionDetallePage({
   const depositPending = query.adelanto === "pendiente";
   // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
   const piecesView = parseRestorationPiecesView(query);
-  const settings = canSeeMoney ? await getSettings() : null;
+  // Datos de la empresa (los leen todos) para el PDF; el resto, solo admin y ventas.
+  const company = await getSettings();
+  const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
   const quoteData = settings
     ? {
@@ -202,7 +204,13 @@ export default async function RestauracionDetallePage({
   const photos = firstBeforePhotos(files);
   // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
   const pdfData = {
-    companyName: settings?.legalName || "Platería Pereda",
+    company: {
+      name: company.legalName || "Platería Pereda",
+      ruc: company.ruc,
+      address: company.address,
+      phones: company.phones,
+      email: company.email,
+    },
     code: restoration.code,
     createdAt: restoration.createdAt,
     status: restoration.status,
@@ -210,6 +218,7 @@ export default async function RestauracionDetallePage({
     clientName: restoration.client.name,
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
+    shopifyOrderName: restoration.shopifyOrderName,
     notes: restoration.notes,
     pieces: restoration.pieces.map((p) => ({
       id: p.id,

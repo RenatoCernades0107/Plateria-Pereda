@@ -1,6 +1,6 @@
 import { formatDate } from "@/lib/format";
 
-import { igvTotals } from "./igv";
+import { igvLabel, igvTotals } from "./igv";
 import {
   formatCents,
   PAYMENT_TYPE_LABELS,
@@ -37,8 +37,16 @@ export type GuidePdfPiece = {
   priceCents: Cents | null;
 };
 
+export type GuidePdfCompany = {
+  name: string;
+  ruc: string | null;
+  address: string;
+  phones: string;
+  email: string;
+};
+
 export type GuidePdfData = {
-  companyName: string;
+  company: GuidePdfCompany;
   code: string;
   createdAt: string;
   status: RestorationStatus;
@@ -46,6 +54,7 @@ export type GuidePdfData = {
   clientName: string;
   contactName: string | null;
   phone: string | null;
+  shopifyOrderName: string | null;
   notes: string;
   pieces: GuidePdfPiece[];
   /** Solo para quien ve montos (admin y ventas, P42). */
@@ -58,23 +67,36 @@ export type GuidePdfData = {
 
 export type GuidePdfRow = {
   id: string;
+  number: number;
   code: string;
   description: string;
+  /** Material, medida y peso. */
   detail: string;
+  service: string;
   status: string;
   price: string | null;
   notes: string;
 };
 
+export type GuidePdfTotal = { label: string; value: string; strong?: boolean };
+
 export type GuidePdfModel = {
   title: string;
-  subtitle: string;
-  info: [label: string, value: string][];
+  code: string;
+  /** Datos de la empresa bajo el logo, una línea cada uno. */
+  companyLines: string[];
+  /** Recuadro de la esquina: fecha, número de guía, exportado. */
+  meta: [label: string, value: string][];
+  client: string[];
+  guide: [label: string, value: string][];
   showPrice: boolean;
   rows: GuidePdfRow[];
   /** Totales de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo). */
-  totals: [label: string, value: string][];
+  totals: GuidePdfTotal[];
+  /** Aviso bajo los totales (p. ej. piezas sin precio). */
+  totalsNote: string | null;
   notes: string;
+  footer: string;
 };
 
 /** Nombre del archivo, p. ej. `guia-RES-00012.pdf`. */
@@ -82,11 +104,10 @@ export function guidePdfFileName(code: string): string {
   return `guia-${code.replace(/[^\w-]+/g, "_")}.pdf`;
 }
 
-/** Material, servicio, medida y peso de la pieza, en una línea. */
+/** Material, medida y peso de la pieza, en una línea. */
 function pieceDetail(piece: GuidePdfPiece): string {
   return [
     piece.materialName,
-    piece.serviceName,
     piece.measure,
     piece.weightGrams === null ? "" : `${piece.weightGrams} g`,
   ]
@@ -102,18 +123,10 @@ export function guidePdfModel(
 ): GuidePdfModel {
   const pieces = data.pieces.filter((p) => selectedIds.has(p.id));
   const showPrice = data.money !== null;
-  const info: [string, string][] = [
-    ["Cliente", data.clientName],
-    ...(data.contactName
-      ? ([["Contacto", data.contactName]] as [string, string][])
-      : []),
-    ...(data.phone ? ([["Teléfono", data.phone]] as [string, string][]) : []),
-    ["Fecha de registro", formatDate(data.createdAt)],
-    ["Estado", RESTORATION_STATUS_LABELS[data.status]],
-    ["Tipo de pago", PAYMENT_TYPE_LABELS[data.paymentType]],
-  ];
+  const { company } = data;
 
-  const totals: [string, string][] = [];
+  const totals: GuidePdfTotal[] = [];
+  let totalsNote: string | null = null;
   if (data.money) {
     const charged = pieces.filter((p) => !isClosedStatus(p.status));
     const t = igvTotals(
@@ -121,36 +134,76 @@ export function guidePdfModel(
       data.money.pricesIncludeIgv,
     );
     totals.push(
-      ["Op. gravada", formatCents(t.taxableBase)],
-      ["IGV (18 %)", formatCents(t.igv)],
-      ["Total", formatCents(t.total)],
+      { label: "Op. gravada", value: formatCents(t.taxableBase) },
+      { label: "IGV (18 %)", value: formatCents(t.igv) },
+      { label: "Total", value: formatCents(t.total), strong: true },
     );
-    if (charged.some((p) => p.priceCents === null))
-      totals.push(["", "Hay piezas sin precio (por definir)."]);
     // A cuenta de toda la guía: solo si se exportan todas sus piezas.
     if (pieces.length === data.pieces.length) {
       totals.push(
-        ["Pagado", formatCents(data.money.paidCents)],
-        [
-          "Saldo",
-          formatCents(
+        { label: "A cuenta", value: formatCents(data.money.paidCents) },
+        {
+          label: "Saldo",
+          value: formatCents(
             Math.max(data.money.totalCents - data.money.paidCents, 0),
           ),
-        ],
+          strong: true,
+        },
       );
     }
+    if (charged.some((p) => p.priceCents === null))
+      totalsNote = "Hay piezas sin precio (por definir).";
   }
 
+  const contact = [company.phones, company.email]
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .join(" · ");
+
   return {
-    title: `Guía ${data.code}`,
-    subtitle: `${data.companyName} · Exportado el ${formatDate(now)}`,
-    info,
+    title: "GUÍA DE RESTAURACIÓN",
+    code: data.code,
+    companyLines: [
+      company.name,
+      company.ruc ? `RUC ${company.ruc}` : "",
+      company.address,
+      company.phones ? `Teléfono: ${company.phones}` : "",
+      company.email,
+    ]
+      .map((s) => s.trim())
+      .filter(Boolean),
+    meta: [
+      ["Fecha", formatDate(data.createdAt)],
+      ["Guía N°", data.code],
+      ["Impreso", formatDate(now)],
+    ],
+    client: [
+      data.clientName,
+      data.contactName ? `Contacto: ${data.contactName}` : "",
+      data.phone ? `Teléfono: ${data.phone}` : "",
+    ].filter(Boolean),
+    guide: [
+      ["Estado", RESTORATION_STATUS_LABELS[data.status]],
+      ["Tipo de pago", PAYMENT_TYPE_LABELS[data.paymentType]],
+      ...(data.money
+        ? ([["Precios", igvLabel(data.money.pricesIncludeIgv)]] as [
+            string,
+            string,
+          ][])
+        : []),
+      ["Piezas", `${pieces.length} de ${data.pieces.length}`],
+      ...(data.shopifyOrderName
+        ? ([["Orden", data.shopifyOrderName]] as [string, string][])
+        : []),
+    ],
     showPrice,
-    rows: pieces.map((p) => ({
+    rows: pieces.map((p, i) => ({
       id: p.id,
+      number: i + 1,
       code: p.code,
       description: p.description,
       detail: pieceDetail(p),
+      service: p.serviceName.trim() || "—",
       status: PIECE_STATUS_LABELS[p.status],
       price: !showPrice
         ? null
@@ -162,6 +215,10 @@ export function guidePdfModel(
       notes: p.notes.trim(),
     })),
     totals,
+    totalsNote,
     notes: data.notes.trim(),
+    footer: contact
+      ? `Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros: ${contact}`
+      : "Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros.",
   };
 }

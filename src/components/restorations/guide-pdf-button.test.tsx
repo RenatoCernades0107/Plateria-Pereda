@@ -22,7 +22,13 @@ const piece = (id: string): GuidePdfData["pieces"][number] => ({
 });
 
 const data: GuidePdfData = {
-  companyName: "Platería Pereda",
+  company: {
+    name: "Platería Pereda",
+    ruc: "20100047218",
+    address: "Av. Larco 123, Miraflores",
+    phones: "01 444 5555",
+    email: "ventas@pereda.pe",
+  },
   code: "RES-00001",
   createdAt: "2026-10-01T15:00:00Z",
   status: "registrada",
@@ -30,6 +36,7 @@ const data: GuidePdfData = {
   clientName: "Ana",
   contactName: null,
   phone: null,
+  shopifyOrderName: null,
   notes: "",
   pieces: [piece("1"), piece("2")],
   money: null,
