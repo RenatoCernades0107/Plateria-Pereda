@@ -1,3 +1,4 @@
+import { ShopifyBadge } from "@/components/shopify-badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -58,15 +59,15 @@ export function PaymentsList({ payments }: { payments: PaymentRecord[] }) {
             </TableCell>
             <TableCell>{p.createdByName ?? "Shopify"}</TableCell>
             <TableCell>
-              <Badge
-                variant={
+              <ShopifyBadge
+                className={
                   p.source === "sistema" && !p.syncedToShopify
-                    ? "outline"
-                    : "secondary"
+                    ? "border-border text-foreground bg-transparent"
+                    : undefined
                 }
               >
                 {shopifyLabel(p)}
-              </Badge>
+              </ShopifyBadge>
             </TableCell>
           </TableRow>
         ))}

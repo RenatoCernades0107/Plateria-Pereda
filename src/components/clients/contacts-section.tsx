@@ -1,5 +1,6 @@
 import { Pencil, Users } from "lucide-react";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,12 @@ export function ContactsSection({
                   <TableHead>Documento</TableHead>
                   <TableHead>Teléfono</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Shopify</TableHead>
+                  <TableHead>
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShopifyIcon className="text-shopify-strong size-4" />
+                      Shopify
+                    </span>
+                  </TableHead>
                   {canEdit ? (
                     <TableHead className="text-right">Acciones</TableHead>
                   ) : null}

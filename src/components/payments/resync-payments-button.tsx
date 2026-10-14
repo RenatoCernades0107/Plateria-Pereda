@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import { resyncPayments } from "@/server/payments/actions";
 
@@ -26,7 +27,11 @@ export function ResyncPaymentsButton({
         })
       }
     >
-      <RefreshCw className={pending ? "animate-spin" : undefined} />
+      {pending ? (
+        <RefreshCw className="animate-spin" />
+      ) : (
+        <ShopifyIcon className="text-shopify-strong" />
+      )}
       Resincronizar pagos
     </Button>
   );
