@@ -4,8 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
-import { FileGallery } from "@/components/files/file-gallery";
-import { FileUploader } from "@/components/files/file-uploader";
+import { FilesPanel } from "@/components/files/files-panel";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
@@ -538,16 +537,12 @@ export default async function RestauracionDetallePage({
             <PaymentsList payments={payments} />
           </TabsContent>
         ) : null}
-        <TabsContent value="archivos" className="space-y-6">
-          {can(user.role, "fotos.subir") ? (
-            <FileUploader
-              restorationId={restoration.id}
-              targets={fileTargets}
-            />
-          ) : null}
-          <FileGallery
+        <TabsContent value="archivos">
+          <FilesPanel
+            restorationId={restoration.id}
             files={files}
             targets={fileTargets}
+            canUpload={can(user.role, "fotos.subir")}
             currentUserId={user.id}
             isAdmin={user.role === "admin"}
           />

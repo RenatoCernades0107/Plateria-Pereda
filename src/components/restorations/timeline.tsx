@@ -9,13 +9,14 @@ import {
   type PieceStatus,
 } from "@/domain/piece-state-machine";
 import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 
 import { PieceStatusBadge } from "./status-badges";
 
 /**
- * Línea de tiempo de una pieza (Pasos 8.5 y 8.6): cada cambio de estado, y las
+ * Línea de tiempo horizontal de una pieza (Pasos 8.5 y 8.6): cada cambio de estado, y las
  * acciones que no lo cambian (llegada, vuelta del taller, devolución), con fecha,
  * usuario y nota, más los días en taller y de cumplimiento. Logística no la ve
  * (P42): para ella la página muestra solo el estado actual, los días en taller y
@@ -86,16 +87,18 @@ export function Timeline({
     now,
   );
 
+  const lastIndex = ordered.length - 1;
+
   return (
-    <div className="space-y-4">
-      <dl className="grid grid-cols-2 gap-3 text-sm">
-        <div>
+    <div className="space-y-3">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+        <div className="flex items-baseline gap-1.5">
           <dt className="text-muted-foreground text-xs">Días en taller</dt>
           <dd data-testid="dias-taller" className="font-medium">
             {formatDays(workshop)}
           </dd>
         </div>
-        <div>
+        <div className="flex items-baseline gap-1.5">
           <dt className="text-muted-foreground text-xs">
             Días de cumplimiento
           </dt>
@@ -108,42 +111,82 @@ export function Timeline({
       {ordered.length === 0 ? (
         <p className="text-muted-foreground text-sm">Sin cambios de estado.</p>
       ) : (
-        <ol className="border-border space-y-4 border-l pl-4">
-          {ordered.map((event, i) => (
-            <li key={i} data-testid="evento" className="relative space-y-1">
-              <span
-                aria-hidden
-                className="bg-primary absolute top-1.5 -left-[21px] size-2.5 rounded-full"
-              />
-              <div className="flex flex-wrap items-center gap-2">
-                {event.event && event.event !== "estado" ? (
-                  <Badge variant="secondary" data-event={event.event}>
-                    {EVENT_LABELS[event.event]}
-                  </Badge>
-                ) : (
-                  <>
-                    <PieceStatusBadge status={event.toStatus} />
-                    {event.fromStatus && (
-                      <span className="text-muted-foreground text-xs">
-                        desde {PIECE_STATUS_LABELS[event.fromStatus]}
-                      </span>
+        // Horizontal, del más antiguo al más reciente; en pantallas angostas se
+        // desplaza de lado. Cada paso lleva la insignia del estado (mismos colores).
+        <ol
+          className="-mx-1 flex snap-x snap-mandatory gap-0 overflow-x-auto px-1 pb-2"
+          aria-label="Línea de tiempo de la pieza"
+          tabIndex={0}
+        >
+          {ordered.map((event, i) => {
+            const isState = !event.event || event.event === "estado";
+            const current = i === lastIndex;
+            return (
+              <li
+                key={i}
+                data-testid="evento"
+                aria-current={current ? "step" : undefined}
+                className="relative w-48 shrink-0 snap-start pr-3 sm:w-52"
+              >
+                {/* Riel: punto del paso y línea hacia el siguiente. */}
+                <div aria-hidden className="mb-2 flex items-center">
+                  <span
+                    className={cn(
+                      "size-3 shrink-0 rounded-full border-2",
+                      current
+                        ? "border-primary bg-primary ring-primary/25 ring-4"
+                        : isState
+                          ? "border-primary bg-background"
+                          : "border-muted-foreground/60 bg-background",
                     )}
-                  </>
-                )}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                <time dateTime={event.at.toISOString()}>
-                  {formatDateTime(event.at)}
-                </time>{" "}
-                · {event.actorName ?? "Sistema"}
-              </p>
-              {event.note && (
-                <p className="text-sm break-words whitespace-pre-wrap">
-                  {event.note}
-                </p>
-              )}
-            </li>
-          ))}
+                  />
+                  {i < lastIndex ? (
+                    <span className="bg-border -mr-3 h-0.5 flex-1" />
+                  ) : null}
+                </div>
+                <div
+                  className={cn(
+                    "space-y-1 rounded-md border p-2",
+                    current ? "border-primary/50 bg-primary/5" : "bg-card",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {isState ? (
+                      <PieceStatusBadge status={event.toStatus} />
+                    ) : (
+                      <Badge variant="secondary" data-event={event.event}>
+                        {EVENT_LABELS[event.event as keyof typeof EVENT_LABELS]}
+                      </Badge>
+                    )}
+                    {current ? (
+                      <span className="text-primary text-[11px] font-medium uppercase">
+                        Último
+                      </span>
+                    ) : null}
+                  </div>
+                  {isState && event.fromStatus ? (
+                    <p className="text-muted-foreground text-xs">
+                      desde {PIECE_STATUS_LABELS[event.fromStatus]}
+                    </p>
+                  ) : null}
+                  <p className="text-muted-foreground text-xs">
+                    <time dateTime={event.at.toISOString()}>
+                      {formatDateTime(event.at)}
+                    </time>{" "}
+                    · {event.actorName ?? "Sistema"}
+                  </p>
+                  {event.note ? (
+                    <p
+                      className="line-clamp-3 text-xs break-words whitespace-pre-wrap"
+                      title={event.note}
+                    >
+                      {event.note}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       )}
     </div>
