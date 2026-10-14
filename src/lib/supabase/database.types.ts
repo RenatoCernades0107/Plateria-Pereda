@@ -1873,6 +1873,40 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      list_pieces_history: {
+        Args: {
+          p_from?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_restoration_code?: string;
+          p_status?: Database["public"]["Enums"]["piece_status"];
+          p_to?: string;
+          p_workshop_id?: string;
+        };
+        Returns: {
+          client_name: string;
+          code: string;
+          description: string;
+          finished_at: string;
+          id: string;
+          location: Database["public"]["Enums"]["piece_location"];
+          material_name: string;
+          measure: string;
+          photo_path: string;
+          price: number;
+          restoration_code: string;
+          restoration_id: string;
+          service_cost: number;
+          service_name: string;
+          status: Database["public"]["Enums"]["piece_status"];
+          total_count: number;
+          urgent: boolean;
+          weight_grams: number;
+          workshop_id: string;
+          workshop_name: string;
+        }[];
+      };
       list_restorations: {
         Args: {
           p_client_id?: string;

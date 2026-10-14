@@ -49,7 +49,7 @@ describe("filtros de la vista de piezas", () => {
       view: "tabla",
     });
     const closed = parsePieceBoardFilters({
-      ubicacion: "entregada",
+      ubicacion: "anulada",
       estado: "recibida",
       dias: "-3",
     });
@@ -58,6 +58,12 @@ describe("filtros de la vista de piezas", () => {
       null,
       null,
     ]);
+    // Las entregadas hoy siguen en la vista: se pueden filtrar.
+    const today = parsePieceBoardFilters({
+      ubicacion: "entregada",
+      estado: "entregada",
+    });
+    expect([today.location, today.status]).toEqual(["entregada", "entregada"]);
     expect(parsePieceBoardFilters({ dias: "9999" }).minDays).toBe(365);
   });
 
