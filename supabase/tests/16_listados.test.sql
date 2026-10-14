@@ -45,7 +45,8 @@ insert into public.pieces (id, restoration_id, description, price, urgent, arriv
   ('00000000-0000-0000-0000-00000000ca47', '00000000-0000-0000-0000-00000000ca34', 'Taza ya devuelta', 10, false, now());
 update public.pieces set status = 'rechazada'
   where id in ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca47');
-update public.pieces set returned_at = now() where id = '00000000-0000-0000-0000-00000000ca47';
+-- Devuelta días atrás: las devueltas hoy siguen a la vista (ver 35_…).
+update public.pieces set returned_at = now() - interval '2 days' where id = '00000000-0000-0000-0000-00000000ca47';
 update public.piece_status_history set note = 'Falta brillo'
   where piece_id = '00000000-0000-0000-0000-00000000ca42' and to_status = 'observada';
 

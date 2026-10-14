@@ -2,6 +2,9 @@ begin;
 
 select plan(6);
 
+-- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
+select set_config('app.deliver_with_balance', 'on', true);
+
 -- Vista de piezas: las entregadas hoy siguen a la vista; el historial guarda las demás.
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000db1', 'admin@historial.test', '{"role":"admin"}', '{}'),
