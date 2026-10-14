@@ -195,7 +195,7 @@ describe("RestorationForm", () => {
     ).toBeNull();
   });
 
-  it("el precio de venta no sale del servicio: queda «Sin asignar» (D58)", async () => {
+  it("el precio de venta no sale del servicio: queda «Por definir» (D58)", async () => {
     const user = userEvent.setup();
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
@@ -203,9 +203,9 @@ describe("RestorationForm", () => {
     expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
     expect(card.getByLabelText("Precio (S/)")).toHaveAttribute(
       "placeholder",
-      "Sin asignar",
+      "Por definir",
     );
-    expect(card.getByTestId("precio-pieza")).toHaveTextContent("Sin asignar");
+    expect(card.getByTestId("precio-pieza")).toHaveTextContent("Por definir");
   });
 
   it("sin permiso del taller (ventas) no se elige el taller al registrar (D60)", () => {

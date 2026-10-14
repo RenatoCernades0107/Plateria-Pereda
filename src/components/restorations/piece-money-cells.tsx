@@ -240,7 +240,7 @@ export function SalePriceCell({
 }) {
   if (!editable) {
     return cents === null ? (
-      <span className="text-muted-foreground">Sin asignar</span>
+      <span className="text-muted-foreground">Por definir</span>
     ) : (
       <span className="tabular-nums">{formatCents(cents)}</span>
     );
@@ -265,7 +265,7 @@ export function SalePriceCell({
     <MoneyEditCell
       cents={cents}
       align={align}
-      emptyText="Sin asignar"
+      emptyText="Por definir"
       fieldLabel="Precio de venta (S/)"
       title={`Precio de venta de ${piece.code}`}
       description="Precio que se cobra al cliente por esta pieza. Déjalo vacío si aún no se asigna."
@@ -304,7 +304,7 @@ export function BoardSalePriceCell({
         key={`${editing}-${cents}`}
         cents={cents}
         editable={editing}
-        emptyText="Sin asignar"
+        emptyText="Por definir"
         inputLabel={`Precio de venta de ${piece.code}`}
         saveLabel={`Guardar precio de ${piece.code}`}
         savedMessage={`Precio de ${piece.code} guardado.`}

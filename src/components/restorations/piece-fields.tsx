@@ -95,7 +95,7 @@ function CatalogField({
  * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
  * material, peso, medida y precio (opcionales) en una sola fila y al final taller y
  * urgente. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
- * precio de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
+ * precio de venta no sale del servicio: es opcional ("Por definir") y solo lo asigna el
  * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y también es
  * opcional ("Por definir").
  */

@@ -230,7 +230,7 @@ function PieceCard({
             ? formatCents(price)
             : quoteOnly
               ? "Por definir"
-              : "Sin asignar"}
+              : "Por definir"}
         </span>
         <Button
           type="button"
@@ -269,7 +269,7 @@ function PieceCard({
           // restauración solo lo asigna el admin (D58). Sin precio, pasa a Consulta.
           editable={quoteOnly || canSetPrice ? undefined : PIECE_FREE_FIELDS}
           priceHint={SALE_PRICE_HINT}
-          pricePlaceholder={quoteOnly ? "Por definir" : "Sin asignar"}
+          pricePlaceholder={"Por definir"}
         />
       </div>
     </li>

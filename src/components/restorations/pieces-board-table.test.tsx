@@ -215,7 +215,7 @@ describe("PiecesBoardTable", () => {
       screen.getByRole("button", { name: "Editar precio de venta" }),
     );
     const price = screen.getByLabelText("Precio de venta de RES-00001-1");
-    expect(price).toHaveAttribute("placeholder", "Sin asignar");
+    expect(price).toHaveAttribute("placeholder", "Por definir");
     await user.type(price, "150");
     await user.click(
       screen.getByRole("button", { name: "Guardar precio de RES-00001-1" }),
