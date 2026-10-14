@@ -1,11 +1,22 @@
 "use client";
 
-import { AlertTriangle, Check, Pencil } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,7 +36,7 @@ import { assignWorkshop } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
 import { materialSummary, PiecePhoto } from "./piece-photo";
-import { BoardSalePriceCell, ServiceCostInput } from "./piece-money-cells";
+import { BoardSalePriceCell, ServiceCostCell } from "./piece-money-cells";
 import {
   isSelectable,
   PiecesBulkBar,
@@ -39,7 +50,15 @@ import {
   UrgentBadge,
 } from "./status-badges";
 
+/** Días en el taller: columna propia, "—" si la pieza nunca fue al taller. */
 function Days({ piece }: { piece: BoardPiece }) {
+  if (piece.workshopDays === 0 && !piece.workshopOngoing) {
+    return (
+      <span className="text-muted-foreground" data-testid="dias-en-taller">
+        —
+      </span>
+    );
+  }
   const long = isLongInWorkshop(piece);
   const label = `${piece.workshopDays} ${piece.workshopDays === 1 ? "día" : "días"}`;
   return (
@@ -63,44 +82,104 @@ function Days({ piece }: { piece: BoardPiece }) {
 
 const NO_WORKSHOP = "ninguno";
 
-/** Taller de una fila: logística y el admin lo asignan aquí mismo (P55). */
-function WorkshopSelect({
+/**
+ * Taller de una fila: el nombre como texto y, para logística y el admin (P55), un
+ * botón con lápiz que abre el diálogo para asignarlo o cambiarlo.
+ */
+function WorkshopCell({
   piece,
   workshops,
+  editable,
 }: {
   piece: BoardPiece;
   workshops: WorkshopOption[];
+  editable: boolean;
 }) {
+  const current = piece.workshopId ?? NO_WORKSHOP;
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(current);
   const [pending, startTransition] = useTransition();
-  const change = (value: string) =>
+  const selectId = `taller-${piece.id}`;
+
+  const name = piece.workshopName ? (
+    <span>{piece.workshopName}</span>
+  ) : (
+    <span className="text-muted-foreground">Sin taller</span>
+  );
+  if (!editable) return name;
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
     startTransition(async () => {
       const id = value === NO_WORKSHOP ? null : value;
       const result = await assignWorkshop(null, [piece.id], id);
-      if ("error" in result) toast.error(result.error);
-      else toast.success(`Taller de ${piece.code} actualizado.`);
+      if ("error" in result) return void toast.error(result.error);
+      toast.success(`Taller de ${piece.code} actualizado.`);
+      setOpen(false);
     });
+  };
+
   return (
-    <Select
-      value={piece.workshopId ?? NO_WORKSHOP}
-      onValueChange={change}
-      disabled={pending}
-    >
-      <SelectTrigger
-        size="sm"
-        className="w-40"
-        aria-label={`Taller de ${piece.code}`}
+    <div className="flex items-center gap-1 whitespace-nowrap">
+      {name}
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setValue(current);
+        }}
       >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={NO_WORKSHOP}>Sin taller</SelectItem>
-        {workshops.map((w) => (
-          <SelectItem key={w.id} value={w.id}>
-            {w.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-7 print:hidden"
+            aria-label={`Cambiar taller de ${piece.code}`}
+            title="Cambiar taller"
+          >
+            <Pencil />
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <form onSubmit={submit} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Taller de {piece.code}</DialogTitle>
+              <DialogDescription>
+                Elige el taller que restaurará esta pieza.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={selectId}>Taller</Label>
+              <Select value={value} onValueChange={setValue}>
+                <SelectTrigger id={selectId} className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_WORKSHOP}>Sin taller</SelectItem>
+                  {workshops.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={pending || value === current}>
+                {pending ? <Loader2 className="animate-spin" /> : null}
+                Guardar taller
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 
@@ -221,7 +300,16 @@ export function PiecesBoardTable({
                 Estado
               </th>
               <th scope="col" className={head}>
-                Taller · días
+                Ubicación
+              </th>
+              <th scope="col" className={head}>
+                En el estado
+              </th>
+              <th scope="col" className={head}>
+                Taller
+              </th>
+              <th scope="col" className={head}>
+                Días en taller
               </th>
             </tr>
           </thead>
@@ -297,7 +385,7 @@ export function PiecesBoardTable({
                     className={cn(cell, "text-right")}
                     data-row-click="ignore"
                   >
-                    <ServiceCostInput
+                    <ServiceCostCell
                       piece={piece}
                       cents={piece.serviceCostCents}
                     />
@@ -320,22 +408,24 @@ export function PiecesBoardTable({
                   {materialSummary(piece)}
                 </td>
                 <td className={cell}>
-                  <div className="flex flex-col items-start gap-1">
-                    <PieceStatusBadge status={piece.status} />
-                    <LocationBadge location={piece.location} />
-                    <StatusAge piece={piece} />
-                  </div>
+                  <PieceStatusBadge status={piece.status} />
                 </td>
                 <td className={cell}>
-                  {assignTaller && !WORKSHOP_LOCKED.includes(piece.status) ? (
-                    <div className="mb-1">
-                      <WorkshopSelect piece={piece} workshops={workshops} />
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      {piece.workshopName ?? "Sin taller"}
-                    </p>
-                  )}
+                  <LocationBadge location={piece.location} />
+                </td>
+                <td className={cell}>
+                  <StatusAge piece={piece} compact />
+                </td>
+                <td className={cell}>
+                  <WorkshopCell
+                    piece={piece}
+                    workshops={workshops}
+                    editable={
+                      assignTaller && !WORKSHOP_LOCKED.includes(piece.status)
+                    }
+                  />
+                </td>
+                <td className={cell}>
                   <Days piece={piece} />
                 </td>
               </tr>

@@ -2,11 +2,19 @@ import type { ComponentProps, ComponentType } from "react";
 import {
   AlertTriangle,
   Ban,
+  CircleCheck,
+  ClipboardList,
   Clock,
+  Eye,
   Hammer,
+  Hourglass,
+  MessageCircleQuestionMark,
   PackageCheck,
   PackageSearch,
   Store,
+  ThumbsDown,
+  Wrench,
+  WrenchOff,
   Zap,
 } from "lucide-react";
 
@@ -50,26 +58,76 @@ type Variant = "default" | "secondary" | "destructive" | "outline";
 
 const CANCELLED = "text-muted-foreground line-through";
 
-/** Colores de la Platería (P47); `null` = variante del tema. */
-const PIECE_COLORS: Record<PieceStatus, string | null> = {
-  registrada: null,
-  en_consulta: "border-transparent bg-fuchsia-700 text-white",
-  en_espera: "border-transparent bg-purple-700 text-white",
-  aprobada: "border-transparent bg-green-700 text-white",
-  enviada_taller:
-    "border-transparent bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
-  observada: "border-transparent bg-yellow-500 text-yellow-950",
-  entregada: null,
-  rechazada: "border-transparent bg-amber-900 text-white",
-  sin_arreglo: "border-transparent bg-teal-800 text-white",
-  anulada:
-    "border-transparent bg-gray-200 text-gray-700 line-through dark:bg-gray-700 dark:text-gray-200",
+type IconComponent = ComponentType<{
+  "aria-hidden"?: boolean;
+  className?: string;
+}>;
+
+/**
+ * Color e icono de cada estado de la pieza (P47 y pedido del 2026-10-14): todos los
+ * estados tienen un color propio y un icono, para reconocerlos de un vistazo. Fondo
+ * sólido con texto con contraste AA (≥ 4.5:1) en tema claro y oscuro; el texto
+ * siempre acompaña, así el color no es la única pista. Lo anulado va tenue y tachado.
+ */
+export const PIECE_STATUS_STYLES: Record<
+  PieceStatus,
+  { className: string; icon: IconComponent }
+> = {
+  registrada: {
+    className: "border-transparent bg-slate-600 text-white",
+    icon: ClipboardList,
+  },
+  en_consulta: {
+    className: "border-transparent bg-fuchsia-700 text-white",
+    icon: MessageCircleQuestionMark,
+  },
+  en_espera: {
+    className: "border-transparent bg-purple-700 text-white",
+    icon: Hourglass,
+  },
+  aprobada: {
+    className: "border-transparent bg-green-700 text-white",
+    icon: CircleCheck,
+  },
+  enviada_taller: {
+    className:
+      "border-transparent bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
+    icon: Wrench,
+  },
+  observada: {
+    className: "border-transparent bg-yellow-500 text-yellow-950",
+    icon: Eye,
+  },
+  entregada: {
+    className: "border-transparent bg-blue-700 text-white",
+    icon: PackageCheck,
+  },
+  rechazada: {
+    className: "border-transparent bg-amber-900 text-white",
+    icon: ThumbsDown,
+  },
+  sin_arreglo: {
+    className: "border-transparent bg-teal-800 text-white",
+    icon: WrenchOff,
+  },
+  anulada: {
+    className:
+      "border-transparent bg-gray-200 text-gray-700 line-through dark:bg-gray-700 dark:text-gray-200",
+    icon: Ban,
+  },
 };
 
-const PIECE_VARIANTS: Partial<Record<PieceStatus, Variant>> = {
-  registrada: "outline",
-  entregada: "default",
-};
+/** Icono del estado de la pieza (decorativo: el texto del estado va al lado). */
+export function PieceStatusIcon({
+  status,
+  className,
+}: {
+  status: PieceStatus;
+  className?: string;
+}) {
+  const Icon = PIECE_STATUS_STYLES[status].icon;
+  return <Icon aria-hidden className={className} />;
+}
 
 export function PieceStatusBadge({
   status,
@@ -80,10 +138,11 @@ export function PieceStatusBadge({
 }) {
   return (
     <Badge
-      variant={PIECE_VARIANTS[status] ?? "outline"}
+      variant="outline"
       data-status={status}
-      className={cn(PIECE_COLORS[status], className)}
+      className={cn(PIECE_STATUS_STYLES[status].className, className)}
     >
+      <PieceStatusIcon status={status} />
       {PIECE_STATUS_LABELS[status]}
     </Badge>
   );
@@ -238,6 +297,9 @@ export function PaymentStatusBadge({
   );
 }
 
+const compactDays = (days: number) =>
+  days === 0 ? "Hoy" : `${days} ${days === 1 ? "día" : "días"}`;
+
 const AGE_CLASSES: Record<AgeTone, string> = {
   neutral: "text-muted-foreground",
   attention: "text-amber-800 dark:text-amber-300 font-medium",
@@ -250,6 +312,7 @@ const AGE_CLASSES: Record<AgeTone, string> = {
  */
 export function StatusAge({
   piece,
+  compact = false,
   className,
 }: {
   piece: {
@@ -257,6 +320,8 @@ export function StatusAge({
     readyForDelivery?: boolean;
     statusDays: number;
   };
+  /** Solo "Hoy" o "N días", para una columna que ya dice "en el estado". */
+  compact?: boolean;
   className?: string;
 }) {
   const tone = statusAgeTone(piece, piece.statusDays);
@@ -272,7 +337,9 @@ export function StatusAge({
       data-tone={tone}
     >
       <Icon className="size-3.5" aria-hidden />
-      {statusAgeText(piece.statusDays)}
+      {compact
+        ? compactDays(piece.statusDays)
+        : statusAgeText(piece.statusDays)}
       {tone === "neutral" ? null : (
         <span className="sr-only"> ({AGE_TONE_LABELS[tone]})</span>
       )}
