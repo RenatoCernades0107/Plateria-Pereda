@@ -16,6 +16,7 @@ import {
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
 import { CloseRestorationMenu } from "@/components/restorations/close-restoration-menu";
+import { GuidePdfButton } from "@/components/restorations/guide-pdf-button";
 import { MoneySummary } from "@/components/restorations/money-summary";
 import { RestorationStatusSummary } from "@/components/restorations/piece-history";
 import {
@@ -199,6 +200,37 @@ export default async function RestauracionDetallePage({
   ];
   // Miniatura de cada pieza en la tabla: su primera foto "Antes".
   const photos = firstBeforePhotos(files);
+  // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
+  const pdfData = {
+    companyName: settings?.legalName || "Platería Pereda",
+    code: restoration.code,
+    createdAt: restoration.createdAt,
+    status: restoration.status,
+    paymentType: restoration.paymentType,
+    clientName: restoration.client.name,
+    contactName: restoration.contact?.name ?? null,
+    phone: phone ? formatPhone(phone) : null,
+    notes: restoration.notes,
+    pieces: restoration.pieces.map((p) => ({
+      id: p.id,
+      code: p.code,
+      description: p.description,
+      materialName: p.materialName,
+      serviceName: p.serviceName,
+      measure: p.measure,
+      weightGrams: p.weightGrams,
+      status: p.status,
+      notes: p.notes,
+      priceCents: p.priceCents,
+    })),
+    money: restoration.money
+      ? {
+          pricesIncludeIgv: restoration.money.pricesIncludeIgv,
+          totalCents: restoration.money.totalCents,
+          paidCents: restoration.money.paidCents,
+        }
+      : null,
+  };
 
   return (
     <div className="space-y-6">
@@ -355,6 +387,7 @@ export default async function RestauracionDetallePage({
                 hasPayments={payments.length > 0}
               />
             ) : null}
+            <GuidePdfButton data={pdfData} photos={photos} />
             {canClose ? (
               <CloseRestorationMenu
                 restorationId={restoration.id}
