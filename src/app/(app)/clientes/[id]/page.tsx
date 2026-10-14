@@ -118,6 +118,7 @@ export default async function ClienteDetallePage({
               id={client.id}
               name={client.displayName}
               active={client.active}
+              size="default"
             />
           </div>
         ) : null}

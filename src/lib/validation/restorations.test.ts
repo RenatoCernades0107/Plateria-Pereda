@@ -117,10 +117,10 @@ describe("pieceSchema", () => {
     }
   });
 
-  it("en la cotización de WhatsApp el precio es obligatorio", () => {
-    expect(errorsOf(quotePieceSchema, { ...piece, price: " " })).toEqual({
-      price: "Ingresa el precio",
-    });
+  it("en la cotización de WhatsApp el precio es opcional (vacío = por definir)", () => {
+    expect(
+      quotePieceSchema.parse({ ...piece, price: " " }).priceCents,
+    ).toBeNull();
     expect(errorsOf(quotePieceSchema, { ...piece, price: "abc" })).toEqual({
       price: "Ingresa un monto válido (hasta 2 decimales)",
     });
@@ -450,13 +450,12 @@ describe("whatsappQuoteSchema (P46)", () => {
     });
   });
 
-  it("exige el precio cotizado de cada pieza", () => {
-    expect(
-      errorsOf(whatsappQuoteSchema, {
-        ...quote,
-        pieces: [{ ...piece, price: "" }],
-      }),
-    ).toEqual({ "pieces.0.price": "Ingresa el precio" });
+  it("acepta piezas sin precio cotizado", () => {
+    const parsed = whatsappQuoteSchema.parse({
+      ...quote,
+      pieces: [{ ...piece, price: "" }],
+    });
+    expect(parsed.pieces[0]!.priceCents).toBeNull();
   });
 });
 
@@ -464,6 +463,14 @@ describe("copyRestorationSchema (P49)", () => {
   const copy = (extra: Partial<PieceFormInput>) => ({
     ...restoration,
     pieces: [{ ...piece, ...extra }],
+  });
+
+  it("sin precio no pide estado ni nota: pasa a Consulta sola", () => {
+    expect(
+      copyRestorationSchema.safeParse(
+        copy({ price: "", initialStatus: undefined }),
+      ).success,
+    ).toBe(true);
   });
 
   it("exige el estado inicial de cada pieza", () => {

@@ -114,9 +114,9 @@ describe("PiecesBoardTable", () => {
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
     expect(headers.slice(1, 4)).toEqual([
-      "Foto antes",
-      "Pieza",
-      "Guía · cliente",
+      "Foto",
+      "Pieza · guía · cliente",
+      "Descripción",
     ]);
     expect(
       screen.getByRole("img", { name: "Foto de antes de RES-00001-1" }),
@@ -324,7 +324,8 @@ describe("PiecesBoardTable", () => {
     const headers = screen
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(-5)).toEqual([
+    // Estado y taller van antes que los montos, para verlos sin desplazarse.
+    expect(headers.slice(4, 9)).toEqual([
       "Estado",
       "Ubicación",
       "En el estado",
@@ -333,7 +334,7 @@ describe("PiecesBoardTable", () => {
     ]);
     const cells = within(screen.getByTestId("pieza-RES-00001-2"))
       .getAllByRole("cell")
-      .slice(-5)
+      .slice(4, 9)
       .map((c) => c.textContent);
     expect(cells).toEqual([
       "En restauración",
