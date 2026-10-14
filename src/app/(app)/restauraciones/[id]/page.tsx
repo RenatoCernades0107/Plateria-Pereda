@@ -531,7 +531,12 @@ export default async function RestauracionDetallePage({
               <div className="flex flex-wrap gap-2">
                 <RegisterPaymentDialog
                   restorationId={restoration.id}
-                  balanceCents={money.totalCents - money.paidCents}
+                  // El adelanto puede superar el saldo mientras las piezas no tienen
+                  // precio (total 0); la base acepta hasta lo que falte de él.
+                  balanceCents={Math.max(
+                    money.totalCents - money.paidCents,
+                    money.expectedDepositCents - money.paidCents,
+                  )}
                   suggested={suggested}
                   methods={paymentMethods}
                 />

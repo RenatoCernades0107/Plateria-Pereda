@@ -8,9 +8,8 @@
 --      sin precios queda "Parcial" (antes salía "Pagado" porque pagado ≥ 0).
 --   3. Con pagos registrados el adelanto ya no se cambia (como el tipo de pago, P28):
 --      lo cobrado se corrige con un reembolso y lo demás se cobra desde Pagos.
---   4. Datos existentes: las restauraciones "A cuenta" con adelanto y sin ningún pago
---      reciben el pago de su adelanto esperado, con la fecha en que se registraron. El
---      método no se conoce: queda "Sin especificar" (sin método del catálogo).
+--   4. Datos existentes: no se crean pagos para adelantos antiguos (pueden no haberse
+--      cobrado aún); se registran a mano desde Pagos. Solo se recalcula el estado.
 
 -- 1. Validación del pago: el adelanto puede superar el saldo.
 create or replace function private.prepare_payment()
@@ -95,19 +94,6 @@ revoke execute on function private.guard_deposit() from public, anon, authentica
 create trigger restorations_guard_deposit
   before update of deposit_amount, deposit_percent on public.restorations
   for each row execute function private.guard_deposit();
-
--- 4. Adelantos ya registrados sin pago: se registran como pago.
-insert into public.payments (restoration_id, kind, amount, method_name, paid_on)
-select
-  r.id,
-  'pago',
-  r.expected_deposit,
-  'Sin especificar',
-  (r.created_at at time zone 'America/Lima')::date
-from public.restorations r
-where r.payment_type = 'a_cuenta'
-  and r.expected_deposit > 0
-  and not exists (select 1 from public.payments p where p.restoration_id = r.id);
 
 -- Estado de pago con la regla nueva (p. ej., adelanto cobrado y total aún 0).
 update public.restorations r
