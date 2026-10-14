@@ -207,10 +207,13 @@ export const depositAmount = z.preprocess(
 
 /**
  * Mensaje para el usuario cuando falla la validación en el servidor: el del adelanto
- * si es ese el problema (negativo, mal escrito o mayor que el total); si no, genérico.
+ * si es ese el problema (negativo, mal escrito, mayor que el total o sin método); si
+ * no, genérico.
  */
 export function invalidInputMessage(error: z.ZodError): string {
-  const deposit = error.issues.find((i) => i.path[0] === "depositAmount");
+  const deposit = error.issues.find(
+    (i) => i.path[0] === "depositAmount" || i.path[0] === "depositMethodId",
+  );
   return deposit ? `${deposit.message}.` : "Revisa los datos ingresados.";
 }
 
@@ -247,6 +250,42 @@ const depositCheckParams = {
 };
 
 /**
+ * Método con que se pagó el adelanto al registrar la restauración "A cuenta": el
+ * adelanto se guarda como un pago real (el mismo registro que "Registrar pago"). Solo
+ * se pide si hay adelanto (> 0); en los demás tipos queda en null.
+ */
+const depositMethodId = optionalId.optional().transform((v) => v ?? null);
+const noDepositMethod = z
+  .unknown()
+  .optional()
+  .transform(() => null);
+
+export const DEPOSIT_METHOD_ERROR =
+  "Elige el método con que se pagó el adelanto";
+
+function requireDepositMethod(
+  v: { depositAmount: unknown; depositMethodId: unknown },
+  ctx: z.RefinementCtx,
+) {
+  if (
+    typeof v.depositAmount === "number" &&
+    v.depositAmount > 0 &&
+    !v.depositMethodId
+  )
+    ctx.addIssue({
+      code: "custom",
+      path: ["depositMethodId"],
+      message: DEPOSIT_METHOD_ERROR,
+    });
+}
+
+/** Corre aunque otros campos tengan errores, salvo el propio método mal escrito. */
+const depositMethodParams = {
+  when: (payload: { issues: readonly { path?: PropertyKey[] }[] }) =>
+    !payload.issues.some((i) => i.path?.[0] === "depositMethodId"),
+};
+
+/**
  * "¿El precio incluye IGV?" (P13): obligatorio. Los formularios nuevos parten de
  * "No" (D59); si no lo incluye, cada pieza se cobra con el 18 % encima.
  */
@@ -280,12 +319,15 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
       ...restorationFields,
       paymentType: z.literal("a_cuenta"),
       depositAmount,
+      depositMethodId,
     })
-    .superRefine(checkDepositAgainstPieces, depositCheckParams),
+    .superRefine(checkDepositAgainstPieces, depositCheckParams)
+    .superRefine(requireDepositMethod, depositMethodParams),
   z.object({
     ...restorationFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
     depositAmount: z.unknown().transform(() => null),
+    depositMethodId: noDepositMethod,
   }),
 ]);
 
@@ -327,12 +369,15 @@ export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
       ...copyFields,
       paymentType: z.literal("a_cuenta"),
       depositAmount,
+      depositMethodId,
     })
-    .superRefine(checkDepositAgainstPieces, depositCheckParams),
+    .superRefine(checkDepositAgainstPieces, depositCheckParams)
+    .superRefine(requireDepositMethod, depositMethodParams),
   z.object({
     ...copyFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
     depositAmount: z.unknown().transform(() => null),
+    depositMethodId: noDepositMethod,
   }),
 ]);
 

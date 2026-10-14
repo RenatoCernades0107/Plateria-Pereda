@@ -1,6 +1,6 @@
 begin;
 
-select plan(22);
+select plan(24);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000dd1', 'ventas@pagos.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -23,6 +23,7 @@ select is(private.payment_status_for(400, 450, 0), 'pagado', 'sobrepago → Paga
 select is(private.payment_status_for(400, 0, 200), 'reembolsado', 'se devolvió todo → Reembolsado');
 select is(private.payment_status_for(400, 100, 100), 'parcial', 'reembolso parcial → Parcial');
 select is(private.payment_status_for(0, 0, 0), 'pendiente', 'total 0 → Pendiente');
+select is(private.payment_status_for(0, 100, 0), 'parcial', 'adelanto sin precios (total 0) → Parcial');
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000dd1","role":"authenticated"}', true);
@@ -59,10 +60,16 @@ select throws_ok(
      where id = '00000000-0000-0000-0000-00000000dd30' $$,
   '23514', 'Con pagos registrados ya no se cambia el tipo de pago', 'P28: con pagos el tipo de pago queda fijo'
 );
-select lives_ok(
-  $$ update public.restorations set deposit_percent = 60, notes = 'ok'
+select throws_ok(
+  $$ update public.restorations set deposit_percent = 60
      where id = '00000000-0000-0000-0000-00000000dd30' $$,
-  'lo demás sí se edita'
+  '23514', 'Con pagos registrados ya no se cambia el adelanto: los cobros van en Pagos.',
+  'con pagos el adelanto queda fijo'
+);
+select lives_ok(
+  $$ update public.restorations set deposit_percent = null, deposit_amount = 200, notes = 'ok'
+     where id = '00000000-0000-0000-0000-00000000dd30' $$,
+  'lo demás sí se edita (el mismo adelanto, ahora en soles)'
 );
 select throws_ok(
   $$ update public.payments set amount = 1 $$,

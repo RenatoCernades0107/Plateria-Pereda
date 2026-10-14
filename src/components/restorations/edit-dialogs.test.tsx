@@ -294,4 +294,46 @@ describe("EditRestorationDialog", () => {
       }),
     );
   });
+
+  it("con pagos registrados el adelanto (ya cobrado) y el tipo de pago no se cambian", async () => {
+    mocks.updateRestoration.mockReset().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(
+      <EditRestorationDialog
+        restorationId="r1"
+        initial={{
+          contactId: null,
+          paymentType: "a_cuenta",
+          depositAmountCents: 10000,
+          totalCents: 0,
+          pricesIncludeIgv: true,
+          notes: "",
+        }}
+        hasOrder={false}
+        hasPayments
+        contacts={[]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const dialog = screen.getByRole("dialog");
+    const deposit = within(dialog).getByLabelText("Adelanto (S/) (opcional)");
+    expect(deposit).toBeDisabled();
+    expect(deposit).toHaveValue("100.00");
+    expect(
+      within(dialog).getByText(
+        "Con pagos registrados ya no se cambia: los cobros van en Pagos.",
+      ),
+    ).toBeVisible();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    // Se envía el mismo adelanto: la BD lo deja igual.
+    expect(mocks.updateRestoration).toHaveBeenCalledWith(
+      "r1",
+      expect.objectContaining({
+        paymentType: "a_cuenta",
+        depositAmount: "100.00",
+      }),
+    );
+  });
 });
