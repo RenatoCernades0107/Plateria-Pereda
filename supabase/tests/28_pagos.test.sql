@@ -41,7 +41,8 @@ select results_eq(
   'se recalcula pagado, saldo y estado'
 );
 select results_eq(
-  $$ select method_name, created_by_name from public.payments $$,
+  $$ select method_name, created_by_name from public.payments
+     where restoration_id = '00000000-0000-0000-0000-00000000dd30' $$,
   $$ values ('Yape', 'Vera Ventas') $$,
   'guarda el método y quién lo registró'
 );
