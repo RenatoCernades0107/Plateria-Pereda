@@ -394,9 +394,7 @@ test.describe("Vista de piezas", () => {
     // La pieza abre su detalle, con un acceso explícito a la guía.
     await adminRow.getByRole("link", { name: code }).click();
     await expect(page).toHaveURL(new RegExp(`/piezas/${pieces![0]!.id}$`));
-    await expect(
-      page.getByRole("heading", { level: 1, name: code }),
-    ).toBeVisible();
+    await expect(page.getByTestId("rotulo-pieza")).toContainText(code);
     await expect(page.getByRole("region", { name: "Montos" })).toContainText(
       "S/ 120.00",
     );
