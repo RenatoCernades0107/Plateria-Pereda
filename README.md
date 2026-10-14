@@ -33,6 +33,8 @@ Usuarios de prueba (creados por `supabase/seed.sql`, solo en local), todos con l
 | `ventas@pereda.test`    | Ventas        |
 | `logistica@pereda.test` | Logística     |
 
+El seed también carga datos de ejemplo: 2 talleres, 3 clientes (uno empresa con contacto), catálogos y 3 restauraciones con 10 piezas en estados variados (en taller, listas, observada, entregadas, rechazada…), pagos y fotos de antes y después. Las fotos están en `supabase/seed-files/` y la CLI las sube al bucket al hacer `pnpm db:start` o `pnpm db:reset`.
+
 Servicios locales:
 
 | Servicio                         | URL                                                       |
