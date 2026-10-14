@@ -211,7 +211,9 @@ describe("PiecesBoardTable", () => {
     expect(
       screen.queryByLabelText("Precio de venta de RES-00001-1"),
     ).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Editar precios" }));
+    await user.click(
+      screen.getByRole("button", { name: "Editar precio de venta" }),
+    );
     const price = screen.getByLabelText("Precio de venta de RES-00001-1");
     expect(price).toHaveAttribute("placeholder", "Sin asignar");
     await user.type(price, "150");
@@ -235,7 +237,9 @@ describe("PiecesBoardTable", () => {
     expect(
       within(row).queryByRole("button", { name: "Cambiar precio" }),
     ).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Editar precios" }));
+    await user.click(
+      screen.getByRole("button", { name: "Editar precio de venta" }),
+    );
     const price = within(row).getByLabelText("Precio de venta de RES-00001-1");
     await user.clear(price);
     await user.type(price, "180");
@@ -351,12 +355,193 @@ describe("PiecesBoardTable", () => {
     ).toHaveTextContent("—");
   });
 
-  it("ventas no asigna taller ni ve «Editar precios»", () => {
+  it("ventas no asigna taller ni ve las ediciones en bloque", () => {
     render(<PiecesBoardTable role="ventas" workshops={[]} pieces={[base]} />);
     expect(
       screen.queryByRole("button", { name: "Cambiar taller de RES-00001-1" }),
     ).toBeNull();
-    expect(screen.queryByRole("button", { name: "Editar precios" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Editar precio de venta" }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Editar costo de servicio" }),
+    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cambiar taller" })).toBeNull();
+  });
+
+  it("logística no ve «Editar precio de venta» pero sí costo y taller", () => {
+    render(
+      <PiecesBoardTable role="logistica" workshops={[]} pieces={[base]} />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Editar precio de venta" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Editar costo de servicio" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cambiar taller" }),
+    ).toBeInTheDocument();
+  });
+
+  it("«Editar costo de servicio» muestra el campo en todas las filas", async () => {
+    const { setPieceServiceCost } =
+      await import("@/server/service-cost-actions");
+    vi.mocked(setPieceServiceCost).mockClear();
+    const user = userEvent.setup();
+    render(
+      <PiecesBoardTable
+        role="logistica"
+        workshops={[]}
+        pieces={[
+          base,
+          { ...base, id: "p2", code: "RES-00001-2", serviceCostCents: null },
+        ]}
+      />,
+    );
+    expect(
+      screen.queryByLabelText("Costo de servicio de RES-00001-1"),
+    ).toBeNull();
+    const toggle = screen.getByRole("button", {
+      name: "Editar costo de servicio",
+    });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByLabelText("Costo de servicio de RES-00001-1"),
+    ).toHaveValue("40.00");
+    const empty = screen.getByLabelText("Costo de servicio de RES-00001-2");
+    expect(empty).toHaveAttribute("placeholder", "Por definir");
+    await user.type(empty, "55");
+    await user.click(
+      screen.getByRole("button", { name: "Guardar costo de RES-00001-2" }),
+    );
+    expect(setPieceServiceCost).toHaveBeenCalledWith("p2", "55");
+    // Al terminar vuelve al monto con su lápiz.
+    await user.click(toggle);
+    expect(
+      screen.queryByLabelText("Costo de servicio de RES-00001-1"),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "Editar costo de servicio de RES-00001-1",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  describe("«Cambiar taller»", () => {
+    const pieces: BoardPiece[] = [
+      base,
+      { ...base, id: "p2", code: "RES-00001-2", workshopId: "w2" },
+      {
+        ...base,
+        id: "p3",
+        code: "RES-00001-3",
+        status: "enviada_taller",
+        location: "en_taller",
+        workshopId: "w2",
+        workshopName: "Taller Norte",
+      },
+    ];
+    const workshops = [
+      { id: "w1", name: "Taller Central" },
+      { id: "w2", name: "Taller Norte" },
+    ];
+
+    it("sin piezas elegidas pide elegirlas", async () => {
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable
+          role="logistica"
+          workshops={workshops}
+          pieces={pieces}
+        />,
+      );
+      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
+      const dialog = await screen.findByRole("dialog", {
+        name: "Cambiar taller",
+      });
+      expect(dialog).toHaveTextContent("Elige con las casillas las piezas");
+      expect(
+        within(dialog).queryByRole("button", { name: "Guardar taller" }),
+      ).toBeNull();
+    });
+
+    it("asigna el taller elegido a las piezas elegidas que pueden cambiarlo", async () => {
+      const { assignWorkshop } =
+        await import("@/server/restorations/status-actions");
+      vi.mocked(assignWorkshop).mockClear();
+      vi.mocked(assignWorkshop).mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable role="admin" workshops={workshops} pieces={pieces} />,
+      );
+      await user.click(
+        screen.getByLabelText("Elegir todas las de esta página"),
+      );
+      // La barra no repite el selector de taller: lo hace este botón.
+      const bar = screen.getByRole("region", {
+        name: "Acciones para las piezas elegidas",
+      });
+      expect(
+        within(bar).queryByRole("button", { name: "Asignar taller" }),
+      ).toBeNull();
+
+      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
+      const dialog = await screen.findByRole("dialog", {
+        name: "Cambiar taller",
+      });
+      expect(dialog).toHaveTextContent("RES-00001-1, RES-00001-2");
+      // La que está en el taller no cambia.
+      expect(within(dialog).getByRole("note")).toHaveTextContent("RES-00001-3");
+      await user.click(
+        within(dialog).getByRole("combobox", { name: "Taller" }),
+      );
+      await user.click(
+        await screen.findByRole("option", { name: "Taller Central" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Guardar taller" }),
+      );
+      expect(assignWorkshop).toHaveBeenCalledWith(null, ["p1", "p2"], "w1");
+      // Al terminar se limpia la selección.
+      expect(
+        screen.queryByRole("region", {
+          name: "Acciones para las piezas elegidas",
+        }),
+      ).toBeNull();
+    });
+
+    it("muestra el error del servidor y no limpia la selección", async () => {
+      const { assignWorkshop } =
+        await import("@/server/restorations/status-actions");
+      const { toast } = await import("sonner");
+      vi.mocked(assignWorkshop).mockResolvedValue({ error: "Sin permiso." });
+      const user = userEvent.setup();
+      render(
+        <PiecesBoardTable
+          role="logistica"
+          workshops={workshops}
+          pieces={pieces}
+        />,
+      );
+      await user.click(screen.getByLabelText("Elegir RES-00001-2"));
+      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
+      const dialog = await screen.findByRole("dialog", {
+        name: "Cambiar taller",
+      });
+      // Parte del taller que ya tiene la pieza.
+      expect(
+        within(dialog).getByRole("combobox", { name: "Taller" }),
+      ).toHaveTextContent("Taller Norte");
+      await user.click(
+        within(dialog).getByRole("button", { name: "Guardar taller" }),
+      );
+      expect(assignWorkshop).toHaveBeenCalledWith(null, ["p2"], "w2");
+      expect(toast.error).toHaveBeenCalledWith("Sin permiso.");
+      expect(screen.getByLabelText("Elegir RES-00001-2")).toBeChecked();
+    });
   });
 
   it("ventas ve el precio sin editarlo y no ve el costo", () => {

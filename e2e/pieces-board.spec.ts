@@ -379,7 +379,7 @@ test.describe("Vista de piezas", () => {
     await page.goto(`/piezas?guia=${encodeURIComponent(r.code)}`);
     const adminRow = page.getByTestId(`pieza-${code}`);
     await expect(adminRow).toContainText("S/ 45.00");
-    await page.getByRole("button", { name: "Editar precios" }).click();
+    await page.getByRole("button", { name: "Editar precio de venta" }).click();
     await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
     await adminRow
       .getByRole("button", { name: `Guardar precio de ${code}` })
