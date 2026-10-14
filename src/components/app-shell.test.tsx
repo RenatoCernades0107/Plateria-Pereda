@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { NAV_ITEMS } from "@/lib/navigation";
 
 import { AppShell } from "./app-shell";
+import { PageBreadcrumb } from "./page-breadcrumb";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/restauraciones/123",
@@ -63,6 +64,25 @@ describe("AppShell", () => {
     );
     expect(
       screen.getByText("Restauraciones", {
+        selector: "[data-slot=breadcrumb-page]",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("en un detalle muestra la sección como enlace y el código del registro", () => {
+    render(
+      <AppShell user={user}>
+        <PageBreadcrumb label="RES-00012" />
+      </AppShell>,
+    );
+    const crumbs = screen.getByRole("navigation", {
+      name: "Ruta de navegación",
+    });
+    expect(
+      within(crumbs).getByRole("link", { name: "Restauraciones" }),
+    ).toHaveAttribute("href", "/restauraciones");
+    expect(
+      within(crumbs).getByText("RES-00012", {
         selector: "[data-slot=breadcrumb-page]",
       }),
     ).toBeInTheDocument();

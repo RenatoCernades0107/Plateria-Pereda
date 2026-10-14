@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -468,11 +469,7 @@ export function PiecesBoardTable({
   const [editingPrices, setEditingPrices] = useState(false);
 
   if (pieces.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        No hay piezas con esos filtros.
-      </p>
-    );
+    return <EmptyState>No hay piezas con esos filtros.</EmptyState>;
   }
 
   const head = "px-3 py-2 text-left font-medium whitespace-nowrap";

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { PrintButton } from "@/components/workshops/print-button";
@@ -14,9 +15,14 @@ import {
 } from "@/domain/workshop-pieces";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { listWorkshopPieces } from "@/server/workshop-pieces";
 
-export const metadata: Metadata = { title: "Piezas del taller" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/talleres/[id]/piezas">): Promise<Metadata> {
+  return recordMetadata("workshop", (await params).id, "Piezas del taller");
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -45,6 +51,7 @@ export default async function TallerPiezasPage({
 
   return (
     <div className="space-y-4">
+      <PageBreadcrumb label={workshop.name} />
       <div className="flex flex-wrap items-start justify-between gap-4 print:hidden">
         <PageHeader
           title={`Piezas en ${workshop.name}`}

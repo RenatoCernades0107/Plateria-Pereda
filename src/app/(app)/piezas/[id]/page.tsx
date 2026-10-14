@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { FilesPanel } from "@/components/files/files-panel";
 import {
   PIECE_ACCENT_CLASS,
@@ -26,6 +27,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue } from "@/server/payments/queries";
 import {
@@ -34,7 +36,11 @@ import {
   getStatusHistory,
 } from "@/server/restorations/queries";
 
-export const metadata: Metadata = { title: "Pieza" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/piezas/[id]">): Promise<Metadata> {
+  return recordMetadata("piece", (await params).id, "Pieza");
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -105,6 +111,7 @@ export default async function PiezaDetallePage({
 
   return (
     <div className="space-y-4">
+      <PageBreadcrumb label={piece.code} />
       <Button asChild variant="ghost" size="sm" className="-my-1 -ml-2">
         <Link href="/piezas">
           <ArrowLeft />

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { EmptyState } from "@/components/empty-state";
 import { navigateRow } from "@/components/clickable-row";
 import { formatCents } from "@/domain/money";
 import { pieceHref } from "@/domain/restoration-pieces-view";
@@ -35,9 +36,7 @@ export function PiecesHistoryTable({
 }) {
   if (pieces.length === 0) {
     return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        No hay piezas en el historial con esos filtros.
-      </p>
+      <EmptyState>No hay piezas en el historial con esos filtros.</EmptyState>
     );
   }
 

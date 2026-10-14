@@ -3,10 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { FilesPanel } from "@/components/files/files-panel";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
+import { Notice } from "@/components/notice";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
 import { RegisterPaymentDialog } from "@/components/payments/register-payment-dialog";
@@ -58,6 +60,7 @@ import { serverEnv } from "@/lib/env.server";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { listCatalog } from "@/server/catalogs";
 import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
@@ -69,7 +72,11 @@ import {
 import { getSettings } from "@/server/settings";
 import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
 
-export const metadata: Metadata = { title: "Restauración" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/restauraciones/[id]">): Promise<Metadata> {
+  return recordMetadata("restoration", (await params).id, "Restauración");
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -202,6 +209,7 @@ export default async function RestauracionDetallePage({
 
   return (
     <div className="space-y-6">
+      <PageBreadcrumb label={restoration.code} />
       <RefreshWhilePending
         pending={sync?.status === "pending" || sync?.status === "processing"}
       />
@@ -408,41 +416,31 @@ export default async function RestauracionDetallePage({
       </section>
 
       {depositPending && canSeeMoney && restoration.money?.paidCents === 0 ? (
-        <p
-          role="alert"
-          className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
-        >
+        <Notice tone="destructive">
           La restauración se registró, pero no se pudo registrar el adelanto.
           Regístralo desde Pagos.
-        </p>
+        </Notice>
       ) : null}
 
       {restoration.money &&
       restoration.hasOrder &&
       restoration.money.paidCents > restoration.money.totalCents ? (
-        <p
-          role="alert"
-          className="border-destructive/50 text-destructive rounded-md border p-3 text-sm"
-        >
+        <Notice tone="destructive">
           El cliente pagó{" "}
           {formatCents(
             restoration.money.paidCents - restoration.money.totalCents,
           )}{" "}
           más que el nuevo total: registra el reembolso (P12).
-        </p>
+        </Notice>
       ) : null}
 
       {missingPrices ? (
-        <p
-          role="status"
-          className="bg-muted rounded-md border p-3 text-sm"
-          data-testid="faltan-precios"
-        >
+        <Notice data-testid="faltan-precios">
           {missingPrices.message}
           {user.role === "admin"
             ? " Asígnalos en la columna «Precio venta» de cada pieza."
             : " Los asigna el administrador."}
-        </p>
+        </Notice>
       ) : null}
 
       <Tabs defaultValue="piezas">

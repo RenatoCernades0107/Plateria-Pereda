@@ -8,9 +8,15 @@ import { usePathname } from "next/navigation";
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  BreadcrumbProvider,
+  useBreadcrumbLabel,
+} from "@/components/page-breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -135,7 +141,11 @@ function UserMenu({ user }: { user: ShellUser }) {
 }
 
 function AppHeader({ user }: { user: ShellUser }) {
-  const current = findNavItem(usePathname());
+  const pathname = usePathname();
+  const current = findNavItem(pathname);
+  // En un detalle que dio su nombre: "Sección › RES-00012", con la sección como enlace.
+  const label = useBreadcrumbLabel();
+  const detail = current && label && pathname !== current.href ? label : null;
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -146,9 +156,23 @@ function AppHeader({ user }: { user: ShellUser }) {
       />
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>{current?.title ?? "Inicio"}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {current && detail ? (
+            <>
+              <BreadcrumbItem className="hidden sm:inline-flex">
+                <BreadcrumbLink asChild>
+                  <Link href={current.href}>{current.title}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden sm:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{detail}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          ) : (
+            <BreadcrumbItem>
+              <BreadcrumbPage>{current?.title ?? "Inicio"}</BreadcrumbPage>
+            </BreadcrumbItem>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto">
@@ -167,12 +191,14 @@ export function AppShell({
 }) {
   return (
     <SidebarProvider>
-      <AppNav role={user.role} />
-      {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
-      <SidebarInset className="min-w-0">
-        <AppHeader user={user} />
-        <div className="flex-1 p-4 md:p-6">{children}</div>
-      </SidebarInset>
+      <BreadcrumbProvider>
+        <AppNav role={user.role} />
+        {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
+        <SidebarInset className="min-w-0">
+          <AppHeader user={user} />
+          <div className="flex-1 p-4 md:p-6">{children}</div>
+        </SidebarInset>
+      </BreadcrumbProvider>
     </SidebarProvider>
   );
 }

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FilterChips } from "@/components/filter-chips";
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { PiecesBoardFiltersForm } from "@/components/restorations/pieces-board-filters-form";
 import { PiecesKanban } from "@/components/restorations/pieces-kanban";
@@ -91,35 +92,13 @@ export default async function PiezasPage({
             role={user.role}
             workshops={workshops.data}
           />
-          <nav
-            aria-label="Paginación"
-            className="flex items-center justify-between gap-2 text-sm"
-          >
-            <span className="text-muted-foreground">
-              {total === 1 ? "1 pieza" : `${total} piezas`} · Página{" "}
-              {filters.page} de {pages}
-            </span>
-            <div className="flex gap-2">
-              {filters.page > 1 ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={pieceBoardHref(filters, { page: filters.page - 1 })}
-                  >
-                    Anterior
-                  </Link>
-                </Button>
-              ) : null}
-              {filters.page < pages ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={pieceBoardHref(filters, { page: filters.page + 1 })}
-                  >
-                    Siguiente
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          </nav>
+          <Pagination
+            page={filters.page}
+            pages={pages}
+            total={total}
+            noun={["pieza", "piezas"]}
+            hrefFor={(page) => pieceBoardHref(filters, { page })}
+          />
         </>
       )}
     </div>

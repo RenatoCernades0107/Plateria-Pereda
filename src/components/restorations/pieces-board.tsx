@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Loader2, Pencil, Tag } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -323,11 +324,7 @@ export function PiecesBoard({
   const showPrice = can(role, "dinero.ver");
 
   if (pieces.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        La guía aún no tiene piezas.
-      </p>
-    );
+    return <EmptyState>La guía aún no tiene piezas.</EmptyState>;
   }
 
   return (

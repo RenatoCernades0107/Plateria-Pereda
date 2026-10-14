@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/empty-state";
 import { entityLabel, SYSTEM_ACTOR, type AuditEntry } from "@/domain/audit";
 import { formatDateTime } from "@/lib/format";
 
@@ -45,11 +46,7 @@ export function AuditLogList({
   recordLabels: Record<string, string>;
 }) {
   if (entries.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        No hay cambios con estos filtros.
-      </p>
-    );
+    return <EmptyState>No hay cambios con estos filtros.</EmptyState>;
   }
 
   return (

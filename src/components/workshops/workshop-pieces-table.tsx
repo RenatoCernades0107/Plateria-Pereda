@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/empty-state";
 import { PieceStatusBadge } from "@/components/restorations/status-badges";
 import {
   Table,
@@ -32,11 +33,7 @@ export function WorkshopPiecesTable({
   canEditCost: boolean;
 }) {
   if (pieces.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        Este taller no tiene piezas pendientes.
-      </p>
-    );
+    return <EmptyState>Este taller no tiene piezas pendientes.</EmptyState>;
   }
 
   return (

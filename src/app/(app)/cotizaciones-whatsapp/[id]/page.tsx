@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
@@ -34,10 +35,19 @@ import {
 } from "@/domain/whatsapp-quotes";
 import { formatDateTime } from "@/lib/format";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { getSettings } from "@/server/settings";
 import { getWhatsappQuote } from "@/server/whatsapp-quotes/queries";
 
-export const metadata: Metadata = { title: "Cotización de WhatsApp" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/cotizaciones-whatsapp/[id]">): Promise<Metadata> {
+  return recordMetadata(
+    "whatsappQuote",
+    (await params).id,
+    "Cotización de WhatsApp",
+  );
+}
 
 const NONE = <span className="text-muted-foreground">—</span>;
 
@@ -105,6 +115,7 @@ export default async function CotizacionWhatsappPage({
 
   return (
     <div className="space-y-6">
+      <PageBreadcrumb label={quote.code} />
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/cotizaciones-whatsapp">
           <ArrowLeft />
