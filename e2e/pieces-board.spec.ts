@@ -397,8 +397,8 @@ test.describe("Vista de piezas", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: code }),
     ).toBeVisible();
-    await expect(page.getByLabel(`Precio de venta de ${code}`)).toHaveValue(
-      "120.00",
+    await expect(page.getByRole("region", { name: "Montos" })).toContainText(
+      "S/ 120.00",
     );
     expect(await serious()).toEqual([]);
     await page.getByRole("link", { name: `Ver guía ${r.code}` }).click();

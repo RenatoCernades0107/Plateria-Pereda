@@ -13,8 +13,8 @@ import {
   PieceTimelineStrip,
 } from "@/components/restorations/piece-history";
 import {
-  SalePriceInput,
-  ServiceCostInput,
+  SalePriceCell,
+  ServiceCostCell,
 } from "@/components/restorations/piece-money-cells";
 import { PieceStatusPanel } from "@/components/restorations/piece-status-actions";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
@@ -192,7 +192,7 @@ export default async function PiezaDetallePage({
           <h2 id="datos-pieza" className="text-heading font-semibold">
             Datos de la pieza
           </h2>
-          <dl className="grid gap-x-6 gap-y-2.5 rounded-lg border p-3 text-sm sm:grid-cols-2 sm:p-4 xl:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 rounded-lg border p-3 text-sm sm:p-4 xl:grid-cols-3">
             <Field label="Descripción" wide>
               {piece.description}
             </Field>
@@ -224,7 +224,11 @@ export default async function PiezaDetallePage({
                 <div className="space-y-1">
                   <dt className="text-muted-foreground">Costo de servicio</dt>
                   <dd className="flex">
-                    <ServiceCostInput piece={moneyPiece} cents={costCents} />
+                    <ServiceCostCell
+                      piece={moneyPiece}
+                      cents={costCents}
+                      align="start"
+                    />
                   </dd>
                 </div>
               ) : null}
@@ -232,11 +236,12 @@ export default async function PiezaDetallePage({
                 <div className="space-y-1">
                   <dt className="text-muted-foreground">Precio de venta</dt>
                   <dd className="flex flex-col items-start gap-1">
-                    <SalePriceInput
+                    <SalePriceCell
                       piece={moneyPiece}
                       cents={piece.priceCents}
                       hasOrder={restoration.hasOrder}
                       editable={can(user.role, "piezas.precio-venta")}
+                      align="start"
                     />
                     {restoration.money && piece.priceCents !== null ? (
                       <span className="text-muted-foreground text-xs">
@@ -284,7 +289,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-0.5", wide && "sm:col-span-2 xl:col-span-3")}>
+    <div className={cn("space-y-0.5", wide && "col-span-2 xl:col-span-3")}>
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="break-words whitespace-pre-wrap">
         {children ?? <span className="text-muted-foreground">—</span>}

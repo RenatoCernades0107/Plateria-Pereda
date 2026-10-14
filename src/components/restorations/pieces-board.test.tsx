@@ -172,8 +172,6 @@ describe("PiecesBoard: tabla como hoja de cálculo", () => {
       "Foto antes",
       "Pieza",
       "Descripción",
-      "Servicio",
-      "Material · medida · peso",
       "Precio venta",
       "Estado",
       "Taller",
@@ -301,14 +299,18 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     ).toBeNull();
   });
 
-  it("el admin lo ingresa en la tabla", () => {
+  it("el admin lo cambia con el lápiz de la tabla", async () => {
+    const user = userEvent.setup();
     renderBoard(pieces, { role: "admin", editing: editingFor(pieces) });
-    expect(screen.getByLabelText("Precio de venta de RES-00001-2")).toHaveValue(
-      "",
+    expect(screen.getByTestId("pieza-RES-00001-2")).toHaveTextContent(
+      "Sin asignar",
     );
-    expect(screen.getByLabelText("Precio de venta de RES-00001-1")).toHaveValue(
-      "120.50",
+    await user.click(
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
     );
+    expect(screen.getByLabelText("Precio de venta (S/)")).toHaveValue("120.50");
   });
 
   it("logística no ve la columna ni si faltan", () => {

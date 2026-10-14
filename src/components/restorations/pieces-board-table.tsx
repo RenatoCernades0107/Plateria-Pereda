@@ -57,6 +57,7 @@ import {
 } from "./pieces-bulk-bar";
 import { PiecesExportButtons } from "./pieces-export";
 import { usePieceActions, type PieceAction } from "./piece-status-actions";
+import { RT } from "./responsive-table";
 import {
   LocationBadge,
   PieceStatusBadge,
@@ -295,13 +296,18 @@ function BoardRow({
     workshops,
     balanceDue,
   });
-  const cell = "px-3 py-2 align-top";
+  const cell = RT.cell;
+  const labeled = cn(RT.cell, RT.labeled);
+  const details = [piece.serviceName, materialSummary(piece)]
+    .filter((v) => v && v !== "—")
+    .join(" · ");
 
   return (
     <>
       <tr
         className={cn(
           "hover:bg-muted/30 cursor-pointer",
+          RT.row,
           isLongInWorkshop(piece) && "bg-destructive/5",
         )}
         data-testid={`pieza-${piece.code}`}
@@ -319,34 +325,39 @@ function BoardRow({
           ) : null}
         </td>
         <td className={cell}>
-          <PiecePhoto code={piece.code} url={piece.photoUrl} />
+          <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, "whitespace-nowrap")}>
+        <td className={cn(cell, "max-w-48 max-md:min-w-0 max-md:flex-1")}>
           <Link
             href={pieceHref(piece)}
             data-primary-link
-            className="text-heading font-medium underline-offset-4 hover:underline"
+            className="text-heading font-medium whitespace-nowrap underline-offset-4 hover:underline"
           >
             {piece.code}
           </Link>
+          <p className="text-muted-foreground text-xs">
+            <Link
+              href={`/restauraciones/${piece.restorationId}`}
+              className="whitespace-nowrap underline-offset-4 hover:underline"
+              aria-label={`Ver guía ${piece.restorationCode}`}
+            >
+              {piece.restorationCode}
+            </Link>{" "}
+            · {piece.clientName}
+          </p>
           {piece.urgent ? (
             <div className="mt-1">
               <UrgentBadge />
             </div>
           ) : null}
         </td>
-        <td className={cn(cell, "max-w-44")}>
-          <Link
-            href={`/restauraciones/${piece.restorationId}`}
-            className="whitespace-nowrap underline-offset-4 hover:underline"
-            aria-label={`Ver guía ${piece.restorationCode}`}
-          >
-            {piece.restorationCode}
-          </Link>
-          <p className="text-muted-foreground text-xs">{piece.clientName}</p>
-        </td>
-        <td className={cn(cell, "max-w-60 min-w-44")}>
+        <td className={cn(cell, RT.full, "max-w-64 min-w-48")}>
           <p className="break-words">{piece.description}</p>
+          {details ? (
+            <p className="text-muted-foreground mt-0.5 text-xs break-words">
+              {details}
+            </p>
+          ) : null}
           {piece.lastObservation ? (
             <p className="mt-1 text-xs break-words">
               <span className="text-muted-foreground">
@@ -356,30 +367,7 @@ function BoardRow({
             </p>
           ) : null}
         </td>
-        <td className={cn(cell, "max-w-36")}>
-          {piece.serviceName || (
-            <span className="text-muted-foreground">—</span>
-          )}
-        </td>
-        {showCost ? (
-          <td className={cn(cell, "text-right")} data-row-click="ignore">
-            <ServiceCostCell piece={piece} cents={piece.serviceCostCents} />
-          </td>
-        ) : null}
-        {showPrice ? (
-          <td className={cn(cell, "text-right")} data-row-click="ignore">
-            <BoardSalePriceCell
-              piece={piece}
-              cents={piece.priceCents}
-              hasOrder={piece.hasOrder}
-              editing={editingPrices}
-            />
-          </td>
-        ) : null}
-        <td className={cn(cell, "text-muted-foreground max-w-40")}>
-          {materialSummary(piece)}
-        </td>
-        <td className={cell}>
+        <td className={labeled} data-label="Estado">
           <div className="flex items-center gap-1">
             <PieceStatusBadge status={live.status} />
             <PieceActionsMenu code={piece.code} actions={actions} />
@@ -396,10 +384,10 @@ function BoardRow({
             </p>
           ) : null}
         </td>
-        <td className={cell}>
+        <td className={labeled} data-label="Ubicación">
           <LocationBadge location={live.location} />
         </td>
-        <td className={cell}>
+        <td className={labeled} data-label="En el estado">
           <StatusAge
             // Recién cambiado (optimista): cuenta desde hoy.
             piece={
@@ -408,16 +396,39 @@ function BoardRow({
             compact
           />
         </td>
-        <td className={cell}>
+        <td className={labeled} data-label="Taller" data-row-click="ignore">
           <WorkshopCell
             piece={piece}
             workshops={workshops}
             editable={assignTaller && !WORKSHOP_LOCKED.includes(live.status)}
           />
         </td>
-        <td className={cell}>
+        <td className={labeled} data-label="Días en taller">
           <Days piece={piece} />
         </td>
+        {showCost ? (
+          <td
+            className={cn(labeled, "md:text-right")}
+            data-label="Costo servicio"
+            data-row-click="ignore"
+          >
+            <ServiceCostCell piece={piece} cents={piece.serviceCostCents} />
+          </td>
+        ) : null}
+        {showPrice ? (
+          <td
+            className={cn(labeled, "md:text-right")}
+            data-label="Precio venta"
+            data-row-click="ignore"
+          >
+            <BoardSalePriceCell
+              piece={piece}
+              cents={piece.priceCents}
+              hasOrder={piece.hasOrder}
+              editing={editingPrices}
+            />
+          </td>
+        ) : null}
       </tr>
       {dialogs}
     </>
@@ -503,41 +514,22 @@ export function PiecesBoardTable({
           </label>
         ) : null}
       </div>
-      <div className="relative overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-max border-collapse text-sm">
+      <div className={RT.wrapper}>
+        <table className={cn(RT.table, "md:min-w-max")}>
           <caption className="sr-only">Piezas en curso</caption>
-          <thead className="bg-muted/60 text-muted-foreground border-b text-xs">
+          <thead className={RT.thead}>
             <tr>
               <th scope="col" className={cn(head, "w-8")}>
                 <span className="sr-only">Elegir</span>
               </th>
               <th scope="col" className={head}>
-                Foto antes
+                Foto
               </th>
               <th scope="col" className={head}>
-                Pieza
-              </th>
-              <th scope="col" className={head}>
-                Guía · cliente
+                Pieza · guía · cliente
               </th>
               <th scope="col" className={head}>
                 Descripción
-              </th>
-              <th scope="col" className={head}>
-                Servicio
-              </th>
-              {showCost ? (
-                <th scope="col" className={cn(head, "text-right")}>
-                  Costo servicio
-                </th>
-              ) : null}
-              {showPrice ? (
-                <th scope="col" className={cn(head, "text-right")}>
-                  Precio venta
-                </th>
-              ) : null}
-              <th scope="col" className={head}>
-                Material · medida · peso
               </th>
               <th scope="col" className={head}>
                 Estado
@@ -554,9 +546,19 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Días en taller
               </th>
+              {showCost ? (
+                <th scope="col" className={cn(head, "text-right")}>
+                  Costo servicio
+                </th>
+              ) : null}
+              {showPrice ? (
+                <th scope="col" className={cn(head, "text-right")}>
+                  Precio venta
+                </th>
+              ) : null}
             </tr>
           </thead>
-          <tbody className="divide-y">
+          <tbody className={RT.tbody}>
             {pieces.map((piece) => (
               <BoardRow
                 key={piece.id}

@@ -25,6 +25,7 @@ import {
   toDecimalString,
   type Cents,
 } from "@/domain/money";
+import { cn } from "@/lib/utils";
 import { setPieceSalePrice } from "@/server/sale-price-actions";
 import { setPieceServiceCost } from "@/server/service-cost-actions";
 
@@ -32,45 +33,45 @@ import { PriceChangeDialog } from "./price-change-dialog";
 
 type MoneyPiece = { id: string; code: string; restorationId: string };
 
-/** Costo de servicio editable (admin y logística, P55). */
-export function ServiceCostInput({
-  piece,
-  cents,
-}: {
-  piece: MoneyPiece;
-  cents: Cents | null;
-}) {
-  return (
-    <MoneyCell
-      cents={cents}
-      editable
-      emptyText="Por definir"
-      inputLabel={`Costo de servicio de ${piece.code}`}
-      saveLabel={`Guardar costo de ${piece.code}`}
-      savedMessage={`Costo de ${piece.code} guardado.`}
-      onSave={(value) => setPieceServiceCost(piece.id, value)}
-    />
-  );
-}
+type SaveResult = { error: string } | { ok: true } | object;
 
 /**
- * Costo de servicio en la tabla de piezas (pedido del 2026-10-14): la celda muestra
- * el monto (o "Por definir") y un botón con lápiz abre un diálogo para cambiarlo.
- * Así la tabla no se llena de campos y la edición es una acción explícita.
+ * Monto con un botón de lápiz que abre un diálogo para cambiarlo (pedido del
+ * 2026-10-14): la celda muestra el monto (o el texto vacío) y la edición es una acción
+ * explícita, igual en la tabla de piezas, la guía y el detalle de la pieza.
  */
-export function ServiceCostCell({
-  piece,
+function MoneyEditCell({
   cents,
+  emptyText,
+  fieldLabel,
+  title,
+  description,
+  buttonLabel,
+  buttonTitle,
+  submitText,
+  savedMessage,
+  inputId,
+  align = "end",
+  onSave,
 }: {
-  piece: MoneyPiece;
   cents: Cents | null;
+  emptyText: string;
+  fieldLabel: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonTitle: string;
+  submitText: string;
+  savedMessage: string;
+  inputId: string;
+  align?: "start" | "end";
+  onSave: (value: string) => Promise<SaveResult>;
 }) {
   const saved = cents === null ? "" : toDecimalString(cents);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(saved);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const inputId = `costo-servicio-${piece.id}`;
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -80,17 +81,24 @@ export function ServiceCostCell({
       return setError("Ingresa un monto válido (hasta 2 decimales).");
     }
     startTransition(async () => {
-      const result = await setPieceServiceCost(piece.id, text);
-      if ("error" in result) return setError(result.error);
-      toast.success(`Costo de ${piece.code} guardado.`);
+      const result = await onSave(text);
+      if ("error" in result && typeof result.error === "string") {
+        return setError(result.error);
+      }
+      toast.success(savedMessage);
       setOpen(false);
     });
   };
 
   return (
-    <div className="flex items-center justify-end gap-1">
+    <div
+      className={cn(
+        "flex items-center gap-1 whitespace-nowrap",
+        align === "end" ? "justify-end" : "justify-start",
+      )}
+    >
       {cents === null ? (
-        <span className="text-muted-foreground">Por definir</span>
+        <span className="text-muted-foreground">{emptyText}</span>
       ) : (
         <span className="tabular-nums">{formatCents(cents)}</span>
       )}
@@ -110,8 +118,8 @@ export function ServiceCostCell({
             size="icon"
             variant="ghost"
             className="size-7 print:hidden"
-            aria-label={`Editar costo de servicio de ${piece.code}`}
-            title="Editar costo de servicio"
+            aria-label={buttonLabel}
+            title={buttonTitle}
           >
             <Pencil />
           </Button>
@@ -119,20 +127,17 @@ export function ServiceCostCell({
         <DialogContent>
           <form onSubmit={submit} className="space-y-4">
             <DialogHeader>
-              <DialogTitle>Costo de servicio de {piece.code}</DialogTitle>
-              <DialogDescription>
-                Lo que cobra el taller por esta pieza. Déjalo vacío si aún no se
-                define.
-              </DialogDescription>
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>{description}</DialogDescription>
             </DialogHeader>
             {error ? <FormAlert>{error}</FormAlert> : null}
             <div className="space-y-2">
-              <Label htmlFor={inputId}>Costo de servicio (S/)</Label>
+              <Label htmlFor={inputId}>{fieldLabel}</Label>
               <Input
                 id={inputId}
                 inputMode="decimal"
                 className="tabular-nums"
-                placeholder="Por definir"
+                placeholder={emptyText}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 disabled={pending}
@@ -147,7 +152,7 @@ export function ServiceCostCell({
               </DialogClose>
               <Button type="submit" disabled={pending}>
                 {pending ? <Loader2 className="animate-spin" /> : null}
-                Guardar costo
+                {submitText}
               </Button>
             </DialogFooter>
           </form>
@@ -157,24 +162,67 @@ export function ServiceCostCell({
   );
 }
 
+/** Costo de servicio (admin y logística, P55): monto y lápiz que abre un diálogo. */
+export function ServiceCostCell({
+  piece,
+  cents,
+  align,
+}: {
+  piece: MoneyPiece;
+  cents: Cents | null;
+  align?: "start" | "end";
+}) {
+  return (
+    <MoneyEditCell
+      cents={cents}
+      align={align}
+      emptyText="Por definir"
+      fieldLabel="Costo de servicio (S/)"
+      title={`Costo de servicio de ${piece.code}`}
+      description="Lo que cobra el taller por esta pieza. Déjalo vacío si aún no se define."
+      buttonLabel={`Editar costo de servicio de ${piece.code}`}
+      buttonTitle="Editar costo de servicio"
+      submitText="Guardar costo"
+      savedMessage={`Costo de ${piece.code} guardado.`}
+      inputId={`costo-servicio-${piece.id}`}
+      onSave={(value) => setPieceServiceCost(piece.id, value)}
+    />
+  );
+}
+
 /**
- * Precio de venta: el admin lo ingresa (D58); con la orden de Shopify creada un precio
- * ya asignado se cambia con motivo ("Cambiar precio", P12). Ventas solo lo ve.
+ * Precio de venta: el admin lo asigna con el lápiz (D58); con la orden de Shopify
+ * creada un precio ya asignado se cambia con motivo ("Cambiar precio", P12). Ventas
+ * solo lo ve.
  */
-export function SalePriceInput({
+export function SalePriceCell({
   piece,
   cents,
   hasOrder,
   editable,
+  align,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
   hasOrder: boolean;
   editable: boolean;
+  align?: "start" | "end";
 }) {
-  if (editable && hasOrder && cents !== null) {
+  if (!editable) {
+    return cents === null ? (
+      <span className="text-muted-foreground">Sin asignar</span>
+    ) : (
+      <span className="tabular-nums">{formatCents(cents)}</span>
+    );
+  }
+  if (hasOrder && cents !== null) {
     return (
-      <div className="flex flex-col items-end gap-1">
+      <div
+        className={cn(
+          "flex flex-col gap-1",
+          align === "start" ? "items-start" : "items-end",
+        )}
+      >
         <span className="tabular-nums">{formatCents(cents)}</span>
         <PriceChangeDialog
           restorationId={piece.restorationId}
@@ -184,13 +232,18 @@ export function SalePriceInput({
     );
   }
   return (
-    <MoneyCell
+    <MoneyEditCell
       cents={cents}
-      editable={editable}
+      align={align}
       emptyText="Sin asignar"
-      inputLabel={`Precio de venta de ${piece.code}`}
-      saveLabel={`Guardar precio de ${piece.code}`}
+      fieldLabel="Precio de venta (S/)"
+      title={`Precio de venta de ${piece.code}`}
+      description="Precio que se cobra al cliente por esta pieza. Déjalo vacío si aún no se asigna."
+      buttonLabel={`Editar precio de venta de ${piece.code}`}
+      buttonTitle="Editar precio de venta"
+      submitText="Guardar precio"
       savedMessage={`Precio de ${piece.code} guardado.`}
+      inputId={`precio-venta-${piece.id}`}
       onSave={(value) => setPieceSalePrice(piece.id, value)}
     />
   );
