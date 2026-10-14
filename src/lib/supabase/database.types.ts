@@ -1976,7 +1976,7 @@ export type Database = {
           has_price: boolean;
           has_service_cost: boolean;
           piece_id: string;
-          workshop_id: string | null;
+          workshop_id: string;
         }[];
       };
       piece_status_since: {
