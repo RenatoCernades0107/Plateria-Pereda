@@ -126,6 +126,9 @@ test.describe("Restauraciones", () => {
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText(
       "S/ 1,218.00",
     );
+    // Con adelanto se pide su método: se registra como pago al guardar.
+    await page.getByLabel("Método del adelanto").click();
+    await page.getByRole("option", { name: "Efectivo" }).click();
 
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(
