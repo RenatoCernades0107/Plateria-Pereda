@@ -264,3 +264,6 @@ revoke execute on function public.create_restoration(uuid, uuid, public.payment_
 grant execute on function public.create_restoration(uuid, uuid, public.payment_type, numeric, text, jsonb, boolean, numeric) to authenticated, service_role;
 revoke execute on function public.create_restoration_from_whatsapp_quote(uuid, uuid, uuid, public.payment_type, numeric, text, jsonb, boolean, numeric) from public, anon;
 grant execute on function public.create_restoration_from_whatsapp_quote(uuid, uuid, uuid, public.payment_type, numeric, text, jsonb, boolean, numeric) to authenticated, service_role;
+
+-- Ventas y admin escriben el adelanto en soles igual que el porcentaje.
+grant insert (deposit_amount), update (deposit_amount) on public.restorations to authenticated;
