@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Package, PencilLine, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -218,7 +219,14 @@ export function ProductPicker({
                 <CommandEmpty>No se encontraron productos.</CommandEmpty>
               )}
               {!loading && results.length > 0 ? (
-                <CommandGroup heading="Catálogo de Shopify">
+                <CommandGroup
+                  heading={
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShopifyIcon className="text-shopify-strong size-3.5" />
+                      Catálogo de Shopify
+                    </span>
+                  }
+                >
                   {results.map((summary) => (
                     <CommandItem
                       key={summary.id}
