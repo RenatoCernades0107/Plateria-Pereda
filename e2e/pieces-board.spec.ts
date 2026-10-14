@@ -409,23 +409,28 @@ test.describe("Vista de piezas", () => {
     page,
     loginAs,
   }) => {
-    const { pieces } = await seedReceived(2, "Entregada");
+    const { restoration, pieces } = await seedReceived(2, "Entregada");
     const [today, before] = pieces;
     const admin = adminClient();
-    await admin
-      .from("pieces")
-      .update({
-        status: "entregada",
-        delivered_at: new Date().toISOString(),
-      } as never)
-      .eq("id", today!.id);
-    await admin
-      .from("pieces")
-      .update({
-        status: "entregada",
-        delivered_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
-      } as never)
-      .eq("id", before!.id);
+    // "Al crédito": se entrega sin cobrar el saldo (P45).
+    const credit = await admin
+      .from("restorations")
+      .update({ payment_type: "credito" } as never)
+      .eq("id", restoration.id);
+    expect(credit.error).toBeNull();
+    for (const [piece, deliveredAt] of [
+      [today!, new Date()],
+      [before!, new Date(Date.now() - 3 * 86_400_000)],
+    ] as const) {
+      const { error } = await admin
+        .from("pieces")
+        .update({
+          status: "entregada",
+          delivered_at: deliveredAt.toISOString(),
+        } as never)
+        .eq("id", piece.id);
+      expect(error).toBeNull();
+    }
 
     await loginAs("admin");
     await page.goto(`/piezas?q=${clientName}&estado=entregada`);
