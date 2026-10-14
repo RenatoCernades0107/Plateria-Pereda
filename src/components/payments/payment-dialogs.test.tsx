@@ -78,8 +78,9 @@ describe("diálogos de pagos (11.2)", () => {
       within(dialog).getByRole("button", { name: "Guardar pago" }),
     );
     expect(await within(dialog).findByText("Falló la BD")).toBeInTheDocument();
+    // El error aparece antes de que termine la transición ("Guardando…").
     await user.click(
-      within(dialog).getByRole("button", { name: "Guardar pago" }),
+      await within(dialog).findByRole("button", { name: "Guardar pago" }),
     );
     expect(actions.registerPayment).toHaveBeenLastCalledWith("r1", {
       paidOn: expect.any(String),
