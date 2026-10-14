@@ -4,9 +4,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DiscardQuoteButton,
   ReopenQuoteButton,
@@ -28,6 +38,29 @@ import { getSettings } from "@/server/settings";
 import { getWhatsappQuote } from "@/server/whatsapp-quotes/queries";
 
 export const metadata: Metadata = { title: "Cotización de WhatsApp" };
+
+const NONE = <span className="text-muted-foreground">—</span>;
+
+/** Si la pieza ya se pidió (en qué restauración) o sigue pendiente. */
+function ItemState({
+  order,
+}: {
+  order: { restorationId: string; restorationCode: string } | null;
+}) {
+  return order ? (
+    <span className="text-sm">
+      Pedida en{" "}
+      <Link
+        href={`/restauraciones/${order.restorationId}`}
+        className="font-medium underline underline-offset-4"
+      >
+        {order.restorationCode}
+      </Link>
+    </span>
+  ) : (
+    <Badge variant="outline">Pendiente</Badge>
+  );
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -81,7 +114,8 @@ export default async function CotizacionWhatsappPage({
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <h1 className="text-heading text-2xl font-semibold tracking-tight">
+          <h1 className="text-heading flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <WhatsAppIcon className="text-whatsapp-strong size-6" />
             {quote.code}
           </h1>
           <p className="text-sm">
@@ -174,26 +208,69 @@ export default async function CotizacionWhatsappPage({
       ) : null}
 
       <section className="space-y-3" aria-labelledby="piezas-cotizadas">
-        <div className="flex items-center justify-between gap-2">
-          <h2
-            id="piezas-cotizadas"
-            className="text-heading text-lg font-semibold"
-          >
-            Piezas cotizadas
-          </h2>
-          <p
-            className="font-medium tabular-nums"
-            data-testid="total-cotizacion"
-          >
-            Total: {formatCents(quote.totalCents)}
-          </p>
+        <h2
+          id="piezas-cotizadas"
+          className="text-heading text-lg font-semibold"
+        >
+          Piezas cotizadas
+        </h2>
+        {/* Como una hoja de cálculo en la computadora (D63); tarjetas en el celular. */}
+        <div className="hidden rounded-lg border md:block">
+          <Table>
+            <TableHeader className="bg-muted/60">
+              <TableRow>
+                <TableHead className="w-10">N.º</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Servicio</TableHead>
+                <TableHead>Material</TableHead>
+                <TableHead>Medida</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Precio</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {quote.items.map((item) => (
+                <TableRow key={item.id} data-testid={`item-${item.number}`}>
+                  <TableCell className="tabular-nums">{item.number}</TableCell>
+                  <TableCell className="max-w-80 min-w-48 break-words whitespace-normal">
+                    {item.description}
+                  </TableCell>
+                  <TableCell>{item.serviceName || NONE}</TableCell>
+                  <TableCell>{item.materialName || NONE}</TableCell>
+                  <TableCell>{item.measure || NONE}</TableCell>
+                  <TableCell>
+                    <ItemState order={item.order} />
+                  </TableCell>
+                  <TableCell className="text-right font-medium tabular-nums">
+                    {formatCents(item.priceCents)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <TableFooter>
+              <TableRow>
+                <TableCell colSpan={6} className="text-right font-medium">
+                  Total
+                </TableCell>
+                <TableCell
+                  className="text-right font-medium tabular-nums"
+                  data-testid="total-cotizacion"
+                >
+                  {formatCents(quote.totalCents)}
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
         </div>
-        <ul className="divide-y rounded-lg border">
+        <ul
+          className="divide-y rounded-lg border md:hidden"
+          aria-label="Piezas cotizadas"
+        >
           {quote.items.map((item) => (
             <li
               key={item.id}
               className="flex flex-wrap items-start justify-between gap-2 p-3"
-              data-testid={`item-${item.number}`}
+              data-testid={`item-movil-${item.number}`}
             >
               <div className="min-w-0 space-y-0.5">
                 <p className="break-words">
@@ -208,25 +285,19 @@ export default async function CotizacionWhatsappPage({
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
-                {item.order ? (
-                  <p className="text-sm">
-                    Pedida en{" "}
-                    <Link
-                      href={`/restauraciones/${item.order.restorationId}`}
-                      className="font-medium underline underline-offset-4"
-                    >
-                      {item.order.restorationCode}
-                    </Link>
-                  </p>
-                ) : (
-                  <Badge variant="outline">Pendiente</Badge>
-                )}
+                <ItemState order={item.order} />
               </div>
               <p className="font-medium tabular-nums">
                 {formatCents(item.priceCents)}
               </p>
             </li>
           ))}
+          <li className="flex justify-between gap-2 p-3 font-medium">
+            <span>Total</span>
+            <span className="tabular-nums">
+              {formatCents(quote.totalCents)}
+            </span>
+          </li>
         </ul>
       </section>
 

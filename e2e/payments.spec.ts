@@ -6,6 +6,7 @@ import {
 } from "../src/server/shopify-webhooks/config";
 import { signWebhook } from "../src/server/shopify-webhooks/hmac";
 import { expect, test } from "./fixtures";
+import { openPieceActions, pieceAction } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
 // Pagos desde el sistema y su envío a Shopify (Paso 11.2, §7.5, P43, P45).
@@ -126,7 +127,7 @@ test.describe("Pagos", () => {
 
     // Última pieza por aprobar: se ofrece registrar el adelanto (50 %).
     const card = page.getByTestId(`pieza-${r.code}-1`);
-    await card.getByRole("button", { name: "Aprobar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     const approve = await fillPayment(page, "Yape");
     await expect(approve.getByLabel("Monto (S/)")).toHaveValue("100.00");
     await approve
@@ -169,7 +170,7 @@ test.describe("Pagos", () => {
 
     // Pagado: se entrega sin confirmar nada.
     await page.getByRole("tab", { name: /Piezas/ }).click();
-    await card.getByRole("button", { name: "Entregar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Entregar");
     await expect(card).toContainText("Entregada");
   });
 
@@ -202,13 +203,17 @@ test.describe("Pagos", () => {
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
     await expect(card.getByText("Falta cobrar el saldo")).toBeVisible();
-    await expect(card.getByRole("button", { name: "Entregar" })).toBeDisabled();
+    await openPieceActions(page, `${r.code}-1`);
+    await expect(
+      page.getByRole("menuitem", { name: "Entregar", exact: true }),
+    ).toBeDisabled();
+    await page.keyboard.press("Escape");
     // Sin montos para logística (P42).
     await expect(card).not.toContainText("S/");
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card.getByRole("button", { name: "Entregar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Entregar");
     const dialog = page.getByRole("dialog");
     await expect(
       dialog.getByRole("heading", { name: "Falta cobrar el saldo" }),
@@ -230,7 +235,7 @@ test.describe("Pagos", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     const card = page.getByTestId(`pieza-${r.code}-1`);
-    await card.getByRole("button", { name: "Aprobar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     await page
       .getByRole("dialog")
       .getByRole("button", { name: "Aprobar sin pago" })
@@ -297,8 +302,7 @@ test.describe("Pagos", () => {
     );
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    const card = page.getByTestId(`pieza-${r.code}-1`);
-    await card.getByRole("button", { name: "Aprobar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     await (
       await fillPayment(page, "Yape")
     )

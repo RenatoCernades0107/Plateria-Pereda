@@ -4,6 +4,7 @@ import {
   fileError,
   fileMimeType,
   filePath,
+  firstBeforePhotos,
   formatFileSize,
   groupByCategory,
   isCompressible,
@@ -88,6 +89,26 @@ describe("archivos (Fase 10, P32)", () => {
       ["despues", [3]],
       ["otro", [1]],
     ]);
+  });
+
+  it("toma la primera foto «Antes» de cada pieza que el navegador puede mostrar", () => {
+    const f = (
+      pieceId: string | null,
+      category: "antes" | "despues",
+      mimeType: string,
+      url: string | null,
+    ) => ({ pieceId, category, mimeType, url });
+    expect(
+      firstBeforePhotos([
+        f(null, "antes", "image/jpeg", "general"),
+        f("p1", "despues", "image/jpeg", "despues-p1"),
+        f("p1", "antes", "image/heic", "heic-p1"),
+        f("p1", "antes", "image/png", "antes-p1"),
+        f("p1", "antes", "image/jpeg", "otra-p1"),
+        f("p2", "antes", "application/pdf", "pdf-p2"),
+        f("p3", "antes", "image/webp", null),
+      ]),
+    ).toEqual({ p1: "antes-p1" });
   });
 
   it("muestra el tamaño en KB o MB", () => {

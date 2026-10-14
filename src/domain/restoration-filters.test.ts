@@ -28,11 +28,17 @@ describe("filtros del listado de restauraciones", () => {
     });
   });
 
+  it("ignora el estado retirado En proceso (P56)", () => {
+    expect(parseRestorationFilters({ estado: "en_proceso" }).status).toEqual(
+      [],
+    );
+  });
+
   it("lee todos los filtros e ignora los inválidos", () => {
     expect(
       parseRestorationFilters({
         q: "  RES-0001 ",
-        estado: "en_proceso",
+        estado: "parcialmente_lista",
         pago: "parcial",
         tipo: "a_cuenta",
         origen: "whatsapp",
@@ -46,7 +52,7 @@ describe("filtros del listado de restauraciones", () => {
       }),
     ).toEqual({
       q: "RES-0001",
-      status: ["en_proceso"],
+      status: ["parcialmente_lista"],
       paymentStatus: ["parcial"],
       paymentType: ["a_cuenta"],
       origin: ["whatsapp"],

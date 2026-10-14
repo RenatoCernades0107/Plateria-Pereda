@@ -3,6 +3,14 @@ import { Pencil, Users } from "lucide-react";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { DOCUMENT_LABELS } from "@/domain/documents";
 import { formatPhone } from "@/domain/phone";
 import type { ClientDetail } from "@/server/clients/queries";
@@ -10,7 +18,75 @@ import type { ClientDetail } from "@/server/clients/queries";
 import { ActiveToggle } from "./active-toggle";
 import { ContactDialog } from "./contact-dialog";
 
-/** Contactos de una empresa: quiénes dejan o recogen piezas a su nombre. */
+type Contact = ClientDetail["contacts"][number];
+
+const NONE = <span className="text-muted-foreground">—</span>;
+
+function Name({ contact }: { contact: Contact }) {
+  return (
+    <span className="text-heading flex flex-wrap items-center gap-2 font-medium">
+      {contact.displayName}
+      {contact.active ? null : <Badge variant="outline">Inactivo</Badge>}
+    </span>
+  );
+}
+
+function Document({ contact }: { contact: Contact }) {
+  return contact.documentType ? (
+    <span>
+      {DOCUMENT_LABELS[contact.documentType]} {contact.documentNumber}
+    </span>
+  ) : null;
+}
+
+function Sync({ contact, canRetry }: { contact: Contact; canRetry: boolean }) {
+  return contact.sync ? (
+    <SyncStatus
+      jobId={contact.sync.jobId}
+      status={contact.sync.status}
+      lastError={contact.sync.lastError}
+      canRetry={canRetry}
+    />
+  ) : null;
+}
+
+function ContactActions({
+  client,
+  contact,
+}: {
+  client: ClientDetail;
+  contact: Contact;
+}) {
+  return (
+    <div className="flex shrink-0 gap-2 md:justify-end">
+      <ContactDialog
+        clientId={client.id}
+        companyName={client.displayName}
+        contact={contact}
+        trigger={
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Editar ${contact.displayName}`}
+          >
+            <Pencil />
+          </Button>
+        }
+      />
+      <ActiveToggle
+        entity="contact"
+        id={contact.id}
+        name={contact.displayName}
+        active={contact.active}
+      />
+    </div>
+  );
+}
+
+/**
+ * Contactos de una empresa: quiénes dejan o recogen piezas a su nombre. En tabla en
+ * la computadora (como una hoja de cálculo, D63) y en tarjetas en el celular.
+ */
 export function ContactsSection({
   client,
   canEdit,
@@ -37,64 +113,86 @@ export function ContactsSection({
           Esta empresa aún no tiene contactos.
         </p>
       ) : (
-        <ul className="divide-y rounded-md border">
-          {client.contacts.map((k) => (
-            <li
-              key={k.id}
-              className="flex flex-wrap items-start justify-between gap-3 p-4"
-              data-testid={`contacto-${k.displayName}`}
-            >
-              <div className="min-w-0 space-y-1">
-                <p className="text-heading flex flex-wrap items-center gap-2 font-medium">
-                  {k.displayName}
-                  {k.active ? null : <Badge variant="outline">Inactivo</Badge>}
-                </p>
-                <div className="text-muted-foreground space-y-0.5 text-sm">
-                  {k.position ? <p>{k.position}</p> : null}
-                  {k.documentType ? (
-                    <p>
-                      {DOCUMENT_LABELS[k.documentType]} {k.documentNumber}
-                    </p>
+        <>
+          <div className="hidden rounded-md border md:block">
+            <Table>
+              <TableHeader className="bg-muted/60">
+                <TableRow>
+                  <TableHead>Contacto</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Documento</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Shopify</TableHead>
+                  {canEdit ? (
+                    <TableHead className="text-right">Acciones</TableHead>
                   ) : null}
-                  {k.phone ? <p>{formatPhone(k.phone)}</p> : null}
-                  {k.email ? <p className="truncate">{k.email}</p> : null}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {client.contacts.map((k) => (
+                  <TableRow
+                    key={k.id}
+                    data-testid={`contacto-${k.displayName}`}
+                  >
+                    <TableCell>
+                      <Name contact={k} />
+                    </TableCell>
+                    <TableCell>{k.position || NONE}</TableCell>
+                    <TableCell>
+                      {k.documentType ? <Document contact={k} /> : NONE}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {k.phone ? formatPhone(k.phone) : NONE}
+                    </TableCell>
+                    <TableCell className="max-w-56 truncate">
+                      {k.email || NONE}
+                    </TableCell>
+                    <TableCell>
+                      {k.sync ? <Sync contact={k} canRetry={canEdit} /> : NONE}
+                    </TableCell>
+                    {canEdit ? (
+                      <TableCell>
+                        <ContactActions client={client} contact={k} />
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <ul
+            className="divide-y rounded-md border md:hidden"
+            aria-label="Contactos"
+          >
+            {client.contacts.map((k) => (
+              <li
+                key={k.id}
+                className="flex flex-wrap items-start justify-between gap-3 p-4"
+                data-testid={`contacto-movil-${k.displayName}`}
+              >
+                <div className="min-w-0 space-y-1">
+                  <Name contact={k} />
+                  <div className="text-muted-foreground space-y-0.5 text-sm">
+                    {k.position ? <p>{k.position}</p> : null}
+                    {k.documentType ? (
+                      <p>
+                        <Document contact={k} />
+                      </p>
+                    ) : null}
+                    {k.phone ? <p>{formatPhone(k.phone)}</p> : null}
+                    {k.email ? <p className="truncate">{k.email}</p> : null}
+                  </div>
+                  <Sync contact={k} canRetry={canEdit} />
                 </div>
-                {k.sync ? (
-                  <SyncStatus
-                    jobId={k.sync.jobId}
-                    status={k.sync.status}
-                    lastError={k.sync.lastError}
-                    canRetry={canEdit}
-                  />
+                {canEdit ? (
+                  <ContactActions client={client} contact={k} />
                 ) : null}
-              </div>
-              {canEdit ? (
-                <div className="flex shrink-0 gap-2">
-                  <ContactDialog
-                    clientId={client.id}
-                    companyName={client.displayName}
-                    contact={k}
-                    trigger={
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Editar ${k.displayName}`}
-                      >
-                        <Pencil />
-                      </Button>
-                    }
-                  />
-                  <ActiveToggle
-                    entity="contact"
-                    id={k.id}
-                    name={k.displayName}
-                    active={k.active}
-                  />
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );

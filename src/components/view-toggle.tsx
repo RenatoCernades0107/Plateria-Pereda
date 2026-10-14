@@ -3,15 +3,20 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
-/** Cambia entre la tabla y el tablero kanban por estado (queda en la URL). */
+/**
+ * Cambia entre la tabla (o lista) y el tablero kanban por estado (queda en la URL).
+ */
 export function ViewToggle({
   view,
   tableHref,
   kanbanHref,
+  tableLabel = "Tabla",
 }: {
   view: "tabla" | "kanban";
   tableHref: string;
   kanbanHref: string;
+  /** Nombre de la vista no kanban (p. ej. "Lista" en el detalle). */
+  tableLabel?: string;
 }) {
   const option = (
     value: "tabla" | "kanban",
@@ -35,7 +40,7 @@ export function ViewToggle({
   );
   return (
     <nav aria-label="Vista" className="bg-muted inline-flex rounded-lg p-1">
-      {option("tabla", tableHref, "Tabla", Table2)}
+      {option("tabla", tableHref, tableLabel, Table2)}
       {option("kanban", kanbanHref, "Kanban", Columns3)}
     </nav>
   );

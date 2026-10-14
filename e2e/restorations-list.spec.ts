@@ -41,7 +41,7 @@ test.describe("Listado de restauraciones", () => {
     codes.push(...data.map((r) => r.code));
     await admin
       .from("restorations")
-      .update({ status: "en_proceso", payment_status: "parcial" })
+      .update({ status: "parcialmente_lista", payment_status: "parcial" })
       .eq("id", data[0]!.id);
     await admin
       .from("restorations")
@@ -65,10 +65,10 @@ test.describe("Listado de restauraciones", () => {
     await page.goto("/restauraciones");
     await page.getByLabel("Código, cliente o documento").fill(clientName);
     await page.getByLabel("Estado", { exact: true }).click();
-    await page.getByRole("option", { name: "En proceso" }).click();
+    await page.getByRole("option", { name: "Parcialmente lista" }).click();
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page).toHaveURL(/estado=en_proceso/);
+    await expect(page).toHaveURL(/estado=parcialmente_lista/);
     await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
     await expect(
       page.getByText("1 restauración · Página 1 de 1"),
@@ -104,14 +104,14 @@ test.describe("Listado de restauraciones", () => {
 
     await page.getByLabel("Código, cliente o documento").fill(clientName);
     await page.getByLabel("Estado", { exact: true }).click();
-    await page.getByRole("option", { name: "En proceso" }).click();
+    await page.getByRole("option", { name: "Parcialmente lista" }).click();
     await page.getByRole("option", { name: "Lista", exact: true }).click();
     await page.keyboard.press("Escape");
     await expect(page.getByLabel("Estado", { exact: true })).toContainText(
       "2 seleccionados",
     );
     await page.getByRole("button", { name: "Filtrar" }).click();
-    await expect(page).toHaveURL(/estado=en_proceso&estado=lista/);
+    await expect(page).toHaveURL(/estado=parcialmente_lista&estado=lista/);
     await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
     await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
     await expect(
@@ -183,7 +183,7 @@ test.describe("Listado de restauraciones", () => {
     await page.goto(`/restauraciones?q=${codes[0]}`);
     await expect(
       page.getByTestId(`restauracion-movil-${codes[0]}`),
-    ).toContainText("En proceso");
+    ).toContainText("Parcialmente lista");
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth,
     );
@@ -208,7 +208,9 @@ test.describe("Listado de restauraciones", () => {
       .click();
     await expect(page).toHaveURL(/vista=kanban/);
     await expect(
-      page.getByTestId("columna-en_proceso").getByTestId(`tarjeta-${codes[0]}`),
+      page
+        .getByTestId("columna-parcialmente_lista")
+        .getByTestId(`tarjeta-${codes[0]}`),
     ).toBeVisible();
     await expect(
       page.getByTestId("columna-lista").getByTestId(`tarjeta-${codes[1]}`),

@@ -79,7 +79,8 @@ type RestorationValues = {
 };
 
 /**
- * Edición de contacto, tipo y % de adelanto, IGV y notas (no tocan Shopify, P12). Si
+ * Edición de contacto, tipo y % de adelanto, IGV y notas generales (no tocan
+ * Shopify, P12). Si
  * el precio incluye IGV solo se cambia antes de crear la orden (P13).
  */
 export function EditRestorationDialog({
@@ -237,7 +238,12 @@ export function EditRestorationDialog({
                   : undefined
               }
             />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
             <DialogFooter>
               <Button type="submit" disabled={pending}>
                 {pending ? "Guardando…" : "Guardar cambios"}
@@ -273,6 +279,8 @@ export function PieceDialog({
   workshops,
   materials,
   services,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   restorationId: string;
   /** Sin pieza: agregar una nueva. */
@@ -282,8 +290,17 @@ export function PieceDialog({
   workshops: WorkshopOption[];
   materials: CatalogOption[];
   services: CatalogOption[];
+  /** Abierto desde fuera (p. ej. el menú «Acciones» de la tabla): sin botón propio. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setOwnOpen(next);
+    onOpenChange?.(next);
+  };
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const form = useForm<PieceFormInput>({
@@ -307,24 +324,26 @@ export function PieceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {piece ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={`Editar pieza ${piece.code}`}
-          >
-            <Pencil />
-            Editar
-          </Button>
-        ) : (
-          <Button variant="outline">
-            <Plus />
-            Agregar pieza
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          {piece ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Editar pieza ${piece.code}`}
+            >
+              <Pencil />
+              Editar
+            </Button>
+          ) : (
+            <Button variant="outline">
+              <Plus />
+              Agregar pieza
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {piece ? `Editar ${piece.code}` : "Agregar pieza"}
@@ -345,6 +364,12 @@ export function PieceDialog({
               services={services}
               editable={editable}
               priceHint={priceHint}
+              pricePlaceholder="Sin asignar"
+              // Ventas no elige taller al agregar una pieza y lo ve al editarla (D60).
+              showWorkshop={
+                Boolean(piece) || !editable || editable.includes("workshopId")
+              }
+              workshopName={piece?.workshopName}
             />
             <DialogFooter>
               <Button type="submit" disabled={pending}>

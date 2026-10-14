@@ -4,7 +4,8 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
  * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
  * avanza; P21 con su propuesta; P47: sin "Recibida" ni "Devuelta por el taller";
  * P48: ubicaciones Por WhatsApp → Sin enviar → En taller → En tienda → Entregada y
- * restauración Rechazada; P50: Observación queda Sin enviar).
+ * restauración Rechazada; P50: Observación queda Sin enviar; P54: Parcialmente
+ * aprobada; P56: sin "En proceso").
  * En la BD se calculan con una columna generada y un trigger (Paso 8.3); los
  * escenarios de `tests/fixtures/restorations/derivations.json` verifican que ambos
  * lados den lo mismo.
@@ -12,8 +13,8 @@ import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 
 export const RESTORATION_STATUSES = [
   "registrada",
+  "parcialmente_aprobada",
   "aprobada",
-  "en_proceso",
   "parcialmente_lista",
   "lista",
   "completada",
@@ -22,10 +23,20 @@ export const RESTORATION_STATUSES = [
 ] as const;
 export type RestorationStatus = (typeof RESTORATION_STATUSES)[number];
 
+/**
+ * Estado general leído de la BD. "en_proceso" se retiró (P56): queda en el enum de
+ * Postgres sin uso (un check lo impide); si llegara, se muestra como Aprobada.
+ */
+export function toRestorationStatus(
+  value: RestorationStatus | "en_proceso",
+): RestorationStatus {
+  return value === "en_proceso" ? "aprobada" : value;
+}
+
 export const RESTORATION_STATUS_LABELS: Record<RestorationStatus, string> = {
   registrada: "Registrada",
+  parcialmente_aprobada: "Parcialmente aprobada",
   aprobada: "Aprobada",
-  en_proceso: "En proceso",
   parcialmente_lista: "Parcialmente lista",
   lista: "Lista",
   completada: "Completada",
@@ -131,21 +142,22 @@ export function deriveRestorationStatus(
   if (active.every((p) => p.status === "entregada")) return "completada";
   if (active.every(isBack)) return "lista";
   if (active.some(isBack)) return "parcialmente_lista";
-  if (active.some((p) => p.firstSentAt)) return "en_proceso";
   if (active.every((p) => p.approvedAt)) return "aprobada";
+  if (active.some((p) => p.approvedAt)) return "parcialmente_aprobada";
   return "registrada";
 }
 
 /** Orden de avance del estado general (igual al enum de la BD); Anulada y Rechazada son finales. */
 const STATUS_RANK: Record<RestorationStatus, number> = {
   registrada: 0,
-  aprobada: 1,
-  en_proceso: 2,
-  parcialmente_lista: 3,
-  lista: 4,
-  completada: 5,
-  anulada: 6,
-  rechazada: 7,
+  parcialmente_aprobada: 1,
+  aprobada: 2,
+  // 3: "en_proceso", retirado (P56); el valor sigue en el enum de la BD sin uso.
+  parcialmente_lista: 4,
+  lista: 5,
+  completada: 6,
+  anulada: 7,
+  rechazada: 8,
 };
 
 /**
@@ -160,14 +172,63 @@ export function advanceRestorationStatus(
   return STATUS_RANK[derived] > STATUS_RANK[current] ? derived : current;
 }
 
+/** Pieza para decidir la orden de Shopify: el precio de venta puede faltar (D58). */
+export type PieceForShopifyOrder = Pick<
+  PieceForRestorationStatus,
+  "status" | "approvedAt"
+> & { priceCents: number | null };
+
 /**
  * La orden de Shopify se crea cuando todas las piezas que se cobran fueron aprobadas
- * (y hay al menos una), sin importar el estado general (§7.3). Que la orden aún no
- * exista lo revisa quien encola el trabajo.
+ * y tienen precio de venta (y hay al menos una), sin importar el estado general
+ * (§7.3, D58). Que la orden aún no exista lo revisa quien encola el trabajo.
  */
 export function isReadyForShopifyOrder(
-  pieces: readonly Pick<PieceForRestorationStatus, "status" | "approvedAt">[],
+  pieces: readonly PieceForShopifyOrder[],
 ): boolean {
   const active = pieces.filter((p) => !isClosedStatus(p.status));
-  return active.length > 0 && active.every((p) => p.approvedAt);
+  return (
+    active.length > 0 &&
+    active.every((p) => p.approvedAt && p.priceCents !== null)
+  );
+}
+
+/** Estados en los que la pieza aún no se aprueba (no se cobra todavía). */
+const BEFORE_APPROVAL: readonly PieceStatus[] = [
+  "registrada",
+  "en_consulta",
+  "en_espera",
+];
+
+/**
+ * Aviso de precios de venta que faltan para Shopify (D58), o null si no falta nada:
+ * sin orden, cuando todas las piezas que se cobran están aprobadas pero alguna no
+ * tiene precio (la orden espera); con la orden, las piezas aprobadas sin precio (su
+ * línea entra cuando se les asigne).
+ */
+export function missingSalePrices(
+  pieces: readonly {
+    code: string;
+    status: PieceStatus;
+    priceCents: number | null;
+  }[],
+  hasOrder: boolean,
+): { codes: string[]; message: string } | null {
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
+  const approved = active.filter((p) => !BEFORE_APPROVAL.includes(p.status));
+  const codes = approved
+    .filter((p) => p.priceCents === null)
+    .map((p) => p.code);
+  if (codes.length === 0) return null;
+  if (hasOrder) {
+    return {
+      codes,
+      message: `Faltan precios de venta para agregar a la orden de Shopify: ${codes.join(", ")}.`,
+    };
+  }
+  if (approved.length < active.length) return null;
+  return {
+    codes,
+    message: `Faltan precios de venta para crear la orden de Shopify: ${codes.join(", ")}.`,
+  };
 }

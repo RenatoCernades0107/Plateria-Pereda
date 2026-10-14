@@ -1,7 +1,7 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
 > **Estado:** planificación (todavía no se desarrolla).
-> **Última actualización:** 2026-10-09
+> **Última actualización:** 2026-10-12
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
 
@@ -237,7 +237,7 @@ Recorrido físico: **Por WhatsApp** → **Sin enviar** → **En taller** → **E
 
 - Se envía al taller solo desde **Sin enviar**; desde Interno se entrega u observa solo cuando está **En tienda**.
 
-### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅)
+### 7.3 Estado general de la restauración (P19 ✅, P47 ✅, P48 ✅, P54 ✅, P56 ✅)
 
 Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa en este orden:
 
@@ -245,9 +245,11 @@ Se ignoran las piezas finales (anuladas, rechazadas y sin arreglo) y se evalúa 
 2. Todas entregadas → **Completada**
 3. Todas de vuelta del taller o entregadas → **Lista**
 4. Alguna de vuelta del taller o entregada → **Parcialmente lista**
-5. Alguna fue enviada al taller al menos una vez (`first_sent_at` con valor) → **En proceso**
-6. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
+5. Todas fueron aprobadas (`approved_at` con valor) → **Aprobada**
+6. Alguna fue aprobada (y otras todavía no) → **Parcialmente aprobada** (P54)
 7. Si no → **Registrada**
+
+_(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el taller la guía queda Aprobada o Parcialmente aprobada.)_
 
 - El estado **solo avanza** (P19, 2026-10-05): si una pieza lista se observa y vuelve al taller, la restauración conserva el estado alcanzado. Rechazada y Anulada son finales.
 - Logística no ve las restauraciones pasadas (Completada, Anulada, y Rechazada sin piezas por devolver; D24, P48).
@@ -746,7 +748,7 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(restauraciones): permite editar restauraciones y piezas`
 
 #### Paso 7.8 — IGV en restauraciones y cotizaciones de WhatsApp (P13 ✅, 2026-10-09)
-- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto) al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
+- [x] Pregunta obligatoria "¿El precio incluye IGV?" (Sí / No, sin valor por defecto; desde 7.9 parte de "No") al registrar una restauración o una cotización de WhatsApp; al crear la restauración desde una cotización se propone la respuesta de la cotización.
 - [x] Si no incluye IGV, cada pieza se cobra a su precio + 18 % redondeado a céntimos: total, adelanto, saldo y (9.1) líneas de la orden de Shopify. El mensaje de WhatsApp muestra el subtotal sin IGV y el IGV debajo de las piezas.
 - [x] Se cambia desde "Editar" mientras no exista la orden de Shopify (la BD lo exige).
 - **Unit:**
@@ -759,6 +761,35 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] La validación pide responder la pregunta.
 - Hecho (2026-10-09): migración `20261009120000_igv.sql` (`prices_include_igv` en `restorations` y `whatsapp_quotes`, las filas existentes quedan con IGV incluido; `public.price_with_igv()`; triggers que recalculan el total; `create_restoration`, `create_restoration_from_whatsapp_quote`, `create_whatsapp_quote` y `update_whatsapp_quote` con `p_prices_include_igv`). Dominio en `src/domain/igv.ts` (el cotizador `COT-` reutiliza `IGV_PERCENT` e `igvBreakdown`). Campo `IgvField` en el registro y en "Editar"; insignia en los detalles.
 - Commit: `feat(restauraciones): pregunta si el precio incluye IGV y lo suma al cobro (P13)`
+
+#### Paso 7.9 — Observaciones al formulario de registro (P52 ✅, 2026-10-12)
+- [x] Servicio obligatorio en cada pieza ("Elige o escribe el servicio"): registro, copia desde una cotización, "Editar", "Agregar pieza" y piezas de la cotización de WhatsApp.
+- [x] Orden de la pieza: Servicio · Material · Peso (g) · Medida · Precio (S/) (opcionales) · Descripción junto a Notas de la pieza · Taller y Urgente.
+- [x] "Notas" de la restauración → "Notas generales" (registro, cotización de WhatsApp, "Editar" e historial).
+- [x] "¿El precio incluye IGV?" parte de "No" (obligatorio); la barra del total muestra Subtotal, "+ IGV (18 %)" y Total (S/ 0.00 sin precios) o "Total (IGV incluido)". El detalle muestra el IGV debajo del total.
+- **Unit:** validación (servicio obligatorio también en la cotización), orden de los campos, IGV por defecto y totales en vivo, "Notas generales" en "Editar", "Agregar pieza" exige el servicio, IGV del `MoneySummary`.
+- **E2E:** registro con subtotal, IGV y total; la validación pide el servicio y el IGV ya viene en "No"; ventas registra sin precio con IGV S/ 0.00; detalle con el IGV; edición con "Notas generales".
+- Hecho (2026-10-12): sin cambios en la BD (lo obligatorio vive en zod; el formulario siempre envía la respuesta del IGV, así que el `default true` de `prices_include_igv` no se usa). La copia desde una cotización y la edición de una cotización conservan la respuesta del IGV de la cotización.
+- Commit: `feat(restauraciones): formulario con servicio obligatorio, nuevo orden de campos e IGV por defecto`
+
+#### Paso 7.10 — El taller lo asignan solo logística y el admin (P53 ✅, 2026-10-12)
+- [x] Permiso `piezas.asignar-taller`: admin y logística (ventas lo ve).
+- [x] Ventas no ve el taller al registrar ni al agregar una pieza; en "Editar" lo ve como texto ("Lo asignan logística y el administrador."). No ve "Asignar taller" en las acciones en bloque.
+- [x] Las acciones del servidor no envían el taller si el rol no tiene el permiso (registro, copia desde una cotización, edición y pieza nueva).
+- **Unit:** permisos, `editableFields` (el taller solo para el admin), acciones sin taller para ventas, formulario y diálogos (texto de solo lectura) y barra de acciones en bloque.
+- **BD:** ventas no usa `assign_piece_workshop`, no cambia ni quita el taller al editar, no registra ni agrega piezas con taller; logística asigna y envía al taller con otro taller; el admin hace todo (`31_taller_solo_logistica`).
+- **E2E:** ventas registra sin taller, ve el taller como texto al editar y no ve "Asignar taller"; logística sí lo ve.
+- Hecho (2026-10-12): migración `20261014130000_taller_solo_logistica.sql`: `assign_piece_workshop` solo para admin y logística y trigger `pieces_guard_workshop` (en peticiones de usuarios, rol `authenticated`, solo admin y logística ponen o cambian `workshop_id`; dejar el mismo taller no cuenta como cambio). `change_piece_status` (enviar al taller) ya era solo de admin y logística.
+- Commit: `feat(permisos): el taller lo asignan solo logística y admin`
+
+#### Paso 7.11 — Estado general "Parcialmente aprobada" (P54 ✅, 2026-10-12)
+- [x] Nuevo estado general entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no, sin piezas enviadas al taller (§7.3). Solo avanza (P19): una pieza nueva en una restauración Aprobada no la regresa.
+- [x] Etiqueta, insignia (borde punteado), columna del kanban, filtro y CSV.
+- **Unit / integración:** escenarios nuevos en `tests/fixtures/restorations/derivations.json` (TypeScript y BD dan lo mismo) y `advanceRestorationStatus`.
+- **BD:** el valor va justo antes de Aprobada; aprobar una de tres, rechazar otra y aprobar la última (`32_parcialmente_aprobada`).
+- **E2E:** aprobar una de dos piezas muestra "Parcialmente aprobada"; la copia de una cotización con una pieza aprobada y otra en consulta nace Parcialmente aprobada.
+- Hecho (2026-10-12): migraciones `20261014140000_estado_parcialmente_aprobada.sql` (valor del enum; va en su propio archivo porque `add value` no se usa en la misma transacción) y `20261014140100_derivar_parcialmente_aprobada.sql` (`derive_restoration_status` y las restauraciones Registradas con piezas aprobadas pasan al estado nuevo).
+- Commit: `feat(restauraciones): estado general «Parcialmente aprobada»`
 
 ### Fase 7B — Cotizaciones por WhatsApp (P46 ✅, pedido del 2026-10-05)
 
@@ -853,7 +884,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - [x] `PieceStatusActions`: solo muestra transiciones válidas para el rol; diálogo de confirmación con nota y/o taller cuando se requiere; feedback optimista con rollback si falla.
 - [x] Acción "Marcar llegada a tienda".
 - [x] Acciones masivas desde el detalle (seleccionar piezas → "Enviar al Taller X").
-- [x] Asignar / cambiar taller (queda auditado).
+- [x] Asignar / cambiar taller (queda auditado). _(Desde 7.10 solo logística y el admin.)_
 - **Unit:**
   - [x] El componente muestra los botones correctos por estado y rol.
   - [x] El diálogo exige nota/taller cuando corresponde.
@@ -944,6 +975,21 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Entregar todas las piezas → la orden del fake queda "Preparada".
 - Hecho (2026-10-10): handler `order.fulfill`: marca como preparadas solo las líneas de piezas entregadas que aún no lo están (`fulfillLines` no es idempotente). Si la orden se crea o se edita con piezas ya entregadas, también las prepara. Pruebas: pgTAP `26_cambios_orden_shopify`, unit (`shopify-order.test.ts` del dominio y del servidor), integración (`shopify-order.int.test.ts`) y E2E (`e2e/shopify-order.spec.ts`).
 - Commit: `feat(shopify): marca como preparadas las piezas entregadas`
+
+#### Paso 9.4 — Precio de venta sin asignar (P51 ✅, pedido del 2026-10-12)
+- [x] El precio de venta de la pieza es opcional ("Sin asignar") y ya no se propone con el precio sugerido del servicio.
+- [x] Solo el admin asigna o cambia el precio (permiso `piezas.precio-venta`); ventas lo ve deshabilitado; logística sigue sin ver precios. La BD lo exige.
+- [x] La orden de Shopify espera a que todas las piezas que se cobran tengan precio; asignar el último la encola. Con la orden creada, una pieza aprobada sin precio entra a la orden al asignárselo.
+- [x] Aviso en el detalle: "Faltan precios de venta para crear la orden de Shopify" (o "para agregar a la orden").
+- [x] La cotización de WhatsApp sigue con precio obligatorio y la copia a restauración conserva los precios cotizados aunque la haga ventas.
+- **Unit:**
+  - [x] Validación (precio opcional en la pieza, obligatorio en la cotización), `isReadyForShopifyOrder` y `missingSalePrices`, `editableFields` por rol, mensaje "precio por definir", conciliación de la orden sin la pieza sin precio, acciones (ventas no envía precios) y componentes (formulario, diálogo de pieza, tablero).
+- **BD:**
+  - [x] Ventas no pone ni cambia precios (registro, edición, copia con precio distinto); el admin sí; la clave secreta no se restringe; la copia conserva el precio cotizado; la orden espera los precios y se encola con el último; total con piezas sin precio.
+- **Integración:** ventas registra sin precio y la BD rechaza un precio; aprobar sin precios no encola la orden y el último precio del admin la crea.
+- **E2E:** ventas registra sin precio ("Sin asignar", mensaje "por definir", aviso de precios faltantes) y el admin lo asigna; la copia de ventas conserva el precio cotizado.
+- Hecho (2026-10-12): migración `20261014120000_precio_sin_asignar.sql`: `pieces.price` admite null; `price_with_igv` y `restoration_total` cuentan 0 sin precio; trigger `pieces_guard_price` (en peticiones de usuarios, rol `authenticated`, solo el admin pone o cambia el precio, salvo `app.quote_copy_price` en la copia de una cotización con el precio cotizado y `app.shopify_order_edit` de `change_piece_price`); `guard_piece_edit` deja asignar el precio que falta aunque la orden exista o la pieza esté entregada; `is_ready_for_shopify_order` exige precio y `pieces_sync_restoration_status` también corre al cambiar el precio; `create_restoration` y `create_restoration_from_whatsapp_quote` aceptan el precio vacío. Escenarios compartidos con la clave `price` en `tests/fixtures/restorations/derivations.json`. Las acciones no envían el precio si el usuario no es admin (la copia conserva el cotizado) y procesan el outbox al asignar un precio. Mientras falten precios no se ofrece "Aprobar y registrar adelanto".
+- Commit: `feat(piezas): precio de venta sin asignar que solo asigna el admin (P51)`
 
 ### Fase 10 — Fotos y archivos
 
@@ -1072,8 +1118,49 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] Cambiar a kanban, ver las tarjetas en su columna, filtrar sin perder la vista y volver a la tabla.
   - [x] Elegir piezas en el kanban y enviarlas al taller con la barra de acciones masivas.
   - [x] `@mobile` el kanban se desplaza dentro de su contenedor, sin desbordar la página.
-- Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición).
+- Hecho (2026-10-05): `ViewToggle` (Tabla / Kanban), `RestorationsKanban` (logística no ve las columnas Completada ni Anulada, ni montos) y `PiecesKanban` (con selección y `PiecesBulkBar`, resaltado de días en taller y última observación). Si hay más resultados que el tope del kanban se avisa para usar los filtros. Sin arrastrar y soltar: el estado solo cambia con las acciones (P19 y reglas de transición); desde el Paso 12.5 las piezas sí se arrastran.
 - Commit: `feat(listados): agrega vista kanban por estado en restauraciones y piezas`
+
+#### Paso 12.4 — Tabla de piezas tipo hoja, filtro por guía y detalle de la pieza (P55 ✅, 2026-10-12)
+- [x] `/piezas` en tabla como una hoja de cálculo: primero la foto "Antes" de la pieza, luego pieza, guía, cliente, descripción, servicio, material · medida · peso, estado y ubicación, taller y días en taller.
+- [x] Logística (y el admin) ingresa el **costo de servicio** en la tabla; el admin, viéndolo, ingresa el **precio de venta** (D58; con la orden creada, un precio ya asignado se cambia con motivo). Ventas ve el precio sin editarlo y no ve el costo; logística no ve el precio.
+- [x] Filtro **N.º de guía** (`guia=`): "123", "RES-123" o "RES-00123".
+- [x] **Detalle de la pieza** (`/piezas/<id>`): datos, estado y acciones, montos según el rol, historia y fotos, con el botón explícito **"Ver guía RES-…"**. La tabla, el kanban del detalle y cada pieza de la guía ("Ver detalle") llevan a él.
+- **Unit:** filtro por guía en la URL y la consulta; tabla (foto primero, columnas y montos por rol, guardar precio, "Cambiar precio" con la orden creada); acción `setPieceSalePrice`.
+- **BD:** montos por rol, primera foto "Antes" (imagen), filtro por número de guía y costo en el detalle (`33_vista_piezas_tabla`).
+- **E2E:** logística filtra por guía e ingresa el costo; el admin ve el costo y pone el precio; abre la pieza y vuelve a la guía (sin violaciones de axe).
+- Hecho (2026-10-12): migración `20261014150000_vista_piezas_tabla.sql`: `list_pieces_board` con servicio, material, medida, peso, costo de servicio (admin y logística), precio de venta (admin y ventas), si hay orden, la ruta de la primera foto "Antes" y el parámetro `p_restoration_code`; `get_piece_service_cost` para el detalle; índice de archivos por pieza y clasificación. Las miniaturas usan URLs firmadas en lote (`signedPhotoUrls`). `MoneyCell` es la celda de monto editable que comparten el costo y el precio.
+- Commit: `feat(piezas): tabla tipo hoja con costo y precio, filtro por guía y detalle de pieza`
+
+#### Paso 12.5 — Arrastrar piezas en los kanban (pedido del usuario, 2026-10-13)
+- [x] En los kanban de piezas (`/piezas` y el de cada restauración) la pieza cambia de estado arrastrándola a otra columna (ratón, dedo con pulsación larga y teclado) o con **"Mover a…"** en la tarjeta. Mientras se arrastra se resaltan solo las columnas permitidas para la pieza y el rol, y se atenúan las demás; soltar en una no permitida no cambia nada y avisa por qué. Los estados sin columna visible (p. ej. Entregada o Anulado) aparecen como destino solo al arrastrar.
+- [x] Mismas reglas y acciones que los botones de la pieza (máquina de estados, `changePieceStatus`): nota o taller con el diálogo de cambio de estado; en el detalle de la restauración, aprobar la última pieza ofrece el adelanto y entregar con saldo pide confirmarlo; en `/piezas` el cambio es directo, como en las acciones masivas. Cambio optimista con aviso; vuelve atrás si la BD lo rechaza.
+- [x] El kanban de restauraciones (guías) sigue sin arrastrar: su estado se calcula de las piezas (D63).
+- **Unit:** destinos y motivos de rechazo (`piece-moves`), columnas resaltadas y asa accesible en `KanbanColumns` (tomar con el teclado en jsdom), "Mover a…" (lista, cambio directo, diálogo de nota, taller para logística y adelanto al aprobar la última pieza).
+- **E2E:** arrastrar de Registrada a Aprobada (persiste al recargar), soltar en una columna no permitida, soltar en Consulta abre el diálogo de la nota, mover con el teclado con avisos en español y "Mover a…" sin violaciones de axe; en `/piezas`, logística arrastra de Aprobada a Interno eligiendo el taller.
+- Hecho (2026-10-13): `@dnd-kit/core`; `KanbanColumns` con `drag` opcional (`getId`, `getLabel`, `canDrop`, `onMove`) y columnas `dropOnly`; `usePieceMoves` y `MoveToMenu` comparten la lógica de los dos kanban de piezas.
+- Commit: `feat(kanban): mover piezas entre estados arrastrando`
+
+#### Paso 12.6 — Las vistas de lista se ven como el Excel (D64, 2026-10-13)
+- [x] Piezas de la guía (`/restauraciones/<id>`, vista Lista) en **tabla** como `/piezas`: elegir, foto "Antes", pieza (código al detalle + Urgente), descripción con notas, servicio, material · medida · peso, precio de venta (admin y ventas; el admin lo ingresa en la celda o, con la orden creada, "Cambiar precio"), estado y ubicación, taller.
+- [x] Menú **"Acciones ▾"** por fila con las mismas acciones del panel de estado (`usePieceActions`, compartido con el detalle de la pieza), "Editar", "Cambiar precio" y "Ver detalle". El diálogo se abre cuando el menú termina de cerrarse (foco correcto).
+- [x] La línea de tiempo y el resumen de logística salen de la guía: quedan en el detalle de la pieza.
+- [x] `@mobile` la tabla se desplaza dentro de su contenedor sin ensanchar la página.
+- **Unit:** tabla (columnas, foto, datos), menú (acciones por rol, aprobar, confirmación con foco, editar, cambiar precio), precio por rol; `firstBeforePhotos`.
+- **E2E:** los specs que usaban botones por pieza usan el menú (`e2e/support/pieces.ts`); la línea de tiempo se revisa en `/piezas/<id>`.
+- Commit: `feat(restauraciones): piezas de la guía en tabla con menú de acciones`
+- [x] Otras listas que eran tarjetas en la computadora pasan a tabla (`Table` en escritorio, tarjetas `md:hidden` en el celular, como clientes y restauraciones): **contactos** de la empresa, **piezas cotizadas** de una cotización de WhatsApp (con fila de total) y **catálogos** (materiales, servicios, métodos de pago).
+- **Unit:** columnas de contactos y catálogos; acciones dentro de la fila de la tabla. **E2E:** clientes, cotizaciones de WhatsApp y catálogos (las tarjetas del celular usan `*-movil-*`).
+- Commit: `feat(ui): contactos, ítems de cotización y catálogos en tabla`
+
+#### Paso 12.7 — Sin el estado general "En proceso" (P56 ✅, 2026-10-13)
+- [x] El estado general ya no pasa a "En proceso" al enviar una pieza al taller (§7.3); las guías que estaban así pasan a Aprobada o Parcialmente aprobada.
+- [x] Etiqueta, insignia, columna del kanban de guías, filtro y CSV sin "En proceso"; un enlace viejo con `estado=en_proceso` se ignora.
+- **Unit / integración:** escenarios compartidos TS/BD actualizados; `toRestorationStatus`.
+- **BD:** `14_estados_piezas` (en el taller la guía sigue Aprobada) y `32_parcialmente_aprobada` (no se puede guardar En proceso).
+- **E2E:** filtros y kanban de guías con Parcialmente lista; enviar al taller deja la guía Aprobada.
+- Hecho (2026-10-13): migración `20261014160000_sin_en_proceso.sql` (`derive_restoration_status` sin la rama, recálculo de las guías En proceso y check `restorations_status_sin_en_proceso`). El valor queda en el enum de Postgres sin uso: quitarlo obligaría a recrear el tipo y todas las funciones y vistas que lo usan.
+- Commit: `feat(restauraciones): quita el estado general «En proceso»`
 
 ### Fase 13 — Dashboard
 

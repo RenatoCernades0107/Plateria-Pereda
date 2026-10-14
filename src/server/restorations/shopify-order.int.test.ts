@@ -63,7 +63,7 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     await admin.from("clients").delete().in("id", created.clients);
   });
 
-  it("aprobar la última pieza encola la orden; el job la crea y guarda los ids", async () => {
+  it("aprobar la última pieza y asignar el último precio encola la orden; el job la crea y guarda los ids", async () => {
     fakeShopify.reset();
     const customer = await new FakeShopifyGateway().createCustomer({
       firstName: "Orden",
@@ -90,10 +90,8 @@ describe("orden de Shopify al aprobar (9.1)", () => {
         p_payment_type: "contado",
         p_deposit_percent: null as unknown as number,
         p_notes: "",
-        p_pieces: [
-          { description: "Fuente", price: "100.00" },
-          { description: "Jarra", price: "33.33" },
-        ],
+        // Ventas registra sin precio de venta; lo asigna el admin (D58).
+        p_pieces: [{ description: "Fuente" }, { description: "Jarra" }],
         p_prices_include_igv: false,
       })
       .single();
@@ -117,9 +115,25 @@ describe("orden de Shopify al aprobar (9.1)", () => {
         .eq("kind", "order.create")
         .eq("entity_id", restoration!.id);
 
+    const setPrice = (
+      client: Awaited<ReturnType<typeof signIn>>,
+      id: string,
+      price: number,
+    ) => client.from("pieces").update({ price }).eq("id", id).select("id");
+
     expect((await approve([pieces![0]!.id])).error).toBeNull();
     expect((await jobs()).data).toEqual([]);
     expect((await approve([pieces![1]!.id])).error).toBeNull();
+    // Todas aprobadas, pero sin precios: la orden espera (D58).
+    expect((await jobs()).data).toEqual([]);
+
+    expect((await setPrice(ventas, pieces![0]!.id, 100)).error).toMatchObject({
+      code: "42501",
+    });
+    const pricing = await signIn("admin@pereda.test");
+    expect((await setPrice(pricing, pieces![0]!.id, 100)).error).toBeNull();
+    expect((await jobs()).data).toEqual([]);
+    expect((await setPrice(pricing, pieces![1]!.id, 33.33)).error).toBeNull();
     expect((await jobs()).data).toHaveLength(1);
 
     await process_();

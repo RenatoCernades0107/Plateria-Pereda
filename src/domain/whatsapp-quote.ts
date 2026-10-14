@@ -23,7 +23,8 @@ export type QuotePiece = {
   description: string;
   /** Nombre del servicio (del catálogo o texto libre); puede faltar. */
   service: string | null;
-  priceCents: Cents;
+  /** null: precio de venta sin asignar (D58); el mensaje dice "por definir" y suma 0. */
+  priceCents: Cents | null;
   status: PieceStatus;
 };
 
@@ -72,7 +73,7 @@ export function quoteAmounts(
   const { total, taxableBase, igv } = igvTotals(
     data.pieces
       .filter((p) => !isClosedStatus(p.status))
-      .map((p) => p.priceCents),
+      .map((p) => p.priceCents ?? 0),
     data.pricesIncludeIgv,
   );
   return {
@@ -115,7 +116,9 @@ export function quoteValues(
       const name = service
         ? `${p.description.trim()} – ${service}`
         : p.description.trim();
-      return `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
+      return p.priceCents === null
+        ? `${i + 1}. ${name}: precio por definir`
+        : `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
     });
   // Precios sin IGV (P13): el desglose va debajo de las piezas, así aparece con
   // cualquier plantilla que use {piezas}.

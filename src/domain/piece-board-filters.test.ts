@@ -11,6 +11,7 @@ describe("filtros de la vista de piezas", () => {
   it("lee la URL e ignora valores inválidos o de piezas cerradas", () => {
     expect(parsePieceBoardFilters({})).toEqual({
       q: "",
+      guide: "",
       location: null,
       status: null,
       workshopId: null,
@@ -24,6 +25,7 @@ describe("filtros de la vista de piezas", () => {
     expect(
       parsePieceBoardFilters({
         q: " RES-1 ",
+        guia: " RES-00123 ",
         ubicacion: "en_tienda",
         estado: "rechazada",
         taller: "00000000-0000-0000-0000-0000000000AA",
@@ -35,6 +37,7 @@ describe("filtros de la vista de piezas", () => {
       }),
     ).toEqual({
       q: "RES-1",
+      guide: "RES-00123",
       location: "en_tienda",
       status: "rechazada",
       workshopId: "00000000-0000-0000-0000-0000000000aa",
@@ -72,12 +75,21 @@ describe("filtros de la vista de piezas", () => {
     ).toBe("/piezas");
     expect(listPiecesBoardArgs(filters)).toEqual({
       p_query: undefined,
+      p_restoration_code: undefined,
       p_location: "en_taller",
       p_status: undefined,
       p_workshop_id: undefined,
       p_min_workshop_days: 7,
       p_limit: 50,
       p_offset: 100,
+    });
+  });
+
+  it("filtra por número de guía", () => {
+    const filters = parsePieceBoardFilters({ guia: "123" });
+    expect(pieceBoardHref(filters)).toBe("/piezas?guia=123");
+    expect(listPiecesBoardArgs(filters)).toMatchObject({
+      p_restoration_code: "123",
     });
   });
 

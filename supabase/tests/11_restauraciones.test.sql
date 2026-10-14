@@ -4,7 +4,8 @@ select plan(26);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000007a1', 'ventas@res.test', '{"role":"ventas"}', '{}'),
-  ('00000000-0000-0000-0000-0000000007a2', 'logistica@res.test', '{"role":"logistica"}', '{}');
+  ('00000000-0000-0000-0000-0000000007a2', 'logistica@res.test', '{"role":"logistica"}', '{}'),
+  ('00000000-0000-0000-0000-0000000007a3', 'admin@res.test', '{"role":"admin"}', '{}');
 
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000b701', 'persona', 'Ana', 'gid://shopify/Customer/701');
@@ -42,6 +43,8 @@ select cmp_ok(
   'los códigos son correlativos'
 );
 
+-- El precio de venta lo asigna el admin (D58).
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000007a3","role":"authenticated"}', true);
 insert into public.pieces (restoration_id, description, price)
   values ('00000000-0000-0000-0000-00000000c701', 'Fuente ovalada', 150.10),
          ('00000000-0000-0000-0000-00000000c701', 'Bandeja', 99.95);

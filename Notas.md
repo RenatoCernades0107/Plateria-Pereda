@@ -4,7 +4,7 @@
 > Iré registrando aquí tus respuestas y ajustando [`Todo.md`](./Todo.md).
 > **Bloqueante** = hay que responderla antes de empezar la fase indicada.
 
-**Última actualización:** 2026-10-09
+**Última actualización:** 2026-10-12
 
 ## Resumen de pendientes
 
@@ -12,7 +12,7 @@
 |---|---|
 | Bloqueantes | Ninguna |
 | Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, N1, N2 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, P55, P56, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -147,7 +147,7 @@
 - **Propuesta:** todos los precios incluyen IGV; en el PDF se puede mostrar el desglose (op. gravada + IGV 18 %) si lo desean.
 - **Respuesta (2026-10-05):** ✅ (en parte) **No asumir: preguntar siempre si el precio incluye IGV** (en cada restauración y en cada cotización). Falta confirmar qué pasa cuando **no** lo incluye (¿se suma el 18 % al total que se cobra o solo se indica "+ IGV"?) y si aplica igual a restauraciones y cotizaciones.
 - **Respuesta (2026-10-09):** ✅ **Si el precio no incluye IGV, se suma el 18 % al cobro**, y la regla es la misma para restauraciones, cotizaciones de WhatsApp y cotizaciones de productos (`COT-`).
-  - Al registrar se elige siempre "¿El precio incluye IGV?" (Sí / No, sin valor por defecto).
+  - Al registrar se elige siempre "¿El precio incluye IGV?" (Sí / No, sin valor por defecto). _(Cambiado en P52: por defecto "No".)_
   - **No incluye:** cada pieza (o línea) se cobra a su precio + 18 % redondeado a céntimos; el total, el adelanto, la orden de Shopify y el saldo usan ese monto. El mensaje de WhatsApp y el PDF muestran el subtotal sin IGV, el IGV y el total.
   - **Incluye:** el total es la suma de los precios; el desglose (op. gravada + IGV) solo se informa.
   - Se puede cambiar mientras no exista la orden de Shopify (restauración) o mientras la cotización se pueda editar.
@@ -414,7 +414,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | Consultas, aprobar y anular piezas | ✅ | ✅ | ❌ |
 | Marcar llegada a tienda | ✅ | ✅ | ✅ |
 | Enviar al taller y marcar devuelta por el taller | ✅ | ❌ | ✅ |
-| Asignar / cambiar taller | ✅ | ✅ | ✅ |
+| Asignar / cambiar taller | ✅ | ❌ (lo ve, P53) | ✅ |
 | Entregar al cliente (ver P45) y observar | ✅ | ✅ | ✅ |
 | Subir y editar fotos (por pieza y foto general) | ✅ | ✅ | ✅ |
 | Eliminar fotos y archivos | ✅ | Solo los suyos | Solo los suyos |
@@ -517,6 +517,47 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
   - (2) Una pieza en **Observación** queda en la ubicación **Sin enviar** (en la tienda): hay que volver a programar su envío al taller. Vale para las dos observaciones: la que se hace al volver del taller y el reclamo después de la entrega. Ajusta P48 (1).
   - (3) Se reenvía con la acción de siempre, "Reenviar al taller" (Observación → Interno, ubicación En taller). Si se resuelve en la tienda, pasa a Entregada.
 
+### P51 · Precio de venta sin asignar (pedido del 2026-10-12)
+- **Contexto:** el precio de venta de la pieza se proponía con el precio sugerido del servicio y lo escribía quien registraba (ventas o admin). La Platería pide separarlo del servicio: el precio lo define después el administrador.
+- **Respuesta (2026-10-12):** ✅
+  - (1) El precio de venta de la pieza nace **"Sin asignar"** y ya no se propone a partir del servicio.
+  - (2) **Solo el admin** asigna o cambia el precio de venta. Ventas lo ve (o ve "Sin asignar") pero no lo edita; logística sigue sin ver precios (D16). La BD lo exige.
+  - (3) La **orden de Shopify espera** a que todas las piezas que se cobran (aprobadas y no cerradas) tengan precio; asignar el último la crea. Mientras falte, el detalle avisa "Faltan precios de venta para crear la orden de Shopify". Con la orden ya creada, una pieza aprobada sin precio entra a la orden cuando el admin se lo asigna.
+  - (4) Las **cotizaciones de WhatsApp no cambian**: ventas cotiza el precio y es obligatorio. Al pasar la cotización a restauración, las piezas cotizadas **conservan su precio** aunque la copie ventas; cambiarlo o ponerle precio a una pieza nueva es cosa del admin.
+- **Supuestos (confirmar):**
+  - (a) Una pieza sin precio suma 0 al total y al adelanto, y el mensaje de WhatsApp de la restauración dice "precio por definir".
+  - (b) Mientras falten precios no se ofrece "Aprobar y registrar adelanto" (el adelanto aún no se conoce); el pago se puede registrar igual desde la pestaña "Pagos".
+  - (c) El admin asigna el precio que falta desde "Editar" de la pieza, sin motivo, aunque la pieza ya esté entregada o la orden ya exista; un precio ya asignado se cambia como siempre (P12: con la orden, "Cambiar precio" con motivo).
+
+### P52 · Observaciones al formulario de restauración (2026-10-12)
+- **Contexto:** al revisar el formulario de registro la Platería hizo seis observaciones.
+- **Respuesta (2026-10-12):** ✅
+  - (1) **El servicio es obligatorio** en cada pieza (del catálogo o escrito libremente). Vale para el registro, la copia desde una cotización de WhatsApp, "Editar" y "Agregar pieza", y también para las piezas de la cotización de WhatsApp (luego pasan a la restauración).
+  - (2) **Descripción al lado de "Notas de la pieza"** (dos columnas en pantallas medianas o más; una debajo de la otra en el celular).
+  - (3) El precio va separado del servicio y nace "Sin asignar" (ya hecho en P51).
+  - (4) **Orden de los campos de la pieza:** Servicio y luego Material, Peso, Medida y Precio, todos **opcionales**; después Descripción (sigue obligatoria) junto a Notas de la pieza y al final Taller y Urgente.
+  - (5) El campo "Notas" de la restauración pasa a llamarse **"Notas generales"** (registro, "Editar", cotización de WhatsApp e historial de cambios).
+  - (6) **IGV: por defecto "No"** (se suma el IGV) y sigue siendo obligatorio. La barra del total muestra **Subtotal, "+ IGV (18 %)" y Total**; sin precios el IGV es S/ 0.00 y se actualiza a medida que el admin asigna los precios de venta. Si el precio incluye IGV se indica "IGV incluido". El detalle muestra también el IGV debajo del total. Cambia P13 ("sin valor por defecto").
+
+### P53 · ¿Quién asigna el taller? (2026-10-12)
+- **Contexto:** la matriz de P42 dejaba asignar o cambiar el taller a admin, ventas y logística.
+- **Respuesta (2026-10-12):** ✅ El taller lo asignan **solo logística y el admin**. Ventas lo ve (en el detalle y al editar la pieza) pero no lo elige al registrar ni lo cambia después. Ajusta la matriz de P42.
+- **Cómo queda:** "Asignar taller" (acción en bloque) y "Enviar al taller" con taller siguen para logística y el admin; el registro y "Agregar pieza" de ventas no muestran el taller, y "Editar" de la pieza lo muestra como texto. La BD lo exige: `assign_piece_workshop` rechaza a ventas y el trigger `pieces_guard_workshop` impide que ventas ponga o cambie el taller por cualquier otro camino (registro, copia de una cotización, edición o pieza nueva).
+
+### P54 · Estado "Parcialmente aprobada" (2026-10-12)
+- **Contexto:** el estado general pasaba de Registrada a Aprobada solo cuando se aprobaban todas las piezas vivas; mientras tanto la guía seguía como Registrada aunque el cliente ya hubiera aprobado parte.
+- **Respuesta (2026-10-12):** ✅ Nuevo estado general **Parcialmente aprobada**, entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no (y ninguna enviada al taller, que ya es En proceso). Se calcula de las piezas como los demás (§7.3) y solo avanza (P19).
+- **Cómo queda:** una restauración que salió de una cotización de WhatsApp con piezas Aprobadas y otras en Consulta nace Parcialmente aprobada (antes, Registrada; ajusta P49). Las piezas anuladas, rechazadas o sin arreglo no cuentan.
+
+### P55 · Vista de piezas para costear y poner precios (2026-10-12)
+- **Contexto:** la vista de piezas era una lista operativa sin montos ni fotos; el costo de servicio solo se ingresaba en "Piezas del taller" y el precio en el diálogo de cada pieza.
+- **Respuesta (2026-10-12):** ✅ (1) La tabla se ve **como una hoja de cálculo** con los datos importantes de la pieza y, **primero, su foto de antes**; **logística ingresa el costo de servicio** y **el admin, viéndolo, el precio de venta**. (2) Se filtra por **número de guía**. (3) Al entrar a una pieza se ve su **detalle completo**, con una opción **explícita para ir a la guía**.
+- **Cómo queda:** los montos siguen las reglas de cada rol: el costo de servicio lo ven admin y logística; el precio de venta, admin y ventas (solo el admin lo cambia, D58). La foto es la primera imagen "Antes" de la pieza; sin ella se indica "Sin foto de antes". El número de guía acepta "123", "RES-123" o "RES-00123".
+
+### P56 · Quitar el estado "En proceso" (2026-10-13)
+- **Respuesta (2026-10-13):** ✅ El estado general de la restauración ya no tiene "En proceso". Queda Registrada → Parcialmente aprobada → Aprobada → Parcialmente lista → Lista → Completada (y Anulada / Rechazada).
+- **Cómo queda:** mientras las piezas están en el taller la guía sigue Aprobada (o Parcialmente aprobada); pasa a Parcialmente lista cuando vuelve la primera. Las guías que estaban En proceso pasaron a Aprobada o Parcialmente aprobada. El valor sigue en el enum de la BD sin uso (un check impide guardarlo).
+
 ---
 
 ## Preguntas para el negocio
@@ -610,6 +651,14 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D55 | La orden de Shopify de una empresa va con el contacto de la restauración; si no eligieron uno, con su primer contacto activo. Sin contactos, la orden queda en error hasta agregar uno | P14, Paso 9.1 |
 | D56 | Fotos y archivos: JPG, PNG, WebP, HEIC y PDF hasta 10 MB, fotos reducidas a 1920 px en el navegador, sin límite de cantidad, clasificación Antes / Después / Documento / Otro, a la restauración (foto general) o a una pieza; borran el admin y quien lo subió | P32, P42 |
 | D57 | Estado de pago automático: Pendiente, Parcial, Pagado y Reembolsado (todo devuelto). Al contado se sugiere el total al aprobar; al crédito, cualquier cliente; el tipo de pago se cambia solo sin pagos registrados | P28, P29 |
+| D58 | El precio de venta de la pieza no sale del servicio: nace "Sin asignar" y solo el admin lo asigna o cambia (ventas lo ve). La orden de Shopify espera a que todas las piezas que se cobran tengan precio. La copia de una cotización de WhatsApp conserva los precios cotizados | P51 |
+| D59 | Formulario de la pieza: servicio obligatorio; material, peso, medida y precio opcionales y en ese orden; descripción junto a las notas de la pieza. "Notas" de la restauración pasa a "Notas generales". "¿El precio incluye IGV?" parte de "No" (sigue obligatorio) y el total muestra subtotal, + IGV y total | P52, cambia P13 en el valor por defecto |
+| D60 | El taller de la pieza lo asignan o cambian solo logística y el admin; ventas lo ve. La BD lo exige | P53, ajusta P42 |
+| D61 | Estado general **Parcialmente aprobada** entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no | P54, ajusta §7.3 y P49 |
+| D62 | Vista de piezas tipo hoja: foto "Antes" primero, costo de servicio (logística y admin) y precio de venta (admin) en la tabla, filtro por número de guía y detalle de la pieza con acceso a su guía | P55 |
+| D63 | Arrastrar y soltar solo en los kanban de piezas, con las mismas reglas que los botones (máquina de estados por rol, nota, taller y pagos) y "Mover a…" como alternativa accesible. El kanban de guías no se arrastra: su estado se calcula de las piezas | Pedido del usuario (2026-10-13), Paso 12.5 |
+| D64 | Toda vista de lista se ve como una hoja de cálculo (tabla en escritorio; tarjetas solo en el celular donde ya las había). Las piezas de la guía van en tabla con un menú "Acciones" por fila; su línea de tiempo queda en el detalle de la pieza | Pedido del 2026-10-13 |
+| D65 | Sin estado general "En proceso": con piezas en el taller la guía queda Aprobada o Parcialmente aprobada | P56, ajusta §7.3 |
 
 ---
 
@@ -628,6 +677,13 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | 2026-10-06 | P48 | Cinco ubicaciones (Por WhatsApp, Sin enviar, En taller, En tienda, Entregada) y Anulada aparte; sin casilla "ya está en tienda"; restauración Rechazada vs Anulada; logística ve las rechazadas con piezas por devolver. |
 | 2026-10-12 | P28, P29 | Estados de pago según la propuesta (con Reembolsado); al contado se paga el total al aprobar; crédito para todos (lo elige ventas); el tipo de pago se cambia mientras no haya pagos. |
 | 2026-10-12 | P32 | Se acepta la propuesta de archivos: tipos, 10 MB, compresión a 1920 px, sin límite, cuatro clasificaciones; borran el admin y quien subió. |
+| 2026-10-12 | P51 | Precio de venta "Sin asignar" y separado del servicio; solo el admin lo asigna; la orden de Shopify espera los precios; la copia de una cotización de WhatsApp conserva los precios cotizados. |
+| 2026-10-12 | P52 | Servicio obligatorio; orden Material, Peso, Medida, Precio (opcionales); descripción junto a las notas de la pieza; "Notas generales"; IGV "No" por defecto con subtotal, + IGV y total. |
+| 2026-10-12 | P53 | El taller lo asignan solo logística y el admin; ventas lo ve sin cambiarlo. |
+| 2026-10-12 | P54 | Nuevo estado general Parcialmente aprobada (alguna pieza aprobada y otras todavía no). |
+| 2026-10-12 | P55 | Vista de piezas tipo hoja con foto, costo y precio; filtro por número de guía; detalle de la pieza con acceso a la guía. |
+| 2026-10-13 | D64 | "Todo lo que esté como vista lista debe ser como el Excel": las piezas de la guía en tabla con menú de acciones; la línea de tiempo, en el detalle de la pieza. |
+| 2026-10-13 | P56 | Se quita el estado general "En proceso". |
 | 2026-10-09 | P13 (cierre) | Si el precio no incluye IGV se suma el 18 % al cobro (total, adelanto y orden de Shopify); la misma regla para restauraciones y cotizaciones. |
 | 2026-10-08 | P50 | El cliente rechaza solo desde Espera respuesta cliente; una pieza en Observación queda Sin enviar (por reenviar al taller). |
 | 2026-10-07 | P49 | Al pasar una cotización de WhatsApp a restauración, cada pieza elige Consulta (por defecto, con nota por pieza) o Aprobada; no se salta a Espera respuesta cliente; la restauración nace Registrada y se aprueba como en oficina. |

@@ -48,7 +48,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
         id: p.id,
         code: p.code,
         number: p.number,
-        priceCents: toCents(Number(p.price)),
+        priceCents: p.price === null ? null : toCents(Number(p.price)),
         status: p.status,
         approvedAt: p.approved_at,
       })),

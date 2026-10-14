@@ -296,6 +296,19 @@ describe("order.create", () => {
     expect(fakeShopify.snapshot().orders).toEqual([]);
   });
 
+  it("si falta el precio de venta de una pieza aprobada no crea la orden (D58)", async () => {
+    const data = withCustomer();
+    data.pieces[0]!.priceCents = null;
+    const { repo } = memoryRepo(data);
+    expect(
+      await restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
+        job,
+        gateway,
+      ),
+    ).toEqual({ skipped: true });
+    expect(fakeShopify.snapshot().orders).toEqual([]);
+  });
+
   it("si la restauración no existe falla sin reintentos", async () => {
     const { repo } = memoryRepo(null);
     await expect(

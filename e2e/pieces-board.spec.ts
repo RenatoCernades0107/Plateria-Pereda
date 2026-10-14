@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { dragWithMouse } from "./support/drag";
 import { adminClient } from "./support/supabase";
 
 // Comparten las piezas y el taller sembrados: en serie.
@@ -229,6 +230,11 @@ test.describe("Vista de piezas", () => {
       name: "Acciones para las piezas elegidas",
     });
     await bar.getByRole("button", { name: "Recibir del taller" }).click();
+    // Se espera a que se guarde antes de navegar (si no, la acción se corta).
+    for (const piece of pieces)
+      await expect(page.getByTestId(`pieza-${piece.code}`)).toContainText(
+        "En tienda",
+      );
     await page.goto(`/piezas?q=Vuelta&listas=1`);
     await expect(page.getByText("2 piezas · Página 1 de 1")).toBeVisible();
     await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
@@ -271,5 +277,122 @@ test.describe("Vista de piezas", () => {
       );
     await expect(received).toContainText("Sin piezas");
     await expect(page).toHaveURL(/vista=kanban/);
+  });
+
+  test("en kanban arrastra una pieza de Aprobada a Interno eligiendo el taller", async ({
+    page,
+    loginAs,
+  }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    const { pieces } = await seedReceived(1, "Arrastre");
+    const code = pieces[0]!.code;
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=${clientName}&vista=kanban`);
+    const approved = page.getByTestId("columna-aprobada");
+    const card = approved.getByTestId(`tarjeta-${code}`);
+    await expect(card).toBeVisible();
+
+    await dragWithMouse(
+      page,
+      card.getByText("Arrastre 1"),
+      page.getByTestId("columna-enviada_taller"),
+      async () => {
+        // Logística no aprueba ni anula: esas columnas se atenúan.
+        await expect(page.getByTestId("columna-registrada")).toHaveAttribute(
+          "data-drop",
+          "bloqueada",
+        );
+        await expect(page.getByTestId("columna-anulada")).toHaveCount(0);
+      },
+    );
+    const dialog = page.getByRole("dialog", {
+      name: `Enviar al taller: ${code}`,
+    });
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .click();
+    await expect(
+      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+    ).toContainText(workshopName);
+    await page.reload();
+    await expect(
+      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+    ).toBeVisible();
+  });
+  test("tabla tipo hoja: logística pone el costo, el admin el precio; filtra por guía y abre la pieza (P55)", async ({
+    page,
+    loginAs,
+    makeAxeBuilder,
+  }) => {
+    const admin = adminClient();
+    const { data: r, error } = await admin
+      .from("restorations")
+      .insert({ client_id: clientId, payment_type: "contado" })
+      .select("id, code")
+      .single();
+    if (error) throw error;
+    restorationIds.push(r.id);
+    const { data: pieces } = await admin
+      .from("pieces")
+      .insert({
+        restoration_id: r.id,
+        description: "Tetera hoja",
+        service_name: "Baño de plata",
+        material_name: "Plata",
+        price: null,
+      } as never)
+      .select("id, code");
+    const code = pieces![0]!.code;
+    await seedReceived(1, "Otra guía");
+
+    // Logística: filtra por el número de la guía e ingresa el costo de servicio.
+    await loginAs("logistica");
+    await page.goto("/piezas");
+    await page.getByLabel("N.º de guía").fill(r.code.replace(/^RES-0*/, ""));
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page).toHaveURL(/guia=\d+/);
+    await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
+    const row = page.getByTestId(`pieza-${code}`);
+    await expect(row).toContainText("Baño de plata");
+    await expect(row).toContainText("Sin foto de antes");
+    await expect(
+      page.getByRole("columnheader", { name: "Precio venta" }),
+    ).toHaveCount(0);
+    await row.getByLabel(`Costo de servicio de ${code}`).fill("45");
+    await row.getByRole("button", { name: `Guardar costo de ${code}` }).click();
+    await expect(page.getByText(`Costo de ${code} guardado.`)).toBeVisible();
+
+    // Admin: ve el costo y pone el precio de venta.
+    await loginAs("admin");
+    await page.goto(`/piezas?guia=${encodeURIComponent(r.code)}`);
+    const adminRow = page.getByTestId(`pieza-${code}`);
+    await expect(
+      adminRow.getByLabel(`Costo de servicio de ${code}`),
+    ).toHaveValue("45.00");
+    await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
+    await adminRow
+      .getByRole("button", { name: `Guardar precio de ${code}` })
+      .click();
+    await expect(page.getByText(`Precio de ${code} guardado.`)).toBeVisible();
+    const serious = async () =>
+      (await makeAxeBuilder().analyze()).violations.filter((v) =>
+        ["critical", "serious"].includes(v.impact ?? ""),
+      );
+    expect(await serious()).toEqual([]);
+
+    // La pieza abre su detalle, con un acceso explícito a la guía.
+    await adminRow.getByRole("link", { name: code }).click();
+    await expect(page).toHaveURL(new RegExp(`/piezas/${pieces![0]!.id}$`));
+    await expect(
+      page.getByRole("heading", { level: 1, name: code }),
+    ).toBeVisible();
+    await expect(page.getByLabel(`Precio de venta de ${code}`)).toHaveValue(
+      "120.00",
+    );
+    expect(await serious()).toEqual([]);
+    await page.getByRole("link", { name: `Ver guía ${r.code}` }).click();
+    await expect(page).toHaveURL(new RegExp(`/restauraciones/${r.id}$`));
   });
 });

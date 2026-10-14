@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  role: "admin" as "admin" | "ventas",
   create: vi.fn(),
   revalidate: vi.fn(),
 }));
@@ -9,15 +10,19 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/auth", () => ({
   requirePermission: async () => {
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "ventas" };
+    return { id: "u1", role: mocks.role };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({}) }));
-vi.mock("./create", () => ({ createRestorationRecord: mocks.create }));
+vi.mock("./create", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./create")>()),
+  createRestorationRecord: mocks.create,
+}));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
+vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
 
 const { createRestoration } = await import("./actions");
-const { pieceToRpc } =
+const { pieceToRpc, withoutSalePrices, withoutWorkshops } =
   await vi.importActual<typeof import("./create")>("./create");
 
 const piece = {
@@ -25,7 +30,7 @@ const piece = {
   description: "Fuente ovalada",
   measure: "40 cm",
   material: { id: null, name: "Plata 950" },
-  service: { id: null, name: "" },
+  service: { id: null, name: "Limpieza" },
   weight: "820,5",
   price: "1,200.50",
   notes: "",
@@ -44,6 +49,7 @@ const input = {
 describe("createRestoration", () => {
   beforeEach(() => {
     mocks.forbidden = false;
+    mocks.role = "admin";
     mocks.create.mockReset().mockResolvedValue({ id: "r1", code: "RES-00001" });
     mocks.revalidate.mockReset();
   });
@@ -66,6 +72,45 @@ describe("createRestoration", () => {
       }),
     );
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones");
+  });
+
+  it("ventas registra las piezas sin precio de venta: lo asigna el admin (D58)", async () => {
+    mocks.role = "ventas";
+    expect(await createRestoration(input)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [expect.objectContaining({ priceCents: null })],
+      }),
+    );
+  });
+
+  it("ventas registra las piezas sin taller: lo asignan logística y el admin (D60)", async () => {
+    const withWorkshop = {
+      ...input,
+      pieces: [
+        { ...piece, workshopId: "00000000-0000-0000-0000-0000000000f1" },
+      ],
+    };
+    expect(await createRestoration(withWorkshop)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenLastCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [
+          expect.objectContaining({
+            workshopId: "00000000-0000-0000-0000-0000000000f1",
+          }),
+        ],
+      }),
+    );
+    mocks.role = "ventas";
+    expect(await createRestoration(withWorkshop)).toMatchObject({ ok: true });
+    expect(mocks.create).toHaveBeenLastCalledWith(
+      {},
+      expect.objectContaining({
+        pieces: [expect.objectContaining({ workshopId: null })],
+      }),
+    );
   });
 
   it("rechaza datos inválidos sin llamar a la BD", async () => {
@@ -101,7 +146,7 @@ describe("pieceToRpc", () => {
         description: "Fuente",
         measure: "",
         material: { id: "m1", name: "Plata" },
-        service: null,
+        service: { id: "s1", name: "Limpieza" },
         weightGrams: 12.5,
         priceCents: 120050,
         urgent: true,
@@ -113,8 +158,8 @@ describe("pieceToRpc", () => {
       measure: "",
       material_id: "m1",
       material_name: "Plata",
-      service_id: null,
-      service_name: "",
+      service_id: "s1",
+      service_name: "Limpieza",
       weight_grams: "12.50",
       price: "1200.50",
       urgent: true,
@@ -125,6 +170,22 @@ describe("pieceToRpc", () => {
     });
   });
 
+  it("una pieza sin precio de venta va sin precio (D58)", () => {
+    expect(
+      pieceToRpc({
+        workshopId: null,
+        description: "Fuente",
+        measure: "",
+        material: null,
+        service: { id: null, name: "Limpieza" },
+        weightGrams: null,
+        priceCents: null,
+        urgent: false,
+        notes: "",
+      }).price,
+    ).toBeNull();
+  });
+
   it("pasa el estado inicial y su nota de la copia desde WhatsApp (P49)", () => {
     expect(
       pieceToRpc({
@@ -132,7 +193,7 @@ describe("pieceToRpc", () => {
         description: "Fuente",
         measure: "",
         material: null,
-        service: null,
+        service: { id: null, name: "Limpieza" },
         weightGrams: null,
         priceCents: 1000,
         urgent: false,
@@ -144,5 +205,51 @@ describe("pieceToRpc", () => {
       status: "en_consulta",
       status_note: "Consultar al taller",
     });
+  });
+});
+
+describe("withoutSalePrices (D58)", () => {
+  const base = {
+    workshopId: null,
+    description: "Fuente",
+    measure: "",
+    material: null,
+    service: { id: null, name: "Limpieza" },
+    weightGrams: null,
+    urgent: false,
+    notes: "",
+  };
+
+  it("quita el precio de venta de las piezas", () => {
+    expect(withoutSalePrices([{ ...base, priceCents: 1000 }])).toEqual([
+      { ...base, priceCents: null },
+    ]);
+  });
+
+  it("en la copia conserva el precio cotizado y quita el de las piezas nuevas", () => {
+    const quoted = { ...base, priceCents: 1000, quoteItemId: "i1" };
+    const nueva = { ...base, priceCents: 500, quoteItemId: null };
+    expect(withoutSalePrices([quoted, nueva], { keepQuoted: true })).toEqual([
+      quoted,
+      { ...nueva, priceCents: null },
+    ]);
+  });
+});
+
+describe("withoutWorkshops (D60)", () => {
+  it("quita el taller de las piezas", () => {
+    const base = {
+      description: "Fuente",
+      measure: "",
+      material: null,
+      service: { id: null, name: "Limpieza" },
+      weightGrams: null,
+      priceCents: null,
+      urgent: false,
+      notes: "",
+    };
+    expect(withoutWorkshops([{ ...base, workshopId: "w1" }])).toEqual([
+      { ...base, workshopId: null },
+    ]);
   });
 });

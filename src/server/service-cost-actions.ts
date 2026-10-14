@@ -42,5 +42,7 @@ export async function setPieceServiceCost(
     };
   }
   revalidatePath("/talleres/[id]/piezas", "page");
+  revalidatePath("/piezas");
+  revalidatePath("/piezas/[id]", "page");
   return { ok: true };
 }

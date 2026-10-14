@@ -30,6 +30,8 @@ async function fillPiece(
   piece: { description: string; price: string },
 ) {
   const card = page.getByTestId(`pieza-${index}`);
+  // El servicio es obligatorio (D59).
+  await card.getByLabel("Servicio").fill("Limpieza");
   await card.getByLabel("Descripción").fill(piece.description);
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }
@@ -141,6 +143,10 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(page.getByText("Elige un cliente")).toBeVisible();
     await pickClient(page, clientName);
+    // Ventas conserva el precio cotizado; cambiarlo es cosa del admin (D58).
+    const price = page.getByTestId("pieza-1").getByLabel("Precio (S/)");
+    await expect(price).toHaveValue("100.00");
+    await expect(price).toBeDisabled();
     // Cada pieza elige su estado inicial (P49): nacen en Consulta y piden nota.
     await page.getByRole("button", { name: "Crear restauración" }).click();
     await expect(
@@ -158,17 +164,18 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
       timeout: 30_000,
     });
     await page.keyboard.press("Escape");
-    // Con una pieza en consulta no se aprueba sola.
+    // Una aprobada y otra en consulta: Parcialmente aprobada (P54).
     await expect(page.getByTestId("estado-restauracion")).toHaveText(
-      "Registrada",
+      "Parcialmente aprobada",
     );
     await expect(page.getByTestId("origen")).toContainText("WhatsApp");
     await expect(page.getByTestId("origen")).toContainText(/CWA-\d{5,}/);
     // Las piezas copiadas nacen "Por WhatsApp" hasta que llegan a la tienda (P48).
     const first = page.locator("[data-testid^='pieza-RES-']").first();
     await expect(first).toContainText("Por WhatsApp");
-    await first
-      .getByRole("button", { name: "Marcar llegada a tienda" })
+    await first.getByRole("button", { name: "Acciones" }).click();
+    await page
+      .getByRole("menuitem", { name: "Marcar llegada a tienda" })
       .click();
     await expect(first).toContainText("Sin enviar");
 
@@ -213,7 +220,9 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page.goto("/restauraciones/nueva?whatsapp=1");
     await page.getByLabel("Nombre (opcional)").fill(`Descartable ${run}`);
     await fillPiece(page, 1, { description: "Plato", price: "10" });
-    await page.getByLabel(/No, se suma el IGV/).check();
+    // Por defecto el precio no incluye IGV (D59).
+    await expect(page.getByLabel(/No, se suma el IGV/)).toBeChecked();
+    await expect(page.getByTestId("igv-en-vivo")).toHaveText("S/ 1.80");
     await page.getByRole("button", { name: "Registrar cotización" }).click();
     await expect(page).toHaveURL(/\/cotizaciones-whatsapp\/[0-9a-f-]{36}/, {
       timeout: 30_000,

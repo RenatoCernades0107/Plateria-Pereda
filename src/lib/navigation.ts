@@ -3,21 +3,24 @@ import {
   FileText,
   Gem,
   LayoutDashboard,
-  MessageCircle,
   Settings,
   ShieldCheck,
   UserCog,
   Users,
   Wrench,
-  type LucideIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import type { Permission } from "@/domain/permissions";
 
 export type NavItem = {
   title: string;
   href: string;
-  icon: LucideIcon;
+  /** Un ícono de lucide o uno propio (p. ej., el de WhatsApp). */
+  icon: ComponentType<{ className?: string }>;
+  /** Clases del ícono, p. ej., el verde de WhatsApp. */
+  iconClassName?: string;
   permission: Permission;
 };
 
@@ -43,7 +46,8 @@ export const NAV_ITEMS: NavItem[] = [
   {
     title: "Cotizaciones de WhatsApp",
     href: "/cotizaciones-whatsapp",
-    icon: MessageCircle,
+    icon: WhatsAppIcon,
+    iconClassName: "text-whatsapp-strong",
     permission: "cotizaciones-whatsapp.usar",
   },
   {

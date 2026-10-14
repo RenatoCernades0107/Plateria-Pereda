@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { WhatsappQuotesFiltersForm } from "@/components/whatsapp-quotes/whatsapp-quotes-filters-form";
@@ -29,6 +30,7 @@ export default async function CotizacionesWhatsappPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
+          icon={<WhatsAppIcon className="text-whatsapp-strong size-6" />}
           title="Cotizaciones de WhatsApp"
           description="Lo cotizado por WhatsApp, para volver a pedir piezas cuando el cliente confirme."
         />

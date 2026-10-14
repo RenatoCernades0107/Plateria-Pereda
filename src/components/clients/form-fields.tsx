@@ -31,6 +31,7 @@ export function TextField<T extends FieldValues>({
   inputMode,
   multiline = false,
   disabled = false,
+  placeholder,
 }: {
   form: UseFormReturn<T>;
   name: FieldPath<T>;
@@ -39,6 +40,7 @@ export function TextField<T extends FieldValues>({
   inputMode?: "numeric" | "tel" | "email";
   multiline?: boolean;
   disabled?: boolean;
+  placeholder?: string;
 }) {
   return (
     <FormField
@@ -53,6 +55,7 @@ export function TextField<T extends FieldValues>({
                 rows={2}
                 {...field}
                 disabled={disabled}
+                placeholder={placeholder}
                 value={String(field.value ?? "")}
               />
             ) : (
@@ -62,6 +65,7 @@ export function TextField<T extends FieldValues>({
                 autoComplete="off"
                 {...field}
                 disabled={disabled}
+                placeholder={placeholder}
                 value={String(field.value ?? "")}
               />
             )}

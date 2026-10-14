@@ -39,7 +39,16 @@ describe("CatalogManager", () => {
 
   it("muestra los servicios con su precio y estado", () => {
     render(<CatalogManager kind="services" items={services} />);
+    expect(
+      within(screen.getByRole("table", { name: "Servicios" }))
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Nombre", "Precio sugerido", "Estado", "Acciones"]);
+    expect(screen.getByTestId("catalogo-Limpieza").tagName).toBe("TR");
     expect(screen.getByTestId("catalogo-Limpieza")).toHaveTextContent(
+      "S/ 35.00",
+    );
+    expect(screen.getByTestId("catalogo-movil-Limpieza")).toHaveTextContent(
       "S/ 35.00",
     );
     const dorado = screen.getByTestId("catalogo-Dorado");
@@ -92,7 +101,12 @@ describe("CatalogManager", () => {
     });
     const user = userEvent.setup();
     render(<CatalogManager kind="services" items={services} />);
-    await user.click(screen.getByRole("button", { name: "Editar Limpieza" }));
+    // En jsdom se ven la tabla y la lista del celular: se usa la fila.
+    await user.click(
+      within(screen.getByTestId("catalogo-Limpieza")).getByRole("button", {
+        name: "Editar Limpieza",
+      }),
+    );
     expect(screen.getByLabelText("Precio sugerido (S/)")).toHaveValue("35.00");
     await user.click(screen.getByRole("button", { name: "Guardar" }));
     expect(mocks.updateCatalogItem).toHaveBeenCalledWith("services", "s1", {

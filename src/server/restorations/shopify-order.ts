@@ -40,7 +40,8 @@ export type OrderPiece = {
   id: string;
   code: string;
   number: number;
-  priceCents: Cents;
+  /** null: precio de venta sin asignar (D58); la orden espera a que lo tenga. */
+  priceCents: Cents | null;
   status: PieceStatus;
   approvedAt: string | null;
 };
@@ -97,10 +98,19 @@ export const orderTag = (code: string) => code;
 
 export const lineTitle = (pieceCode: string) => `Restauración ${pieceCode}`;
 
-/** Piezas que van a la orden: las que se cobran, en orden. */
-export function billablePieces(pieces: readonly OrderPiece[]): OrderPiece[] {
+type BillablePiece = OrderPiece & { priceCents: Cents };
+
+/**
+ * Piezas que van a la orden: las que se cobran, en orden. La orden se crea cuando
+ * todas tienen precio (D58), así que una sin precio no llega aquí; si llegara, se
+ * omite en vez de cobrarla en 0.
+ */
+export function billablePieces(pieces: readonly OrderPiece[]): BillablePiece[] {
   return pieces
-    .filter((p) => !isClosedStatus(p.status))
+    .filter(
+      (p): p is BillablePiece =>
+        !isClosedStatus(p.status) && p.priceCents !== null,
+    )
     .sort((a, b) => a.number - b.number);
 }
 
@@ -279,7 +289,10 @@ function domainPieces(data: OrderRestoration): DomainOrderPiece[] {
     .map((p) => ({
       id: p.id,
       code: p.code,
-      priceCents: priceWithIgv(p.priceCents, data.pricesIncludeIgv),
+      priceCents:
+        p.priceCents === null
+          ? null
+          : priceWithIgv(p.priceCents, data.pricesIncludeIgv),
       status: p.status,
       approved: p.approvedAt !== null,
     }));
@@ -351,11 +364,13 @@ export function restorationOrderHandlers(
         };
       }
       // Cambió desde que se encoló (p. ej., se agregó una pieza): la BD vuelve a
-      // encolar la orden cuando todas las piezas que se cobran estén aprobadas.
+      // encolar la orden cuando todas las piezas que se cobran estén aprobadas y con
+      // precio (D58).
       const ready = isReadyForShopifyOrder(
         data.pieces.map((p) => ({
           status: p.status,
           approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
+          priceCents: p.priceCents,
         })),
       );
       if (!ready) {

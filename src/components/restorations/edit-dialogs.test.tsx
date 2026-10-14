@@ -41,7 +41,7 @@ const piece: PieceDetail = {
   description: "Fuente",
   measure: "40 cm",
   materialName: "Plata",
-  serviceName: "",
+  serviceName: "Limpieza",
   weightGrams: 820.5,
   workshopId: null,
   workshopName: null,
@@ -100,6 +100,28 @@ describe("PieceDialog", () => {
     );
   });
 
+  it("muestra la descripción y las notas antes que el servicio y los datos cortos", async () => {
+    const user = userEvent.setup();
+    render(<PieceDialog restorationId="r1" {...props} />);
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    const dialog = within(screen.getByRole("dialog"));
+    const order = [
+      "Descripción",
+      "Notas de la pieza",
+      "Servicio",
+      "Material",
+      "Peso (g)",
+      "Medida",
+      "Precio (S/)",
+    ].map((label) => dialog.getByLabelText(label));
+    order.slice(1).forEach((field, i) => {
+      expect(
+        order[i]!.compareDocumentPosition(field) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
   it("agrega una pieza y muestra el error de la BD", async () => {
     mocks.addPiece.mockResolvedValue({ error: "No se agregan piezas" });
     const user = userEvent.setup();
@@ -111,13 +133,111 @@ describe("PieceDialog", () => {
     await user.click(
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
+    // El servicio es obligatorio (D59).
+    expect(
+      await within(dialog).findByText("Elige o escribe el servicio"),
+    ).toBeVisible();
+    expect(mocks.addPiece).not.toHaveBeenCalled();
+    await user.type(within(dialog).getByLabelText("Servicio"), "Pulido");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Agregar pieza" }),
+    );
     expect(mocks.addPiece).toHaveBeenCalledWith(
       "r1",
-      expect.objectContaining({ description: "Azucarera", price: "64.5" }),
+      expect.objectContaining({
+        description: "Azucarera",
+        service: { id: null, name: "Pulido" },
+        price: "64.5",
+      }),
     );
     expect(
       await within(dialog).findByText("No se agregan piezas"),
     ).toBeVisible();
+  });
+});
+
+describe("PieceDialog: taller (D60)", () => {
+  const SALES = [
+    "description",
+    "service",
+    "measure",
+    "material",
+    "weight",
+    "notes",
+    "urgent",
+  ] as const;
+
+  it("ventas ve el taller asignado como texto, sin poder cambiarlo", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{ ...piece, workshopId: "w9", workshopName: "Taller Viejo" }}
+        editable={SALES}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Taller")).toBeNull();
+    expect(within(dialog).getByTestId("taller-solo-lectura")).toHaveTextContent(
+      "Taller Viejo",
+    );
+    expect(
+      within(dialog).getByText("Lo asignan logística y el administrador."),
+    ).toBeVisible();
+  });
+
+  it("ventas no elige taller al agregar una pieza; el admin sí", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <PieceDialog restorationId="r1" editable={SALES} {...props} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    expect(within(screen.getByRole("dialog")).queryByText("Taller")).toBeNull();
+    unmount();
+
+    render(
+      <PieceDialog
+        restorationId="r1"
+        workshops={[{ id: "w1", name: "Taller Central" }]}
+        materials={[]}
+        services={[]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
+    expect(
+      within(screen.getByRole("dialog")).getByLabelText("Taller"),
+    ).toBeEnabled();
+  });
+});
+
+describe("PieceDialog: precio de venta sin asignar (D58)", () => {
+  it("una pieza sin precio muestra «Sin asignar» y se guarda sin precio", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{ ...piece, priceCents: null }}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const price = within(dialog).getByLabelText("Precio (S/)");
+    expect(price).toHaveValue("");
+    expect(price).toHaveAttribute("placeholder", "Sin asignar");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ price: "" }),
+    );
   });
 });
 
@@ -146,6 +266,7 @@ describe("EditRestorationDialog", () => {
     );
     await user.click(screen.getByRole("button", { name: "Editar" }));
     const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Notas generales")).toBeVisible();
     expect(
       within(dialog).getByLabelText("Adelanto (%) (opcional)"),
     ).toHaveValue("30");

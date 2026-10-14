@@ -6,8 +6,9 @@ import { FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { IGV_CHOICE_LABELS } from "@/domain/igv";
 
 /**
- * "¿El precio incluye IGV?" (P13): dos opciones sin valor por defecto, para que se
- * responda siempre. El valor del formulario es "si", "no" o "" (sin responder).
+ * "¿El precio incluye IGV?" (P13): dos opciones, obligatorio. Los formularios nuevos
+ * parten de "No" (se suma el IGV, D59). El valor del formulario es "si", "no" o ""
+ * (sin responder).
  */
 export function IgvField<T extends FieldValues>({
   form,

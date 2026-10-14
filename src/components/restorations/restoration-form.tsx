@@ -15,6 +15,7 @@ import {
 import { FormAlert } from "@/components/auth/form-alert";
 import { ClientPicker } from "@/components/clients/client-picker";
 import { TextField } from "@/components/clients/form-fields";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -43,6 +44,7 @@ import {
   type PaymentType,
 } from "@/domain/money";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
+import { PIECE_FREE_FIELDS, SALE_PRICE_HINT } from "@/domain/restoration-edit";
 import { cn } from "@/lib/utils";
 import {
   COPY_INITIAL_STATUSES,
@@ -79,7 +81,7 @@ type FormValues = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: string;
-  /** "¿El precio incluye IGV?" (P13): "" hasta que se responda. */
+  /** "¿El precio incluye IGV?" (P13): por defecto "no" en lo nuevo (D59). */
   pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   pieces: PieceFormInput[];
@@ -107,17 +109,26 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
 };
 
 /**
- * Total en vivo: suma los precios válidos (los vacíos o mal escritos cuentan 0) y,
- * si los precios no incluyen IGV, el 18 % de cada uno (P13).
+ * Totales en vivo: suman los precios válidos (los vacíos o mal escritos cuentan 0)
+ * y, si los precios no incluyen IGV, el 18 % de cada uno (P13). Sin precios todavía
+ * el IGV es 0 y crece a medida que el admin los asigna (D59).
  */
-export function liveTotal(
+export function liveTotals(
   pieces: readonly { price?: string }[],
   pricesIncludeIgv = true,
 ) {
   return igvTotals(
     pieces.map((p) => parseMoney(p.price ?? "") ?? 0),
     pricesIncludeIgv,
-  ).total;
+  );
+}
+
+/** Total en vivo (lo que paga el cliente). */
+export function liveTotal(
+  pieces: readonly { price?: string }[],
+  pricesIncludeIgv = true,
+) {
+  return liveTotals(pieces, pricesIncludeIgv).total;
 }
 
 function PieceCard({
@@ -129,6 +140,8 @@ function PieceCard({
   services,
   quoteOnly,
   showInitialStatus,
+  canSetPrice,
+  canAssignWorkshop,
   onDuplicate,
   onRemove,
 }: {
@@ -142,6 +155,10 @@ function PieceCard({
   quoteOnly: boolean;
   /** "Crear restauración" desde una cotización: estado inicial y nota (P49). */
   showInitialStatus: boolean;
+  /** Puede asignar el precio de venta (admin, D58). */
+  canSetPrice: boolean;
+  /** Puede elegir el taller (logística y admin, D60). */
+  canAssignWorkshop: boolean;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -184,8 +201,18 @@ function PieceCard({
             ) : null}
           </span>
         </button>
-        <span className="text-sm tabular-nums">
-          {price === null ? "—" : formatCents(price)}
+        <span
+          className={cn(
+            "text-sm tabular-nums",
+            price === null && "text-muted-foreground",
+          )}
+          data-testid="precio-pieza"
+        >
+          {price !== null
+            ? formatCents(price)
+            : quoteOnly
+              ? "—"
+              : "Sin asignar"}
         </span>
         <Button
           type="button"
@@ -218,8 +245,13 @@ function PieceCard({
           workshops={workshops}
           materials={materials}
           services={services}
-          showWorkshop={!quoteOnly}
+          showWorkshop={!quoteOnly && canAssignWorkshop}
           showUrgent={!quoteOnly}
+          // La cotización de WhatsApp lleva el precio cotizado (obligatorio); en la
+          // restauración el precio de venta es opcional y solo lo asigna el admin (D58).
+          editable={quoteOnly || canSetPrice ? undefined : PIECE_FREE_FIELDS}
+          priceHint={SALE_PRICE_HINT}
+          pricePlaceholder={quoteOnly ? undefined : "Sin asignar"}
         />
       </div>
     </li>
@@ -341,7 +373,8 @@ function defaultsFor(
       customerPhone: "",
       paymentType: "sin_definir",
       depositPercent: String(defaultDepositPercent),
-      pricesIncludeIgv: "",
+      // Por defecto el precio no incluye IGV: se suma el 18 % (D59).
+      pricesIncludeIgv: "no",
       notes: "",
       pieces: [EMPTY_PIECE],
     };
@@ -374,12 +407,18 @@ export function RestorationForm({
   materials,
   services,
   mode = { kind: "nueva" },
+  canSetPrice = false,
+  canAssignWorkshop = false,
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
   materials: CatalogOption[];
   services: CatalogOption[];
   mode?: RestorationFormMode;
+  /** Puede asignar el precio de venta de las piezas (solo admin, D58). */
+  canSetPrice?: boolean;
+  /** Puede elegir el taller de las piezas (logística y admin, D60). */
+  canAssignWorkshop?: boolean;
 }) {
   const router = useRouter();
   const quote = mode.kind === "nueva" ? null : mode.quote;
@@ -414,7 +453,8 @@ export function RestorationForm({
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
   const withoutIgv = values.pricesIncludeIgv === "no";
-  const total = liveTotal(values.pieces ?? [], !withoutIgv);
+  const totals = liveTotals(values.pieces ?? [], !withoutIgv);
+  const total = totals.total;
   const paymentType = values.paymentType ?? "sin_definir";
   const percent = Number(values.depositPercent);
   const deposit =
@@ -477,6 +517,12 @@ export function RestorationForm({
     quoteMode.current = on;
     setViaWhatsapp(on);
     form.clearErrors();
+    // Sin permiso, la restauración no lleva el precio cotizado (D58).
+    if (!on && !canSetPrice) {
+      (form.getValues("pieces") ?? []).forEach((_, i) =>
+        form.setValue(`pieces.${i}.price`, ""),
+      );
+    }
   };
 
   /** Elegir o quitar una pieza cotizada en la copia. */
@@ -562,7 +608,8 @@ export function RestorationForm({
               onChange={(e) => toggleWhatsapp(e.target.checked)}
             />
             <span className="space-y-0.5">
-              <span className="block text-sm font-medium">
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <WhatsAppIcon className="text-whatsapp-strong size-4" />
                 El pedido vino por WhatsApp
               </span>
               <span className="text-muted-foreground block text-sm">
@@ -673,8 +720,10 @@ export function RestorationForm({
             </h2>
             <p className="text-muted-foreground text-sm">
               Elige las que el cliente pidió y, en cada pieza, si pasa a
-              Consulta o Aprobada. Puedes ajustar el precio o agregar piezas
-              nuevas abajo.
+              Consulta o Aprobada.{" "}
+              {canSetPrice
+                ? "Puedes ajustar el precio o agregar piezas nuevas abajo."
+                : "Las piezas pedidas conservan el precio cotizado; las nuevas quedan sin precio de venta hasta que lo asigne el administrador."}
             </p>
             <ul className="divide-y rounded-lg border">
               {mode.quote.items.map((item) => (
@@ -730,12 +779,19 @@ export function RestorationForm({
                 services={services}
                 quoteOnly={viaWhatsapp}
                 showInitialStatus={mode.kind === "copia"}
-                onDuplicate={() =>
+                canSetPrice={canSetPrice}
+                canAssignWorkshop={canAssignWorkshop}
+                onDuplicate={() => {
+                  const copy = structuredClone(
+                    form.getValues(`pieces.${index}`),
+                  );
                   pieces.insert(index + 1, {
-                    ...structuredClone(form.getValues(`pieces.${index}`)),
+                    ...copy,
+                    // Una pieza nueva no trae precio cotizado (D58).
+                    price: viaWhatsapp || canSetPrice ? copy.price : "",
                     quoteItemId: null,
-                  })
-                }
+                  });
+                }}
                 onRemove={() => pieces.remove(index)}
               />
             ))}
@@ -760,10 +816,15 @@ export function RestorationForm({
         {viaWhatsapp ? (
           <section className="space-y-4" aria-labelledby="notas">
             <h2 id="notas" className="sr-only">
-              Notas
+              Notas generales
             </h2>
             <IgvField form={form} name="pricesIncludeIgv" />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
           </section>
         ) : (
           <section className="space-y-4" aria-labelledby="pago">
@@ -805,15 +866,40 @@ export function RestorationForm({
               ) : null}
             </div>
             <IgvField form={form} name="pricesIncludeIgv" />
-            <TextField form={form} name="notes" label="Notas" multiline />
+            <TextField
+              form={form}
+              name="notes"
+              label="Notas generales"
+              multiline
+            />
           </section>
         )}
 
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
-          <dl className="flex gap-6">
+          <dl className="flex flex-wrap gap-x-6 gap-y-2">
+            {withoutIgv ? (
+              <>
+                <div>
+                  <dt className="text-muted-foreground text-xs">Subtotal</dt>
+                  <dd className="tabular-nums" data-testid="subtotal-en-vivo">
+                    {formatCents(totals.taxableBase)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground text-xs">
+                    + IGV ({IGV_PERCENT} %)
+                  </dt>
+                  <dd className="tabular-nums" data-testid="igv-en-vivo">
+                    {formatCents(totals.igv)}
+                  </dd>
+                </div>
+              </>
+            ) : null}
             <div>
               <dt className="text-muted-foreground text-xs">
-                {withoutIgv ? `Total (con IGV ${IGV_PERCENT} %)` : "Total"}
+                {values.pricesIncludeIgv === "si"
+                  ? "Total (IGV incluido)"
+                  : "Total"}
               </dt>
               <dd
                 className="text-heading font-semibold tabular-nums"

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { pieceAction, pieceActionNames } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
 // Comparten el cliente y el taller de prueba: en serie.
@@ -37,6 +38,8 @@ async function seedRestoration(pieces: NewPiece[]) {
       .insert({
         restoration_id: r.id,
         description: p.description,
+        // El servicio es obligatorio al editar la pieza (D59).
+        service_name: "Limpieza",
         price: 10,
         arrived_at: p.arrived ? new Date().toISOString() : null,
       } as never)
@@ -112,7 +115,7 @@ test.describe("Estados de las piezas", () => {
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code).getByRole("button", { name: "Aprobar" }).click();
+    await pieceAction(page, code, "Aprobar");
     await expect(card(page, code)).toContainText("Aprobada");
     await expect(card(page, code)).toContainText("Sin enviar");
     await expect(restorationStatus(page)).toHaveText("Aprobada");
@@ -120,13 +123,17 @@ test.describe("Estados de las piezas", () => {
     // Las piezas de oficina ya están en la tienda: no hay "Marcar llegada" (P48).
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
+    // Logística sí asigna el taller (D60).
     await expect(
-      card(page, code).getByRole("button", { name: "Marcar llegada a tienda" }),
-    ).toHaveCount(0);
+      page
+        .getByRole("region", { name: "Acciones para las piezas elegidas" })
+        .getByRole("button", { name: "Asignar taller" }),
+    ).toBeVisible();
+    expect(await pieceActionNames(page, code)).not.toContain(
+      "Marcar llegada a tienda",
+    );
 
-    await card(page, code)
-      .getByRole("button", { name: "Enviar al taller" })
-      .click();
+    await pieceAction(page, code, "Enviar al taller");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
@@ -135,12 +142,11 @@ test.describe("Estados de las piezas", () => {
       .click();
     await expect(card(page, code)).toContainText("Interno");
     await expect(card(page, code)).toContainText("En taller");
-    await expect(card(page, code)).toContainText(`Taller: ${workshopName}`);
-    await expect(restorationStatus(page)).toHaveText("En proceso");
+    await expect(card(page, code)).toContainText(workshopName);
+    // Sin "En proceso" (P56): mientras está en el taller la guía sigue Aprobada.
+    await expect(restorationStatus(page)).toHaveText("Aprobada");
 
-    await card(page, code)
-      .getByRole("button", { name: "Recibir del taller" })
-      .click();
+    await pieceAction(page, code, "Recibir del taller");
     await expect(card(page, code)).toContainText("En tienda");
     await expect(card(page, code)).toContainText("Interno");
     await expect(restorationStatus(page)).toHaveText("Lista");
@@ -148,7 +154,7 @@ test.describe("Estados de las piezas", () => {
     // La entrega la hace ventas: completada, logística ya no la ve (D24).
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code).getByRole("button", { name: "Entregar" }).click();
+    await pieceAction(page, code, "Entregar");
     await expect(card(page, code)).toContainText("Entregada");
     await expect(restorationStatus(page)).toHaveText("Completada");
   });
@@ -165,9 +171,7 @@ test.describe("Estados de las piezas", () => {
     await page.goto(`/restauraciones/${r.id}`);
 
     for (const code of [`${r.code}-1`, `${r.code}-2`]) {
-      await card(page, code)
-        .getByRole("button", { name: "Poner en consulta" })
-        .click();
+      await pieceAction(page, code, "Poner en consulta");
       const dialog = page.getByRole("dialog");
       await dialog.getByRole("button", { name: /Confirmar/ }).click();
       await expect(
@@ -176,20 +180,14 @@ test.describe("Estados de las piezas", () => {
       await dialog.getByLabel("Nota (obligatoria)").fill("¿Se repara el asa?");
       await dialog.getByRole("button", { name: /Confirmar/ }).click();
       await expect(card(page, code)).toContainText("Consulta");
-      await card(page, code)
-        .getByRole("button", { name: "Esperar respuesta" })
-        .click();
+      await pieceAction(page, code, "Esperar respuesta");
       await expect(card(page, code)).toContainText("Espera respuesta cliente");
     }
 
-    await card(page, `${r.code}-1`)
-      .getByRole("button", { name: "Aprobar" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
 
-    await card(page, `${r.code}-2`)
-      .getByRole("button", { name: "Rechazar" })
-      .click();
+    await pieceAction(page, `${r.code}-2`, "Rechazar");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("El cliente no aceptó");
     await dialog.getByRole("button", { name: "Confirmar: Rechazar" }).click();
@@ -208,9 +206,7 @@ test.describe("Estados de las piezas", () => {
     ]);
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, `${r.code}-1`)
-      .getByRole("button", { name: "Aprobar" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
     await expect(card(page, `${r.code}-1`)).toContainText("Sin enviar");
   });
@@ -228,7 +224,7 @@ test.describe("Estados de las piezas", () => {
     const code = `${r.code}-1`;
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code).getByRole("button", { name: "Observar" }).click();
+    await pieceAction(page, code, "Observar");
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("Falta pulir el borde");
     await dialog.getByRole("button", { name: "Confirmar: Observar" }).click();
@@ -238,9 +234,7 @@ test.describe("Estados de las piezas", () => {
 
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code)
-      .getByRole("button", { name: "Enviar al taller" })
-      .click();
+    await pieceAction(page, code, "Enviar al taller");
     dialog = page.getByRole("dialog");
     // El taller ya asignado viene elegido.
     await dialog
@@ -258,9 +252,7 @@ test.describe("Estados de las piezas", () => {
     const code = `${r.code}-1`;
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code)
-      .getByRole("button", { name: "Poner en consulta" })
-      .click();
+    await pieceAction(page, code, "Poner en consulta");
     await page
       .getByRole("dialog")
       .getByLabel("Nota (obligatoria)")
@@ -270,15 +262,16 @@ test.describe("Estados de las piezas", () => {
       .getByRole("button", { name: /Confirmar/ })
       .click();
     await expect(card(page, code)).toContainText("Consulta");
-    await card(page, code)
-      .getByRole("button", { name: "Esperar respuesta" })
-      .click();
+    await pieceAction(page, code, "Esperar respuesta");
     await expect(card(page, code)).toContainText("Espera respuesta");
-    await card(page, code).getByRole("button", { name: "Aprobar" }).click();
+    await pieceAction(page, code, "Aprobar");
     await expect(card(page, code)).toContainText("Aprobada");
 
-    await page.reload();
-    const timeline = card(page, code).getByTestId("linea-tiempo");
+    // La línea de tiempo está en el detalle de la pieza (/piezas/[id]).
+    await card(page, code).getByRole("link", { name: code }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(code);
+    const piecePath = new URL(page.url()).pathname;
+    const timeline = page.getByTestId("linea-tiempo");
     await timeline.getByText("Línea de tiempo").click();
     const events = timeline.getByTestId("evento");
     await expect(events).toHaveCount(4);
@@ -291,6 +284,7 @@ test.describe("Estados de las piezas", () => {
       "(en curso)",
     );
 
+    await page.goto(`/restauraciones/${r.id}`);
     await page.getByRole("tab", { name: "Historial" }).click();
     await expect(page.getByTestId("resumen-estados")).toContainText(
       "Espera respuesta cliente → Aprobada",
@@ -308,7 +302,7 @@ test.describe("Estados de las piezas", () => {
       } as never)
       .eq("restoration_id", r.id);
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, code).getByRole("button", { name: "Observar" }).click();
+    await pieceAction(page, code, "Observar");
     await page
       .getByRole("dialog")
       .getByLabel("Nota (obligatoria)")
@@ -320,9 +314,10 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, code)).toContainText("Observación");
 
     await loginAs("logistica");
-    await page.goto(`/restauraciones/${r.id}`);
-    await expect(card(page, code).getByTestId("linea-tiempo")).toHaveCount(0);
-    const summary = card(page, code).getByTestId("resumen-logistica");
+    await page.goto(piecePath);
+    await expect(page.getByTestId("resumen-logistica")).toBeVisible();
+    await expect(page.getByTestId("linea-tiempo")).toHaveCount(0);
+    const summary = page.getByTestId("resumen-logistica");
     await expect(summary).toContainText("Días en taller: 0 días");
     await expect(summary).toContainText(
       "Última observación: Mancha en la tapa",
@@ -344,6 +339,10 @@ test.describe("Estados de las piezas", () => {
       name: "Acciones para las piezas elegidas",
     });
     await expect(bar).toContainText("2 piezas elegidas");
+    // El taller lo asignan logística y el admin (D60).
+    await expect(
+      bar.getByRole("button", { name: "Asignar taller" }),
+    ).toHaveCount(0);
     await bar.getByLabel("Cambiar estado a…").click();
     await page.getByRole("option", { name: "Anular" }).click();
     await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
@@ -386,21 +385,16 @@ test.describe("Estados de las piezas", () => {
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
     // Logística no consulta, aprueba ni anula; la pieza ya está en la tienda (P48).
-    await expect(
-      page.getByRole("group", { name: `Acciones de ${r.code}-1` }),
-    ).toHaveCount(0);
+    // Su menú solo lleva al detalle de la pieza.
+    expect(await pieceActionNames(page, `${r.code}-1`)).toEqual([
+      "Ver detalle",
+    ]);
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    const enTienda = page.getByRole("group", {
-      name: `Acciones de ${r.code}-2`,
-    });
-    await expect(
-      enTienda.getByRole("button", { name: "Anular" }),
-    ).toBeVisible();
-    await expect(
-      enTienda.getByRole("button", { name: "Enviar al taller" }),
-    ).toHaveCount(0);
+    const enTienda = await pieceActionNames(page, `${r.code}-2`);
+    expect(enTienda).toContain("Anular");
+    expect(enTienda).not.toContain("Enviar al taller");
   });
 
   test("rechazo, sin arreglo desde Interno y devolución al cliente (P47, P50)", async ({
@@ -420,9 +414,7 @@ test.describe("Estados de las piezas", () => {
     ]);
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, `${r.code}-1`)
-      .getByRole("button", { name: "Rechazar" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Rechazar");
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("No acepta el precio");
     await dialog.getByRole("button", { name: "Confirmar: Rechazar" }).click();
@@ -432,9 +424,7 @@ test.describe("Estados de las piezas", () => {
 
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, `${r.code}-2`)
-      .getByRole("button", { name: "No tiene arreglo" })
-      .click();
+    await pieceAction(page, `${r.code}-2`, "No tiene arreglo");
     dialog = page.getByRole("dialog");
     await dialog
       .getByLabel("Nota (obligatoria)")
@@ -445,15 +435,12 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, `${r.code}-2`)).toContainText("No tiene arreglo");
     await expect(card(page, `${r.code}-2`)).toContainText("En tienda");
 
-    await card(page, `${r.code}-1`)
-      .getByRole("button", { name: "Devolver al cliente" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Devolver al cliente");
     await expect(card(page, `${r.code}-1`)).toContainText("Entregada");
-    await expect(
-      card(page, `${r.code}-1`).getByRole("button", {
-        name: "Devolver al cliente",
-      }),
-    ).toHaveCount(0);
+    // El menú se actualiza cuando la página trae el cambio guardado.
+    await expect
+      .poll(() => pieceActionNames(page, `${r.code}-1`))
+      .not.toContain("Devolver al cliente");
   });
 
   test("ventas marca una pieza como urgente", async ({ page, loginAs }) => {
@@ -461,8 +448,15 @@ test.describe("Estados de las piezas", () => {
     const code = `${r.code}-1`;
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await page.getByRole("button", { name: `Editar pieza ${code}` }).click();
+    await pieceAction(page, code, "Editar");
     const dialog = page.getByRole("dialog");
+    // Ventas ve el taller pero no lo cambia (D60).
+    await expect(dialog.getByTestId("taller-solo-lectura")).toContainText(
+      "Sin asignar",
+    );
+    await expect(dialog.getByRole("combobox", { name: "Taller" })).toHaveCount(
+      0,
+    );
     await dialog.getByLabel("Urgente").check();
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(card(page, code)).toContainText("Urgente");
@@ -477,9 +471,7 @@ test.describe("Estados de las piezas", () => {
     const r = await seedRestoration([{ description: "Anillo móvil" }]);
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await card(page, `${r.code}-1`)
-      .getByRole("button", { name: "Aprobar" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Aprobar");
     await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth,

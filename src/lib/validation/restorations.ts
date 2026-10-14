@@ -5,8 +5,11 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
- * P22: medida libre; material y servicio del catálogo o escritos libremente; peso
- * en gramos opcional; precio obligatorio; taller opcional al registrar.
+ * P22 y D59: el servicio (del catálogo o escrito libremente) y la descripción son
+ * obligatorios; material, peso en gramos, medida y precio son opcionales; taller
+ * opcional al registrar. El precio de venta vacío queda "Sin asignar" (lo asigna el
+ * admin, D58); en las cotizaciones de WhatsApp es obligatorio (es lo que se le
+ * cotiza al cliente).
  * Lo obligatorio se define aquí (no en la BD) para cambiarlo sin migraciones.
  */
 
@@ -57,11 +60,27 @@ const catalogChoice = z
     return null;
   });
 
-const price = z
+/** Servicio de la pieza (D59): obligatorio, del catálogo o escrito libremente. */
+const requiredService = z
+  .object({ id: optionalId, name: line(100) })
+  .transform(({ id, name }, ctx) => {
+    if (!name) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["name"],
+        message: "Elige o escribe el servicio",
+      });
+      return z.NEVER;
+    }
+    return { id, name };
+  });
+
+/** Monto en céntimos; vacío = null. */
+const money = z
   .string()
   .trim()
-  .min(1, "Ingresa el precio")
   .transform((value, ctx) => {
+    if (value === "") return null;
     const cents = parseMoney(value);
     if (cents === null) {
       ctx.addIssue({
@@ -72,6 +91,17 @@ const price = z
     }
     return cents;
   });
+
+/** Precio cotizado (cotización de WhatsApp): obligatorio. */
+const requiredPrice = z
+  .string()
+  .trim()
+  .min(1, "Ingresa el precio")
+  .pipe(money)
+  .transform((cents) => cents as number);
+
+/** Precio de venta de la pieza (D58): vacío = sin asignar (null). */
+const optionalPrice = money;
 
 /** Peso en gramos (opcional, hasta 2 decimales). */
 const weight = z
@@ -84,26 +114,37 @@ const weight = z
   .transform((v) => (v === "" ? null : Number(v.replace(",", "."))))
   .refine((v) => v === null || v > 0, "El peso debe ser mayor que 0");
 
+const pieceFields = {
+  workshopId: optionalId,
+  description: line(300).pipe(
+    z.string().min(1, "Describe la pieza (qué es y cómo está)"),
+  ),
+  measure: line(100),
+  material: catalogChoice,
+  service: requiredService,
+  weight,
+  /** Marca "Urgente" (P47): no es un estado. */
+  urgent: z.boolean().default(false),
+  /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */
+  quoteItemId: optionalId.optional(),
+  notes: notes(1000),
+  /** Solo en "Crear restauración" desde una cotización (P49). */
+  initialStatus: z.enum(COPY_INITIAL_STATUSES).optional(),
+  statusNote: notes(1000).optional(),
+};
+
+/** Pieza de una restauración: el precio de venta puede quedar sin asignar (D58). */
 export const pieceSchema = z
-  .object({
-    workshopId: optionalId,
-    description: line(300).pipe(
-      z.string().min(1, "Describe la pieza (qué es y cómo está)"),
-    ),
-    measure: line(100),
-    material: catalogChoice,
-    service: catalogChoice,
-    weight,
-    price,
-    /** Marca "Urgente" (P47): no es un estado. */
-    urgent: z.boolean().default(false),
-    /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */
-    quoteItemId: optionalId.optional(),
-    notes: notes(1000),
-    /** Solo en "Crear restauración" desde una cotización (P49). */
-    initialStatus: z.enum(COPY_INITIAL_STATUSES).optional(),
-    statusNote: notes(1000).optional(),
-  })
+  .object({ ...pieceFields, price: optionalPrice })
+  .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
+    ...rest,
+    weightGrams,
+    priceCents,
+  }));
+
+/** Pieza de una cotización de WhatsApp: el precio cotizado es obligatorio. */
+export const quotePieceSchema = z
+  .object({ ...pieceFields, price: requiredPrice })
   .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
     ...rest,
     weightGrams,
@@ -131,8 +172,8 @@ const depositPercent = z.preprocess(
 );
 
 /**
- * "¿El precio incluye IGV?" (P13): se responde siempre, sin valor por defecto. Si no
- * lo incluye, cada pieza se cobra con el 18 % encima.
+ * "¿El precio incluye IGV?" (P13): obligatorio. Los formularios nuevos parten de
+ * "No" (D59); si no lo incluye, cada pieza se cobra con el 18 % encima.
  */
 export const pricesIncludeIgv = z
   .enum(["si", "no"], { error: "Indica si el precio incluye IGV" })
@@ -251,7 +292,10 @@ const quoteFields = {
   customerPhone: optionalPhone,
   pricesIncludeIgv,
   notes: notes(2000),
-  pieces: restorationFields.pieces,
+  pieces: z
+    .array(quotePieceSchema)
+    .min(1, "Agrega al menos una pieza")
+    .max(MAX_PIECES, `Máximo ${MAX_PIECES} piezas por restauración`),
 };
 
 /** Cotización de restauración por WhatsApp (P46): como el registro, pero el cliente es opcional. */

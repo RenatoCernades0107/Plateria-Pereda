@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { FileGallery } from "@/components/files/file-gallery";
 import { FileUploader } from "@/components/files/file-uploader";
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
 import { RegisterPaymentDialog } from "@/components/payments/register-payment-dialog";
@@ -15,12 +16,14 @@ import {
   PieceDialog,
 } from "@/components/restorations/edit-dialogs";
 import { MoneySummary } from "@/components/restorations/money-summary";
+import { RestorationStatusSummary } from "@/components/restorations/piece-history";
 import {
-  LogisticsPieceSummary,
-  PieceTimelineDetails,
-  RestorationStatusSummary,
-} from "@/components/restorations/piece-history";
+  GUIDE_CARD_CLASS,
+  GuideEyebrow,
+  PiecesHeading,
+} from "@/components/restorations/guide-labels";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
+import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
 import { QuoteMessageButton } from "@/components/restorations/quote-message-button";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
@@ -28,19 +31,31 @@ import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ViewToggle } from "@/components/view-toggle";
+import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import {
   formatCents,
   PAYMENT_STATUS_LABELS,
   PAYMENT_TYPE_LABELS,
 } from "@/domain/money";
+import { firstBeforePhotos } from "@/domain/files";
 import { can } from "@/domain/permissions";
-import { igvLabel } from "@/domain/igv";
+import { igvLabel, igvTotals } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
-import { editableFields } from "@/domain/restoration-edit";
-import { RESTORATION_ORIGIN_LABELS } from "@/domain/restoration-status";
+import { editableFields, SALE_PRICE_HINT } from "@/domain/restoration-edit";
+import {
+  parseRestorationPiecesView,
+  restorationPiecesHref,
+} from "@/domain/restoration-pieces-view";
+import {
+  missingSalePrices,
+  RESTORATION_ORIGIN_LABELS,
+} from "@/domain/restoration-status";
 import { buildQuoteMessage } from "@/domain/whatsapp-quote";
+import { isClosedStatus } from "@/domain/piece-state-machine";
 import { serverEnv } from "@/lib/env.server";
+import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
@@ -48,7 +63,6 @@ import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
-  getLogisticsInfo,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -73,7 +87,10 @@ export default async function RestauracionDetallePage({
   });
   if (!restoration) notFound();
 
-  const justCreated = (await searchParams).registrada === "1";
+  const query = await searchParams;
+  const justCreated = query.registrada === "1";
+  // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
+  const piecesView = parseRestorationPiecesView(query);
   const settings = canSeeMoney ? await getSettings() : null;
   const message = settings
     ? buildQuoteMessage(settings.whatsappTemplate, {
@@ -83,7 +100,8 @@ export default async function RestauracionDetallePage({
         pieces: restoration.pieces.map((p) => ({
           description: p.description,
           service: p.serviceName || null,
-          priceCents: p.priceCents ?? 0,
+          // Sin precio de venta (D58) el mensaje dice "por definir".
+          priceCents: p.priceCents,
           status: p.status,
         })),
         pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
@@ -121,20 +139,17 @@ export default async function RestauracionDetallePage({
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
 
-  // Línea de tiempo (8.5): admin y ventas ven el historial; logística, solo los días
-  // en taller y la última observación (P42).
-  const now = new Date();
-  const [history, logistics, files, payments, methods, balanceDue] =
-    await Promise.all([
-      canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
-      canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
-      listRestorationFiles(restoration.id),
-      canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
-      canSeeMoney
-        ? listCatalog("payment_methods", { onlyActive: true })
-        : Promise.resolve([]),
-      getBalanceDue(restoration.id),
-    ]);
+  // Historial de estados (8.5, admin y ventas). La línea de tiempo de cada pieza está
+  // en su detalle (/piezas/[id]).
+  const [history, files, payments, methods, balanceDue] = await Promise.all([
+    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+    listRestorationFiles(restoration.id),
+    canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
+    canSeeMoney
+      ? listCatalog("payment_methods", { onlyActive: true })
+      : Promise.resolve([]),
+    getBalanceDue(restoration.id),
+  ]);
   // Pagos (11.2): monto sugerido y, al aprobar la última pieza sin orden aún, el
   // adelanto que la orden incluirá (al contado, el total; a cuenta, el %; P28).
   const money = restoration.money;
@@ -147,10 +162,19 @@ export default async function RestauracionDetallePage({
       })
     : null;
   const paymentMethods = methods.map((m) => ({ id: m.id, name: m.name }));
+  // Precios de venta que faltan para la orden de Shopify (D58).
+  const missingPrices = canSeeMoney
+    ? missingSalePrices(restoration.pieces, restoration.hasOrder)
+    : null;
+  // Sin todos los precios el adelanto aún no se conoce (ni se crea la orden al aprobar).
+  const unpricedPieces = restoration.pieces.some(
+    (p) => p.priceCents === null && !isClosedStatus(p.status),
+  );
   const approvalPayment =
     money &&
     suggested &&
     !restoration.hasOrder &&
+    !unpricedPieces &&
     can(user.role, "pagos.registrar") &&
     money.expectedDepositCents > money.paidCents
       ? { methods: paymentMethods, suggested }
@@ -163,23 +187,8 @@ export default async function RestauracionDetallePage({
       label: `${p.code} · ${p.description}`,
     })),
   ];
-  const extra = Object.fromEntries(
-    restoration.pieces.map((piece) => {
-      const info = logistics?.get(piece.id);
-      return [
-        piece.id,
-        canSeeMoney ? (
-          <PieceTimelineDetails
-            piece={piece}
-            events={history.filter((e) => e.pieceId === piece.id)}
-            now={now}
-          />
-        ) : info ? (
-          <LogisticsPieceSummary info={info} />
-        ) : null,
-      ];
-    }),
-  );
+  // Miniatura de cada pieza en la tabla: su primera foto "Antes".
+  const photos = firstBeforePhotos(files);
 
   return (
     <div className="space-y-6">
@@ -193,133 +202,180 @@ export default async function RestauracionDetallePage({
         </Link>
       </Button>
 
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-heading text-2xl font-semibold tracking-tight">
-            {restoration.code}
-          </h1>
-          <p className="text-sm">
-            <Link
-              href={`/clientes/${restoration.client.id}`}
-              className="font-medium underline-offset-4 hover:underline"
+      {/* La guía (la restauración) en su propia tarjeta; sus piezas van debajo. */}
+      <section
+        aria-labelledby="codigo-guia"
+        className={cn(GUIDE_CARD_CLASS, "space-y-4")}
+        data-testid="guia"
+      >
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <GuideEyebrow />
+            <h1
+              id="codigo-guia"
+              className="text-heading text-2xl font-semibold tracking-tight"
             >
-              {restoration.client.name}
-            </Link>
-            {restoration.contact ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · Contacto: {restoration.contact.name}
+              {restoration.code}
+            </h1>
+            <p className="text-sm">
+              <Link
+                href={`/clientes/${restoration.client.id}`}
+                className="font-medium underline-offset-4 hover:underline"
+              >
+                {restoration.client.name}
+              </Link>
+              {restoration.contact ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · Contacto: {restoration.contact.name}
+                </span>
+              ) : null}
+              {phone ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {formatPhone(phone)}
+                </span>
+              ) : null}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span data-testid="estado-restauracion" className="contents">
+                <RestorationStatusBadge status={restoration.status} />
               </span>
-            ) : null}
-            {phone ? (
-              <span className="text-muted-foreground">
-                {" "}
-                · {formatPhone(phone)}
-              </span>
-            ) : null}
-          </p>
+              {restoration.money ? (
+                <Badge variant="outline" data-testid="estado-pago">
+                  {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
+                </Badge>
+              ) : null}
+              <Badge variant="outline">
+                {PAYMENT_TYPE_LABELS[restoration.paymentType]}
+                {restoration.money?.depositPercent
+                  ? ` (${restoration.money.depositPercent} %)`
+                  : ""}
+              </Badge>
+              {restoration.money ? (
+                <Badge variant="outline" data-testid="igv">
+                  {igvLabel(restoration.money.pricesIncludeIgv)}
+                </Badge>
+              ) : null}
+              {restoration.shopifyOrderName ? (
+                // Con enlace al admin se ve como enlace (color, ícono y subrayado);
+                // sin él, es una insignia informativa más.
+                <Badge
+                  variant={orderUrl ? "outline" : "secondary"}
+                  asChild={Boolean(orderUrl)}
+                  className={
+                    orderUrl ? "border-primary/40 text-primary" : undefined
+                  }
+                >
+                  {orderUrl ? (
+                    <a
+                      href={orderUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Abrir la orden en Shopify (pestaña nueva)"
+                      data-testid="orden-shopify"
+                    >
+                      Orden {restoration.shopifyOrderName}
+                      <ExternalLink aria-hidden />
+                    </a>
+                  ) : (
+                    <span data-testid="orden-shopify">
+                      Orden {restoration.shopifyOrderName}
+                    </span>
+                  )}
+                </Badge>
+              ) : null}
+              {sync ? (
+                <SyncStatus
+                  jobId={sync.jobId}
+                  status={sync.status}
+                  lastError={sync.lastError}
+                />
+              ) : null}
+              <Badge
+                variant="outline"
+                data-testid="origen"
+                className={
+                  restoration.origin === "whatsapp"
+                    ? WHATSAPP_BADGE_CLASS
+                    : undefined
+                }
+              >
+                {restoration.origin === "whatsapp" ? <WhatsAppIcon /> : null}
+                {RESTORATION_ORIGIN_LABELS[restoration.origin]}
+                {quote ? (
+                  <>
+                    {" · desde "}
+                    <Link
+                      href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
+                      className="underline underline-offset-4"
+                    >
+                      {quote}
+                    </Link>
+                  </>
+                ) : null}
+              </Badge>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <span data-testid="estado-restauracion" className="contents">
-              <RestorationStatusBadge status={restoration.status} />
-            </span>
-            {restoration.money ? (
-              <Badge variant="outline" data-testid="estado-pago">
-                {PAYMENT_STATUS_LABELS[restoration.money.paymentStatus]}
-              </Badge>
-            ) : null}
-            <Badge variant="outline">
-              {PAYMENT_TYPE_LABELS[restoration.paymentType]}
-              {restoration.money?.depositPercent
-                ? ` (${restoration.money.depositPercent} %)`
-                : ""}
-            </Badge>
-            {restoration.money ? (
-              <Badge variant="outline" data-testid="igv">
-                {igvLabel(restoration.money.pricesIncludeIgv)}
-              </Badge>
-            ) : null}
-            {restoration.shopifyOrderName ? (
-              <Badge variant="secondary" asChild={Boolean(orderUrl)}>
-                {orderUrl ? (
-                  <a
-                    href={orderUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    data-testid="orden-shopify"
-                  >
-                    Orden {restoration.shopifyOrderName}
-                    <ExternalLink aria-hidden />
-                  </a>
-                ) : (
-                  <span data-testid="orden-shopify">
-                    Orden {restoration.shopifyOrderName}
-                  </span>
-                )}
-              </Badge>
-            ) : null}
-            {sync ? (
-              <SyncStatus
-                jobId={sync.jobId}
-                status={sync.status}
-                lastError={sync.lastError}
+            {editing ? (
+              <EditRestorationDialog
+                restorationId={restoration.id}
+                initial={{
+                  contactId: restoration.contact?.id ?? null,
+                  paymentType: restoration.paymentType,
+                  depositPercent: restoration.money?.depositPercent ?? null,
+                  pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
+                  notes: restoration.notes,
+                }}
+                contacts={editing.contacts}
+                hasOrder={restoration.hasOrder}
+                hasPayments={payments.length > 0}
               />
             ) : null}
-            <Badge variant="outline" data-testid="origen">
-              {RESTORATION_ORIGIN_LABELS[restoration.origin]}
-              {quote ? (
-                <>
-                  {" · desde "}
-                  <Link
-                    href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
-                    className="underline underline-offset-4"
-                  >
-                    {quote}
-                  </Link>
-                </>
-              ) : null}
-            </Badge>
+            {message ? (
+              <QuoteMessageButton
+                message={message}
+                phone={phone}
+                autoOpen={justCreated}
+              />
+            ) : null}
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {editing ? (
-            <EditRestorationDialog
-              restorationId={restoration.id}
-              initial={{
-                contactId: restoration.contact?.id ?? null,
-                paymentType: restoration.paymentType,
-                depositPercent: restoration.money?.depositPercent ?? null,
-                pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
-                notes: restoration.notes,
-              }}
-              contacts={editing.contacts}
-              hasOrder={restoration.hasOrder}
-              hasPayments={payments.length > 0}
-            />
-          ) : null}
-          {message ? (
-            <QuoteMessageButton
-              message={message}
-              phone={phone}
-              autoOpen={justCreated}
-            />
-          ) : null}
-        </div>
-      </header>
+        </header>
 
-      {restoration.money ? (
-        <div className="space-y-1">
-          <MoneySummary
-            totalCents={restoration.money.totalCents}
-            paidCents={restoration.money.paidCents}
-          />
-          {restoration.money.expectedDepositCents > 0 ? (
-            <p className="text-muted-foreground text-sm">
-              Adelanto esperado:{" "}
-              {formatCents(restoration.money.expectedDepositCents)}
+        {restoration.money ? (
+          <div className="space-y-1 border-t pt-4">
+            <MoneySummary
+              totalCents={restoration.money.totalCents}
+              paidCents={restoration.money.paidCents}
+              igv={{
+                ...igvTotals(
+                  restoration.pieces
+                    .filter((p) => !isClosedStatus(p.status))
+                    .map((p) => p.priceCents ?? 0),
+                  restoration.money.pricesIncludeIgv,
+                ),
+                included: restoration.money.pricesIncludeIgv,
+              }}
+            />
+            {restoration.money.expectedDepositCents > 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Adelanto esperado:{" "}
+                {formatCents(restoration.money.expectedDepositCents)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {restoration.notes ? (
+          <div className="space-y-1 border-t pt-4">
+            <p className="text-muted-foreground text-xs font-medium">
+              Notas generales
             </p>
-          ) : null}
-        </div>
-      ) : null}
+            <p className="text-sm whitespace-pre-line">{restoration.notes}</p>
+          </div>
+        ) : null}
+      </section>
 
       {restoration.money &&
       restoration.hasOrder &&
@@ -336,9 +392,16 @@ export default async function RestauracionDetallePage({
         </p>
       ) : null}
 
-      {restoration.notes ? (
-        <p className="rounded-md border p-3 text-sm whitespace-pre-line">
-          {restoration.notes}
+      {missingPrices ? (
+        <p
+          role="status"
+          className="bg-muted rounded-md border p-3 text-sm"
+          data-testid="faltan-precios"
+        >
+          {missingPrices.message}
+          {user.role === "admin"
+            ? " Asígnalos en la columna «Precio venta» de cada pieza."
+            : " Los asigna el administrador."}
         </p>
       ) : null}
 
@@ -356,47 +419,71 @@ export default async function RestauracionDetallePage({
           ) : null}
         </TabsList>
         <TabsContent value="piezas" className="space-y-3">
-          {editing && editableFields(ctx).canAddPieces ? (
-            <PieceDialog
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <PiecesHeading count={restoration.pieces.length} />
+            <div className="flex flex-wrap items-center gap-2">
+              <ViewToggle
+                view={piecesView === "kanban" ? "kanban" : "tabla"}
+                tableLabel="Lista"
+                tableHref={restorationPiecesHref(restoration.id, "lista")}
+                kanbanHref={restorationPiecesHref(restoration.id, "kanban")}
+              />
+              {editing && editableFields(ctx).canAddPieces ? (
+                <PieceDialog
+                  restorationId={restoration.id}
+                  editable={editableFields(ctx).piece}
+                  priceHint={SALE_PRICE_HINT}
+                  workshops={workshops}
+                  materials={editing.materials}
+                  services={editing.services}
+                />
+              ) : null}
+            </div>
+          </div>
+          {piecesView === "kanban" ? (
+            <RestorationPiecesKanban
               restorationId={restoration.id}
+              pieces={restoration.pieces}
+              role={user.role}
               workshops={workshops}
-              materials={editing.materials}
-              services={editing.services}
+              approvalPayment={approvalPayment}
+              balanceDue={balanceDue}
             />
-          ) : null}
-          <PiecesBoard
-            restorationId={restoration.id}
-            pieces={restoration.pieces}
-            role={user.role}
-            workshops={workshops}
-            extra={extra}
-            approvalPayment={approvalPayment}
-            balanceDue={balanceDue}
-            editing={
-              editing
-                ? {
-                    editable: Object.fromEntries(
-                      restoration.pieces.map((piece) => [
-                        piece.id,
-                        editableFields(ctx, piece).piece,
-                      ]),
-                    ),
-                    priceHint:
-                      user.role === "admin"
-                        ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
-                        : "Con la orden de Shopify creada, solo el administrador cambia el precio.",
-                    priceChange: Object.fromEntries(
-                      restoration.pieces.map((piece) => [
-                        piece.id,
-                        editableFields(ctx, piece).priceNeedsOrderFlow,
-                      ]),
-                    ),
-                    materials: editing.materials,
-                    services: editing.services,
-                  }
-                : null
-            }
-          />
+          ) : (
+            <PiecesBoard
+              restorationId={restoration.id}
+              pieces={restoration.pieces}
+              role={user.role}
+              workshops={workshops}
+              photos={photos}
+              approvalPayment={approvalPayment}
+              balanceDue={balanceDue}
+              editing={
+                editing
+                  ? {
+                      editable: Object.fromEntries(
+                        restoration.pieces.map((piece) => [
+                          piece.id,
+                          editableFields(ctx, piece).piece,
+                        ]),
+                      ),
+                      priceHint:
+                        user.role === "admin"
+                          ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
+                          : SALE_PRICE_HINT,
+                      priceChange: Object.fromEntries(
+                        restoration.pieces.map((piece) => [
+                          piece.id,
+                          editableFields(ctx, piece).priceNeedsOrderFlow,
+                        ]),
+                      ),
+                      materials: editing.materials,
+                      services: editing.services,
+                    }
+                  : null
+              }
+            />
+          )}
         </TabsContent>
         {canSeeMoney ? (
           <TabsContent value="pagos" className="space-y-4">

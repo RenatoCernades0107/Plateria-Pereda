@@ -102,6 +102,21 @@ describe("PieceStatusPanel", () => {
     ]);
   });
 
+  it("rotula el estado y las acciones por separado", () => {
+    renderPanel("registrada", "ventas");
+    const group = screen.getByRole("group", {
+      name: "Acciones de RES-00001-1",
+    });
+    // El rótulo visible no cambia el nombre accesible del grupo.
+    expect(within(group).getByText("Acciones")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    const status = screen.getByText("Estado");
+    expect(status.parentElement).toHaveTextContent("Registrada");
+    expect(group).not.toContainElement(status);
+  });
+
   it("Rechazar solo aparece en Espera respuesta cliente (P50)", () => {
     renderPanel("en_espera", "ventas");
     expect(buttons()).toContain("Rechazar");

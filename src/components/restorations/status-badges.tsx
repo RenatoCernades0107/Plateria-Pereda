@@ -1,14 +1,16 @@
+import type { ComponentType } from "react";
 import {
   Ban,
   Hammer,
-  MessageCircle,
   PackageCheck,
   PackageSearch,
   Store,
   Zap,
 } from "lucide-react";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Badge } from "@/components/ui/badge";
+import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import {
   PIECE_STATUS_LABELS,
   type PieceStatus,
@@ -87,8 +89,8 @@ export function UrgentBadge({ className }: { className?: string }) {
 
 const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
   registrada: "outline",
+  parcialmente_aprobada: "secondary",
   aprobada: "secondary",
-  en_proceso: "secondary",
   parcialmente_lista: "default",
   lista: "default",
   completada: "default",
@@ -110,6 +112,9 @@ export function RestorationStatusBadge({
       className={cn(
         status === "anulada" && CANCELLED,
         status === "rechazada" && "border-transparent bg-amber-900 text-white",
+        // A medio aprobar: borde punteado para distinguirla de Aprobada.
+        status === "parcialmente_aprobada" &&
+          "border-foreground/40 border-dashed",
         className,
       )}
     >
@@ -120,9 +125,9 @@ export function RestorationStatusBadge({
 
 const LOCATIONS: Record<
   PieceLocation,
-  { variant: Variant; icon: typeof Store }
+  { variant: Variant; icon: ComponentType<{ "aria-hidden"?: boolean }> }
 > = {
-  por_whatsapp: { variant: "outline", icon: MessageCircle },
+  por_whatsapp: { variant: "outline", icon: WhatsAppIcon },
   sin_enviar: { variant: "outline", icon: PackageSearch },
   en_tienda: { variant: "secondary", icon: Store },
   en_taller: { variant: "default", icon: Hammer },
@@ -142,7 +147,11 @@ export function LocationBadge({
     <Badge
       variant={variant}
       data-location={location}
-      className={cn(location === "anulada" && CANCELLED, className)}
+      className={cn(
+        location === "anulada" && CANCELLED,
+        location === "por_whatsapp" && WHATSAPP_BADGE_CLASS,
+        className,
+      )}
     >
       <Icon aria-hidden />
       {PIECE_LOCATION_LABELS[location]}

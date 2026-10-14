@@ -67,3 +67,19 @@ export async function listRestorationFiles(
     downloadUrl: download[i]?.data?.signedUrl ?? null,
   }));
 }
+
+/** URLs firmadas para ver fotos (p. ej. la foto "Antes" de cada pieza en la tabla). */
+export async function signedPhotoUrls(
+  paths: string[],
+): Promise<Map<string, string>> {
+  if (paths.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data } = await supabase.storage
+    .from(FILES_BUCKET)
+    .createSignedUrls(paths, URL_SECONDS);
+  return new Map(
+    (data ?? []).flatMap((s) =>
+      s.path && s.signedUrl ? [[s.path, s.signedUrl] as const] : [],
+    ),
+  );
+}

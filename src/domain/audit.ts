@@ -184,7 +184,7 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       total: { label: "Total", format: (value) => formatMoney(Number(value)) },
       paid: { label: "Pagado", format: (value) => formatMoney(Number(value)) },
       payment_status: { label: "Estado de pago" },
-      notes: { label: "Notas" },
+      notes: { label: "Notas generales" },
       shopify_order_id: { label: "Orden en Shopify" },
       shopify_order_name: { label: "Número de orden en Shopify" },
       origin: {
@@ -220,7 +220,7 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       },
       deposit_percent: { label: "Adelanto (%)" },
       total: { label: "Total", format: (value) => formatMoney(Number(value)) },
-      notes: { label: "Notas" },
+      notes: { label: "Notas generales" },
       discarded_at: { label: "Descartada" },
       discard_reason: { label: "Motivo del descarte" },
     },

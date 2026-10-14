@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/page-header";
 import { RestorationForm } from "@/components/restorations/restoration-form";
+import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { listCatalog } from "@/server/catalogs";
@@ -21,7 +22,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function NuevaRestauracionPage({
   searchParams,
 }: PageProps<"/restauraciones/nueva">) {
-  await requirePermission("restauraciones.editar");
+  const user = await requirePermission("restauraciones.editar");
   const { cotizacion, whatsapp } = await searchParams;
   const quoteId = typeof cotizacion === "string" ? cotizacion : null;
   if (quoteId !== null && !UUID.test(quoteId)) notFound();
@@ -62,6 +63,8 @@ export default async function NuevaRestauracionPage({
             : { kind: "nueva", whatsapp: whatsapp === "1" }
         }
         defaultDepositPercent={settings.depositPercent}
+        canSetPrice={can(user.role, "piezas.precio-venta")}
+        canAssignWorkshop={can(user.role, "piezas.asignar-taller")}
         workshops={workshops.data}
         materials={materials.map(({ id, name, price }) => ({
           id,

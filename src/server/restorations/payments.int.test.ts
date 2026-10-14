@@ -23,6 +23,8 @@ const created: { clients: string[]; restorations: string[] } = {
 let customerId = "";
 let clientId = "";
 let ventas: Awaited<ReturnType<typeof signIn>>;
+/** Registra con precios de venta: solo el admin los asigna (D58). */
+let pricing: Awaited<ReturnType<typeof signIn>>;
 
 async function signIn(email: string) {
   const client = createClient<Database>(
@@ -51,7 +53,7 @@ const process_ = () =>
 
 /** "A cuenta" 50 % con dos piezas que suman S/ 400 (IGV incluido). */
 async function seed() {
-  const { data: r, error } = await ventas
+  const { data: r, error } = await pricing
     .rpc("create_restoration", {
       p_client_id: clientId,
       p_contact_id: null as unknown as string,
@@ -115,6 +117,7 @@ beforeAll(async () => {
   clientId = data!.id;
   created.clients.push(clientId);
   ventas = await signIn("ventas@pereda.test");
+  pricing = await signIn("admin@pereda.test");
 });
 
 afterAll(async () => {

@@ -81,11 +81,12 @@ test.describe("Catálogos", () => {
     await tarjeta.getByRole("button", { name: "Editar Tarjeta" }).click();
     await dialog.getByLabel("Nombre en Shopify").fill("Visa");
     await dialog.getByRole("button", { name: "Guardar" }).click();
-    await expect(tarjeta).toContainText("Shopify: Visa");
+    // Columna "Nombre en Shopify" de la tabla.
+    await expect(tarjeta).toContainText("Visa");
     await tarjeta.getByRole("button", { name: "Editar Tarjeta" }).click();
     await dialog.getByLabel("Nombre en Shopify").fill("");
     await dialog.getByRole("button", { name: "Guardar" }).click();
-    await expect(tarjeta).not.toContainText("Shopify:");
+    await expect(tarjeta).not.toContainText("Visa");
   });
 
   test("ventas no entra a los catálogos", async ({ page, loginAs }) => {
@@ -115,7 +116,7 @@ test.describe("Catálogos", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nombre").fill(name);
     await dialog.getByRole("button", { name: "Agregar" }).click();
-    await expect(page.getByTestId(`catalogo-${name}`)).toBeVisible();
+    await expect(page.getByTestId(`catalogo-movil-${name}`)).toBeVisible();
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth,
     );

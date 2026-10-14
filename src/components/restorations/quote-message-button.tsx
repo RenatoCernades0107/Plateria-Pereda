@@ -1,9 +1,9 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Button } from "@/components/ui/button";
 
 import { WhatsAppQuoteDialog } from "./whatsapp-quote-dialog";
@@ -29,7 +29,7 @@ export function QuoteMessageButton({
   return (
     <>
       <Button variant="outline" onClick={() => setOpen(true)}>
-        <MessageCircle />
+        <WhatsAppIcon className="text-whatsapp-strong" />
         Mensaje de cotización
       </Button>
       <WhatsAppQuoteDialog

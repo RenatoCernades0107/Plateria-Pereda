@@ -1,6 +1,7 @@
 import type { APIRequestContext, Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { pieceAction, pieceActionNames, pieceRow } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
 // Orden de Shopify (Fase 9: crear, editar y preparar), con el Shopify falso.
@@ -73,9 +74,8 @@ async function seedRestoration(clientId: string) {
 }
 
 async function approve(page: Page, pieceCode: string) {
-  const card = page.getByTestId(`pieza-${pieceCode}`);
-  await card.getByRole("button", { name: "Aprobar" }).click();
-  await expect(card).toContainText("Aprobada");
+  await pieceAction(page, pieceCode, "Aprobar");
+  await expect(pieceRow(page, pieceCode)).toContainText("Aprobada");
 }
 
 test.describe("Orden de Shopify al aprobar", () => {
@@ -100,6 +100,10 @@ test.describe("Orden de Shopify al aprobar", () => {
     await page.goto(`/restauraciones/${r.id}`);
 
     await approve(page, `${r.code}-1`);
+    // Una de dos aprobadas: la guía queda Parcialmente aprobada (P54).
+    await expect(page.getByTestId("estado-restauracion")).toHaveText(
+      "Parcialmente aprobada",
+    );
     await expect(page.getByTestId("orden-shopify")).toHaveCount(0);
     expect(await fakeOrders(request, r.code)).toEqual([]);
 
@@ -238,7 +242,7 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     expect(await orderTotal(request, r.code)).toBe("177.00");
 
     const card = page.getByTestId(`pieza-${r.code}-2`);
-    await card.getByRole("button", { name: "Anular" }).click();
+    await pieceAction(page, `${r.code}-2`, "Anular");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("Error de registro");
     await dialog.getByRole("button", { name: "Confirmar: Anular" }).click();
@@ -266,13 +270,13 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await expect(
       page.getByRole("button", { name: "Cambiar precio" }),
     ).toHaveCount(0);
+    expect(await pieceActionNames(page, `${r.code}-1`)).not.toContain(
+      "Cambiar precio",
+    );
 
     await loginAs("admin");
     await page.goto(`/restauraciones/${r.id}`);
-    await page
-      .getByTestId(`pieza-${r.code}-1`)
-      .getByRole("button", { name: "Cambiar precio" })
-      .click();
+    await pieceAction(page, `${r.code}-1`, "Cambiar precio");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nuevo precio (S/)").fill("120");
     await dialog.getByRole("button", { name: "Guardar precio" }).click();
@@ -300,7 +304,7 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     const card = page.getByTestId(`pieza-${r.code}-1`);
-    await card.getByRole("button", { name: "Entregar" }).click();
+    await pieceAction(page, `${r.code}-1`, "Entregar");
     await expect(card).toContainText("Entregada");
     await expect
       .poll(

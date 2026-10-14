@@ -37,6 +37,8 @@ export const BOARD_STATUSES = [
 export type PieceBoardFilters = {
   /** Código de la pieza, descripción o cliente. */
   q: string;
+  /** Número de guía (RES-00123, "123"…): solo las piezas de esa restauración. */
+  guide: string;
   location: (typeof BOARD_LOCATIONS)[number] | null;
   status: (typeof BOARD_STATUSES)[number] | null;
   workshopId: string | null;
@@ -71,6 +73,7 @@ export function parsePieceBoardFilters(
   const workshop = first(params.taller);
   return {
     q: first(params.q).trim().slice(0, 100),
+    guide: first(params.guia).trim().slice(0, 20),
     location: oneOf(BOARD_LOCATIONS, first(params.ubicacion)),
     status: oneOf(BOARD_STATUSES, first(params.estado)),
     workshopId: UUID.test(workshop) ? workshop.toLowerCase() : null,
@@ -90,6 +93,7 @@ export function pieceBoardHref(
   const next = { ...filters, ...changes };
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
+  if (next.guide) params.set("guia", next.guide);
   if (next.location) params.set("ubicacion", next.location);
   if (next.status) params.set("estado", next.status);
   if (next.workshopId) params.set("taller", next.workshopId);
@@ -107,6 +111,7 @@ export function pieceBoardHref(
 export function listPiecesBoardArgs(filters: PieceBoardFilters) {
   return {
     p_query: filters.q || undefined,
+    p_restoration_code: filters.guide || undefined,
     p_location: filters.location ?? undefined,
     p_status: filters.status ?? undefined,
     p_workshop_id: filters.workshopId ?? undefined,

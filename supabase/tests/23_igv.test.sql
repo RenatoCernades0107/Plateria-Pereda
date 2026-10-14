@@ -1,9 +1,10 @@
 begin;
 
-select plan(14);
+select plan(16);
 
+-- Los precios de venta los asigna el admin (D58).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-000000023a01', 'ventas@igv.test', '{"role":"ventas"}', '{}');
+  ('00000000-0000-0000-0000-000000023a01', 'admin@igv.test', '{"role":"admin"}', '{}');
 
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-000000023c01', 'persona', 'Ana', 'gid://shopify/Customer/2301');
@@ -16,6 +17,7 @@ select is(public.price_with_igv(100, false), 118.00::numeric, 'sin IGV suma el 1
 select is(public.price_with_igv(33.33, false), 39.33::numeric, 'redondea a céntimos');
 select is(public.price_with_igv(0.25, false), 0.30::numeric, 'los empates se alejan del cero');
 select is(public.price_with_igv(100, true), 100::numeric, 'con IGV incluido no cambia');
+select is(public.price_with_igv(null, false), null::numeric, 'sin precio asignado no hay precio con IGV (D58)');
 
 -- 2. Registro sin IGV: el total suma pieza por pieza.
 create temp table r on commit drop as
@@ -66,6 +68,18 @@ select * from public.create_restoration(
 select is(
   (select prices_include_igv from public.restorations where id = (select id from r2)),
   true, 'sin respuesta queda con IGV incluido'
+);
+
+-- 5b. Una pieza sin precio (D58) suma 0.
+create temp table r3 on commit drop as
+select * from public.create_restoration(
+  '00000000-0000-0000-0000-000000023c01', null, 'contado', null, '',
+  '[{"description":"Anillo","price":"10"},{"description":"Collar","price":""}]'::jsonb,
+  false
+);
+select is(
+  (select total from public.restorations where id = (select id from r3)),
+  11.80::numeric, 'el total con piezas sin precio suma solo las que lo tienen'
 );
 
 -- 6. Con la orden de Shopify creada ya no se cambia.

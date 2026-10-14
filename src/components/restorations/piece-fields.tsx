@@ -1,11 +1,15 @@
 "use client";
 
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import {
+  useWatch,
+  type FieldValues,
+  type Path,
+  type UseFormReturn,
+} from "react-hook-form";
 
 import { TextField } from "@/components/clients/form-fields";
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,7 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { PieceEditableField } from "@/domain/restoration-edit";
+import {
+  WORKSHOP_HINT,
+  type PieceEditableField,
+} from "@/domain/restoration-edit";
 
 export type CatalogOption = { id: string; name: string; price: number | null };
 export type WorkshopOption = { id: string; name: string };
@@ -36,7 +43,6 @@ function CatalogField({
   label,
   options,
   disabled,
-  onPick,
 }: {
   form: AnyForm;
   prefix: string;
@@ -44,7 +50,6 @@ function CatalogField({
   label: string;
   options: CatalogOption[];
   disabled: boolean;
-  onPick?: (option: CatalogOption) => void;
 }) {
   const listId = `${prefix.replace(/\W/g, "-")}${name}-opciones`;
   return (
@@ -68,7 +73,6 @@ function CatalogField({
                 );
                 field.onChange(value);
                 form.setValue(`${prefix}${name}.id`, match?.id ?? null);
-                if (match) onPick?.(match);
               }}
             />
           </FormControl>
@@ -85,9 +89,15 @@ function CatalogField({
 }
 
 /**
- * Campos de una pieza (P22). Se usan en el registro (`prefix` = "pieces.0.") y en
- * los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede cambiar
- * según `editableFields()` (Paso 7.7).
+ * Campos de una pieza (P22, D59). Se usan en el registro (`prefix` = "pieces.0.") y
+ * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
+ * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: primero
+ * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
+ * material, peso, medida y precio (opcionales) en una sola fila y al final taller y
+ * urgente. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
+ * precio de venta no sale del servicio: es opcional ("Sin asignar") y solo lo asigna el
+ * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y es
+ * obligatorio.
  */
 export function PieceFields({
   form,
@@ -99,6 +109,8 @@ export function PieceFields({
   showWorkshop = true,
   showUrgent = true,
   priceHint,
+  pricePlaceholder,
+  workshopName,
 }: {
   form: AnyForm;
   prefix?: string;
@@ -111,131 +123,152 @@ export function PieceFields({
   showUrgent?: boolean;
   /** Explicación cuando el precio no se puede editar aquí. */
   priceHint?: string;
+  /** Texto del precio vacío (p. ej. "Sin asignar" si es opcional). */
+  pricePlaceholder?: string;
+  /** Nombre del taller ya asignado (puede estar desactivado y no venir en `workshops`). */
+  workshopName?: string | null;
 }) {
   const off = (field: PieceEditableField) =>
     editable ? !editable.includes(field) : false;
   const path = (name: string) => `${prefix}${name}` as Path<FieldValues>;
+  const workshopId = useWatch({
+    control: form.control,
+    name: path("workshopId"),
+  }) as string | null | undefined;
+  const currentWorkshop = workshopId
+    ? (workshops.find((w) => w.id === workshopId)?.name ??
+      workshopName ??
+      "Asignado")
+    : "Sin asignar";
 
   return (
     <div className="space-y-4">
-      <TextField
-        form={form}
-        name={path("description")}
-        label="Descripción"
-        multiline
-        disabled={off("description")}
-      />
       <div className="grid gap-4 sm:grid-cols-2">
-        <CatalogField
+        <TextField
           form={form}
-          prefix={prefix}
-          name="service"
-          label="Servicio"
-          options={services}
-          disabled={off("service")}
-          onPick={(option) => {
-            // El precio sugerido del servicio solo se propone si aún no hay precio.
-            if (
-              option.price !== null &&
-              !off("price") &&
-              !form.getValues(path("price"))
-            ) {
-              form.setValue(path("price"), option.price.toFixed(2));
-            }
-          }}
+          name={path("description")}
+          label="Descripción"
+          multiline
+          disabled={off("description")}
         />
-        <div className="space-y-1">
+        <TextField
+          form={form}
+          name={path("notes")}
+          label="Notas de la pieza"
+          multiline
+          disabled={off("notes")}
+        />
+      </div>
+      <CatalogField
+        form={form}
+        prefix={prefix}
+        name="service"
+        label="Servicio"
+        options={services}
+        disabled={off("service")}
+      />
+      <div className="space-y-2">
+        {/* Los cuatro datos cortos en una fila (2 en tablet, 1 en móvil); `items-start`
+            mantiene las etiquetas alineadas aunque un campo muestre su error. */}
+        <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <CatalogField
+            form={form}
+            prefix={prefix}
+            name="material"
+            label="Material"
+            options={materials}
+            disabled={off("material")}
+          />
+          <TextField
+            form={form}
+            name={path("weight")}
+            label="Peso (g)"
+            inputMode="numeric"
+            disabled={off("weight")}
+          />
+          <TextField
+            form={form}
+            name={path("measure")}
+            label="Medida"
+            disabled={off("measure")}
+          />
           <TextField
             form={form}
             name={path("price")}
             label="Precio (S/)"
             inputMode="numeric"
             disabled={off("price")}
+            placeholder={pricePlaceholder}
           />
-          {off("price") && priceHint ? (
-            <FormDescription>{priceHint}</FormDescription>
-          ) : null}
         </div>
-        <CatalogField
-          form={form}
-          prefix={prefix}
-          name="material"
-          label="Material"
-          options={materials}
-          disabled={off("material")}
-        />
-        <TextField
-          form={form}
-          name={path("measure")}
-          label="Medida"
-          disabled={off("measure")}
-        />
-        <TextField
-          form={form}
-          name={path("weight")}
-          label="Peso (g)"
-          inputMode="numeric"
-          disabled={off("weight")}
-        />
-        {showWorkshop ? (
-          <FormField
-            control={form.control}
-            name={path("workshopId")}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Taller</FormLabel>
-                <Select
-                  value={field.value ?? NONE}
-                  onValueChange={(v) => field.onChange(v === NONE ? null : v)}
-                  disabled={off("workshopId")}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Sin asignar</SelectItem>
-                    {workshops.map((w) => (
-                      <SelectItem key={w.id} value={w.id}>
-                        {w.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {/* Debajo de la fila completa para no desalinear los campos. */}
+        {off("price") && priceHint ? (
+          <p className="text-muted-foreground text-sm">{priceHint}</p>
         ) : null}
       </div>
-      {showUrgent ? (
-        <FormField
-          control={form.control}
-          name={path("urgent")}
-          render={({ field }) => (
-            <FormItem className="flex items-center gap-2">
-              <FormControl>
-                <input
-                  type="checkbox"
-                  className="accent-primary size-4"
-                  checked={Boolean(field.value)}
-                  disabled={off("urgent")}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              </FormControl>
-              <FormLabel className="font-normal">Urgente</FormLabel>
-            </FormItem>
-          )}
-        />
+      {showWorkshop || showUrgent ? (
+        <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+          {showWorkshop && off("workshopId") ? (
+            <div className="space-y-2" data-testid="taller-solo-lectura">
+              <p className="text-sm leading-none font-medium">Taller</p>
+              <p className="flex h-9 items-center text-sm">{currentWorkshop}</p>
+              {/* Solo el taller está bloqueado: es ventas (D60). */}
+              {!off("description") ? (
+                <p className="text-muted-foreground text-sm">{WORKSHOP_HINT}</p>
+              ) : null}
+            </div>
+          ) : showWorkshop ? (
+            <FormField
+              control={form.control}
+              name={path("workshopId")}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Taller</FormLabel>
+                  <Select
+                    value={field.value ?? NONE}
+                    onValueChange={(v) => field.onChange(v === NONE ? null : v)}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Sin asignar</SelectItem>
+                      {workshops.map((w) => (
+                        <SelectItem key={w.id} value={w.id}>
+                          {w.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : null}
+          {showUrgent ? (
+            <FormField
+              control={form.control}
+              name={path("urgent")}
+              render={({ field }) => (
+                <FormItem className="flex h-9 items-center gap-2">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      className="accent-primary size-4"
+                      checked={Boolean(field.value)}
+                      disabled={off("urgent")}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">Urgente</FormLabel>
+                </FormItem>
+              )}
+            />
+          ) : null}
+        </div>
       ) : null}
-      <TextField
-        form={form}
-        name={path("notes")}
-        label="Notas de la pieza"
-        multiline
-        disabled={off("notes")}
-      />
     </div>
   );
 }

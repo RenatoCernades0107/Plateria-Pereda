@@ -41,7 +41,7 @@ export function PiecesBoardFiltersForm({
   return (
     <form
       aria-label="Filtros de piezas"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))_auto]"
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(4,minmax(0,1fr))_auto]"
       onSubmit={(event) => {
         event.preventDefault();
         router.push(pieceBoardHref(state, { page: 1 }));
@@ -55,6 +55,18 @@ export function PiecesBoardFiltersForm({
           value={state.q}
           maxLength={100}
           onChange={(e) => set({ q: e.target.value })}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="filtro-guia">N.º de guía</Label>
+        <Input
+          id="filtro-guia"
+          type="search"
+          inputMode="numeric"
+          placeholder="RES-00123"
+          value={state.guide}
+          maxLength={20}
+          onChange={(e) => set({ guide: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">

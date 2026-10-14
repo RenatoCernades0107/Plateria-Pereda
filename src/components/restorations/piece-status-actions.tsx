@@ -47,6 +47,7 @@ import {
   returnPiecesToClient,
 } from "@/server/restorations/status-actions";
 
+import { ROW_LABEL_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 
@@ -106,6 +107,25 @@ export function requirementsFor(
 /** Necesita diálogo: nota, taller o una acción que no se deshace (estados finales). */
 export const needsDialog = (change: PendingChange) =>
   change.requiresNote || change.requiresWorkshop || isClosedStatus(change.to);
+
+/** Ubicación que se muestra al instante (optimista) tras pasar a `to`. */
+export function locationAfter(
+  to: PieceStatus,
+  location: PieceLocation,
+): PieceLocation {
+  switch (to) {
+    case "enviada_taller":
+      return "en_taller";
+    case "entregada":
+      return "entregada";
+    case "anulada":
+      return "anulada";
+    case "observada":
+      return "sin_enviar";
+    default:
+      return location;
+  }
+}
 
 const NONE = "ninguno";
 
@@ -226,20 +246,17 @@ export function StatusChangeDialog({
   );
 }
 
-/**
- * Estado, ubicación y acciones de una pieza (Pasos 8.4 y 8.6). Solo muestra lo que
- * el rol puede hacer; el cambio se ve al instante (optimista) y vuelve atrás si la
- * BD lo rechaza. Llegada, vuelta del taller y devolución no cambian el estado: solo
- * la ubicación (P47).
- */
-export function PieceStatusPanel({
-  restorationId,
-  piece,
-  role,
-  workshops,
-  approvalPayment = null,
-  balanceDue = false,
-}: {
+/** Una acción sobre una pieza: botón en el panel o ítem del menú «Acciones». */
+export type PieceAction = {
+  key: string;
+  label: string;
+  onSelect: () => void;
+  disabled: boolean;
+  /** Lleva a un estado final (anular, rechazar…): se resalta en rojo. */
+  destructive: boolean;
+};
+
+export type PieceActionsInput = {
   restorationId: string;
   piece: StatusPiece;
   role: AppRole;
@@ -248,7 +265,22 @@ export function PieceStatusPanel({
   approvalPayment?: ApprovalPayment | null;
   /** Falta cobrar el saldo: "Entregar" se bloquea o pide confirmarlo (P45). */
   balanceDue?: boolean;
-}) {
+};
+
+/**
+ * Acciones que el rol puede hacer sobre una pieza y sus diálogos (Pasos 8.4 y 8.6).
+ * El cambio se ve al instante (optimista) y vuelve atrás si la BD lo rechaza.
+ * Llegada, vuelta del taller y devolución no cambian el estado: solo la ubicación
+ * (P47). Lo usan el panel del detalle de la pieza y el menú de la tabla de la guía.
+ */
+export function usePieceActions({
+  restorationId,
+  piece,
+  role,
+  workshops,
+  approvalPayment = null,
+  balanceDue = false,
+}: PieceActionsInput) {
   const [optimistic, setOptimistic] = useOptimistic(
     piece,
     (state, changes: Partial<StatusPiece>) => ({ ...state, ...changes }),
@@ -274,16 +306,7 @@ export function PieceStatusPanel({
       startTransition(async () => {
         setOptimistic({
           status: change.to,
-          location:
-            change.to === "enviada_taller"
-              ? "en_taller"
-              : change.to === "entregada"
-                ? "entregada"
-                : change.to === "anulada"
-                  ? "anulada"
-                  : change.to === "observada"
-                    ? "sin_enviar"
-                    : piece.location,
+          location: locationAfter(change.to, piece.location),
           readyForDelivery: false,
         });
         const result = await changePieceStatus(
@@ -316,112 +339,74 @@ export function PieceStatusPanel({
       else toast.success(`${piece.code}: ${message}`);
     });
 
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <PieceStatusBadge status={optimistic.status} />
-        <LocationBadge location={optimistic.location} />
-        {optimistic.urgent ? <UrgentBadge /> : null}
-        {pending ? (
-          <Loader2
-            className="text-muted-foreground size-4 animate-spin"
-            aria-label="Guardando"
-          />
-        ) : null}
-      </div>
-      {transitions.length > 0 || arrival || receive || giveBack ? (
-        <div
-          className="flex flex-wrap gap-2"
-          aria-label={`Acciones de ${piece.code}`}
-          role="group"
-        >
-          {arrival ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                act(
-                  {
-                    arrivedAt: new Date().toISOString(),
-                    location: "sin_enviar",
-                  },
-                  () => markPiecesArrived(restorationId, [piece.id]),
-                  "llegó a la tienda.",
-                )
-              }
-            >
-              Marcar llegada a tienda
-            </Button>
-          ) : null}
-          {receive ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                act(
-                  { readyForDelivery: true, location: "en_tienda" },
-                  () => receiveFromWorkshop(restorationId, [piece.id]),
-                  "volvió del taller.",
-                )
-              }
-            >
-              Recibir del taller
-            </Button>
-          ) : null}
-          {giveBack ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                act(
-                  {
-                    returnedAt: new Date().toISOString(),
-                    location: "entregada",
-                  },
-                  () => returnPiecesToClient(restorationId, [piece.id]),
-                  "devuelta al cliente.",
-                )
-              }
-            >
-              Devolver al cliente
-            </Button>
-          ) : null}
-          {transitions.map((t) => {
-            const change = requirementsFor([t])!;
-            const closing = isClosedStatus(t.to);
-            const blocked =
-              t.to === "entregada" && balanceDue && !canConfirmBalance;
-            const onClick = () => {
-              if (t.to === "aprobada" && approvalPayment)
-                return setPaymentDialog("aprobar");
-              if (t.to === "entregada" && balanceDue)
-                return setPaymentDialog("entregar");
-              return needsDialog(change) ? setDialog(change) : void run(change);
-            };
-            return (
-              <Button
-                key={t.to}
-                size="sm"
-                variant={closing ? "ghost" : "outline"}
-                className={closing ? "text-destructive" : undefined}
-                disabled={pending || blocked}
-                onClick={onClick}
-              >
-                {ACTION_LABELS[t.to]}
-              </Button>
-            );
-          })}
-        </div>
-      ) : null}
-      {balanceDue && transitions.some((t) => t.to === "entregada") ? (
-        <p className="text-destructive text-sm">Falta cobrar el saldo</p>
-      ) : null}
+  const actions: PieceAction[] = [];
+  if (arrival) {
+    actions.push({
+      key: "llegada",
+      label: "Marcar llegada a tienda",
+      disabled: pending,
+      destructive: false,
+      onSelect: () =>
+        act(
+          { arrivedAt: new Date().toISOString(), location: "sin_enviar" },
+          () => markPiecesArrived(restorationId, [piece.id]),
+          "llegó a la tienda.",
+        ),
+    });
+  }
+  if (receive) {
+    actions.push({
+      key: "recibir",
+      label: "Recibir del taller",
+      disabled: pending,
+      destructive: false,
+      onSelect: () =>
+        act(
+          { readyForDelivery: true, location: "en_tienda" },
+          () => receiveFromWorkshop(restorationId, [piece.id]),
+          "volvió del taller.",
+        ),
+    });
+  }
+  if (giveBack) {
+    actions.push({
+      key: "devolver",
+      label: "Devolver al cliente",
+      disabled: pending,
+      destructive: false,
+      onSelect: () =>
+        act(
+          { returnedAt: new Date().toISOString(), location: "entregada" },
+          () => returnPiecesToClient(restorationId, [piece.id]),
+          "devuelta al cliente.",
+        ),
+    });
+  }
+  for (const t of transitions) {
+    const change = requirementsFor([t])!;
+    actions.push({
+      key: t.to,
+      label: ACTION_LABELS[t.to],
+      disabled:
+        pending || (t.to === "entregada" && balanceDue && !canConfirmBalance),
+      destructive: isClosedStatus(t.to),
+      onSelect: () => {
+        if (t.to === "aprobada" && approvalPayment)
+          return setPaymentDialog("aprobar");
+        if (t.to === "entregada" && balanceDue)
+          return setPaymentDialog("entregar");
+        return needsDialog(change) ? setDialog(change) : void run(change);
+      },
+    });
+  }
+
+  const dialogs = (
+    <>
       {approvalPayment ? (
         <ApproveWithPaymentDialog
-          key={paymentDialog === "aprobar" ? "abierto" : "cerrado"}
+          key={
+            paymentDialog === "aprobar" ? "aprobar-abierto" : "aprobar-cerrado"
+          }
           open={paymentDialog === "aprobar"}
           onOpenChange={(open) => !open && setPaymentDialog(null)}
           restorationId={restorationId}
@@ -433,7 +418,11 @@ export function PieceStatusPanel({
       ) : null}
       {balanceDue && canConfirmBalance ? (
         <DeliverWithBalanceDialog
-          key={paymentDialog === "entregar" ? "abierto" : "cerrado"}
+          key={
+            paymentDialog === "entregar"
+              ? "entregar-abierto"
+              : "entregar-cerrado"
+          }
           open={paymentDialog === "entregar"}
           onOpenChange={(open) => !open && setPaymentDialog(null)}
           restorationId={restorationId}
@@ -443,7 +432,7 @@ export function PieceStatusPanel({
         />
       ) : null}
       <StatusChangeDialog
-        key={dialog?.to ?? "cerrado"}
+        key={dialog?.to ?? "estado-cerrado"}
         open={dialog !== null}
         onOpenChange={(open) => !open && setDialog(null)}
         change={dialog}
@@ -451,6 +440,77 @@ export function PieceStatusPanel({
         workshops={workshops}
         onConfirm={(extra) => run(dialog!, extra)}
       />
+    </>
+  );
+
+  return {
+    /** La pieza con los cambios optimistas aplicados. */
+    piece: optimistic,
+    pending,
+    actions,
+    /** "Entregar" está disponible pero falta cobrar el saldo (P45). */
+    balanceWarning: balanceDue && transitions.some((t) => t.to === "entregada"),
+    dialogs,
+  };
+}
+
+/**
+ * Estado, ubicación y acciones de una pieza (detalle de la pieza). Solo muestra lo
+ * que el rol puede hacer (ver `usePieceActions`).
+ */
+export function PieceStatusPanel(props: PieceActionsInput) {
+  const {
+    piece: optimistic,
+    pending,
+    actions,
+    balanceWarning,
+    dialogs,
+  } = usePieceActions(props);
+  const { piece } = props;
+
+  return (
+    <div className="space-y-2">
+      {/* Estado y ubicación: solo informan (insignias, no se pulsan). */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={ROW_LABEL_CLASS}>Estado</span>
+        <PieceStatusBadge status={optimistic.status} />
+        <LocationBadge location={optimistic.location} />
+        {optimistic.urgent ? <UrgentBadge /> : null}
+        {pending ? (
+          <Loader2
+            className="text-muted-foreground size-4 animate-spin"
+            aria-label="Guardando"
+          />
+        ) : null}
+      </div>
+      {actions.length > 0 ? (
+        <div
+          className="flex flex-wrap items-center gap-2"
+          aria-label={`Acciones de ${piece.code}`}
+          role="group"
+        >
+          {/* Rótulo visible; el grupo ya tiene su nombre accesible. */}
+          <span className={ROW_LABEL_CLASS} aria-hidden>
+            Acciones
+          </span>
+          {actions.map((a) => (
+            <Button
+              key={a.key}
+              size="sm"
+              variant={a.destructive ? "ghost" : "outline"}
+              className={a.destructive ? "text-destructive" : undefined}
+              disabled={a.disabled}
+              onClick={a.onSelect}
+            >
+              {a.label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      {balanceWarning ? (
+        <p className="text-destructive text-sm">Falta cobrar el saldo</p>
+      ) : null}
+      {dialogs}
     </div>
   );
 }

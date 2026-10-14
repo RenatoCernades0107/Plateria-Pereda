@@ -3,10 +3,11 @@ import "server-only";
 import type { PaymentType } from "@/domain/money";
 import { toCents, type Cents } from "@/domain/money";
 import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
-import type {
-  PieceLocation,
-  RestorationOrigin,
-  RestorationStatus,
+import {
+  toRestorationStatus,
+  type PieceLocation,
+  type RestorationOrigin,
+  type RestorationStatus,
 } from "@/domain/restoration-status";
 import {
   listPiecesBoardArgs,
@@ -19,6 +20,7 @@ import {
   type RestorationFilters,
 } from "@/domain/restoration-filters";
 import { createClient } from "@/lib/supabase/server";
+import { signedPhotoUrls } from "@/server/files/queries";
 
 export type PieceDetail = {
   id: string;
@@ -45,7 +47,7 @@ export type PieceDetail = {
   deliveredAt: string | null;
   /** Devuelta al cliente (rechazada o sin arreglo, P47). */
   returnedAt: string | null;
-  /** null si quien mira no ve montos (logística, P42). */
+  /** null si quien mira no ve montos (logística, P42) o si aún no tiene precio de venta (D58). */
   priceCents: Cents | null;
 };
 
@@ -143,13 +145,16 @@ export async function getRestorationDetail(
   if (workshops.error) throw workshops.error;
   const workshopName = new Map(workshops.data!.map((w) => [w.id, w.name]));
   const priceOf = new Map(
-    (prices.data ?? []).map((p) => [p.id, toCents(Number(p.price))]),
+    (prices.data ?? []).map((p) => [
+      p.id,
+      p.price === null ? null : toCents(Number(p.price)),
+    ]),
   );
 
   return {
     id: r.id,
     code: r.code!,
-    status: r.status!,
+    status: toRestorationStatus(r.status!),
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
@@ -326,7 +331,7 @@ export async function listRestorations(
       clientName: r.client_name ?? "",
       documentNumber: r.document_number,
       contactName: r.contact_name,
-      status: r.status,
+      status: toRestorationStatus(r.status),
       paymentStatus: r.payment_status,
       paymentType: r.payment_type,
       piecesCount: r.pieces_count,
@@ -358,9 +363,25 @@ export type BoardPiece = {
   workshopDays: number;
   workshopOngoing: boolean;
   lastObservation: string | null;
+  serviceName: string;
+  materialName: string;
+  measure: string;
+  weightGrams: number | null;
+  /** Lo que cobra el taller; null si aún no se define o si el rol no lo ve (ventas). */
+  serviceCostCents: Cents | null;
+  /** Precio de venta; null si está sin asignar o si el rol no lo ve (logística). */
+  priceCents: Cents | null;
+  /** La restauración ya tiene orden de Shopify (un precio asignado se cambia con motivo). */
+  hasOrder: boolean;
+  /** Primera foto "Antes" de la pieza (URL firmada de corta duración). */
+  photoUrl: string | null;
 };
 
-/** Vista operativa de piezas en curso, sin precios (`list_pieces_board`). */
+/**
+ * Vista de piezas en curso (`list_pieces_board`): datos de la pieza, su primera foto
+ * "Antes" y los montos que el rol ve (costo de servicio: admin y logística; precio de
+ * venta: admin y ventas).
+ */
 export async function listPiecesBoard(
   filters: PieceBoardFilters,
 ): Promise<{ items: BoardPiece[]; total: number; pages: number }> {
@@ -371,6 +392,9 @@ export async function listPiecesBoard(
   );
   if (error) throw error;
   const total = Number(data[0]?.total_count ?? 0);
+  const photos = await signedPhotoUrls(
+    data.flatMap((p) => (p.photo_path ? [p.photo_path] : [])),
+  );
   return {
     total,
     pages: Math.max(1, Math.ceil(total / PIECES_PAGE_SIZE)),
@@ -392,6 +416,14 @@ export async function listPiecesBoard(
       workshopDays: p.workshop_days,
       workshopOngoing: p.workshop_ongoing,
       lastObservation: p.last_observation,
+      serviceName: p.service_name,
+      materialName: p.material_name,
+      measure: p.measure,
+      weightGrams: p.weight_grams,
+      serviceCostCents: centsOrNull(p.service_cost),
+      priceCents: centsOrNull(p.price),
+      hasOrder: p.has_order,
+      photoUrl: p.photo_path ? (photos.get(p.photo_path) ?? null) : null,
     })),
   };
 }

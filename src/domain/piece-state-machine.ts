@@ -155,7 +155,7 @@ export type PieceSnapshot = {
  * Condición física de la transición (P47): al taller solo va lo que está en la
  * tienda, y desde Interno solo se entrega u observa lo que ya volvió del taller.
  */
-function blockedBy(
+export function blockedBy(
   piece: Pick<PieceSnapshot, "status" | "arrivedAt" | "readyForDelivery">,
   to: PieceStatus,
 ): TransitionError | null {
