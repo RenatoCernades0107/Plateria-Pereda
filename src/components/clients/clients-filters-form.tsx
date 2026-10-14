@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,7 @@ function FilterSelect({
   allLabel = "Todos",
 }: {
   id: string;
-  label: string;
+  label: ReactNode;
   value: string | null;
   options: { value: string; label: string }[];
   onChange: (value: string | null) => void;
@@ -99,7 +100,12 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
       />
       <FilterSelect
         id="filtro-sync"
-        label="Shopify"
+        label={
+          <>
+            <ShopifyIcon className="text-shopify-strong size-4" />
+            Shopify
+          </>
+        }
         value={state.sync}
         options={[
           { value: "ok", label: "Sincronizado" },

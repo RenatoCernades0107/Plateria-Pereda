@@ -1,6 +1,7 @@
 import { Building2, User } from "lucide-react";
 import Link from "next/link";
 
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { ClickableItem, ClickableRow } from "@/components/clickable-row";
@@ -97,7 +98,12 @@ export function ClientsList({
             <TableHead>Documento</TableHead>
             <TableHead>Teléfono</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Shopify</TableHead>
+            <TableHead>
+              <span className="inline-flex items-center gap-1.5">
+                <ShopifyIcon className="text-shopify-strong size-4" />
+                Shopify
+              </span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

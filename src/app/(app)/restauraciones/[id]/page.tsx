@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
-import { FileGallery } from "@/components/files/file-gallery";
-import { FileUploader } from "@/components/files/file-uploader";
+import { FilesPanel } from "@/components/files/files-panel";
+import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PaymentsList } from "@/components/payments/payments-list";
 import { RefundDialog } from "@/components/payments/refund-dialog";
@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ViewToggle } from "@/components/view-toggle";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
+import { SHOPIFY_BADGE_CLASS, ShopifyBadge } from "@/components/shopify-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
 import { can } from "@/domain/permissions";
@@ -274,16 +275,14 @@ export default async function RestauracionDetallePage({
                 </Badge>
               ) : null}
               {restoration.shopifyOrderName ? (
-                // Con enlace al admin se ve como enlace (color, ícono y subrayado);
-                // sin él, es una insignia informativa más.
-                <Badge
-                  variant={orderUrl ? "outline" : "secondary"}
-                  asChild={Boolean(orderUrl)}
-                  className={
-                    orderUrl ? "border-primary/40 text-primary" : undefined
-                  }
-                >
-                  {orderUrl ? (
+                // Con el logotipo y el verde de Shopify; con enlace al admin se ve
+                // como enlace (ícono de pestaña nueva y subrayado al pasar).
+                orderUrl ? (
+                  <Badge
+                    variant="outline"
+                    asChild
+                    className={SHOPIFY_BADGE_CLASS}
+                  >
                     <a
                       href={orderUrl}
                       target="_blank"
@@ -291,15 +290,16 @@ export default async function RestauracionDetallePage({
                       title="Abrir la orden en Shopify (pestaña nueva)"
                       data-testid="orden-shopify"
                     >
+                      <ShopifyIcon />
                       Orden {restoration.shopifyOrderName}
                       <ExternalLink aria-hidden />
                     </a>
-                  ) : (
-                    <span data-testid="orden-shopify">
-                      Orden {restoration.shopifyOrderName}
-                    </span>
-                  )}
-                </Badge>
+                  </Badge>
+                ) : (
+                  <ShopifyBadge data-testid="orden-shopify">
+                    Orden {restoration.shopifyOrderName}
+                  </ShopifyBadge>
+                )
               ) : null}
               {sync ? (
                 <SyncStatus
@@ -555,16 +555,12 @@ export default async function RestauracionDetallePage({
             <PaymentsList payments={payments} />
           </TabsContent>
         ) : null}
-        <TabsContent value="archivos" className="space-y-6">
-          {can(user.role, "fotos.subir") ? (
-            <FileUploader
-              restorationId={restoration.id}
-              targets={fileTargets}
-            />
-          ) : null}
-          <FileGallery
+        <TabsContent value="archivos">
+          <FilesPanel
+            restorationId={restoration.id}
             files={files}
             targets={fileTargets}
+            canUpload={can(user.role, "fotos.subir")}
             currentUserId={user.id}
             isAdmin={user.role === "admin"}
           />

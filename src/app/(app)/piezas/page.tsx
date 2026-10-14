@@ -1,3 +1,4 @@
+import { History } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -16,6 +17,7 @@ import {
 } from "@/domain/piece-board-filters";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { boardBalanceDue } from "@/server/restorations/board-balance";
 import { listPiecesBoard } from "@/server/restorations/queries";
 
 export const metadata: Metadata = { title: "Piezas" };
@@ -35,20 +37,32 @@ export default async function PiezasPage({
       .order("name"),
   ]);
   if (workshops.error) throw workshops.error;
+  // "Entregar" desde una fila de la tabla pide confirmar si falta cobrar el saldo.
+  const balanceDue =
+    filters.view === "kanban" ? [] : await boardBalanceDue(items);
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Piezas"
-        description={`Piezas en curso de todas las restauraciones. Se resaltan las que llevan ${WORKSHOP_DAYS_ALERT} días o más en el taller.`}
-      />
-      <FilterChips chips={pieceFilterChips(filters)} />
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <PageHeader
+          title="Piezas"
+          description={`Piezas en curso de todas las restauraciones y las entregadas hoy. Se resaltan las que llevan ${WORKSHOP_DAYS_ALERT} días o más en el taller.`}
+        />
+        <Button asChild variant="outline" size="sm">
+          <Link href="/piezas/historial">
+            <History />
+            Historial
+          </Link>
+        </Button>
+      </div>
       <PiecesBoardFiltersForm
         // Al navegar con otros filtros el formulario se reinicia con los de la URL.
         key={pieceBoardHref(filters)}
         filters={filters}
         workshops={workshops.data}
       />
+      {/* Un solo juego de filtros: los atajos de un clic van aquí, no en el formulario. */}
+      <FilterChips label="Mostrar solo" chips={pieceFilterChips(filters)} />
       <ViewToggle
         view={filters.view}
         tableHref={pieceBoardHref(filters, { view: "tabla", page: 1 })}
@@ -72,6 +86,7 @@ export default async function PiezasPage({
       ) : (
         <>
           <PiecesBoardTable
+            balanceDue={balanceDue}
             pieces={items}
             role={user.role}
             workshops={workshops.data}

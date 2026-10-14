@@ -271,8 +271,9 @@ test.describe("Estados de las piezas", () => {
     await card(page, code).getByRole("link", { name: code }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(code);
     const piecePath = new URL(page.url()).pathname;
+    // Siempre a la vista (horizontal), sin desplegar nada.
     const timeline = page.getByTestId("linea-tiempo");
-    await timeline.getByText("Línea de tiempo").click();
+    await expect(timeline).toBeVisible();
     const events = timeline.getByTestId("evento");
     await expect(events).toHaveCount(4);
     await expect(events.nth(0)).toContainText("Registrada");

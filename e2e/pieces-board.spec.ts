@@ -219,8 +219,10 @@ test.describe("Vista de piezas", () => {
     await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
       "Urgente",
     );
-    await page.getByLabel("Solo urgentes").check();
-    await page.getByRole("button", { name: "Filtrar" }).click();
+    await page
+      .getByRole("navigation", { name: "Mostrar solo" })
+      .getByRole("link", { name: "Urgentes" })
+      .click();
     await expect(page).toHaveURL(/urgentes=1/);
     await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
 
@@ -360,17 +362,23 @@ test.describe("Vista de piezas", () => {
     await expect(
       page.getByRole("columnheader", { name: "Precio venta" }),
     ).toHaveCount(0);
-    await row.getByLabel(`Costo de servicio de ${code}`).fill("45");
-    await row.getByRole("button", { name: `Guardar costo de ${code}` }).click();
+    await expect(row).toContainText("Por definir");
+    await row
+      .getByRole("button", { name: `Editar costo de servicio de ${code}` })
+      .click();
+    const costDialog = page.getByRole("dialog", {
+      name: `Costo de servicio de ${code}`,
+    });
+    await costDialog.getByLabel("Costo de servicio (S/)").fill("45");
+    await costDialog.getByRole("button", { name: "Guardar costo" }).click();
     await expect(page.getByText(`Costo de ${code} guardado.`)).toBeVisible();
+    await expect(row).toContainText("S/ 45.00");
 
     // Admin: ve el costo y pone el precio de venta.
     await loginAs("admin");
     await page.goto(`/piezas?guia=${encodeURIComponent(r.code)}`);
     const adminRow = page.getByTestId(`pieza-${code}`);
-    await expect(
-      adminRow.getByLabel(`Costo de servicio de ${code}`),
-    ).toHaveValue("45.00");
+    await expect(adminRow).toContainText("S/ 45.00");
     await page.getByRole("button", { name: "Editar precios" }).click();
     await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
     await adminRow
@@ -395,5 +403,67 @@ test.describe("Vista de piezas", () => {
     expect(await serious()).toEqual([]);
     await page.getByRole("link", { name: `Ver guía ${r.code}` }).click();
     await expect(page).toHaveURL(new RegExp(`/restauraciones/${r.id}$`));
+  });
+
+  test("las entregadas hoy siguen en la vista; las de días anteriores, en el historial", async ({
+    page,
+    loginAs,
+  }) => {
+    const { pieces } = await seedReceived(2, "Entregada");
+    const [today, before] = pieces;
+    const admin = adminClient();
+    await admin
+      .from("pieces")
+      .update({
+        status: "entregada",
+        delivered_at: new Date().toISOString(),
+      } as never)
+      .eq("id", today!.id);
+    await admin
+      .from("pieces")
+      .update({
+        status: "entregada",
+        delivered_at: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      } as never)
+      .eq("id", before!.id);
+
+    await loginAs("admin");
+    await page.goto(`/piezas?q=${clientName}&estado=entregada`);
+    await expect(page.getByTestId(`pieza-${today!.code}`)).toContainText(
+      "Entregada",
+    );
+    await expect(page.getByTestId(`pieza-${before!.code}`)).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Historial" }).click();
+    await expect(page).toHaveURL(/\/piezas\/historial$/);
+    await page.getByLabel("Código, descripción o cliente").fill(clientName);
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await expect(page.getByTestId(`historial-${before!.code}`)).toBeVisible();
+    await expect(page.getByTestId(`historial-${today!.code}`)).toBeVisible();
+  });
+
+  test("cambia el estado desde la fila de la tabla, con su diálogo si pide datos", async ({
+    page,
+    loginAs,
+  }) => {
+    const { pieces } = await seedReceived(1, "Fila estado");
+    const code = pieces[0]!.code;
+    await loginAs("logistica");
+    await page.goto(`/piezas?q=Fila estado`);
+    const row = page.getByTestId(`pieza-${code}`);
+    await row
+      .getByRole("button", { name: `Cambiar estado de ${code}` })
+      .click();
+    await page.getByRole("menuitem", { name: "Enviar al taller" }).click();
+    const dialog = page.getByRole("dialog", {
+      name: `Enviar al taller: ${code}`,
+    });
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .click();
+    await expect(row).toContainText("En restauración");
+    await expect(row).toContainText(workshopName);
   });
 });

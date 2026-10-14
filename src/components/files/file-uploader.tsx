@@ -25,6 +25,7 @@ import {
 } from "@/domain/files";
 import { compressImage } from "@/lib/images/compress";
 import { createClient } from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
 import { registerRestorationFile } from "@/server/files/actions";
 
 import type { FileTarget } from "./types";
@@ -70,21 +71,38 @@ async function uploadOne(
   return "error" in result ? result.error : null;
 }
 
+const targetValue = (t: FileTarget) => t.id ?? GENERAL;
+
 /**
  * Subida de fotos y archivos (Paso 10.2, P32): varios a la vez o con la cámara del
  * celular, a la restauración (foto general) o a una pieza, con su clasificación.
+ *
+ * Con un solo destino (p. ej. en el detalle de una pieza) el destino queda fijo: se
+ * muestra como texto y no se puede cambiar. Con varios, empieza en el primero (en la
+ * guía, "General").
  */
 export function FileUploader({
   restorationId,
   targets,
+  className,
 }: {
   restorationId: string;
   targets: FileTarget[];
+  className?: string;
 }) {
   const router = useRouter();
   const picker = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
-  const [target, setTarget] = useState(GENERAL);
+  const fixedTarget = targets.length === 1 ? targets[0]! : null;
+  const [chosen, setTarget] = useState(() =>
+    targets[0] ? targetValue(targets[0]) : GENERAL,
+  );
+  // Si el destino elegido deja de existir (p. ej. se anuló la pieza), vuelve al primero.
+  const target = targets.some((t) => targetValue(t) === chosen)
+    ? chosen
+    : targets[0]
+      ? targetValue(targets[0])
+      : GENERAL;
   const [category, setCategory] = useState<FileCategory>("antes");
   const [items, setItems] = useState<UploadItem[]>([]);
   const [rejected, setRejected] = useState<string[]>([]);
@@ -139,27 +157,41 @@ export function FileUploader({
   return (
     <section
       aria-labelledby="subir-archivos"
-      className="space-y-3 rounded-md border p-4"
+      className={cn("@container space-y-3 rounded-md border p-4", className)}
     >
       <h2 id="subir-archivos" className="font-semibold">
         Subir fotos y archivos
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="archivo-destino">Para</Label>
-          <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger id="archivo-destino" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {targets.map((t) => (
-                <SelectItem key={t.id ?? GENERAL} value={t.id ?? GENERAL}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-3 @md:grid-cols-2">
+        {fixedTarget ? (
+          // Destino fijo (detalle de una pieza): se lee, no se elige.
+          <dl className="space-y-1.5">
+            <dt className="text-sm font-medium">Para</dt>
+            <dd
+              data-testid="archivo-destino-fijo"
+              className="bg-muted/50 flex h-9 min-w-0 items-center rounded-md border px-3 text-sm"
+              title={fixedTarget.label}
+            >
+              <span className="truncate">{fixedTarget.label}</span>
+            </dd>
+          </dl>
+        ) : (
+          <div className="space-y-1.5">
+            <Label htmlFor="archivo-destino">Para</Label>
+            <Select value={target} onValueChange={setTarget}>
+              <SelectTrigger id="archivo-destino" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targets.map((t) => (
+                  <SelectItem key={targetValue(t)} value={targetValue(t)}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="archivo-clasificacion">Clasificación</Label>
           <Select

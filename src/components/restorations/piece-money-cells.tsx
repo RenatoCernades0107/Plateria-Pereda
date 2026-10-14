@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { Loader2, Pencil } from "lucide-react";
+import { useState, useTransition } from "react";
+import { toast } from "sonner";
 
+import { FormAlert } from "@/components/auth/form-alert";
 import { MoneyCell } from "@/components/money-cell";
-import { formatCents, parseMoney, type Cents } from "@/domain/money";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  formatCents,
+  parseMoney,
+  toDecimalString,
+  type Cents,
+} from "@/domain/money";
 import { setPieceSalePrice } from "@/server/sale-price-actions";
 import { setPieceServiceCost } from "@/server/service-cost-actions";
 
@@ -29,6 +50,110 @@ export function ServiceCostInput({
       savedMessage={`Costo de ${piece.code} guardado.`}
       onSave={(value) => setPieceServiceCost(piece.id, value)}
     />
+  );
+}
+
+/**
+ * Costo de servicio en la tabla de piezas (pedido del 2026-10-14): la celda muestra
+ * el monto (o "Por definir") y un botón con lápiz abre un diálogo para cambiarlo.
+ * Así la tabla no se llena de campos y la edición es una acción explícita.
+ */
+export function ServiceCostCell({
+  piece,
+  cents,
+}: {
+  piece: MoneyPiece;
+  cents: Cents | null;
+}) {
+  const saved = cents === null ? "" : toDecimalString(cents);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(saved);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const inputId = `costo-servicio-${piece.id}`;
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    const text = value.trim();
+    if (text !== "" && parseMoney(text) === null) {
+      return setError("Ingresa un monto válido (hasta 2 decimales).");
+    }
+    startTransition(async () => {
+      const result = await setPieceServiceCost(piece.id, text);
+      if ("error" in result) return setError(result.error);
+      toast.success(`Costo de ${piece.code} guardado.`);
+      setOpen(false);
+    });
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      {cents === null ? (
+        <span className="text-muted-foreground">Por definir</span>
+      ) : (
+        <span className="tabular-nums">{formatCents(cents)}</span>
+      )}
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) {
+            setValue(saved);
+            setError(null);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="size-7 print:hidden"
+            aria-label={`Editar costo de servicio de ${piece.code}`}
+            title="Editar costo de servicio"
+          >
+            <Pencil />
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <form onSubmit={submit} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Costo de servicio de {piece.code}</DialogTitle>
+              <DialogDescription>
+                Lo que cobra el taller por esta pieza. Déjalo vacío si aún no se
+                define.
+              </DialogDescription>
+            </DialogHeader>
+            {error ? <FormAlert>{error}</FormAlert> : null}
+            <div className="space-y-2">
+              <Label htmlFor={inputId}>Costo de servicio (S/)</Label>
+              <Input
+                id={inputId}
+                inputMode="decimal"
+                className="tabular-nums"
+                placeholder="Por definir"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                disabled={pending}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={pending}>
+                {pending ? <Loader2 className="animate-spin" /> : null}
+                Guardar costo
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

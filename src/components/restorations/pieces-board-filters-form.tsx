@@ -25,7 +25,12 @@ import { PIECE_LOCATION_LABELS } from "@/domain/restoration-status";
 
 const ALL = "todos";
 
-/** Filtros de la vista de piezas (se guardan en la URL). */
+/**
+ * Filtros de la vista de piezas (se guardan en la URL). Urgentes, listas para
+ * entregar, por devolver y muchos días en el taller van en los atajos de un clic
+ * ("Mostrar solo", `FilterChips`), no aquí, para no repetir filtros. Al filtrar se
+ * conservan los atajos activos; "Limpiar" quita todo.
+ */
 export function PiecesBoardFiltersForm({
   filters,
   workshops,
@@ -41,7 +46,7 @@ export function PiecesBoardFiltersForm({
   return (
     <form
       aria-label="Filtros de piezas"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(4,minmax(0,1fr))_auto]"
+      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(3,minmax(0,1fr))_auto]"
       onSubmit={(event) => {
         event.preventDefault();
         router.push(pieceBoardHref(state, { page: 1 }));
@@ -134,43 +139,6 @@ export function PiecesBoardFiltersForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-dias">Días en taller (mín.)</Label>
-        <Input
-          id="filtro-dias"
-          type="number"
-          min={1}
-          max={365}
-          inputMode="numeric"
-          value={state.minDays ?? ""}
-          onChange={(e) => {
-            const value = Number.parseInt(e.target.value, 10);
-            set({
-              minDays: Number.isFinite(value) && value > 0 ? value : null,
-            });
-          }}
-        />
-      </div>
-      <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:col-span-2 lg:col-span-full">
-        <legend className="sr-only">Mostrar solo</legend>
-        {(
-          [
-            ["urgent", "Solo urgentes"],
-            ["ready", "Listas para entregar"],
-            ["toReturn", "Por devolver al cliente"],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="accent-primary size-4"
-              checked={state[key]}
-              onChange={(e) => set({ [key]: e.target.checked })}
-            />
-            {label}
-          </label>
-        ))}
-      </fieldset>
       <div className="flex items-end gap-2">
         <Button type="submit">Filtrar</Button>
         <Button
