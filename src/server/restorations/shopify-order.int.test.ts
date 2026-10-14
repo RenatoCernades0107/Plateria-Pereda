@@ -103,11 +103,18 @@ describe("orden de Shopify al aprobar (9.1)", () => {
       .eq("restoration_id", restoration!.id)
       .order("number");
 
-    const approve = (ids: string[]) =>
-      ventas.rpc("change_piece_status", {
+    // Sin precio nacen en Consulta: pasan por Espera respuesta cliente y se aprueban.
+    const approve = async (ids: string[]) => {
+      const waiting = await ventas.rpc("change_piece_status", {
+        p_piece_ids: ids,
+        p_to: "en_espera",
+      });
+      if (waiting.error) return waiting;
+      return ventas.rpc("change_piece_status", {
         p_piece_ids: ids,
         p_to: "aprobada",
       });
+    };
     const jobs = () =>
       admin
         .from("shopify_sync_jobs")

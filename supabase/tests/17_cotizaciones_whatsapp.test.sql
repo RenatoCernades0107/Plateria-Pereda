@@ -270,9 +270,10 @@ create temporary table r3 as
     (select id from q2), '00000000-0000-0000-0000-00000000ea21', null, 'contado', null, '',
     (select jsonb_build_array(
        jsonb_build_object('quote_item_id', i1.id, 'description', 'Bandeja', 'price', '80',
-         'status', 'en_consulta', 'status_note', 'Consultar al taller si se puede soldar'),
+         'status', 'aprobada'),
        jsonb_build_object('quote_item_id', i2.id, 'description', 'Azucarera', 'price', '30',
          'status', 'en_consulta', 'status_note', 'Preguntar si quiere grabado'),
+       -- Sin precio pasa a Consulta aunque se elija Aprobada.
        jsonb_build_object('description', 'Cucharita', 'status', 'aprobada'))
      from public.whatsapp_quote_items i1, public.whatsapp_quote_items i2
      where i1.quote_id = (select id from q2) and i1.number = 1
@@ -286,8 +287,8 @@ select is(
 );
 select results_eq(
   $$ select status::text, location::text from public.pieces where restoration_id = (select id from r3) order by number $$,
-  $$ values ('en_consulta', 'por_whatsapp'), ('en_consulta', 'por_whatsapp'), ('aprobada', 'por_whatsapp') $$,
-  'cada pieza pasa al estado elegido'
+  $$ values ('aprobada', 'por_whatsapp'), ('en_consulta', 'por_whatsapp'), ('en_consulta', 'por_whatsapp') $$,
+  'cada pieza pasa al estado elegido; la que no tiene precio, a Consulta'
 );
 select results_eq(
   $$ select h.from_status::text, h.to_status::text, h.note from public.piece_status_history h
@@ -310,10 +311,10 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select lives_ok(
   format($$ select * from public.change_piece_status(array[%L, %L]::uuid[], 'en_espera');
             select * from public.change_piece_status(array[%L, %L]::uuid[], 'aprobada') $$,
-    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 1),
     (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 2),
-    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 1),
-    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 2)),
+    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 3),
+    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 2),
+    (select p.id from public.pieces p where p.restoration_id = (select id from r3) and p.number = 3)),
   'después siguen el flujo normal: Consulta → Espera respuesta cliente → Aprobada'
 );
 reset role;
