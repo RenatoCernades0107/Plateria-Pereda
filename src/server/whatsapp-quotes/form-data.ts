@@ -33,7 +33,8 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
     items: quote.items.map((item) => ({
       id: item.id,
       number: item.number,
-      priceLabel: formatCents(item.priceCents),
+      priceLabel:
+        item.priceCents === null ? "Por definir" : formatCents(item.priceCents),
       orderedIn: item.order?.restorationCode ?? null,
       piece: {
         workshopId: null,
@@ -42,7 +43,7 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
         material: { id: item.materialId, name: item.materialName },
         service: { id: item.serviceId, name: item.serviceName },
         weight: item.weightGrams === null ? "" : String(item.weightGrams),
-        price: toDecimalString(item.priceCents),
+        price: item.priceCents === null ? "" : toDecimalString(item.priceCents),
         urgent: false,
         notes: item.notes,
         quoteItemId: null,

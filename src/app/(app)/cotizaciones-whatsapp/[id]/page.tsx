@@ -242,7 +242,7 @@ export default async function CotizacionWhatsappPage({
                     <ItemState order={item.order} />
                   </TableCell>
                   <TableCell className="text-right font-medium tabular-nums">
-                    {formatCents(item.priceCents)}
+                    <ItemPrice cents={item.priceCents} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -288,7 +288,7 @@ export default async function CotizacionWhatsappPage({
                 <ItemState order={item.order} />
               </div>
               <p className="font-medium tabular-nums">
-                {formatCents(item.priceCents)}
+                <ItemPrice cents={item.priceCents} />
               </p>
             </li>
           ))}
@@ -334,5 +334,14 @@ export default async function CotizacionWhatsappPage({
         <EntityHistorySection table="whatsapp_quotes" recordId={quote.id} />
       </section>
     </div>
+  );
+}
+
+/** Precio cotizado; sin precio, "Por definir" (la pieza pasará a Consulta). */
+function ItemPrice({ cents }: { cents: number | null }) {
+  return cents === null ? (
+    <span className="text-muted-foreground font-normal">Por definir</span>
+  ) : (
+    formatCents(cents)
   );
 }

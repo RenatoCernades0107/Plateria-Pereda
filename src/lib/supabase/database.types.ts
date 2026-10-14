@@ -1251,7 +1251,7 @@ export type Database = {
           measure: string;
           notes: string;
           number: number;
-          price: number;
+          price: number | null;
           quote_id: string;
           service_id: string | null;
           service_name: string;
@@ -1267,7 +1267,7 @@ export type Database = {
           measure?: string;
           notes?: string;
           number: number;
-          price: number;
+          price: number | null;
           quote_id: string;
           service_id?: string | null;
           service_name?: string;
@@ -1283,7 +1283,7 @@ export type Database = {
           measure?: string;
           notes?: string;
           number?: number;
-          price?: number;
+          price?: number | null;
           quote_id?: string;
           service_id?: string | null;
           service_name?: string;

@@ -705,9 +705,11 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     const user = userEvent.setup();
     renderForm({ kind: "copia", quote: linkedQuote });
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
-    expect(
-      within(screen.getByTestId("pieza-3")).getByLabelText("Estado inicial"),
-    ).toHaveTextContent("Consulta");
+    // Sin precio pasa a Consulta sola; con precio se elige el estado.
+    const card = within(screen.getByTestId("pieza-3"));
+    expect(card.getByTestId("pasa-a-consulta")).toBeVisible();
+    await user.type(card.getByLabelText("Precio (S/)"), "50");
+    expect(card.getByLabelText("Estado inicial")).toHaveTextContent("Consulta");
   });
 
   it("el registro en oficina no muestra el estado inicial", () => {
