@@ -12,11 +12,14 @@ export function ActiveToggle({
   id,
   name,
   active,
+  size = "sm",
 }: {
   entity: "client" | "contact";
   id: string;
   name: string;
   active: boolean;
+  /** "default" junto a otros botones de tamaño normal (p. ej. «Editar»). */
+  size?: "sm" | "default";
 }) {
   const [pending, startTransition] = useTransition();
   const toggle = () =>
@@ -30,7 +33,7 @@ export function ActiveToggle({
   return (
     <Button
       variant={active ? "outline" : "default"}
-      size="sm"
+      size={size}
       disabled={pending}
       onClick={toggle}
       aria-label={`${active ? "Desactivar" : "Activar"} ${name}`}

@@ -3,6 +3,17 @@ import { describe, expect, it } from "vitest";
 import { describeChanges, entityLabel, formatValue } from "./audit";
 
 describe("describeChanges", () => {
+  it("oculta columnas técnicas y traduce las comunes (IGV, adelanto)", () => {
+    const lines = describeChanges("whatsapp_quotes", "insert", {
+      created_by: { new: "10000000-0000-0000-0000-000000000002" },
+      prices_include_igv: { new: true },
+      deposit_amount: { new: 100 },
+    } as never);
+    expect(lines.join(" | ")).not.toMatch(/Created by|1000000/);
+    expect(lines.join(" | ")).toContain("Precio incluye IGV: Sí");
+    expect(lines.join(" | ")).toContain("Adelanto (S/)");
+  });
+
   it("una edición muestra el valor anterior y el nuevo", () => {
     expect(
       describeChanges("talleres", "update", {
