@@ -25,25 +25,25 @@ export type ProviderReportPiece = {
 
 export type ProviderReportRow = {
   id: string;
+  number: number;
   code: string;
   status: string;
   description: string;
-  /** "Servicio a realizar" (las notas de la pieza). */
-  task: string;
+  /** Material, medidas y peso, en una línea. */
+  detail: string;
   service: string;
-  material: string;
-  measure: string;
-  weight: string;
+  /** "Servicio a realizar" (las notas de la pieza); vacío si no hay. */
+  task: string;
 };
 
 export type ProviderReportModel = {
   title: string;
   /** Fecha de impresión del reporte. */
   printedAt: string;
+  /** Quien genera el reporte (va discreto en el pie); null si no se conoce. */
+  generatedBy: string | null;
   rows: ProviderReportRow[];
 };
-
-const orDash = (value: string) => value.trim() || "—";
 
 /** Nombre del archivo, p. ej. `reporte-proveedor-2026-10-15.pdf` (fecha de Lima). */
 export function providerReportFileName(now = new Date()): string {
@@ -53,21 +53,31 @@ export function providerReportFileName(now = new Date()): string {
 
 export function providerReportModel(
   pieces: readonly ProviderReportPiece[],
-  now = new Date(),
+  {
+    generatedBy = null,
+    now = new Date(),
+  }: { generatedBy?: string | null; now?: Date } = {},
 ): ProviderReportModel {
   return {
     title: "REPORTE PARA PROVEEDOR",
     printedAt: formatDate(now),
-    rows: pieces.map((p) => ({
+    generatedBy: generatedBy?.trim() || null,
+    rows: pieces.map((p, i) => ({
       id: p.id,
+      number: i + 1,
       code: p.code,
       status: PIECE_STATUS_LABELS[p.status],
-      description: orDash(p.description),
+      description: p.description.trim() || "—",
+      detail: [
+        p.materialName,
+        p.measure,
+        p.weightGrams === null ? "" : `${p.weightGrams} g`,
+      ]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(" · "),
+      service: p.serviceName.trim() || "—",
       task: p.notes.trim(),
-      service: orDash(p.serviceName),
-      material: orDash(p.materialName),
-      measure: orDash(p.measure),
-      weight: p.weightGrams === null ? "—" : `${p.weightGrams} g`,
     })),
   };
 }

@@ -19,29 +19,29 @@ const piece: ProviderReportPiece = {
 };
 
 describe("providerReportModel", () => {
-  it("arma cada pieza con sus datos y la fecha de impresión", () => {
-    const model = providerReportModel(
-      [piece],
-      new Date("2026-10-15T15:00:00Z"),
-    );
+  it("arma cada pieza con sus datos, la fecha de impresión y quién lo genera", () => {
+    const model = providerReportModel([piece], {
+      generatedBy: " María Quispe ",
+      now: new Date("2026-10-15T15:00:00Z"),
+    });
     expect(model.printedAt).toBe("15/10/2026");
+    expect(model.generatedBy).toBe("María Quispe");
     expect(model.rows).toEqual([
       {
         id: "p1",
+        number: 1,
         code: "RES-00004-1",
         status: "Aprobada",
         description: "Marco llano",
-        task: "Soldar gancho de la esquina",
+        detail: "Plata 925 · 29x36 · 120 g",
         service: "Varios",
-        material: "Plata 925",
-        measure: "29x36",
-        weight: "120 g",
+        task: "Soldar gancho de la esquina",
       },
     ]);
   });
 
-  it("pone un guion en los datos que faltan", () => {
-    const [row] = providerReportModel([
+  it("omite los datos que faltan", () => {
+    const model = providerReportModel([
       {
         ...piece,
         notes: "",
@@ -50,13 +50,12 @@ describe("providerReportModel", () => {
         measure: "",
         weightGrams: null,
       },
-    ]).rows;
-    expect(row).toMatchObject({
+    ]);
+    expect(model.generatedBy).toBeNull();
+    expect(model.rows[0]).toMatchObject({
       task: "",
       service: "—",
-      material: "—",
-      measure: "—",
-      weight: "—",
+      detail: "",
     });
   });
 });

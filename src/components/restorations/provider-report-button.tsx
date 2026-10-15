@@ -11,7 +11,7 @@ import {
   providerReportModel,
 } from "@/domain/provider-report";
 import type { BoardPiece } from "@/server/restorations/queries";
-import { getPieceNotes } from "@/server/restorations/report-actions";
+import { getProviderReportData } from "@/server/restorations/report-actions";
 
 import { drawProviderReport } from "./provider-report-draw";
 import { loadPhotos, PDF_LOGO_URL, thumbnail } from "./pdf-images";
@@ -27,8 +27,8 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
     if (pieces.length === 0) return;
     setBusy(true);
     try {
-      const [notes, logo, images] = await Promise.all([
-        getPieceNotes(pieces.map((p) => p.id)),
+      const [data, logo, images] = await Promise.all([
+        getProviderReportData(pieces.map((p) => p.id)),
         // Sin el logo ni las fotos, el reporte sale igual.
         thumbnail(PDF_LOGO_URL, 400).catch(() => null),
         loadPhotos(
@@ -38,8 +38,8 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
           ),
         ),
       ]);
-      if ("error" in notes) {
-        toast.error(notes.error);
+      if ("error" in data) {
+        toast.error(data.error);
         return;
       }
       const model = providerReportModel(
@@ -48,12 +48,13 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
           code: p.code,
           status: p.status,
           description: p.description,
-          notes: notes.notes[p.id] ?? "",
+          notes: data.notes[p.id] ?? "",
           serviceName: p.serviceName,
           materialName: p.materialName,
           measure: p.measure,
           weightGrams: p.weightGrams,
         })),
+        { generatedBy: data.generatedBy },
       );
       const pdf = await drawProviderReport(model, { logo, images });
       pdf.save(providerReportFileName());

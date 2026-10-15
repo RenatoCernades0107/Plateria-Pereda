@@ -6,14 +6,21 @@ import type { ProviderReportModel } from "@/domain/provider-report";
 const BRAND: [number, number, number] = [148, 101, 87];
 const GRID = 200;
 const MARGIN = 12;
-const PHOTO = 36;
-const PAD = 3;
-const LINE_H = 4;
+/** Filas mínimas de la tabla (las que faltan se dibujan vacías, como en la guía). */
+const MIN_ROWS = 8;
+
+type Column = {
+  key: "number" | "photo" | "code" | "description" | "service" | "status";
+  title: string;
+  width: number;
+  align?: "left" | "center";
+};
 
 /**
- * Dibuja el reporte para el proveedor en un A4 vertical (mm): logo, título y fecha de
- * impresión arriba, y una ficha por pieza (foto, código, estado, descripción, servicio,
- * material, medidas, peso y servicio a realizar). `logo` y las fotos van como data URL.
+ * Dibuja el reporte para el proveedor en un A4 vertical (mm), con la misma tabla que la
+ * guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, código,
+ * descripción con material, medidas y peso, servicio a realizar, servicio y estado).
+ * Sin precios, costos ni datos del cliente. `logo` y las fotos van como data URL.
  */
 export async function drawProviderReport(
   model: ProviderReportModel,
@@ -54,106 +61,151 @@ export async function drawProviderReport(
   pdf.text(model.printedAt, right - boxW / 2, top + 16.7, { align: "center" });
   let y = top + 28 + 6;
 
-  // --- Una ficha por pieza.
-  const textX = MARGIN + PAD + PHOTO + 4;
-  const textW = right - PAD - textX;
-  const colW = textW / 2;
+  // --- Tabla de piezas.
+  const columns: Column[] = [
+    { key: "number", title: "N°", width: 9, align: "center" },
+    { key: "photo", title: "FOTO", width: 20 },
+    { key: "code", title: "CÓDIGO", width: 27 },
+    { key: "description", title: "DESCRIPCIÓN", width: 0 },
+    { key: "service", title: "SERVICIO", width: 30 },
+    { key: "status", title: "ESTADO", width: 27 },
+  ];
+  const description = columns.find((c) => c.key === "description")!;
+  description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
+  const pad = 1.8;
+  const lineH = 3.8;
+  const headerH = 6.5;
+  const xs: number[] = [];
+  columns.reduce((x, c) => (xs.push(x), x + c.width), MARGIN);
+
+  const drawTableHeader = () => {
+    pdf.setFillColor(...BRAND).rect(MARGIN, y, contentW, headerH, "F");
+    font("bold", 8).setTextColor(255);
+    columns.forEach((c, i) => {
+      pdf.text(c.title, xs[i]! + c.width / 2, y + 4.4, { align: "center" });
+    });
+    y += headerH;
+  };
+  const drawRowFrame = (h: number) => {
+    pdf.setDrawColor(GRID).setLineWidth(0.2);
+    pdf.rect(MARGIN, y, contentW, h);
+    xs.slice(1).forEach((x) => pdf.line(x, y, x, y + h));
+  };
+  const textW = (key: Column["key"]) =>
+    columns.find((c) => c.key === key)!.width - pad * 2;
+  drawTableHeader();
+
   for (const row of model.rows) {
-    font("bold", 9.5);
-    const description = pdf.splitTextToSize(row.description, textW);
     font("normal", 8.5);
-    const task = pdf.splitTextToSize(row.task || "—", textW);
-    const height =
-      PAD * 2 +
-      Math.max(
-        PHOTO,
-        7 +
-          description.length * (LINE_H + 0.6) +
-          2 +
-          2 * 10 +
-          4 +
-          task.length * LINE_H,
-      );
-    if (y + height > bottomLimit) {
+    const desc = pdf.splitTextToSize(row.description, textW("description"));
+    font("normal", 7.5);
+    const detail = row.detail
+      ? pdf.splitTextToSize(row.detail, textW("description"))
+      : [];
+    const task = row.task
+      ? pdf.splitTextToSize(
+          `Servicio a realizar: ${row.task}`,
+          textW("description"),
+        )
+      : [];
+    const service = pdf.splitTextToSize(row.service, textW("service"));
+    const status = pdf.splitTextToSize(row.status, textW("status"));
+    const code = pdf.splitTextToSize(row.code, textW("code"));
+    const lines = Math.max(
+      desc.length + detail.length + task.length,
+      service.length,
+      status.length,
+      code.length,
+    );
+    const rowH = Math.max(lines * lineH + pad * 2, 20);
+    if (y + rowH > bottomLimit) {
       pdf.addPage();
       y = MARGIN;
+      drawTableHeader();
     }
-    pdf.setDrawColor(GRID).setLineWidth(0.2).rect(MARGIN, y, contentW, height);
-
-    // Foto, encajada en un cuadrado sin deformarla.
-    const photoX = MARGIN + PAD;
-    const photoY = y + PAD;
-    pdf.rect(photoX, photoY, PHOTO, PHOTO);
-    const image = images?.get(row.id);
-    if (image) {
-      const props = pdf.getImageProperties(image);
-      const scale = PHOTO / Math.max(props.width, props.height);
-      const w = props.width * scale;
-      const h = props.height * scale;
-      pdf.addImage(
-        image,
-        photoX + (PHOTO - w) / 2,
-        photoY + (PHOTO - h) / 2,
-        w,
-        h,
-      );
-    } else {
-      font("italic", 7, 140);
-      pdf.text("Sin foto", photoX + PHOTO / 2, photoY + PHOTO / 2, {
-        align: "center",
-      });
-    }
-
-    // Código (guía y pieza) y estado.
-    let ty = y + PAD + 4.5;
-    font("bold", 11).setTextColor(...BRAND);
-    pdf.text(row.code, textX, ty);
-    font("normal", 8, 90);
-    pdf.text(`Estado: ${row.status}`, right - PAD, ty, { align: "right" });
-    ty += 6;
-
-    // Descripción.
-    font("bold", 9.5);
-    pdf.text(description, textX, ty);
-    ty += description.length * (LINE_H + 0.6) + 2;
-
-    // Servicio, material, medidas y peso.
-    const fields: [string, string][] = [
-      ["Servicio", row.service],
-      ["Material", row.material],
-      ["Medidas", row.measure],
-      ["Peso", row.weight],
-    ];
-    fields.forEach(([label, value], i) => {
-      const x = textX + (i % 2) * colW;
-      const fy = ty + Math.floor(i / 2) * 10;
-      font("normal", 7, 120);
-      pdf.text(label.toUpperCase(), x, fy);
-      font("normal", 8.5);
-      pdf.text(pdf.splitTextToSize(value, colW - 3)[0] ?? "", x, fy + 4);
+    drawRowFrame(rowH);
+    const textTop = y + pad + 2.6;
+    columns.forEach((c, i) => {
+      const x = xs[i]!;
+      switch (c.key) {
+        case "number":
+          font("normal", 8.5);
+          pdf.text(String(row.number), x + c.width / 2, textTop, {
+            align: "center",
+          });
+          break;
+        case "photo": {
+          const image = images?.get(row.id);
+          if (image) {
+            // Encajada en un cuadrado, sin deformarla.
+            const size = c.width - pad * 2;
+            const props = pdf.getImageProperties(image);
+            const scale = size / Math.max(props.width, props.height);
+            const w = props.width * scale;
+            const h = props.height * scale;
+            pdf.addImage(
+              image,
+              x + pad + (size - w) / 2,
+              y + pad + (size - h) / 2,
+              w,
+              h,
+            );
+          } else {
+            font("italic", 7, 140);
+            pdf.text("Sin foto", x + c.width / 2, textTop, { align: "center" });
+          }
+          break;
+        }
+        case "code":
+          font("bold", 8.5);
+          pdf.text(code, x + pad, textTop);
+          break;
+        case "description": {
+          let ty = textTop;
+          font("normal", 8.5);
+          pdf.text(desc, x + pad, ty);
+          ty += desc.length * lineH;
+          font("normal", 7.5, 100);
+          if (detail.length) {
+            pdf.text(detail, x + pad, ty);
+            ty += detail.length * lineH;
+          }
+          if (task.length) {
+            font("italic", 7.5, 100);
+            pdf.text(task, x + pad, ty);
+          }
+          break;
+        }
+        case "service":
+          font("normal", 8);
+          pdf.text(service, x + pad, textTop);
+          break;
+        case "status":
+          font("normal", 8);
+          pdf.text(status, x + pad, textTop);
+          break;
+      }
     });
-    ty += 2 * 10 + 1;
-
-    // Servicio a realizar (las notas de la pieza).
-    font("normal", 7, 120);
-    pdf.text("SERVICIO A REALIZAR", textX, ty);
-    font("normal", 8.5);
-    pdf.text(task, textX, ty + 4);
-
-    y += height + 4;
+    y += rowH;
   }
 
-  // --- Pie: numeración.
+  // Filas vacías hasta el mínimo, mientras quepan en la página.
+  for (let n = model.rows.length; n < MIN_ROWS && y + 7 <= bottomLimit; n++) {
+    drawRowFrame(7);
+    y += 7;
+  }
+
+  // --- Pie: fecha, quién lo generó (discreto) y numeración.
+  const footer = [model.title, model.printedAt]
+    .concat(model.generatedBy ? [`Generado por ${model.generatedBy}`] : [])
+    .join(" · ");
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
     font("normal", 7, 150);
-    pdf.text(
-      `${model.title} · ${model.printedAt} · Página ${page} de ${pages}`,
-      right,
-      pageH - 5,
-      { align: "right" },
-    );
+    pdf.text(`${footer} · Página ${page} de ${pages}`, right, pageH - 5, {
+      align: "right",
+    });
   }
   return pdf;
 }
