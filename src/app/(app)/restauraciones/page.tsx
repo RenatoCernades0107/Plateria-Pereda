@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, History, Plus } from "lucide-react";
+import { ArrowLeft, Download, History, MoreHorizontal, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -10,6 +10,12 @@ import { RestorationsKanban } from "@/components/restorations/restorations-kanba
 import { RestorationsFiltersForm } from "@/components/restorations/restorations-filters-form";
 import { RestorationsList } from "@/components/restorations/restorations-list";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ViewToggle } from "@/components/view-toggle";
 import {
   restorationChipCountFilters,
@@ -87,38 +93,14 @@ export default async function RestauracionesPage({
                 : "Restauraciones en curso."
           }
         />
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline">
-            <Link
-              href={restorationFiltersHref(parseRestorationFilters({}), {
-                scope: history ? "activas" : "historial",
-                view: filters.view,
-              })}
-            >
-              {history ? <ArrowLeft /> : <History />}
-              {history ? "Volver a restauraciones" : "Historial"}
+        {canEdit ? (
+          <Button asChild>
+            <Link href="/restauraciones/nueva">
+              <Plus />
+              Nueva restauración
             </Link>
           </Button>
-          {canEdit ? (
-            <>
-              <Button asChild variant="outline">
-                <a
-                  href={`/api/restauraciones/exportar${exportQuery ? `?${exportQuery}` : ""}`}
-                  download
-                >
-                  <Download />
-                  Exportar CSV
-                </a>
-              </Button>
-              <Button asChild>
-                <Link href="/restauraciones/nueva">
-                  <Plus />
-                  Nueva restauración
-                </Link>
-              </Button>
-            </>
-          ) : null}
-        </div>
+        ) : null}
       </div>
       <FilterChips
         chips={restorationFilterChips(filters, { showMoney: canEdit, counts })}
@@ -138,14 +120,47 @@ export default async function RestauracionesPage({
               ? "1 restauración"
               : `${total} restauraciones`}
         </p>
-        <ViewToggle
-          view={filters.view}
-          tableHref={restorationFiltersHref(filters, {
-            view: "tabla",
-            page: 1,
-          })}
-          kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <ViewToggle
+            view={filters.view}
+            tableHref={restorationFiltersHref(filters, {
+              view: "tabla",
+              page: 1,
+            })}
+            kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
+          />
+          <Button asChild variant="outline">
+            <Link
+              href={restorationFiltersHref(parseRestorationFilters({}), {
+                scope: history ? "activas" : "historial",
+                view: filters.view,
+              })}
+            >
+              {history ? <ArrowLeft /> : <History />}
+              {history ? "Volver a restauraciones" : "Historial"}
+            </Link>
+          </Button>
+          {canEdit ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Más acciones">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <a
+                    href={`/api/restauraciones/exportar${exportQuery ? `?${exportQuery}` : ""}`}
+                    download
+                  >
+                    <Download />
+                    Exportar CSV
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
       </div>
       {total === 0 && filtered ? (
         <FilteredEmptyState
