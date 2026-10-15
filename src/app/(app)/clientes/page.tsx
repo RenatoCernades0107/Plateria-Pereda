@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ClientsFiltersForm } from "@/components/clients/clients-filters-form";
 import { ClientsList } from "@/components/clients/clients-list";
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { ClientsSearch } from "@/components/clients/clients-search";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
 import { Pagination } from "@/components/pagination";
@@ -33,18 +34,16 @@ export default async function ClientesPage({
         {canEdit ? <NewClientDialog /> : null}
       </div>
       <ClientsSearch canCreate={canEdit} />
-      <ClientsFiltersForm
-        // Al navegar con otros filtros el formulario se reinicia con los de la URL.
-        key={clientFiltersHref(filters)}
-        filters={filters}
-      />
+      <ClientsFiltersForm filters={filters} />
       <ClientsList
         clients={clients}
         canRetry={canEdit}
-        emptyMessage={
-          filtered
-            ? "No hay clientes con esos filtros."
-            : "Aún no hay clientes registrados."
+        empty={
+          filtered ? (
+            <FilteredEmptyState resetHref="/clientes" />
+          ) : (
+            <EmptyState title="Aún no hay clientes registrados." />
+          )
         }
       />
       <Pagination

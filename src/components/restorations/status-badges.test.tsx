@@ -15,7 +15,7 @@ import {
 } from "./status-badges";
 
 describe("estado de la pieza", () => {
-  it("cada estado tiene su color e icono, y siempre su texto", () => {
+  it("cada estado tiene su color, punto e icono, y siempre su texto", () => {
     const colors = PIECE_STATUSES.map(
       (s) => PIECE_STATUS_STYLES[s].className.match(/\bbg-[a-z]+-\d+/)?.[0],
     );
@@ -25,7 +25,11 @@ describe("estado de la pieza", () => {
       const { unmount } = render(<PieceStatusBadge status={status} />);
       const badge = screen.getByText(PIECE_STATUS_LABELS[status]);
       expect(badge).toHaveAttribute("data-status", status);
-      expect(badge.querySelector("svg[aria-hidden]")).not.toBeNull();
+      // Misma familia para todos: píldora con un punto del color del estado.
+      expect(
+        badge.querySelector('[data-slot="status-dot"][aria-hidden]'),
+      ).not.toBeNull();
+      expect(PIECE_STATUS_STYLES[status].icon).toBeTruthy();
       unmount();
     }
   });

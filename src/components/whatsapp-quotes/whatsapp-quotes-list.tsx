@@ -37,14 +37,17 @@ export function WhatsappQuotesList({
   quotes,
   now,
   emptyMessage,
+  empty,
 }: {
   quotes: WhatsappQuoteListItem[];
   /** Para la antigüedad ("hace 3 días"); se pasa desde el servidor. */
   now: Date;
   emptyMessage: string;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (quotes.length === 0) {
-    return <EmptyState>{emptyMessage}</EmptyState>;
+    return empty ?? <EmptyState>{emptyMessage}</EmptyState>;
   }
   return (
     <>

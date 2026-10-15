@@ -1,7 +1,11 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
-import { pieceAction, pieceActionNames } from "./support/pieces";
+import {
+  pieceAction,
+  pieceActionNames,
+  waitForPieceSaved,
+} from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
 // Comparten el cliente y el taller de prueba: en serie.
@@ -197,6 +201,7 @@ test.describe("Estados de las piezas", () => {
     await pieceAction(page, code, "Volvió de revisión");
     await expect(card(page, code)).toContainText("En tienda");
     await expect(card(page, code)).toContainText("Consulta");
+    await waitForPieceSaved(page, code);
     await page.reload();
     await expect(card(page, code)).toContainText("En tienda");
     expect(await pieceActionNames(page, code)).toContain(
@@ -362,6 +367,7 @@ test.describe("Estados de las piezas", () => {
       .getByRole("button", { name: /Confirmar/ })
       .click();
     await expect(card(page, code)).toContainText("Observación");
+    await waitForPieceSaved(page, code);
 
     await loginAs("logistica");
     await page.goto(piecePath);

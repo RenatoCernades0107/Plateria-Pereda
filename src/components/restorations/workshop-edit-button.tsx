@@ -4,6 +4,7 @@ import { Loader2, Pencil, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -106,7 +107,7 @@ export function WorkshopEditButton({
           <Button
             type="button"
             size="icon"
-            variant="ghost"
+            variant="outline"
             className={cn(
               "size-7 print:hidden pointer-coarse:size-10",
               className,
@@ -114,7 +115,7 @@ export function WorkshopEditButton({
             aria-label={`${action} de ${piece.code}`}
             title={action}
           >
-            <Pencil />
+            <Pencil className={EDIT_ICON_CLASS} />
           </Button>
         )}
       </DialogTrigger>

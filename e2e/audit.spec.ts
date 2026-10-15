@@ -34,7 +34,6 @@ test.describe("Auditoría", () => {
       await page.getByRole("option", { name: "Usuario" }).click();
       await page.getByLabel("Acción").click();
       await page.getByRole("option", { name: "Edición" }).click();
-      await page.getByRole("button", { name: "Filtrar" }).click();
       await expect(page).toHaveURL(
         /\/auditoria\?usuario=[\w-]+&entidad=profiles&accion=update$/,
       );

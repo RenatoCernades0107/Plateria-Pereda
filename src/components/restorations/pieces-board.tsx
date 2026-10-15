@@ -1,12 +1,29 @@
 "use client";
 
 import {
+  ArrowRight,
+  Ban,
+  Check,
   ChevronDown,
   ChevronRight,
+  CircleX,
+  Eye,
+  Handshake,
+  Hourglass,
   Loader2,
+  type LucideIcon,
+  MessageCircleQuestion,
   MoreHorizontal,
+  PackageOpen,
   Pencil,
+  RotateCcw,
+  Search,
+  SearchCheck,
+  Store,
   Tag,
+  ThumbsDown,
+  Truck,
+  Undo2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -17,7 +34,9 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -34,7 +53,11 @@ import type { CatalogOption, WorkshopOption } from "./piece-fields";
 import { SalePriceCell } from "./piece-money-cells";
 import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
-import { usePieceActions } from "./piece-status-actions";
+import {
+  arrangeActions,
+  type PieceAction,
+  usePieceActions,
+} from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, PieceStatusBadge, UrgentIcon } from "./status-badges";
@@ -60,6 +83,30 @@ const HEAD = "px-2 py-2 text-left font-medium whitespace-nowrap";
 const CELL = cn(RT.cell, "md:px-2");
 const LABELED = cn(CELL, RT.labeled);
 
+/** Ícono de cada acción (por su `key`: la acción o el estado al que lleva). */
+const ACTION_ICONS: Record<string, LucideIcon> = {
+  llegada: Store,
+  recibir: PackageOpen,
+  vuelta_revision: SearchCheck,
+  revision: Search,
+  devolver: Undo2,
+  registrada: RotateCcw,
+  en_consulta: MessageCircleQuestion,
+  en_espera: Hourglass,
+  aprobada: Check,
+  enviada_taller: Truck,
+  observada: Eye,
+  entregada: Handshake,
+  rechazada: ThumbsDown,
+  sin_arreglo: CircleX,
+  anulada: Ban,
+};
+
+function ActionIcon({ action }: { action: PieceAction }) {
+  const Icon = ACTION_ICONS[action.key] ?? ArrowRight;
+  return <Icon aria-hidden />;
+}
+
 type RowProps = {
   restorationId: string;
   piece: PieceDetail;
@@ -73,7 +120,7 @@ type RowProps = {
   checkbox: React.ReactNode;
 };
 
-/** Una fila de la tabla: datos de la pieza y su menú «Acciones». */
+/** Una fila de la tabla: datos de la pieza, su paso siguiente y su menú «Acciones». */
 function PieceRow({
   restorationId,
   piece,
@@ -99,6 +146,9 @@ function PieceRow({
     approvalPayment,
     balanceDue,
   });
+  const { primary } = arrangeActions(actions);
+  const regular = actions.filter((a) => !a.destructive);
+  const closing = actions.filter((a) => a.destructive);
   const [open, setOpen] = useState<"editar" | "precio" | null>(null);
   // Lo elegido en el menú se hace cuando el menú terminó de cerrarse (y devolvió el
   // foco a su botón): así el diálogo que se abre recibe el foco y lo devuelve al cerrar.
@@ -198,77 +248,131 @@ function PieceRow({
         {piece.workshopName ?? "Sin taller"}
       </td>
       <td className={cn(CELL, "max-md:basis-full md:text-right")}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            {/*
-              En el detalle a dos columnas con la pantalla justa (1440–1520 px), solo
-              el ícono ⋯ para que la tabla entre sin desplazarse de lado.
-            */}
+        {/*
+          El siguiente paso natural (como en el detalle de la pieza) va a la vista,
+          relleno; todas las acciones, en el menú «Acciones». En el celular, ambos
+          botones con texto a lo ancho de la tarjeta; en la tabla, el paso siguiente
+          solo con su ícono, para que entre sin desplazarse de lado.
+        */}
+        <div className="flex items-center gap-2 max-md:w-full md:justify-end">
+          {primary ? (
             <Button
-              variant="outline"
               size="sm"
-              aria-label={`Acciones de ${piece.code}`}
-              title="Acciones"
-              className="wide:max-[95rem]:px-2"
+              disabled={primary.disabled}
+              onClick={primary.onSelect}
+              aria-label={`${primary.label}: ${piece.code}`}
+              title={primary.label}
+              className="wide:max-[95rem]:hidden max-md:flex-1 md:size-8 md:has-[>svg]:px-0"
             >
-              <span className="wide:max-[95rem]:hidden">Acciones</span>
-              <ChevronDown aria-hidden className="wide:max-[95rem]:hidden" />
-              <MoreHorizontal
-                aria-hidden
-                className="wide:max-[95rem]:block hidden"
-              />
+              <ActionIcon action={primary} />
+              <span className="md:sr-only">{primary.label}</span>
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="min-w-48"
-            onCloseAutoFocus={() => {
-              const action = chosen.current;
-              chosen.current = null;
-              action?.();
-            }}
-          >
-            {actions.map((a) => (
-              <DropdownMenuItem
-                key={a.key}
-                disabled={a.disabled}
-                variant={a.destructive ? "destructive" : "default"}
-                onSelect={() => {
-                  chosen.current = a.onSelect;
-                }}
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {/*
+                En el detalle a dos columnas con la pantalla justa (1440–1520 px), solo
+                el ícono ⋯ para que la tabla entre sin desplazarse de lado.
+              */}
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={`Acciones de ${piece.code}`}
+                title="Acciones"
+                className="data-[state=open]:bg-accent wide:max-[95rem]:has-[>svg]:px-2 max-md:flex-1"
               >
-                {a.label}
-              </DropdownMenuItem>
-            ))}
-            {actions.length > 0 ? <DropdownMenuSeparator /> : null}
-            {canEdit ? (
-              <DropdownMenuItem
-                onSelect={() => {
-                  chosen.current = () => setOpen("editar");
-                }}
-              >
-                <Pencil aria-hidden />
-                Editar
-              </DropdownMenuItem>
-            ) : null}
-            {priceChange && piece.priceCents !== null ? (
-              <DropdownMenuItem
-                onSelect={() => {
-                  chosen.current = () => setOpen("precio");
-                }}
-              >
-                <Tag aria-hidden />
-                Cambiar precio
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem asChild>
-              <Link href={pieceHref(piece)}>
-                <ChevronRight aria-hidden />
-                Ver detalle
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <MoreHorizontal aria-hidden />
+                <span className="wide:max-[95rem]:hidden">Acciones</span>
+                <ChevronDown
+                  aria-hidden
+                  className="text-muted-foreground wide:max-[95rem]:hidden"
+                />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-56"
+              onCloseAutoFocus={() => {
+                const action = chosen.current;
+                chosen.current = null;
+                action?.();
+              }}
+            >
+              {regular.length > 0 ? (
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="text-muted-foreground text-xs">
+                    Cambiar estado
+                  </DropdownMenuLabel>
+                  {regular.map((a) => (
+                    <DropdownMenuItem
+                      key={a.key}
+                      disabled={a.disabled}
+                      onSelect={() => {
+                        chosen.current = a.onSelect;
+                      }}
+                    >
+                      <ActionIcon action={a} />
+                      {a.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ) : null}
+              {closing.length > 0 ? (
+                <>
+                  {regular.length > 0 ? <DropdownMenuSeparator /> : null}
+                  {/* Los cierres no se deshacen: apartados, en rojo y con confirmación. */}
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                      Cerrar la pieza
+                    </DropdownMenuLabel>
+                    {closing.map((a) => (
+                      <DropdownMenuItem
+                        key={a.key}
+                        disabled={a.disabled}
+                        variant="destructive"
+                        onSelect={() => {
+                          chosen.current = a.onSelect;
+                        }}
+                      >
+                        <ActionIcon action={a} />
+                        {a.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </>
+              ) : null}
+              {actions.length > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuGroup>
+                {canEdit ? (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      chosen.current = () => setOpen("editar");
+                    }}
+                  >
+                    <Pencil aria-hidden />
+                    Editar
+                  </DropdownMenuItem>
+                ) : null}
+                {priceChange && piece.priceCents !== null ? (
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      chosen.current = () => setOpen("precio");
+                    }}
+                  >
+                    <Tag aria-hidden />
+                    Cambiar precio
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem asChild>
+                  <Link href={pieceHref(piece)}>
+                    <ChevronRight aria-hidden />
+                    Ver detalle
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         {dialogs}
         {canEdit ? (
           <PieceDialog

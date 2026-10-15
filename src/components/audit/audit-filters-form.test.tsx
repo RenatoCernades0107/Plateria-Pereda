@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuditFiltersForm } from "./audit-filters-form";
 
-const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 
 const ID = "10000000-0000-4000-8000-000000000001";
 const props = {
@@ -14,7 +14,7 @@ const props = {
 };
 
 describe("AuditFiltersForm", () => {
-  beforeEach(() => push.mockReset());
+  beforeEach(() => replace.mockReset());
 
   it("muestra los filtros actuales", () => {
     render(
@@ -29,7 +29,7 @@ describe("AuditFiltersForm", () => {
     expect(screen.getByLabelText("Desde")).toHaveValue("2026-10-01");
   });
 
-  it("al filtrar lleva a la URL con los filtros y vuelve a la página 1", async () => {
+  it("aplica los filtros solos, en la URL y desde la página 1", async () => {
     const user = userEvent.setup();
     render(
       <AuditFiltersForm {...props} filters={{ action: "update", page: 3 }} />,
@@ -37,12 +37,17 @@ describe("AuditFiltersForm", () => {
 
     await user.click(screen.getByLabelText("Entidad"));
     await user.click(await screen.findByRole("option", { name: "Usuario" }));
-    await user.type(screen.getByLabelText("Hasta"), "2026-10-03");
-    await user.click(screen.getByRole("button", { name: "Filtrar" }));
-
-    expect(push).toHaveBeenCalledWith(
-      "/auditoria?entidad=profiles&accion=update&hasta=2026-10-03",
+    expect(replace).toHaveBeenLastCalledWith(
+      "/auditoria?entidad=profiles&accion=update",
+      { scroll: false },
     );
+    await user.type(screen.getByLabelText("Hasta"), "2026-10-03");
+
+    expect(replace).toHaveBeenLastCalledWith(
+      "/auditoria?entidad=profiles&accion=update&hasta=2026-10-03",
+      { scroll: false },
+    );
+    expect(screen.queryByRole("button", { name: "Filtrar" })).toBeNull();
   });
 
   it("elegir Todos quita el filtro y Limpiar los quita todos", async () => {
@@ -51,10 +56,12 @@ describe("AuditFiltersForm", () => {
 
     await user.click(screen.getByLabelText("Usuario"));
     await user.click(await screen.findByRole("option", { name: "Todos" }));
-    await user.click(screen.getByRole("button", { name: "Filtrar" }));
-    expect(push).toHaveBeenLastCalledWith("/auditoria");
+    expect(replace).toHaveBeenLastCalledWith("/auditoria", { scroll: false });
 
+    await user.click(screen.getByLabelText("Entidad"));
+    await user.click(await screen.findByRole("option", { name: "Usuario" }));
     await user.click(screen.getByRole("button", { name: "Limpiar" }));
-    expect(push).toHaveBeenLastCalledWith("/auditoria");
+    expect(replace).toHaveBeenLastCalledWith("/auditoria", { scroll: false });
+    expect(screen.getByLabelText("Entidad")).toHaveTextContent("Todos");
   });
 });

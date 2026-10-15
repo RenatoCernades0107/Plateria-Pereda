@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Badge } from "@/components/ui/badge";
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -59,7 +60,7 @@ function ItemActions({
             size="sm"
             aria-label={`Editar ${item.name}`}
           >
-            <Pencil />
+            <Pencil className={EDIT_ICON_CLASS} />
             Editar
           </Button>
         }

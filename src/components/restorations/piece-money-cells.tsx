@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -138,12 +139,12 @@ function MoneyEditCell({
             <Button
               type="button"
               size="icon"
-              variant="ghost"
+              variant="outline"
               className="size-7 print:hidden pointer-coarse:size-10"
               aria-label={buttonLabel}
               title={buttonTitle}
             >
-              <Pencil />
+              <Pencil className={EDIT_ICON_CLASS} />
             </Button>
           )}
         </DialogTrigger>

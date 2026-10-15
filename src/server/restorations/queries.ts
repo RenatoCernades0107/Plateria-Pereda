@@ -367,6 +367,19 @@ export async function listRestorations(
   };
 }
 
+/** Cuántas restauraciones dan estos filtros (contadores de los chips). */
+export async function countRestorations(
+  filters: RestorationFilters,
+): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    "list_restorations",
+    listRestorationsArgs({ ...filters, view: "tabla", page: 1 }, { limit: 1 }),
+  );
+  if (error) throw error;
+  return Number(data[0]?.total_count ?? 0);
+}
+
 /**
  * Piezas de las restauraciones en estado parcial, para el avance del kanban
  * ("2/6 aprobadas", "2/6 listas"). Vacío si ninguna está en estado parcial.
@@ -502,6 +515,19 @@ export async function listPiecesBoard(
         : 0,
     })),
   };
+}
+
+/** Cuántas piezas dan estos filtros (contadores de los chips). */
+export async function countPiecesBoard(
+  filters: PieceBoardFilters,
+): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_pieces_board", {
+    ...listPiecesBoardArgs({ ...filters, view: "tabla", page: 1 }),
+    p_limit: 1,
+  });
+  if (error) throw error;
+  return Number(data[0]?.total_count ?? 0);
 }
 
 /** Desde cuándo cada pieza está en su estado actual (`piece_status_since`). */

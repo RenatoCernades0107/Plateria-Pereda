@@ -55,15 +55,15 @@ describe("insignias", () => {
         <UrgentBadge />
       </>,
     );
-    expect(screen.getByText("Observación")).toHaveClass("bg-yellow-500");
-    expect(screen.getByText("Rechazado (cliente)")).toHaveClass("bg-amber-900");
+    expect(screen.getByText("Observación")).toHaveClass("bg-yellow-50");
+    expect(screen.getByText("Rechazado (cliente)")).toHaveClass("bg-orange-50");
     expect(screen.getByText("Anulado")).toHaveClass("line-through");
     expect(screen.getByText("Anulada")).toHaveClass("line-through");
     const urgent = screen.getByText("Urgente");
     expect(urgent).toHaveAttribute("data-urgent");
     // Amarilla como su rayo, distinta del amarillo de "Observación".
     expect(urgent).toHaveClass("bg-amber-300");
-    expect(urgent).not.toHaveClass("bg-yellow-500");
+    expect(urgent).not.toHaveClass("bg-yellow-50");
   });
 
   it("en las tablas «Urgente» es solo el rayo, que se lee como «Urgente»", () => {

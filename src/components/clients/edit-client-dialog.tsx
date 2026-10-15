@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -74,7 +75,7 @@ export function EditClientDialog({ client }: { client: ClientDetail }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Pencil />
+          <Pencil className={EDIT_ICON_CLASS} />
           Editar
         </Button>
       </DialogTrigger>

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
 import { TextField } from "@/components/clients/form-fields";
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -151,7 +152,7 @@ export function EditRestorationDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">
-          <Pencil />
+          <Pencil className={EDIT_ICON_CLASS} />
           Editar
         </Button>
       </DialogTrigger>
@@ -362,11 +363,11 @@ export function PieceDialog({
         <DialogTrigger asChild>
           {piece ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               aria-label={`Editar pieza ${piece.code}`}
             >
-              <Pencil />
+              <Pencil className={EDIT_ICON_CLASS} />
               Editar
             </Button>
           ) : (

@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
@@ -42,17 +43,17 @@ export default async function CotizacionesWhatsappPage({
           </Link>
         </Button>
       </div>
-      <WhatsappQuotesFiltersForm
-        key={whatsappQuoteFiltersHref(filters)}
-        filters={filters}
-      />
+      <WhatsappQuotesFiltersForm filters={filters} />
       <WhatsappQuotesList
         quotes={items}
         now={new Date()}
-        emptyMessage={
-          filtered
-            ? "No hay cotizaciones con esos filtros."
-            : "Aún no hay cotizaciones de WhatsApp."
+        emptyMessage="Aún no hay cotizaciones de WhatsApp."
+        empty={
+          filtered ? (
+            <FilteredEmptyState resetHref="/cotizaciones-whatsapp" />
+          ) : (
+            <EmptyState title="Aún no hay cotizaciones de WhatsApp." />
+          )
         }
       />
       <Pagination

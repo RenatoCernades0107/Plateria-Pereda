@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -67,11 +68,11 @@ function ContactActions({
         contact={contact}
         trigger={
           <Button
-            variant="ghost"
-            size="sm"
+            variant="outline"
+            size="icon-sm"
             aria-label={`Editar ${contact.displayName}`}
           >
-            <Pencil />
+            <Pencil className={EDIT_ICON_CLASS} />
           </Button>
         }
       />

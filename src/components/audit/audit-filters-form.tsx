@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
+import { FilterFormActions } from "@/components/filter-form-actions";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLiveFilters } from "@/components/use-live-filters";
 import { AUDIT_ACTION_LABELS, type AuditAction } from "@/domain/audit";
 import {
   auditHref,
@@ -70,19 +70,17 @@ export function AuditFiltersForm({
   actors: Option[];
   entities: Option[];
 }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const set = (patch: Partial<AuditFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => auditHref({ ...f, page: 1 }),
+  );
+  const set = (patch: Partial<AuditFilters>) => update(patch);
 
   return (
     <form
       aria-label="Filtros de auditoría"
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(auditHref({ ...state, page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <FilterSelect
         id="filtro-usuario"
@@ -141,19 +139,7 @@ export function AuditFiltersForm({
           onChange={(e) => set({ to: e.target.value || undefined })}
         />
       </div>
-      <div className="flex items-end gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setState({ page: 1 });
-            router.push("/auditoria");
-          }}
-        >
-          Limpiar
-        </Button>
-      </div>
+      <FilterFormActions pending={pending} onReset={() => reset({ page: 1 })} />
     </form>
   );
 }
