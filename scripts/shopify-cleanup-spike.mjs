@@ -146,11 +146,18 @@ async function cancelOrder(order) {
         { id: order.id },
       );
       const errors = data.orderCancel.userErrors;
-      if (errors.length) throw new Error(errors.map((e) => e.message).join("; "));
+      if (errors.length)
+        throw new Error(errors.map((e) => e.message).join("; "));
       // La cancelación es asíncrona: se espera a que la orden figure cancelada.
       for (let i = 0; i < 15; i++) {
         const check = await graphql(
-          `query ($id: ID!) { order(id: $id) { cancelledAt } }`,
+          `
+            query ($id: ID!) {
+              order(id: $id) {
+                cancelledAt
+              }
+            }
+          `,
           { id: order.id },
         );
         if (check.order?.cancelledAt) return;
@@ -166,12 +173,16 @@ async function cancelOrder(order) {
 
 async function deleteOrder(order) {
   const data = await graphql(
-    `mutation ($id: ID!) {
-      orderDelete(orderId: $id) {
-        deletedId
-        userErrors { message }
+    `
+      mutation ($id: ID!) {
+        orderDelete(orderId: $id) {
+          deletedId
+          userErrors {
+            message
+          }
+        }
       }
-    }`,
+    `,
     { id: order.id },
   );
   const errors = data.orderDelete.userErrors;
@@ -220,12 +231,16 @@ for (const company of companies) {
   if (!apply) continue;
   try {
     const data = await graphql(
-      `mutation ($id: ID!) {
-        companyDelete(id: $id) {
-          deletedCompanyId
-          userErrors { message }
+      `
+        mutation ($id: ID!) {
+          companyDelete(id: $id) {
+            deletedCompanyId
+            userErrors {
+              message
+            }
+          }
         }
-      }`,
+      `,
       { id: company.id },
     );
     const errors = data.companyDelete.userErrors;
@@ -265,12 +280,16 @@ for (const customer of customers) {
   if (!apply) continue;
   try {
     const data = await graphql(
-      `mutation ($input: CustomerDeleteInput!) {
-        customerDelete(input: $input) {
-          deletedCustomerId
-          userErrors { message }
+      `
+        mutation ($input: CustomerDeleteInput!) {
+          customerDelete(input: $input) {
+            deletedCustomerId
+            userErrors {
+              message
+            }
+          }
         }
-      }`,
+      `,
       { input: { id: customer.id } },
     );
     const errors = data.customerDelete.userErrors;
