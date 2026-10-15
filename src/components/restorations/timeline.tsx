@@ -32,6 +32,7 @@ const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
   // Revisión en taller: la pieza va y vuelve sin cambiar de estado.
   envio_revision: "Al taller (revisión)",
   vuelta_revision: "Volvió de revisión",
+  retroceso: "Retroceso",
 };
 
 /** Un paso de `piece_status_history`. */
@@ -170,6 +171,12 @@ export function Timeline({
                   {isState && event.fromStatus ? (
                     <p className="text-muted-foreground text-xs">
                       desde {PIECE_STATUS_LABELS[event.fromStatus]}
+                    </p>
+                  ) : null}
+                  {event.event === "retroceso" && event.fromStatus ? (
+                    <p className="text-xs">
+                      De {PIECE_STATUS_LABELS[event.fromStatus]} a{" "}
+                      {PIECE_STATUS_LABELS[event.toStatus]}
                     </p>
                   ) : null}
                   <p className="text-muted-foreground text-xs">

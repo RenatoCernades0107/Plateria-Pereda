@@ -86,6 +86,7 @@ const EVENT_SUMMARY: Record<Exclude<PieceEvent, "estado">, string> = {
   // Revisión en taller: la pieza va y vuelve sin cambiar de estado.
   envio_revision: "Al taller (revisión)",
   vuelta_revision: "Volvió de revisión",
+  retroceso: "Retroceso de estado",
 };
 
 /** Resumen por restauración: todos los cambios de estado, del más reciente al más antiguo. */
@@ -109,11 +110,13 @@ export function RestorationStatusSummary({
         <li key={i} className="space-y-0.5 p-3 text-sm">
           <p>
             <span className="font-medium">{code.get(e.pieceId)}</span>:{" "}
-            {e.event !== "estado"
-              ? EVENT_SUMMARY[e.event]
-              : e.fromStatus
-                ? `${PIECE_STATUS_LABELS[e.fromStatus]} → ${PIECE_STATUS_LABELS[e.toStatus]}`
-                : `Registrada`}
+            {e.event === "retroceso" && e.fromStatus
+              ? `${EVENT_SUMMARY[e.event]}: ${PIECE_STATUS_LABELS[e.fromStatus]} → ${PIECE_STATUS_LABELS[e.toStatus]}`
+              : e.event !== "estado"
+                ? EVENT_SUMMARY[e.event]
+                : e.fromStatus
+                  ? `${PIECE_STATUS_LABELS[e.fromStatus]} → ${PIECE_STATUS_LABELS[e.toStatus]}`
+                  : `Registrada`}
           </p>
           <p className="text-muted-foreground text-xs">
             <time dateTime={e.at}>{formatDateTime(new Date(e.at))}</time> ·{" "}

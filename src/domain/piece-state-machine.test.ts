@@ -10,6 +10,7 @@ import {
   canReceiveFromWorkshop,
   canReturnToClient,
   canSendForReview,
+  canUndoStatus,
   CLOSED_STATUSES,
   findTransition,
   isClosedStatus,
@@ -694,5 +695,56 @@ describe("revisión en taller", () => {
         now: NOW,
       }),
     ).toEqual({ ok: false, error: "revision_otro_taller" });
+  });
+});
+
+describe("canUndoStatus (retroceder estado)", () => {
+  const piece = (status: PieceStatus, returnedAt: Date | null = null) => ({
+    status,
+    returnedAt,
+  });
+
+  it("no hay a dónde volver sin estado anterior", () => {
+    expect(canUndoStatus(piece("registrada"), null, "admin")).toBe(false);
+  });
+
+  it("lo deshace quien podía hacer el avance", () => {
+    // registrada → aprobada: admin y ventas; logística no.
+    expect(canUndoStatus(piece("aprobada"), "registrada", "ventas")).toBe(true);
+    expect(canUndoStatus(piece("aprobada"), "registrada", "admin")).toBe(true);
+    expect(canUndoStatus(piece("aprobada"), "registrada", "logistica")).toBe(
+      false,
+    );
+    // aprobada → enviada_taller: admin y logística; ventas no.
+    expect(
+      canUndoStatus(piece("enviada_taller"), "aprobada", "logistica"),
+    ).toBe(true);
+    expect(canUndoStatus(piece("enviada_taller"), "aprobada", "ventas")).toBe(
+      false,
+    );
+  });
+
+  it("anular una pieza que estaba en el taller solo lo deshace el admin (P41 d)", () => {
+    expect(canUndoStatus(piece("anulada"), "enviada_taller", "admin")).toBe(
+      true,
+    );
+    expect(canUndoStatus(piece("anulada"), "enviada_taller", "ventas")).toBe(
+      false,
+    );
+  });
+
+  it("sin esa transición en la tabla, solo el admin", () => {
+    expect(canUndoStatus(piece("entregada"), "registrada", "admin")).toBe(true);
+    expect(canUndoStatus(piece("entregada"), "registrada", "ventas")).toBe(
+      false,
+    );
+  });
+
+  it("una pieza cerrada y devuelta al cliente no se reactiva", () => {
+    const returned = new Date("2026-10-06T10:00:00Z");
+    expect(
+      canUndoStatus(piece("rechazada", returned), "en_espera", "admin"),
+    ).toBe(false);
+    expect(canUndoStatus(piece("rechazada"), "en_espera", "ventas")).toBe(true);
   });
 });

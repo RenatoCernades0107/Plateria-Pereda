@@ -43,6 +43,7 @@ import {
   canReceiveFromWorkshop,
   canReturnToClient,
   canSendForReview,
+  canUndoStatus,
   isClosedStatus,
   PIECE_STATUS_LABELS,
   type PieceStatus,
@@ -58,6 +59,7 @@ import {
   receivePiecesFromReview,
   returnPiecesToClient,
   sendPiecesForReview,
+  undoPieceStatus,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -368,6 +370,85 @@ export function ReviewDialog({
   );
 }
 
+/** Texto de «Retroceder estado» (corrige un cambio de estado hecho por error). */
+export const UNDO_LABEL = "Retroceder estado";
+
+/**
+ * «Retroceder estado»: la pieza vuelve al estado anterior de su línea de tiempo. El
+ * motivo es obligatorio y el retroceso queda registrado como un paso más (no se borra
+ * nada del historial).
+ */
+export function UndoStatusDialog({
+  open,
+  onOpenChange,
+  piece,
+  previous,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  piece: StatusPiece;
+  previous: PieceStatus | null;
+  onConfirm: (reason: string) => Promise<string | null>;
+}) {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (!previous) return null;
+
+  const submit = () => {
+    if (!reason.trim()) {
+      setError("Escribe el motivo del retroceso.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const message = await onConfirm(reason.trim());
+      if (message) {
+        setError(message);
+        return;
+      }
+      setReason("");
+      onOpenChange(false);
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {UNDO_LABEL}: {piece.code}
+          </DialogTitle>
+          <DialogDescription>
+            Vuelve de «{PIECE_STATUS_LABELS[piece.status]}» a «
+            {PIECE_STATUS_LABELS[previous]}». Queda registrado en la línea de
+            tiempo de la pieza.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {error ? <FormAlert>{error}</FormAlert> : null}
+          <div className="space-y-1.5">
+            <Label htmlFor="retroceso-motivo">Motivo (obligatorio)</Label>
+            <Textarea
+              id="retroceso-motivo"
+              rows={3}
+              maxLength={1000}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={pending}>
+            {pending ? "Guardando…" : `Confirmar: ${UNDO_LABEL.toLowerCase()}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** Una acción sobre una pieza: botón en el panel o ítem del menú «Acciones». */
 export type PieceAction = {
   key: string;
@@ -376,6 +457,8 @@ export type PieceAction = {
   disabled: boolean;
   /** Lleva a un estado final (anular, rechazar…): se resalta en rojo. */
   destructive: boolean;
+  /** Corrige un cambio hecho por error («Retroceder estado»): va aparte, en «Más acciones». */
+  correction?: boolean;
 };
 
 export type PieceActionsInput = {
@@ -387,6 +470,8 @@ export type PieceActionsInput = {
   approvalPayment?: ApprovalPayment | null;
   /** Falta cobrar el saldo: "Entregar" se bloquea o pide confirmarlo (P45). */
   balanceDue?: boolean;
+  /** Estado al que vuelve «Retroceder estado» (null: no hay, o no se ofrece aquí). */
+  previousStatus?: PieceStatus | null;
 };
 
 /**
@@ -402,6 +487,7 @@ export function usePieceActions({
   workshops,
   approvalPayment = null,
   balanceDue = false,
+  previousStatus = null,
 }: PieceActionsInput) {
   const [optimistic, setOptimistic] = useOptimistic(
     piece,
@@ -410,6 +496,7 @@ export function usePieceActions({
   const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<PendingChange | null>(null);
   const [reviewDialog, setReviewDialog] = useState(false);
+  const [undoDialog, setUndoDialog] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState<
     "aprobar" | "entregar" | null
   >(null);
@@ -422,6 +509,7 @@ export function usePieceActions({
   const giveBack = canReturnToClient(snapshot, role);
   const toReview = canSendForReview(snapshot, role);
   const backFromReview = canReceiveFromReview(snapshot, role);
+  const undo = canUndoStatus(snapshot, previousStatus, role);
 
   const run = (
     change: PendingChange,
@@ -484,6 +572,21 @@ export function usePieceActions({
           resolve(result.error);
         } else {
           toast.success(`${piece.code}: llevada al taller a revisar.`);
+          resolve(null);
+        }
+      });
+    });
+
+  /** «Retroceder estado» desde su diálogo: el mensaje de error o null. */
+  const undoStatus = (reason: string) =>
+    new Promise<string | null>((resolve) => {
+      startTransition(async () => {
+        const result = await undoPieceStatus(restorationId, piece.id, reason);
+        if ("error" in result) {
+          toast.error(result.error);
+          resolve(result.error);
+        } else {
+          toast.success(`${piece.code}: estado retrocedido.`);
           resolve(null);
         }
       });
@@ -576,6 +679,17 @@ export function usePieceActions({
     });
   }
 
+  if (undo) {
+    actions.push({
+      key: "retroceso",
+      label: UNDO_LABEL,
+      disabled: pending,
+      destructive: false,
+      correction: true,
+      onSelect: () => setUndoDialog(true),
+    });
+  }
+
   const dialogs = (
     <>
       {approvalPayment ? (
@@ -624,6 +738,14 @@ export function usePieceActions({
         workshops={workshops}
         onConfirm={sendToReview}
       />
+      <UndoStatusDialog
+        key={undoDialog ? "retroceso-abierto" : "retroceso-cerrado"}
+        open={undoDialog}
+        onOpenChange={setUndoDialog}
+        piece={piece}
+        previous={previousStatus}
+        onConfirm={undoStatus}
+      />
     </>
   );
 
@@ -662,8 +784,9 @@ const PRIMARY_ORDER = [
  * esconder la única acción posible. Todos piden confirmación en un diálogo.
  */
 export function arrangeActions(actions: readonly PieceAction[]) {
-  const regular = actions.filter((a) => !a.destructive);
+  const regular = actions.filter((a) => !a.destructive && !a.correction);
   const closing = actions.filter((a) => a.destructive);
+  const corrections = actions.filter((a) => a.correction);
   const primary =
     PRIMARY_ORDER.map((key) => regular.find((a) => a.key === key)).find(
       (a) => a !== undefined,
@@ -673,6 +796,8 @@ export function arrangeActions(actions: readonly PieceAction[]) {
     secondary: regular.filter((a) => a !== primary),
     /** Cierres en el menú «Más acciones» (si hay otras acciones). */
     overflow: regular.length > 0 ? closing : [],
+    /** Correcciones («Retroceder estado»): siempre en el menú «Más acciones». */
+    corrections,
     /** Cierres como botones (si son las únicas acciones). */
     inlineClosing: regular.length > 0 ? [] : closing,
   };
@@ -681,13 +806,18 @@ export function arrangeActions(actions: readonly PieceAction[]) {
 /** Insignias del detalle de la pieza: más grandes que en tablas y tarjetas. */
 const LARGE_BADGE_CLASS = "px-2.5 py-1 text-sm [&>svg]:size-3.5";
 
-/** Menú «Más acciones» con los cierres de la pieza, en rojo y apartados. */
+/**
+ * Menú «Más acciones»: las correcciones («Retroceder estado») y los cierres de la
+ * pieza, estos en rojo y apartados.
+ */
 function MoreActionsMenu({
   code,
-  actions,
+  closing,
+  corrections,
 }: {
   code: string;
-  actions: PieceAction[];
+  closing: PieceAction[];
+  corrections: PieceAction[];
 }) {
   // La acción corre al cerrarse el menú, así su diálogo recibe el foco.
   const chosen = useRef<(() => void) | null>(null);
@@ -712,20 +842,44 @@ function MoreActionsMenu({
           action?.();
         }}
       >
-        <DropdownMenuLabel>Cerrar la pieza</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {actions.map((a) => (
-          <DropdownMenuItem
-            key={a.key}
-            disabled={a.disabled}
-            variant="destructive"
-            onSelect={() => {
-              chosen.current = a.onSelect;
-            }}
-          >
-            {a.label}
-          </DropdownMenuItem>
-        ))}
+        {corrections.length > 0 ? (
+          <>
+            <DropdownMenuLabel>Corregir</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {corrections.map((a) => (
+              <DropdownMenuItem
+                key={a.key}
+                disabled={a.disabled}
+                onSelect={() => {
+                  chosen.current = a.onSelect;
+                }}
+              >
+                {a.label}
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
+        {corrections.length > 0 && closing.length > 0 ? (
+          <DropdownMenuSeparator />
+        ) : null}
+        {closing.length > 0 ? (
+          <>
+            <DropdownMenuLabel>Cerrar la pieza</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {closing.map((a) => (
+              <DropdownMenuItem
+                key={a.key}
+                disabled={a.disabled}
+                variant="destructive"
+                onSelect={() => {
+                  chosen.current = a.onSelect;
+                }}
+              >
+                {a.label}
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -783,7 +937,7 @@ function PieceActionBar({
   className?: string;
 }) {
   if (actions.length === 0) return null;
-  const { primary, secondary, overflow, inlineClosing } =
+  const { primary, secondary, overflow, corrections, inlineClosing } =
     arrangeActions(actions);
   return (
     <div className={cn("space-y-2", className)}>
@@ -818,8 +972,12 @@ function PieceActionBar({
             {a.label}
           </Button>
         ))}
-        {overflow.length > 0 ? (
-          <MoreActionsMenu code={code} actions={overflow} />
+        {overflow.length > 0 || corrections.length > 0 ? (
+          <MoreActionsMenu
+            code={code}
+            closing={overflow}
+            corrections={corrections}
+          />
         ) : null}
       </div>
       {balanceWarning ? (

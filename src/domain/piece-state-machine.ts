@@ -239,7 +239,9 @@ export type PieceEvent =
   /** "Llevar al taller a revisar" (revisión en taller): guarda el taller. */
   | "envio_revision"
   /** "Volvió de revisión". */
-  | "vuelta_revision";
+  | "vuelta_revision"
+  /** "Retroceder estado": vuelve al estado anterior; la nota es el motivo. */
+  | "retroceso";
 
 /** Un paso del historial (`piece_status_history`). */
 export type PieceStatusStep = {
@@ -351,6 +353,22 @@ export function applyTransition(
     steps: [{ from: t.from, to: t.to, event: "estado" }],
     note,
   };
+}
+
+/**
+ * "Retroceder estado" (2026-10-15): la pieza vuelve al estado anterior de su historial
+ * (`previous`, que calcula la BD). Lo puede hacer quien podía hacer el avance; sin esa
+ * transición en la tabla, solo el admin. Una pieza ya devuelta al cliente no se reactiva.
+ */
+export function canUndoStatus(
+  piece: Pick<PieceSnapshot, "status" | "returnedAt">,
+  previous: PieceStatus | null,
+  role: AppRole,
+): boolean {
+  if (!previous) return false;
+  if (isClosedStatus(piece.status) && piece.returnedAt) return false;
+  const t = findTransition(previous, piece.status);
+  return t ? t.roles.includes(role) : role === "admin";
 }
 
 /** Estados en los que se puede "Marcar llegada a tienda" (§7.1): antes del taller. */

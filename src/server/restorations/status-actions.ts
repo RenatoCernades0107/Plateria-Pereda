@@ -69,6 +69,30 @@ export async function changePieceStatus(
 }
 
 /**
+ * "Retroceder estado": la pieza vuelve al estado anterior de su historial (RPC
+ * `undo_piece_status`, que valida el rol con la transición original). El motivo es
+ * obligatorio y el retroceso queda en la línea de tiempo.
+ */
+export async function undoPieceStatus(
+  restorationId: string,
+  pieceId: string,
+  reason: string,
+): Promise<StatusActionResult> {
+  await requirePermission("restauraciones.ver");
+  if (!reason.trim()) return { error: "Escribe el motivo del retroceso." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_piece_status", {
+    p_piece_id: pieceId,
+    p_note: reason,
+  });
+  if (error) return fail(error, "No se pudo retroceder el estado.");
+  // Reactivar o desaprobar una pieza edita la orden de Shopify (9.2).
+  scheduleShopifySync();
+  refresh(restorationId);
+  return { ok: true };
+}
+
+/**
  * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): solo
  * admin, con motivo. La BD encola la edición de la orden.
  */

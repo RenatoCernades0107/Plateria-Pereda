@@ -306,6 +306,21 @@ export async function getStatusHistory(
   }));
 }
 
+/**
+ * Estado al que volvería la pieza con "Retroceder estado" (null si no hay). Lo calcula
+ * la BD del historial; también lo consulta logística, que no lo lee (P42).
+ */
+export async function getPreviousStatus(
+  pieceId: string,
+): Promise<PieceStatus | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("piece_previous_status", {
+    p_piece_id: pieceId,
+  });
+  if (error) throw error;
+  return data ?? null;
+}
+
 export type LogisticsPieceInfo = {
   workshopDays: number;
   workshopOngoing: boolean;
