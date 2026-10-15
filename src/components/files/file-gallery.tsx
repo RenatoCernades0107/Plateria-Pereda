@@ -469,6 +469,141 @@ function PhotoTile({
 }
 
 /**
+ * Una etapa (antes o después) en la ficha de la pieza: una foto grande que llena la
+ * columna y, si hay más de una, carrusel con anterior/siguiente (botones, flechas
+ * del teclado y deslizar), contador y una tira de miniaturas debajo para elegir.
+ * Pulsar la foto grande abre el visor; el botón de borrar borra la que se ve.
+ */
+function StageCarousel({
+  label,
+  files,
+  canDelete,
+  onOpen,
+  onDelete,
+}: {
+  label: string;
+  files: RestorationFile[];
+  canDelete: (file: RestorationFile) => boolean;
+  onOpen: (file: RestorationFile) => void;
+  onDelete: (file: RestorationFile) => void;
+}) {
+  const [selected, setSelected] = useState(0);
+  const total = files.length;
+  // Si se borra la última, queda en la que ahora es la última.
+  const index = Math.min(selected, total - 1);
+  const file = files[index]!;
+  const go = (step: number) => {
+    if (total < 2) return;
+    setSelected((index + step + total) % total);
+  };
+  const stepper = useStepper(
+    () => go(-1),
+    () => go(1),
+  );
+
+  return (
+    <div className="min-w-0 space-y-2" onKeyDown={stepper.onKeyDown}>
+      <div
+        className="group relative"
+        data-testid="foto-principal"
+        onTouchStart={stepper.onTouchStart}
+        onTouchEnd={stepper.onTouchEnd}
+      >
+        <button
+          type="button"
+          aria-label={`Ver ${file.name}`}
+          title="Ver en grande"
+          onClick={() => onOpen(file)}
+          className="bg-muted focus-visible:ring-ring/50 relative block aspect-[4/3] w-full cursor-zoom-in overflow-hidden rounded-md border shadow-xs transition outline-none hover:shadow-md focus-visible:ring-[3px]"
+        >
+          <Thumbnail file={file} />
+          <span
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition group-hover:bg-black/10 group-hover:opacity-100"
+          >
+            <ZoomIn className="size-6 drop-shadow" />
+          </span>
+        </button>
+        {canDelete(file) ? (
+          <Button
+            type="button"
+            size="icon-xs"
+            variant="outline"
+            aria-label={`Borrar ${file.name}`}
+            title="Borrar"
+            onClick={() => onDelete(file)}
+            className="bg-background/90 hover:bg-background hover:text-destructive absolute top-1.5 right-1.5 rounded-full shadow-sm backdrop-blur-sm"
+          >
+            <Trash2 />
+          </Button>
+        ) : null}
+        {total > 1 ? (
+          <>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="secondary"
+              aria-label={`${label}: anterior`}
+              title="Anterior"
+              onClick={() => go(-1)}
+              className="bg-background/85 hover:bg-background absolute top-1/2 left-1.5 size-7 -translate-y-1/2 rounded-full shadow-sm backdrop-blur-sm @lg:size-8"
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="secondary"
+              aria-label={`${label}: siguiente`}
+              title="Siguiente"
+              onClick={() => go(1)}
+              className="bg-background/85 hover:bg-background absolute top-1/2 right-1.5 size-7 -translate-y-1/2 rounded-full shadow-sm backdrop-blur-sm @lg:size-8"
+            >
+              <ChevronRight />
+            </Button>
+            <span
+              aria-live="polite"
+              data-testid="contador"
+              className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white tabular-nums"
+            >
+              {index + 1} / {total}
+            </span>
+          </>
+        ) : null}
+      </div>
+      <p className="text-muted-foreground truncate text-xs tabular-nums">
+        {formatDate(file.createdAt)}
+      </p>
+      {total > 1 ? (
+        <ul
+          aria-label={`Fotos de ${label.toLowerCase()}`}
+          className="flex flex-wrap gap-1.5"
+        >
+          {files.map((f, i) => (
+            <li key={f.id} data-testid="miniatura">
+              <button
+                type="button"
+                aria-label={`Mostrar ${f.name}`}
+                aria-pressed={i === index}
+                title={f.name}
+                onClick={() => setSelected(i)}
+                className={cn(
+                  "focus-visible:ring-ring/50 block size-11 overflow-hidden rounded-md border opacity-70 transition outline-none hover:opacity-100 focus-visible:ring-[3px] @lg:size-12",
+                  i === index &&
+                    "ring-primary ring-offset-background opacity-100 ring-2 ring-offset-1",
+                )}
+              >
+                <Thumbnail file={f} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+/**
  * Las fotos de una clasificación (p. ej. «Antes (2)»): un rótulo chico con su punto
  * de color y la cantidad, y las miniaturas en fila. Sin fotos, un recuadro punteado.
  */
@@ -486,12 +621,17 @@ function CategoryGroup({
   canDelete: (file: RestorationFile) => boolean;
   onOpen: (file: RestorationFile) => void;
   onDelete: (file: RestorationFile) => void;
-  /** Miniaturas que llenan la columna en una grilla (ficha de la pieza). */
+  /**
+   * Ficha de la pieza: antes y después en carrusel (una foto grande que llena la
+   * columna); las demás clasificaciones, en una grilla que llena la columna.
+   */
   fill: boolean;
   /** Acción al final del rótulo (p. ej. «Comparar»), en la misma línea. */
   action?: React.ReactNode;
 }) {
   const label = FILE_CATEGORY_LABELS[category];
+  // En la ficha de la pieza, antes y después van en carrusel: una foto grande.
+  const stage = fill && category in EMPTY_COLUMN;
   return (
     <div
       role="group"
@@ -511,7 +651,15 @@ function CategoryGroup({
         </p>
         {action}
       </div>
-      {files.length > 0 ? (
+      {files.length > 0 && stage ? (
+        <StageCarousel
+          label={label}
+          files={files}
+          canDelete={canDelete}
+          onOpen={onOpen}
+          onDelete={onDelete}
+        />
+      ) : files.length > 0 ? (
         <ul
           className={
             fill
@@ -531,10 +679,11 @@ function CategoryGroup({
           ))}
         </ul>
       ) : (
-        // Del mismo tamaño que una miniatura, para que las dos columnas se vean parejas.
+        // Del mismo tamaño que una miniatura (o que la foto grande del carrusel), para
+        // que las dos columnas se vean parejas.
         <div
           className={
-            fill
+            fill && !stage
               ? "grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-3"
               : undefined
           }
@@ -542,7 +691,11 @@ function CategoryGroup({
           <p
             className={cn(
               "text-muted-foreground bg-muted/30 flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed p-2 text-center text-xs",
-              fill ? "aspect-square w-full" : "size-24 sm:size-28 lg:size-32",
+              stage
+                ? "aspect-[4/3] w-full"
+                : fill
+                  ? "aspect-square w-full"
+                  : "size-24 sm:size-28 lg:size-32",
             )}
           >
             <ImageIcon className="size-5 opacity-50" aria-hidden />
@@ -747,7 +900,10 @@ export function FileGallery({
    * false queda solo para lectores de pantalla (p. ej. en la ficha de la pieza).
    */
   showTargetLabels?: boolean;
-  /** Miniaturas que llenan el ancho de cada columna (ficha de la pieza). */
+  /**
+   * Ficha de la pieza: antes y después, cada uno en carrusel con una foto grande que
+   * llena su columna y miniaturas debajo para elegir.
+   */
   fill?: boolean;
 }) {
   const [viewing, setViewing] = useState<{
