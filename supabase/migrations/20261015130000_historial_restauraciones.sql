@@ -90,9 +90,9 @@ as $$
       and (
         nullif(trim(p_query), '') is null
         or r.code ilike '%' || trim(p_query) || '%'
-        or c.display_name ilike '%' || trim(p_query) || '%'
-        or c.document_number ilike '%' || trim(p_query) || '%'
-        or k.display_name ilike '%' || trim(p_query) || '%'
+        or r.client_name ilike '%' || trim(p_query) || '%'
+        or r.document_number ilike '%' || trim(p_query) || '%'
+        or r.contact_name ilike '%' || trim(p_query) || '%'
       )
   )
   select f.id, f.code, f.client_id, f.client_name, f.document_number, f.contact_name,
