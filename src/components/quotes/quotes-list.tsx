@@ -50,12 +50,15 @@ const dates = (quote: QuoteListItem) =>
 export function QuotesList({
   quotes,
   emptyMessage,
+  empty,
 }: {
   quotes: QuoteListItem[];
   emptyMessage: string;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (quotes.length === 0) {
-    return <EmptyState>{emptyMessage}</EmptyState>;
+    return empty ?? <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (

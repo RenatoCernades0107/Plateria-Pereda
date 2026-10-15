@@ -1,9 +1,10 @@
 "use client";
 
-import { Download, Loader2 } from "lucide-react";
+import { Download, FileDown, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/domain/money";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
@@ -105,6 +106,8 @@ export function PiecesExportButtons({
         >
           {busy === format ? (
             <Loader2 className="animate-spin" />
+          ) : format === "pdf" ? (
+            <FileDown className={PDF_ICON_CLASS} />
           ) : (
             <Download />
           )}

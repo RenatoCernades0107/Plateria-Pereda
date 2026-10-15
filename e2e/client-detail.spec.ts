@@ -206,16 +206,14 @@ test.describe("Detalle de clientes", () => {
       .fill(`Detalle ${run}`);
     await page.getByLabel("Tipo").click();
     await page.getByRole("option", { name: "Empresas" }).click();
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/tipo=empresa/);
     await expect(page.getByTestId(`cliente-${legalName}`)).toBeVisible();
     await expect(page.getByText("1 cliente · Página 1 de 1")).toBeVisible();
 
     await page.getByLabel("Tipo").click();
     await page.getByRole("option", { name: "Personas" }).click();
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(
-      page.getByText("No hay clientes con esos filtros."),
+      page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();
   });
 
@@ -251,7 +249,7 @@ test.describe("Detalle de clientes", () => {
 
     await page.goto(`/clientes?q=${encodeURIComponent(`Detalle ${run}`)}`);
     await expect(
-      page.getByText("No hay clientes con esos filtros."),
+      page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();
     await page.goto(
       `/clientes?q=${encodeURIComponent(`Detalle ${run}`)}&estado=inactivos`,

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Loader2, MoreHorizontal } from "lucide-react";
+import { Hammer, Loader2, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { navigateRow } from "@/components/clickable-row";
-import { isLongInWorkshop } from "@/domain/piece-board-filters";
+import {
+  isLongInWorkshop,
+  WORKSHOP_DAYS_ALERT,
+} from "@/domain/piece-board-filters";
 import { can } from "@/domain/permissions";
 import { pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
@@ -41,7 +44,12 @@ import {
 } from "./status-badges";
 import { WorkshopEditButton } from "./workshop-edit-button";
 
-/** Días en el taller: columna propia, "—" si la pieza nunca fue al taller. */
+/**
+ * Total de días en el taller (todas las idas, P47), distinto del tiempo en el estado
+ * actual: lleva el martillo y no el triángulo de alerta del semáforo, y solo se pone en
+ * rojo cuando la pieza sigue en el taller desde hace muchos días (la misma regla que
+ * resalta la fila). "—" si la pieza nunca fue al taller.
+ */
 function Days({ piece }: { piece: BoardPiece }) {
   if (piece.workshopDays === 0 && !piece.workshopOngoing) {
     return (
@@ -55,17 +63,21 @@ function Days({ piece }: { piece: BoardPiece }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap",
-        long && "text-destructive font-medium",
+        "inline-flex items-center gap-1 text-xs whitespace-nowrap",
+        long ? "text-destructive font-medium" : "text-foreground",
       )}
       data-testid="dias-en-taller"
+      data-long={long || undefined}
     >
       {long ? (
-        <AlertTriangle
-          className="size-4"
+        <Hammer
+          className="size-3.5"
+          role="img"
           aria-label="Muchos días en el taller"
         />
-      ) : null}
+      ) : (
+        <Hammer className="size-3.5 opacity-60" aria-hidden />
+      )}
       {piece.workshopOngoing ? `${label} (en curso)` : label}
     </span>
   );
@@ -230,7 +242,7 @@ function BoardRow({
         <td className={cell}>
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, "max-w-48 max-md:min-w-0 max-md:flex-1")}>
+        <td className={cn(cell, "max-md:min-w-0 max-md:flex-1")}>
           {/* Urgente: solo el rayo, al costado del código. */}
           <span className="inline-flex items-center gap-1">
             <Link
@@ -242,16 +254,18 @@ function BoardRow({
             </Link>
             {piece.urgent ? <UrgentIcon /> : null}
           </span>
-          <p className="text-muted-foreground text-xs">
-            <Link
-              href={`/restauraciones/${piece.restorationId}`}
-              className="whitespace-nowrap underline-offset-4 hover:underline"
-              aria-label={`Ver guía ${piece.restorationCode}`}
-            >
-              {piece.restorationCode}
-            </Link>{" "}
-            · {piece.clientName}
-          </p>
+        </td>
+        <td className={labeled} data-label="Guía">
+          <Link
+            href={`/restauraciones/${piece.restorationId}`}
+            className="text-muted-foreground hover:text-foreground whitespace-nowrap underline-offset-4 hover:underline"
+            aria-label={`Ver guía ${piece.restorationCode}`}
+          >
+            {piece.restorationCode}
+          </Link>
+        </td>
+        <td className={cn(labeled, "max-w-40")} data-label="Cliente">
+          <span className="break-words">{piece.clientName}</span>
         </td>
         <td className={cn(cell, RT.full, "max-w-64 min-w-48")}>
           <p className="break-words">{piece.description}</p>
@@ -289,7 +303,7 @@ function BoardRow({
         <td className={labeled} data-label="Ubicación">
           <LocationBadge location={live.location} />
         </td>
-        <td className={labeled} data-label="En el estado">
+        <td className={labeled} data-label="En este estado">
           <StatusAge
             // Recién cambiado (optimista): cuenta desde hoy.
             piece={
@@ -305,7 +319,7 @@ function BoardRow({
             editable={assignTaller && !WORKSHOP_LOCKED.includes(live.status)}
           />
         </td>
-        <td className={labeled} data-label="Días en taller">
+        <td className={labeled} data-label="Total en taller">
           <Days piece={piece} />
         </td>
         {showCost ? (
@@ -373,7 +387,7 @@ export function PiecesBoardTable({
   const assignTaller = can(role, "piezas.asignar-taller");
 
   if (pieces.length === 0) {
-    return <EmptyState>No hay piezas con esos filtros.</EmptyState>;
+    return <EmptyState title="No hay piezas en curso." />;
   }
 
   const head = "px-3 py-2 text-left font-medium whitespace-nowrap";
@@ -417,7 +431,13 @@ export function PiecesBoardTable({
                 Foto
               </th>
               <th scope="col" className={head}>
-                Pieza · guía · cliente
+                Pieza
+              </th>
+              <th scope="col" className={head}>
+                Guía
+              </th>
+              <th scope="col" className={head}>
+                Cliente
               </th>
               <th scope="col" className={head}>
                 Descripción
@@ -428,14 +448,22 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Ubicación
               </th>
-              <th scope="col" className={head}>
-                En el estado
+              <th
+                scope="col"
+                className={head}
+                title="Días desde el último cambio de estado. Ámbar o rojo según lo que se espera para ese estado."
+              >
+                En este estado
               </th>
               <th scope="col" className={head}>
                 Taller
               </th>
-              <th scope="col" className={head}>
-                Días en taller
+              <th
+                scope="col"
+                className={head}
+                title={`Días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
+              >
+                Total en taller
               </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>

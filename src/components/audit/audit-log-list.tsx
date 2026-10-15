@@ -41,12 +41,15 @@ function RecordName({
 export function AuditLogList({
   entries,
   recordLabels,
+  empty,
 }: {
   entries: AuditEntry[];
   recordLabels: Record<string, string>;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (entries.length === 0) {
-    return <EmptyState>No hay cambios con estos filtros.</EmptyState>;
+    return empty ?? <EmptyState>No hay cambios con estos filtros.</EmptyState>;
   }
 
   return (

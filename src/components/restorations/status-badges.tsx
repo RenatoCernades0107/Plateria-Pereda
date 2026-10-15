@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
+import { CANCELLED_CLASS, StatusDot, ToneBadge } from "@/components/tone-badge";
 import { Badge } from "@/components/ui/badge";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/domain/money";
@@ -54,65 +55,81 @@ import { cn } from "@/lib/utils";
  * tachado.
  */
 
-type Variant = "default" | "secondary" | "destructive" | "outline";
-
-const CANCELLED = "text-muted-foreground line-through";
-
 type IconComponent = ComponentType<{
   "aria-hidden"?: boolean;
   className?: string;
 }>;
 
 /**
- * Color e icono de cada estado de la pieza (P47 y pedido del 2026-10-14): todos los
- * estados tienen un color propio y un icono, para reconocerlos de un vistazo. Fondo
- * sólido con texto con contraste AA (≥ 4.5:1) en tema claro y oscuro; el texto
- * siempre acompaña, así el color no es la única pista. Lo anulado va tenue y tachado.
+ * Color e icono de cada estado de la pieza (P47; pedido del 2026-10-15): todas las
+ * insignias de estado son de la misma familia, una píldora de fondo suave con un punto
+ * del color del estado, así se leen igual en la tabla, el kanban y el detalle. Texto
+ * con contraste AA (≥ 4.5:1) en tema claro y oscuro; el texto siempre acompaña, así
+ * el color no es la única pista. Lo anulado va tenue y tachado. El icono se usa donde
+ * no hay insignia (p. ej. la cabecera de una columna del kanban).
  */
 export const PIECE_STATUS_STYLES: Record<
   PieceStatus,
-  { className: string; icon: IconComponent }
+  { className: string; dot: string; icon: IconComponent }
 > = {
   registrada: {
-    className: "border-transparent bg-slate-600 text-white",
+    className:
+      "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100",
+    dot: "bg-slate-600 dark:bg-slate-400",
     icon: ClipboardList,
   },
   en_consulta: {
-    className: "border-transparent bg-fuchsia-700 text-white",
+    className:
+      "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900 dark:border-fuchsia-800 dark:bg-fuchsia-950 dark:text-fuchsia-100",
+    dot: "bg-fuchsia-600 dark:bg-fuchsia-400",
     icon: MessageCircleQuestionMark,
   },
   en_espera: {
-    className: "border-transparent bg-purple-700 text-white",
+    className:
+      "border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100",
+    dot: "bg-violet-600 dark:bg-violet-400",
     icon: Hourglass,
   },
   aprobada: {
-    className: "border-transparent bg-green-700 text-white",
+    className:
+      "border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-100",
+    dot: "bg-green-600 dark:bg-green-400",
     icon: CircleCheck,
   },
   enviada_taller: {
     className:
-      "border-transparent bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
+      "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100",
+    dot: "bg-sky-600 dark:bg-sky-400",
     icon: Wrench,
   },
   observada: {
-    className: "border-transparent bg-yellow-500 text-yellow-950",
+    className:
+      "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-100",
+    dot: "bg-yellow-600 dark:bg-yellow-400",
     icon: Eye,
   },
   entregada: {
-    className: "border-transparent bg-blue-700 text-white",
+    className:
+      "border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100",
+    dot: "bg-blue-600 dark:bg-blue-400",
     icon: PackageCheck,
   },
   rechazada: {
-    className: "border-transparent bg-amber-900 text-white",
+    className:
+      "border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100",
+    dot: "bg-orange-600 dark:bg-orange-400",
     icon: ThumbsDown,
   },
   sin_arreglo: {
-    className: "border-transparent bg-teal-800 text-white",
+    className:
+      "border-teal-200 bg-teal-50 text-teal-900 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-100",
+    dot: "bg-teal-600 dark:bg-teal-400",
     icon: WrenchOff,
   },
   anulada: {
     className:
-      "border-transparent bg-gray-200 text-gray-700 line-through dark:bg-gray-700 dark:text-gray-200",
+      "border-gray-200 bg-gray-100 text-gray-600 line-through dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    dot: "bg-gray-400",
     icon: Ban,
   },
 };
@@ -136,13 +153,14 @@ export function PieceStatusBadge({
   status: PieceStatus;
   className?: string;
 }) {
+  const style = PIECE_STATUS_STYLES[status];
   return (
     <Badge
       variant="outline"
       data-status={status}
-      className={cn(PIECE_STATUS_STYLES[status].className, className)}
+      className={cn(style.className, className)}
     >
-      <PieceStatusIcon status={status} />
+      <StatusDot className={style.dot} />
       {PIECE_STATUS_LABELS[status]}
     </Badge>
   );
@@ -186,15 +204,20 @@ export function UrgentIcon({ className }: { className?: string }) {
   );
 }
 
-const RESTORATION_VARIANTS: Record<RestorationStatus, Variant> = {
-  registrada: "outline",
-  parcialmente_aprobada: "secondary",
-  aprobada: "secondary",
-  parcialmente_lista: "default",
-  lista: "default",
-  completada: "default",
-  anulada: "outline",
-  rechazada: "outline",
+/**
+ * Tono del estado general: en aprobación (info), listo para entregar (éxito),
+ * completado (neutro, ya no pide nada), rechazado (crítico). El icono de progreso es el
+ * indicador de la insignia.
+ */
+const RESTORATION_TONES: Record<RestorationStatus, BadgeTone> = {
+  registrada: "neutral",
+  parcialmente_aprobada: "info",
+  aprobada: "info",
+  parcialmente_lista: "success",
+  lista: "success",
+  completada: "neutral",
+  anulada: "neutral",
+  rechazada: "critical",
 };
 
 export function RestorationStatusBadge({
@@ -204,35 +227,33 @@ export function RestorationStatusBadge({
   status: RestorationStatus;
   className?: string;
 }) {
+  const progress = RESTORATION_STATUS_PROGRESS[status];
   return (
-    <Badge
-      variant={RESTORATION_VARIANTS[status]}
+    <ToneBadge
+      tone={RESTORATION_TONES[status]}
       data-status={status}
-      className={cn(
-        status === "anulada" && CANCELLED,
-        status === "rechazada" && "border-transparent bg-amber-900 text-white",
-        // A medio aprobar: borde punteado para distinguirla de Aprobada.
-        status === "parcialmente_aprobada" &&
-          "border-foreground/40 border-dashed",
-        className,
-      )}
+      indicator={progress ? <ProgressIcon progress={progress} /> : undefined}
+      className={cn(status === "anulada" && CANCELLED_CLASS, className)}
     >
-      <ProgressIcon progress={RESTORATION_STATUS_PROGRESS[status]} />
       {RESTORATION_STATUS_LABELS[status]}
-    </Badge>
+    </ToneBadge>
   );
 }
 
+/**
+ * La ubicación no es un estado: insignia neutra con el icono del lugar, para no
+ * competir con el color del estado de la pieza.
+ */
 const LOCATIONS: Record<
   PieceLocation,
-  { variant: Variant; icon: ComponentType<{ "aria-hidden"?: boolean }> }
+  ComponentType<{ "aria-hidden"?: boolean }>
 > = {
-  por_whatsapp: { variant: "outline", icon: WhatsAppIcon },
-  sin_enviar: { variant: "outline", icon: PackageSearch },
-  en_tienda: { variant: "secondary", icon: Store },
-  en_taller: { variant: "default", icon: Hammer },
-  entregada: { variant: "outline", icon: PackageCheck },
-  anulada: { variant: "outline", icon: Ban },
+  por_whatsapp: WhatsAppIcon,
+  sin_enviar: PackageSearch,
+  en_tienda: Store,
+  en_taller: Hammer,
+  entregada: PackageCheck,
+  anulada: Ban,
 };
 
 export function LocationBadge({
@@ -242,13 +263,14 @@ export function LocationBadge({
   location: PieceLocation;
   className?: string;
 }) {
-  const { variant, icon: Icon } = LOCATIONS[location];
+  const Icon = LOCATIONS[location];
   return (
     <Badge
-      variant={variant}
+      variant="outline"
       data-location={location}
       className={cn(
-        location === "anulada" && CANCELLED,
+        "text-foreground [&>svg]:text-muted-foreground",
+        location === "anulada" && CANCELLED_CLASS,
         location === "por_whatsapp" && WHATSAPP_BADGE_CLASS,
         className,
       )}
@@ -289,17 +311,6 @@ export function ProgressIcon({ progress }: { progress: BadgeProgress | null }) {
   );
 }
 
-const TONES: Record<BadgeTone, string> = {
-  neutral: "border-border text-foreground",
-  info: "border-transparent bg-sky-100 text-sky-950 dark:bg-sky-900 dark:text-sky-50",
-  success:
-    "border-transparent bg-green-100 text-green-950 dark:bg-green-900 dark:text-green-50",
-  attention:
-    "border-transparent bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-50",
-  critical:
-    "border-transparent bg-red-100 text-red-950 dark:bg-red-900 dark:text-red-50",
-};
-
 /** Estado de pago con tono y progreso: Pendiente ○, Parcial ◐, Pagado ● (S5). */
 export function PaymentStatusBadge({
   status,
@@ -308,16 +319,15 @@ export function PaymentStatusBadge({
 }: { status: PaymentStatus } & Omit<ComponentProps<"span">, "children">) {
   const { tone, progress } = PAYMENT_STATUS_BADGE[status];
   return (
-    <Badge
-      variant="outline"
+    <ToneBadge
+      tone={tone}
       data-payment-status={status}
-      data-tone={tone}
-      className={cn(TONES[tone], className)}
+      indicator={progress ? <ProgressIcon progress={progress} /> : undefined}
+      className={className}
       {...props}
     >
-      <ProgressIcon progress={progress} />
       {PAYMENT_STATUS_LABELS[status]}
-    </Badge>
+    </ToneBadge>
   );
 }
 

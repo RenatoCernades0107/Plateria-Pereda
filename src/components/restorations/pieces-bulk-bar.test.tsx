@@ -44,3 +44,37 @@ describe("PiecesBulkBar · Asignar taller (D60)", () => {
     }
   });
 });
+
+describe("PiecesBulkBar · barra compacta del detalle", () => {
+  const renderBar = (chosen: StatusPiece[]) =>
+    render(
+      <PiecesBulkBar
+        restorationId="r1"
+        chosen={chosen}
+        role="admin"
+        workshops={[]}
+        onDone={() => {}}
+        statusPicker
+        total={3}
+      />,
+    );
+
+  it("con un cambio común muestra el selector y 'Aplicar a N piezas'", () => {
+    renderBar([piece, { ...piece, id: "p2", code: "RES-00001-2" }]);
+    expect(screen.getByText(/2 piezas elegidas/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Cambiar estado a…")).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Aplicar a 2 piezas" }),
+    ).toBeDisabled();
+  });
+
+  it("sin cambio común oculta el selector y el botón y deja un aviso corto", () => {
+    renderBar([piece, { ...piece, id: "p2", status: "anulada" }]);
+    expect(screen.getByText(/2 piezas elegidas/)).toBeInTheDocument();
+    expect(
+      screen.getByText("Sin cambio de estado en común"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Cambiar estado a…")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Aplicar/ })).toBeNull();
+  });
+});

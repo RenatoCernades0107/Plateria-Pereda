@@ -1,9 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { FilterFormActions } from "@/components/filter-form-actions";
+import { useLiveFilters } from "@/components/use-live-filters";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,8 +26,8 @@ const ALL = "todos";
 /**
  * Filtros de la vista de piezas (se guardan en la URL). Urgentes, listas para
  * entregar, por devolver y muchos días en el taller van en los atajos de un clic
- * ("Mostrar solo", `FilterChips`), no aquí, para no repetir filtros. Al filtrar se
- * conservan los atajos activos; "Limpiar" quita todo.
+ * ("Mostrar solo", `FilterChips`), no aquí, para no repetir filtros. Se aplican
+ * solos al escribir o elegir y conservan los atajos activos; "Limpiar" quita todo.
  */
 export function PiecesBoardFiltersForm({
   filters,
@@ -38,19 +36,19 @@ export function PiecesBoardFiltersForm({
   filters: PieceBoardFilters;
   workshops: { id: string; name: string }[];
 }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const set = (patch: Partial<PieceBoardFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => pieceBoardHref(f, { page: 1 }),
+  );
+  const set = (patch: Partial<PieceBoardFilters>) => update(patch);
+  const type = (patch: Partial<PieceBoardFilters>) =>
+    update(patch, { debounce: true });
 
   return (
     <form
       aria-label="Filtros de piezas"
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(3,minmax(0,1fr))_auto]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(pieceBoardHref(state, { page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <div className="space-y-1.5">
         <Label htmlFor="filtro-texto">Código, descripción o cliente</Label>
@@ -59,7 +57,8 @@ export function PiecesBoardFiltersForm({
           type="search"
           value={state.q}
           maxLength={100}
-          onChange={(e) => set({ q: e.target.value })}
+          placeholder="Escribe para buscar"
+          onChange={(e) => type({ q: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">
@@ -71,7 +70,7 @@ export function PiecesBoardFiltersForm({
           placeholder="RES-00123"
           value={state.guide}
           maxLength={20}
-          onChange={(e) => set({ guide: e.target.value })}
+          onChange={(e) => type({ guide: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">
@@ -139,22 +138,12 @@ export function PiecesBoardFiltersForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex items-end gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() =>
-            router.push(
-              pieceBoardHref(parsePieceBoardFilters({}), {
-                view: filters.view,
-              }),
-            )
-          }
-        >
-          Limpiar
-        </Button>
-      </div>
+      <FilterFormActions
+        pending={pending}
+        onReset={() =>
+          reset({ ...parsePieceBoardFilters({}), view: filters.view })
+        }
+      />
     </form>
   );
 }

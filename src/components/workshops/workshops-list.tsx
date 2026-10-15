@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -45,7 +46,7 @@ function WorkshopActions({ workshop }: { workshop: WorkshopRow }) {
             size="sm"
             aria-label={`Editar ${workshop.name}`}
           >
-            <Pencil />
+            <Pencil className={EDIT_ICON_CLASS} />
             Editar
           </Button>
         }

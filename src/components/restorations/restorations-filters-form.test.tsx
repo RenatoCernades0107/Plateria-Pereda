@@ -6,8 +6,8 @@ import { parseRestorationFilters } from "@/domain/restoration-filters";
 
 import { RestorationsFiltersForm } from "./restorations-filters-form";
 
-const push = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
 vi.mock("@/components/clients/client-picker", () => ({
   ClientPicker: () => <div />,
 }));
@@ -57,9 +57,10 @@ describe("RestorationsFiltersForm", () => {
       "2 seleccionados",
     );
     await user.keyboard("{Escape}");
-    await user.click(screen.getByRole("button", { name: "Filtrar" }));
-    expect(push).toHaveBeenCalledWith(
+    // Se aplica solo, sin botón "Filtrar".
+    expect(replace).toHaveBeenLastCalledWith(
       expect.stringMatching(/estado=aprobada&estado=lista/),
+      { scroll: false },
     );
   });
 });

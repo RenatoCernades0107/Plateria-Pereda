@@ -4,6 +4,7 @@ import { FileDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -98,7 +99,7 @@ export function GuidePdfButton({
         }}
         disabled={data.pieces.length === 0}
       >
-        <FileDown />
+        <FileDown className={PDF_ICON_CLASS} />
         Exportar PDF
       </Button>
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>

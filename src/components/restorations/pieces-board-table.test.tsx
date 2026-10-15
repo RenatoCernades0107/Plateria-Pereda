@@ -113,9 +113,12 @@ describe("PiecesBoardTable", () => {
     const headers = screen
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    expect(headers.slice(1, 4)).toEqual([
+    // Pieza, guía y cliente en columnas propias, para escanearlas rápido.
+    expect(headers.slice(1, 6)).toEqual([
       "Foto",
-      "Pieza · guía · cliente",
+      "Pieza",
+      "Guía",
+      "Cliente",
       "Descripción",
     ]);
     expect(
@@ -342,16 +345,16 @@ describe("PiecesBoardTable", () => {
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
     // Estado y taller van antes que los montos, para verlos sin desplazarse.
-    expect(headers.slice(4, 9)).toEqual([
+    expect(headers.slice(6, 11)).toEqual([
       "Estado",
       "Ubicación",
-      "En el estado",
+      "En este estado",
       "Taller",
-      "Días en taller",
+      "Total en taller",
     ]);
     const cells = within(screen.getByTestId("pieza-RES-00001-2"))
       .getAllByRole("cell")
-      .slice(4, 9)
+      .slice(6, 11)
       .map((c) => c.textContent);
     expect(cells).toEqual([
       "En restauración",
@@ -449,9 +452,7 @@ describe("PiecesBoardTable", () => {
 
   it("sin piezas muestra un mensaje", () => {
     render(<PiecesBoardTable role="logistica" workshops={[]} pieces={[]} />);
-    expect(
-      screen.getByText("No hay piezas con esos filtros."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No hay piezas en curso.")).toBeInTheDocument();
   });
 
   describe("cambiar el estado desde la fila", () => {

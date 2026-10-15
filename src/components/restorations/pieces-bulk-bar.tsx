@@ -203,16 +203,19 @@ export function PiecesBulkBar({
           if (message) toast.error(message);
         });
   const picked = bulk.find((c) => c.to === target) ?? null;
+  // Con piezas elegidas que no comparten ningún cambio, el selector deshabilitado no
+  // sirve: se muestra solo un aviso corto en la misma fila.
+  const noCommonChange = chosen.length > 0 && bulk.length === 0;
 
   if (chosen.length === 0 && !statusPicker) return null;
 
   return (
     <div
-      className="bg-card border-primary/40 flex flex-wrap items-end gap-2 rounded-lg border p-3"
+      className="bg-card border-primary/40 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border px-2.5 py-1.5"
       role="region"
       aria-label="Acciones para las piezas elegidas"
     >
-      <p className="mr-auto text-sm font-medium">
+      <p className="mr-auto text-sm font-medium whitespace-nowrap">
         {chosen.length === 1
           ? "1 pieza elegida"
           : `${chosen.length} piezas elegidas`}
@@ -269,9 +272,16 @@ export function PiecesBulkBar({
         </Button>
       ) : null}
       {statusPicker ? (
-        <div className="flex items-end gap-2">
-          <div className="space-y-1">
-            <Label htmlFor="cambio-masivo" className="text-xs">
+        noCommonChange ? (
+          <p
+            className="text-muted-foreground text-xs"
+            title="Las piezas elegidas no comparten un cambio de estado posible; desmarca las que no correspondan."
+          >
+            Sin cambio de estado en común
+          </p>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="cambio-masivo" className="sr-only">
               Cambiar estado a…
             </Label>
             <Select
@@ -279,14 +289,14 @@ export function PiecesBulkBar({
               onValueChange={(v) => setTarget(v as PieceStatus)}
               disabled={pending || bulk.length === 0}
             >
-              <SelectTrigger id="cambio-masivo" size="sm" className="w-48">
+              <SelectTrigger
+                id="cambio-masivo"
+                size="sm"
+                className="w-40 sm:w-44"
+              >
                 <SelectValue
                   placeholder={
-                    chosen.length === 0
-                      ? "Elige piezas"
-                      : bulk.length === 0
-                        ? "Sin cambio común"
-                        : "Elige un estado"
+                    chosen.length === 0 ? "Elige piezas" : "Cambiar estado a…"
                   }
                 />
               </SelectTrigger>
@@ -298,15 +308,16 @@ export function PiecesBulkBar({
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              size="sm"
+              disabled={pending || picked === null}
+              onClick={() => picked && runChange(picked)}
+              aria-label={`Aplicar a ${count}`}
+            >
+              Aplicar
+            </Button>
           </div>
-          <Button
-            size="sm"
-            disabled={pending || picked === null}
-            onClick={() => picked && runChange(picked)}
-          >
-            Aplicar a {count}
-          </Button>
-        </div>
+        )
       ) : (
         bulk.map((change) => (
           <Button
@@ -323,35 +334,27 @@ export function PiecesBulkBar({
           </Button>
         ))
       )}
-      {statusPicker && chosen.length > 1 && bulk.length === 0 ? (
-        <p className="text-muted-foreground w-full text-xs">
-          Las piezas elegidas no comparten un cambio de estado posible; desmarca
-          las que no correspondan.
-        </p>
-      ) : null}
       {bulkAssign ? (
-        <div className="flex items-end gap-2">
-          <div className="space-y-1">
-            <Label htmlFor="taller-masivo" className="text-xs">
-              Taller
-            </Label>
-            <Select
-              value={bulkWorkshop ?? NONE}
-              onValueChange={(v) => setBulkWorkshop(v === NONE ? null : v)}
-            >
-              <SelectTrigger id="taller-masivo" size="sm" className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NONE}>Sin asignar</SelectItem>
-                {workshops.map((w) => (
-                  <SelectItem key={w.id} value={w.id}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="taller-masivo" className="sr-only">
+            Taller
+          </Label>
+          <Select
+            value={bulkWorkshop ?? NONE}
+            onValueChange={(v) => setBulkWorkshop(v === NONE ? null : v)}
+          >
+            <SelectTrigger id="taller-masivo" size="sm" className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE}>Taller: sin asignar</SelectItem>
+              {workshops.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {w.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             size="sm"
             variant="outline"

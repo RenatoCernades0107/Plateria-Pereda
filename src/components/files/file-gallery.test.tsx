@@ -334,4 +334,129 @@ describe("FileGallery", () => {
       ).toHaveClass("sr-only");
     });
   });
+
+  describe("en la ficha de la pieza (fill), antes y después en carrusel", () => {
+    const setup = (files: RestorationFile[], props = {}) => {
+      render(
+        <FileGallery
+          files={files}
+          targets={[target]}
+          currentUserId="u1"
+          isAdmin={false}
+          showTargetLabels={false}
+          fill
+          {...props}
+        />,
+      );
+      return screen.getByRole("region", { name: target.label });
+    };
+    const three = [
+      photo("antes-1"),
+      photo("antes-2"),
+      photo("antes-3"),
+      photo("despues", "u1", "despues"),
+    ];
+    const main = (group: HTMLElement) =>
+      within(group).getByRole("button", { name: /^Ver / });
+
+    it("cada etapa muestra una sola foto grande; con una, sin flechas ni miniaturas", () => {
+      const section = setup(three);
+      const antes = within(section).getByRole("group", { name: "Antes (3)" });
+      const despues = within(section).getByRole("group", {
+        name: "Después (1)",
+      });
+      expect(
+        within(antes).getAllByRole("button", { name: /^Ver / }),
+      ).toHaveLength(1);
+      expect(main(antes)).toHaveAccessibleName("Ver antes-1.png");
+      expect(within(antes).getByTestId("contador")).toHaveTextContent("1 / 3");
+      expect(within(antes).getAllByTestId("miniatura")).toHaveLength(3);
+
+      expect(main(despues)).toHaveAccessibleName("Ver despues.png");
+      expect(within(despues).queryByTestId("contador")).toBeNull();
+      expect(within(despues).queryByTestId("miniatura")).toBeNull();
+      expect(
+        within(despues).queryByRole("button", { name: /siguiente/ }),
+      ).toBeNull();
+    });
+
+    it("siguiente y anterior recorren la etapa y dan la vuelta", async () => {
+      const user = userEvent.setup();
+      const antes = within(setup(three)).getByRole("group", {
+        name: "Antes (3)",
+      });
+      const next = within(antes).getByRole("button", {
+        name: "Antes: siguiente",
+      });
+      const prev = within(antes).getByRole("button", {
+        name: "Antes: anterior",
+      });
+      await user.click(next);
+      expect(main(antes)).toHaveAccessibleName("Ver antes-2.png");
+      expect(within(antes).getByTestId("contador")).toHaveTextContent("2 / 3");
+      await user.click(prev);
+      await user.click(prev);
+      expect(main(antes)).toHaveAccessibleName("Ver antes-3.png");
+      expect(within(antes).getByTestId("contador")).toHaveTextContent("3 / 3");
+      // Las flechas del teclado también.
+      await user.keyboard("{ArrowRight}");
+      expect(main(antes)).toHaveAccessibleName("Ver antes-1.png");
+    });
+
+    it("pulsar una miniatura la muestra grande y queda marcada", async () => {
+      const user = userEvent.setup();
+      const antes = within(setup(three)).getByRole("group", {
+        name: "Antes (3)",
+      });
+      const preview = within(antes).getByRole("button", {
+        name: "Mostrar antes-3.png",
+      });
+      expect(preview).toHaveAttribute("aria-pressed", "false");
+      await user.click(preview);
+      expect(main(antes)).toHaveAccessibleName("Ver antes-3.png");
+      expect(preview).toHaveAttribute("aria-pressed", "true");
+      expect(
+        within(antes).getByRole("button", { name: "Mostrar antes-1.png" }),
+      ).toHaveAttribute("aria-pressed", "false");
+      expect(within(antes).getByTestId("contador")).toHaveTextContent("3 / 3");
+    });
+
+    it("la foto grande abre el visor en ella y el borrar borra la que se ve", async () => {
+      const user = userEvent.setup();
+      const antes = within(setup(three)).getByRole("group", {
+        name: "Antes (3)",
+      });
+      await user.click(
+        within(antes).getByRole("button", { name: "Mostrar antes-2.png" }),
+      );
+      expect(
+        within(antes).getAllByRole("button", { name: /^Borrar / }),
+      ).toHaveLength(1);
+      await user.click(main(antes));
+      const viewer = screen.getByRole("dialog");
+      expect(viewer).toHaveTextContent("2 de 4");
+      expect(
+        within(viewer).getByRole("img", { name: "antes-2.png" }),
+      ).toBeVisible();
+      await user.keyboard("{Escape}");
+
+      await user.click(
+        within(antes).getByRole("button", { name: "Borrar antes-2.png" }),
+      );
+      expect(screen.getByRole("dialog")).toHaveTextContent(
+        "¿Borrar «antes-2.png»?",
+      );
+    });
+
+    it("la etapa sin fotos muestra el recuadro del tamaño de la foto grande", () => {
+      const section = setup([photo("antes")]);
+      const despues = within(section).getByRole("group", {
+        name: "Después (0)",
+      });
+      expect(despues).toHaveTextContent("Sin fotos de después aún");
+      expect(within(despues).getByText("Sin fotos de después aún")).toHaveClass(
+        "aspect-[4/3]",
+      );
+    });
+  });
 });

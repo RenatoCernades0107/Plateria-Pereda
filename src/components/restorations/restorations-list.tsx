@@ -73,6 +73,7 @@ export function RestorationsList({
   showMoney,
   emptyMessage,
   emptyAction,
+  empty,
 }: {
   items: RestorationListItem[];
   filters: RestorationFilters;
@@ -80,9 +81,13 @@ export function RestorationsList({
   emptyMessage: string;
   /** Salida del vacío: limpiar los filtros o registrar la primera. */
   emptyAction?: React.ReactNode;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (items.length === 0) {
-    return <EmptyState action={emptyAction}>{emptyMessage}</EmptyState>;
+    return (
+      empty ?? <EmptyState action={emptyAction}>{emptyMessage}</EmptyState>
+    );
   }
   return (
     <>

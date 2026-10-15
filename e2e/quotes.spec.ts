@@ -163,7 +163,6 @@ test.describe("Cotizaciones", () => {
     // Aparece en el listado al buscar por el cliente.
     await page.goto("/cotizaciones");
     await page.getByLabel("Código o cliente").fill(`Cotiza${run}`);
-    await page.getByRole("button", { name: "Filtrar" }).click();
     const row = page.getByTestId(`cotizacion-${firstQuoteCode}`);
     await expect(row).toContainText(shopifyName);
     await expect(row).toContainText("Borrador");

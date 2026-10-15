@@ -33,8 +33,8 @@ export function FilesPanel({
   /** Con un solo destino (la ficha de la pieza) el título de la galería sobra. */
   showTargetLabels?: boolean;
   /**
-   * En una columna (ficha de la pieza): primero las fotos y debajo el formulario, sin
-   * ponerlos lado a lado.
+   * En una columna (ficha de la pieza): primero las fotos, que llenan el ancho de cada
+   * columna, y debajo el formulario compacto, sin ponerlos lado a lado.
    */
   stacked?: boolean;
   className?: string;
@@ -47,6 +47,7 @@ export function FilesPanel({
       isAdmin={isAdmin}
       emptyText={emptyText}
       showTargetLabels={showTargetLabels}
+      fill={stacked}
       className="min-w-0"
     />
   );

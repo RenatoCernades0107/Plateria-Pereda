@@ -159,24 +159,32 @@ export function FileUploader({
       aria-labelledby="subir-archivos"
       className={cn("@container space-y-3 rounded-md border p-4", className)}
     >
-      <h2 id="subir-archivos" className="font-semibold">
-        Subir fotos y archivos
-      </h2>
-      <div className="grid gap-3 @md:grid-cols-2">
-        {fixedTarget ? (
-          // Destino fijo (detalle de una pieza): se lee, no se elige.
-          <dl className="space-y-1.5">
-            <dt className="text-sm font-medium">Para</dt>
+      {fixedTarget ? (
+        // Destino fijo (detalle de una pieza): se lee bajo el título, no se elige.
+        <div className="space-y-0.5">
+          <h2 id="subir-archivos" className="font-semibold">
+            Subir fotos y archivos
+          </h2>
+          <dl className="text-muted-foreground flex min-w-0 gap-1 text-sm">
+            <dt>Para</dt>
             <dd
               data-testid="archivo-destino-fijo"
-              className="bg-muted/50 flex h-9 min-w-0 items-center rounded-md border px-3 text-sm"
+              className="text-foreground min-w-0 truncate"
               title={fixedTarget.label}
             >
-              <span className="truncate">{fixedTarget.label}</span>
+              {fixedTarget.label}
             </dd>
           </dl>
-        ) : (
-          <div className="space-y-1.5">
+        </div>
+      ) : (
+        <h2 id="subir-archivos" className="font-semibold">
+          Subir fotos y archivos
+        </h2>
+      )}
+      {/* Clasificación y botones en una sola fila si hay ancho (se alinean abajo). */}
+      <div className="flex flex-wrap items-end gap-3">
+        {fixedTarget ? null : (
+          <div className="min-w-48 flex-1 space-y-1.5">
             <Label htmlFor="archivo-destino">Para</Label>
             <Select value={target} onValueChange={setTarget}>
               <SelectTrigger id="archivo-destino" className="w-full">
@@ -192,7 +200,7 @@ export function FileUploader({
             </Select>
           </div>
         )}
-        <div className="space-y-1.5">
+        <div className="w-full space-y-1.5 @md:w-48">
           <Label htmlFor="archivo-clasificacion">Clasificación</Label>
           <Select
             value={category}
@@ -210,46 +218,46 @@ export function FileUploader({
             </SelectContent>
           </Select>
         </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" onClick={() => picker.current?.click()}>
-          <Upload />
-          Elegir archivos
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => camera.current?.click()}
-        >
-          <Camera />
-          Tomar foto
-        </Button>
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          accept={FILE_ACCEPT}
-          className="sr-only"
-          aria-label="Archivos a subir"
-          tabIndex={-1}
-          onChange={(event) => {
-            add(event.target.files);
-            event.target.value = "";
-          }}
-        />
-        <input
-          ref={camera}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          aria-label="Foto con la cámara"
-          tabIndex={-1}
-          onChange={(event) => {
-            add(event.target.files);
-            event.target.value = "";
-          }}
-        />
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => picker.current?.click()}>
+            <Upload />
+            Elegir archivos
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => camera.current?.click()}
+          >
+            <Camera />
+            Tomar foto
+          </Button>
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            accept={FILE_ACCEPT}
+            className="sr-only"
+            aria-label="Archivos a subir"
+            tabIndex={-1}
+            onChange={(event) => {
+              add(event.target.files);
+              event.target.value = "";
+            }}
+          />
+          <input
+            ref={camera}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            aria-label="Foto con la cámara"
+            tabIndex={-1}
+            onChange={(event) => {
+              add(event.target.files);
+              event.target.value = "";
+            }}
+          />
+        </div>
       </div>
       <p className="text-muted-foreground text-xs">
         Fotos (JPG, PNG, WebP, HEIC) y PDF de hasta 10 MB. Las fotos se reducen

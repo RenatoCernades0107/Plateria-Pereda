@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 /** Fila de una pieza en la tabla de la guía (o en la tabla de /piezas). */
 export const pieceRow = (page: Page, code: string) =>
@@ -14,6 +14,14 @@ export async function openPieceActions(page: Page, code: string) {
 export async function pieceAction(page: Page, code: string, name: string) {
   const menu = await openPieceActions(page, code);
   await menu.getByRole("menuitem", { name, exact: true }).click();
+}
+
+/**
+ * Espera a que la fila termine de guardar: el cambio se ve al instante (optimista) y
+ * la BD lo recibe después; antes de recargar o navegar hay que esperar al guardado.
+ */
+export async function waitForPieceSaved(page: Page, code: string) {
+  await expect(pieceRow(page, code).getByLabel("Guardando")).toHaveCount(0);
 }
 
 /** Nombres de las acciones que ofrece el menú de la pieza (lo cierra al terminar). */

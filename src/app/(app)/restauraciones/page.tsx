@@ -2,6 +2,7 @@ import { Download, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { FilterChips } from "@/components/filter-chips";
 import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
@@ -10,7 +11,10 @@ import { RestorationsFiltersForm } from "@/components/restorations/restorations-
 import { RestorationsList } from "@/components/restorations/restorations-list";
 import { Button } from "@/components/ui/button";
 import { ViewToggle } from "@/components/view-toggle";
-import { restorationFilterChips } from "@/domain/filter-presets";
+import {
+  restorationChipCountFilters,
+  restorationFilterChips,
+} from "@/domain/filter-presets";
 import { can } from "@/domain/permissions";
 import {
   parseRestorationFilters,
@@ -21,6 +25,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { getClientName } from "@/server/quotes/queries";
 import {
+  countRestorations,
   getPartialProgress,
   listRestorations,
 } from "@/server/restorations/queries";
@@ -34,12 +39,25 @@ export default async function RestauracionesPage({
   const canEdit = can(user.role, "restauraciones.editar");
   const filters = parseRestorationFilters(await searchParams);
   const supabase = await createClient();
-  const [{ items, total, pages }, clientName, workshops] = await Promise.all([
-    listRestorations(filters),
-    filters.clientId ? getClientName(filters.clientId) : null,
-    supabase.from("workshops").select("id, name").order("name"),
-  ]);
+  // Contadores de los chips: lo que daría cada uno con los demás filtros.
+  const chipFilters = restorationChipCountFilters(filters, {
+    showMoney: canEdit,
+  });
+  const [{ items, total, pages }, clientName, workshops, chipTotals] =
+    await Promise.all([
+      listRestorations(filters),
+      filters.clientId ? getClientName(filters.clientId) : null,
+      supabase.from("workshops").select("id, name").order("name"),
+      Promise.all(
+        chipFilters.map((c) =>
+          c.active ? null : countRestorations(c.filters),
+        ),
+      ),
+    ]);
   if (workshops.error) throw workshops.error;
+  const counts = Object.fromEntries(
+    chipFilters.map((c, i) => [c.key, chipTotals[i] ?? total]),
+  );
   const filtered =
     restorationFiltersQuery(filters, {
       page: 1,
@@ -86,66 +104,65 @@ export default async function RestauracionesPage({
         ) : null}
       </div>
       <FilterChips
-        chips={restorationFilterChips(filters, { showMoney: canEdit })}
+        chips={restorationFilterChips(filters, { showMoney: canEdit, counts })}
       />
       <RestorationsFiltersForm
-        // Al navegar con otros filtros el formulario se reinicia con los de la URL.
-        key={restorationFiltersHref(filters)}
         filters={filters}
         clientName={clientName}
         workshops={workshops.data}
         showMoney={canEdit}
       />
-      <ViewToggle
-        view={filters.view}
-        tableHref={restorationFiltersHref(filters, { view: "tabla", page: 1 })}
-        kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
-      />
-      {kanban ? (
-        <>
-          <RestorationsKanban
-            items={items}
-            showMoney={canEdit}
-            progress={progress}
-          />
-          <p className="text-muted-foreground text-sm">
-            {items.length < total
-              ? `Se muestran ${items.length} de ${total} restauraciones. Usa los filtros para ver las demás.`
-              : total === 1
-                ? "1 restauración"
-                : `${total} restauraciones`}
-          </p>
-        </>
+      {/* Barra de la lista: cuántas hay y el cambio de vista. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+        <p className="text-muted-foreground text-sm" data-testid="resumen">
+          {kanban && items.length < total
+            ? `Se muestran ${items.length} de ${total} restauraciones. Usa los filtros para ver las demás.`
+            : total === 1
+              ? "1 restauración"
+              : `${total} restauraciones`}
+        </p>
+        <ViewToggle
+          view={filters.view}
+          tableHref={restorationFiltersHref(filters, {
+            view: "tabla",
+            page: 1,
+          })}
+          kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
+        />
+      </div>
+      {total === 0 && filtered ? (
+        <FilteredEmptyState
+          resetHref={restorationFiltersHref(parseRestorationFilters({}), {
+            view: filters.view,
+          })}
+        />
+      ) : kanban ? (
+        <RestorationsKanban
+          items={items}
+          showMoney={canEdit}
+          progress={progress}
+        />
       ) : (
         <>
           <RestorationsList
             items={items}
             filters={filters}
             showMoney={canEdit}
-            emptyMessage={
-              filtered
-                ? "No hay restauraciones con esos filtros."
-                : "Aún no hay restauraciones registradas."
-            }
-            emptyAction={
-              filtered ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={restorationFiltersHref(parseRestorationFilters({}), {
-                      view: filters.view,
-                    })}
-                  >
-                    Limpiar filtros
-                  </Link>
-                </Button>
-              ) : canEdit ? (
-                <Button asChild size="sm">
-                  <Link href="/restauraciones/nueva">
-                    <Plus />
-                    Nueva restauración
-                  </Link>
-                </Button>
-              ) : null
+            emptyMessage="Aún no hay restauraciones registradas."
+            empty={
+              <EmptyState
+                title="Aún no hay restauraciones registradas."
+                action={
+                  canEdit ? (
+                    <Button asChild>
+                      <Link href="/restauraciones/nueva">
+                        <Plus />
+                        Nueva restauración
+                      </Link>
+                    </Button>
+                  ) : null
+                }
+              />
             }
           />
           <Pagination

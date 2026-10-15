@@ -29,14 +29,19 @@ export function PiecesHistoryTable({
   pieces,
   showCost,
   showPrice,
+  empty,
 }: {
   pieces: HistoryPiece[];
   showCost: boolean;
   showPrice: boolean;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (pieces.length === 0) {
     return (
-      <EmptyState>No hay piezas en el historial con esos filtros.</EmptyState>
+      empty ?? (
+        <EmptyState>No hay piezas en el historial con esos filtros.</EmptyState>
+      )
     );
   }
 
