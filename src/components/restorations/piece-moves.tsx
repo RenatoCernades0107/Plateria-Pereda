@@ -16,28 +16,43 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { checkMove, isLastToApprove, moveTargets } from "@/domain/piece-moves";
 import {
+  canReceiveFromReview,
+  canSendForReview,
   PIECE_STATUS_LABELS,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
 import type { AppRole } from "@/lib/roles";
-import { changePieceStatus } from "@/server/restorations/status-actions";
+import {
+  changePieceStatus,
+  receivePiecesFromReview,
+  sendPiecesForReview,
+} from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
 import {
   locationAfter,
   needsDialog,
   requirementsFor,
+  REVIEW_LABELS,
+  ReviewDialog,
   snapshotOf,
   StatusChangeDialog,
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
 
-type Optimistic = Pick<StatusPiece, "id" | "status" | "location">;
+type Optimistic = Pick<StatusPiece, "id" | "status" | "location"> &
+  Partial<
+    Pick<StatusPiece, "workshopId" | "reviewSentAt" | "reviewReturnedAt">
+  >;
+
+/** Acción de ubicación en el menú de la tarjeta (revisión en taller). */
+export type CardAction = { key: string; label: string; onSelect: () => void };
 
 /**
  * Mover piezas de estado desde un kanban (Paso 12.5): arrastrando o con "Mover a…".
@@ -79,6 +94,7 @@ export function usePieceMoves<P extends StatusPiece>({
     kind: "aprobar" | "entregar";
     piece: P;
   } | null>(null);
+  const [review, setReview] = useState<P | null>(null);
   const canConfirmBalance = role === "admin" || role === "ventas";
 
   const run = (
@@ -109,6 +125,64 @@ export function usePieceMoves<P extends StatusPiece>({
         }
       });
     });
+
+  /** Revisión en taller: ida (con el taller elegido) y vuelta; el estado no cambia. */
+  const sendToReview = (piece: P, workshopId: string) =>
+    new Promise<string | null>((resolve) => {
+      startTransition(async () => {
+        setOptimistic({
+          id: piece.id,
+          status: piece.status,
+          location: "en_taller",
+          workshopId,
+          reviewSentAt: new Date().toISOString(),
+          reviewReturnedAt: null,
+        });
+        const result = await sendPiecesForReview(
+          restorationId,
+          [piece.id],
+          workshopId,
+        );
+        if ("error" in result) {
+          toast.error(`${piece.code}: ${result.error}`);
+          resolve(result.error);
+        } else {
+          toast.success(`${piece.code}: llevada al taller a revisar.`);
+          resolve(null);
+        }
+      });
+    });
+  const backFromReview = (piece: P) =>
+    startTransition(async () => {
+      setOptimistic({
+        id: piece.id,
+        status: piece.status,
+        location: "en_tienda",
+        reviewReturnedAt: new Date().toISOString(),
+      });
+      const result = await receivePiecesFromReview(restorationId, [piece.id]);
+      if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
+      else toast.success(`${piece.code}: volvió de revisión.`);
+    });
+
+  /** Acciones de ubicación de la tarjeta (revisión en taller). */
+  const actions = (piece: P): CardAction[] => {
+    const snapshot = snapshotOf(piece);
+    const list: CardAction[] = [];
+    if (canReceiveFromReview(snapshot, role))
+      list.push({
+        key: "vuelta_revision",
+        label: REVIEW_LABELS.back,
+        onSelect: () => backFromReview(piece),
+      });
+    if (canSendForReview(snapshot, role))
+      list.push({
+        key: "revision",
+        label: REVIEW_LABELS.send,
+        onSelect: () => setReview(piece),
+      });
+    return list;
+  };
 
   /** Estados a los que se puede mover la pieza ahora. */
   const targets = (piece: P) => moveTargets(snapshotOf(piece), role);
@@ -160,6 +234,14 @@ export function usePieceMoves<P extends StatusPiece>({
         workshops={workshops}
         onConfirm={(extra) => run(dialog!.piece, dialog!.change, extra)}
       />
+      <ReviewDialog
+        key={review ? `revision-${review.id}` : "revision-cerrada"}
+        open={review !== null}
+        onOpenChange={(open) => !open && setReview(null)}
+        pieces={review ? [review] : []}
+        workshops={workshops}
+        onConfirm={(workshopId) => sendToReview(review!, workshopId)}
+      />
       {approvalPayment && restorationId && payment?.kind === "aprobar" ? (
         <ApproveWithPaymentDialog
           key={`aprobar-${payment.piece.id}`}
@@ -186,20 +268,25 @@ export function usePieceMoves<P extends StatusPiece>({
     </>
   );
 
-  return { pieces: optimistic, targets, move, drag, dialogs };
+  return { pieces: optimistic, targets, actions, move, drag, dialogs };
 }
 
-/** Alternativa a arrastrar: menú con los estados a los que puede pasar la pieza. */
+/**
+ * Alternativa a arrastrar: menú con los estados a los que puede pasar la pieza y,
+ * aparte, las acciones que solo cambian su ubicación (revisión en taller).
+ */
 export function MoveToMenu({
   code,
   targets,
   onMove,
+  actions = [],
 }: {
   code: string;
   targets: readonly PieceStatus[];
   onMove: (to: PieceStatus) => void;
+  actions?: readonly CardAction[];
 }) {
-  if (targets.length === 0) return null;
+  if (targets.length === 0 && actions.length === 0) return null;
   return (
     // Sin modo modal: el menú se cierra sin bloquear el diálogo que abra la opción.
     <DropdownMenu modal={false}>
@@ -214,12 +301,25 @@ export function MoveToMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Mover a…</DropdownMenuLabel>
+        {targets.length > 0 ? (
+          <DropdownMenuLabel>Mover a…</DropdownMenuLabel>
+        ) : null}
         {targets.map((to) => (
           <DropdownMenuItem key={to} onSelect={() => onMove(to)}>
             {PIECE_STATUS_LABELS[to]}
           </DropdownMenuItem>
         ))}
+        {actions.length > 0 ? (
+          <>
+            {targets.length > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel>Ubicación</DropdownMenuLabel>
+            {actions.map((a) => (
+              <DropdownMenuItem key={a.key} onSelect={a.onSelect}>
+                {a.label}
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

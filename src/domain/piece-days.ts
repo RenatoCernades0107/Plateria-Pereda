@@ -52,6 +52,10 @@ export type StatusHistoryEntry = {
  * taller", o hasta un cambio de estado fuera de En restauración (p. ej. "No tiene arreglo");
  * incluye reenvíos por observación (P47). Si la pieza sigue en el taller, el último
  * viaje se cuenta hasta `now`.
+ *
+ * Revisión en taller: el viaje empieza al llevarla a revisar y termina con "Volvió de
+ * revisión"; mientras sigue abierta, pasar a Espera o Aprobada no lo corta y pasar a
+ * En restauración lo continúa (mismo viaje). Igual que `workshop_days` en la BD.
  */
 export function daysInWorkshop(
   history: readonly StatusHistoryEntry[],
@@ -60,17 +64,30 @@ export function daysInWorkshop(
   const ordered = [...history].sort((a, b) => a.at.getTime() - b.at.getTime());
   let days = 0;
   let sentAt: Date | null = null;
+  let review = false;
   for (const entry of ordered) {
     const event = entry.event ?? "estado";
-    if (event === "estado" && entry.to === "enviada_taller") {
+    if (event === "envio_revision") {
       sentAt ??= entry.at;
+      review = true;
+    } else if (event === "estado" && entry.to === "enviada_taller") {
+      sentAt ??= entry.at;
+      review = false;
+    } else if (
+      review &&
+      event === "estado" &&
+      (entry.to === "en_espera" || entry.to === "aprobada")
+    ) {
+      // Sigue en el taller por la revisión.
     } else if (
       sentAt &&
       (event === "vuelta_taller" ||
+        event === "vuelta_revision" ||
         (event === "estado" && entry.to !== "enviada_taller"))
     ) {
       days += calendarDaysBetween(sentAt, entry.at);
       sentAt = null;
+      review = false;
     }
   }
   return sentAt

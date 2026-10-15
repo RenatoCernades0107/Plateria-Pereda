@@ -1,6 +1,9 @@
 import { History } from "lucide-react";
 
-import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
+import {
+  PIECE_STATUS_LABELS,
+  type PieceEvent,
+} from "@/domain/piece-state-machine";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type {
@@ -75,12 +78,15 @@ export function LogisticsPieceSummary({ info }: { info: LogisticsPieceInfo }) {
 }
 
 /** Acciones que no cambian el estado (P47). */
-const EVENT_SUMMARY = {
+const EVENT_SUMMARY: Record<Exclude<PieceEvent, "estado">, string> = {
   llegada: "Llegó a la tienda",
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
   cambio_precio: "Cambio de precio",
-} as const;
+  // Revisión en taller: la pieza va y vuelve sin cambiar de estado.
+  envio_revision: "Al taller (revisión)",
+  vuelta_revision: "Volvió de revisión",
+};
 
 /** Resumen por restauración: todos los cambios de estado, del más reciente al más antiguo. */
 export function RestorationStatusSummary({

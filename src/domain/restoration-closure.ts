@@ -49,6 +49,8 @@ export type ClosurePiece = Pick<
   | "firstSentAt"
   | "readyForDelivery"
   | "returnedAt"
+  | "reviewSentAt"
+  | "reviewReturnedAt"
 > & {
   id: string;
   code: string;

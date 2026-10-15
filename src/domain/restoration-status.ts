@@ -1,4 +1,8 @@
-import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
+import {
+  isClosedStatus,
+  isInReview,
+  type PieceStatus,
+} from "./piece-state-machine";
 
 /**
  * Derivados de las piezas (Todo.md §7.2 y §7.3; P19: el estado general solo
@@ -81,6 +85,9 @@ export type PieceForLocation = {
   lastSentAt?: Date | null;
   lastReturnedAt?: Date | null;
   returnedAt?: Date | null;
+  /** Revisión en taller: último envío a revisar y última vuelta. */
+  reviewSentAt?: Date | null;
+  reviewReturnedAt?: Date | null;
 };
 
 /** En En restauración y ya de vuelta del taller (la última vuelta es posterior al último envío). */
@@ -96,8 +103,8 @@ export function isBackFromWorkshop(piece: PieceForLocation): boolean {
 /**
  * Ubicación física de la pieza (§7.2, P48), evaluada en este orden: Por WhatsApp
  * (aún no llega) → Sin enviar (en la tienda, por enviar al taller: nunca fue o está
- * en Observación y hay que reenviarla, P50) → En taller → En tienda (volvió del
- * taller) → Entregada; Anulada aparte.
+ * en Observación y hay que reenviarla, P50) → En taller (también en revisión) → En
+ * tienda (volvió del taller o de la revisión) → Entregada; Anulada aparte.
  */
 export function deriveLocation(piece: PieceForLocation): PieceLocation {
   if (piece.status === "anulada") return "anulada";
@@ -109,9 +116,17 @@ export function deriveLocation(piece: PieceForLocation): PieceLocation {
     return "entregada";
   if (!piece.arrivedAt) return "por_whatsapp";
   if (piece.status === "observada") return "sin_enviar";
+  // Revisión en taller: en Consulta, Espera o Aprobada, en el taller hasta que vuelve.
+  if (
+    isInReview(piece) &&
+    (piece.status === "en_consulta" ||
+      piece.status === "en_espera" ||
+      piece.status === "aprobada")
+  )
+    return "en_taller";
   if (piece.status === "enviada_taller" && !isBackFromWorkshop(piece))
     return "en_taller";
-  return piece.firstSentAt ? "en_tienda" : "sin_enviar";
+  return piece.firstSentAt || piece.reviewSentAt ? "en_tienda" : "sin_enviar";
 }
 
 export type PieceForRestorationStatus = {

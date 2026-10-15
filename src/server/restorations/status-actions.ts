@@ -127,6 +127,46 @@ export async function receiveFromWorkshop(
   return { ok: true };
 }
 
+/**
+ * "Llevar al taller a revisar" (admin y logística): piezas en Consulta o esperando la
+ * respuesta del cliente van al taller elegido sin cambiar de estado (revisión en taller).
+ */
+export async function sendPiecesForReview(
+  restorationId: string | null,
+  pieceIds: string[],
+  workshopId: string | null,
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.enviar-recibir-taller");
+  if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  if (!workshopId)
+    return { error: "Elige el taller al que se lleva la pieza." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("send_pieces_for_review", {
+    p_piece_ids: pieceIds,
+    p_workshop_id: workshopId,
+  });
+  if (error) return fail(error, "No se pudo llevar la pieza al taller.");
+  refresh(restorationId);
+  return { ok: true };
+}
+
+/** "Volvió de revisión" (admin y logística): la pieza vuelve a la tienda, mismo estado. */
+export async function receivePiecesFromReview(
+  restorationId: string | null,
+  pieceIds: string[],
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.enviar-recibir-taller");
+  if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("receive_pieces_from_review", {
+    p_piece_ids: pieceIds,
+  });
+  if (error)
+    return fail(error, "No se pudo registrar la vuelta de la revisión.");
+  refresh(restorationId);
+  return { ok: true };
+}
+
 /** "Devolver al cliente": piezas rechazadas o sin arreglo que siguen en la tienda (P47). */
 export async function returnPiecesToClient(
   restorationId: string | null,
@@ -182,7 +222,7 @@ export async function closeRestoration(
   const { data, error } = await supabase
     .from("pieces_operational")
     .select(
-      "id, code, status, arrived_at, workshop_id, first_sent_at, ready_for_delivery, returned_at, approved_at",
+      "id, code, status, arrived_at, workshop_id, first_sent_at, ready_for_delivery, returned_at, approved_at, review_sent_at, review_returned_at",
     )
     .eq("restoration_id", restorationId);
   if (error) return fail(error, "No se pudieron leer las piezas.");
@@ -197,6 +237,8 @@ export async function closeRestoration(
       readyForDelivery: p.ready_for_delivery ?? false,
       returnedAt: dateOrNull(p.returned_at),
       approvedAt: dateOrNull(p.approved_at),
+      reviewSentAt: dateOrNull(p.review_sent_at),
+      reviewReturnedAt: dateOrNull(p.review_returned_at),
     })),
     to,
     user.role,

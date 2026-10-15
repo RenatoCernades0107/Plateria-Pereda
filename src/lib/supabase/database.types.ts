@@ -452,6 +452,8 @@ export type Database = {
           restoration_id: string;
           returned_at: string | null;
           returned_by: string | null;
+          review_returned_at: string | null;
+          review_sent_at: string | null;
           service_cost: number | null;
           service_id: string | null;
           service_name: string;
@@ -487,6 +489,8 @@ export type Database = {
           restoration_id: string;
           returned_at?: string | null;
           returned_by?: string | null;
+          review_returned_at?: string | null;
+          review_sent_at?: string | null;
           service_cost?: number | null;
           service_id?: string | null;
           service_name?: string;
@@ -522,6 +526,8 @@ export type Database = {
           restoration_id?: string;
           returned_at?: string | null;
           returned_by?: string | null;
+          review_returned_at?: string | null;
+          review_sent_at?: string | null;
           service_cost?: number | null;
           service_id?: string | null;
           service_name?: string;
@@ -1484,6 +1490,8 @@ export type Database = {
           ready_for_delivery: boolean | null;
           restoration_id: string | null;
           returned_at: string | null;
+          review_returned_at: string | null;
+          review_sent_at: string | null;
           service_id: string | null;
           service_name: string | null;
           status: Database["public"]["Enums"]["piece_status"] | null;
@@ -1749,6 +1757,8 @@ export type Database = {
           p_last_returned_at?: string;
           p_last_sent_at?: string;
           p_returned_at?: string;
+          p_review_returned_at?: string;
+          p_review_sent_at?: string;
           p_status: Database["public"]["Enums"]["piece_status"];
         };
         Returns: Database["public"]["Enums"]["piece_location"];
@@ -1861,6 +1871,8 @@ export type Database = {
           ready_for_delivery: boolean;
           restoration_code: string;
           restoration_id: string;
+          review_returned_at: string;
+          review_sent_at: string;
           service_cost: number;
           service_name: string;
           status: Database["public"]["Enums"]["piece_status"];
@@ -2031,6 +2043,13 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      receive_pieces_from_review: {
+        Args: { p_piece_ids: string[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       reopen_whatsapp_quote: {
         Args: { p_id: string };
         Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
@@ -2052,6 +2071,13 @@ export type Database = {
       save_quote: {
         Args: { p_id: string; p_items: Json; p_quote: Json };
         Returns: string;
+      };
+      send_pieces_for_review: {
+        Args: { p_piece_ids: string[]; p_workshop_id: string };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
       };
       set_piece_service_cost: {
         Args: { p_cost: number; p_piece_id: string };
@@ -2112,7 +2138,9 @@ export type Database = {
         | "llegada"
         | "vuelta_taller"
         | "devolucion_cliente"
-        | "cambio_precio";
+        | "cambio_precio"
+        | "envio_revision"
+        | "vuelta_revision";
       piece_location:
         | "por_whatsapp"
         | "sin_enviar"
@@ -2286,6 +2314,8 @@ export const Constants = {
         "vuelta_taller",
         "devolucion_cliente",
         "cambio_precio",
+        "envio_revision",
+        "vuelta_revision",
       ],
       piece_location: [
         "por_whatsapp",

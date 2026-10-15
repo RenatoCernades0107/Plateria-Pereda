@@ -72,6 +72,8 @@ describe("consistencia entre TypeScript y la BD", () => {
       lastSentAt,
       lastReturnedAt,
       returnedAt,
+      reviewSentAt,
+      reviewReturnedAt,
       expected,
     }) => {
       const { data } = await createAdminClient().rpc("derive_piece_location", {
@@ -81,6 +83,8 @@ describe("consistencia entre TypeScript y la BD", () => {
         p_last_sent_at: lastSentAt as string,
         p_last_returned_at: lastReturnedAt as string,
         p_returned_at: returnedAt as string,
+        p_review_sent_at: reviewSentAt as string,
+        p_review_returned_at: reviewReturnedAt as string,
       });
       expect(data).toBe(expected);
     },
