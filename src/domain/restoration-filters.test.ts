@@ -25,6 +25,7 @@ describe("filtros del listado de restauraciones", () => {
       dir: "desc",
       page: 1,
       view: "tabla",
+      scope: "activas",
     });
   });
 
@@ -64,6 +65,7 @@ describe("filtros del listado de restauraciones", () => {
       dir: "asc",
       page: 3,
       view: "tabla",
+      scope: "activas",
     });
     const bad = parseRestorationFilters({
       estado: "x",
@@ -84,6 +86,7 @@ describe("filtros del listado de restauraciones", () => {
       dir: "asc",
       page: 2,
       view: "tabla",
+      scope: "activas",
     });
     expect(href).toBe(
       "/restauraciones?q=Ana&estado=lista&pago=pendiente&orden=code&dir=asc&pagina=2",
@@ -160,11 +163,19 @@ describe("filtros del listado de restauraciones", () => {
       p_dir: "desc",
       p_limit: 25,
       p_offset: 50,
+      p_scope: "activas",
     });
     expect(listRestorationsArgs(filters, { all: true })).toMatchObject({
       p_limit: 5000,
       p_offset: 0,
     });
+  });
+
+  it("el historial se guarda en la URL y llega a la BD como alcance", () => {
+    const filters = parseRestorationFilters({ historial: "1" });
+    expect(filters.scope).toBe("historial");
+    expect(restorationFiltersHref(filters)).toBe("/restauraciones?historial=1");
+    expect(listRestorationsArgs(filters).p_scope).toBe("historial");
   });
 
   it("en kanban trae todo en una página y lo guarda en la URL", () => {

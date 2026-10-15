@@ -29,6 +29,12 @@ export type ListView = (typeof LIST_VIEWS)[number];
 /** El kanban muestra todo en una página (con tope): sin paginación. */
 export const RESTORATIONS_KANBAN_LIMIT = 300;
 
+/**
+ * Qué restauraciones se listan: las `activas` (vista principal), el `historial`
+ * (anuladas, rechazadas y completadas desde antes de hoy) o `todas` (detalle de cliente).
+ */
+export type RestorationScope = "activas" | "historial" | "todas";
+
 export type RestorationSort = (typeof RESTORATION_SORTS)[number];
 export type SortDir = "asc" | "desc";
 
@@ -50,6 +56,7 @@ export type RestorationFilters = {
   dir: SortDir;
   page: number;
   view: ListView;
+  scope: RestorationScope;
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -108,6 +115,7 @@ export function parseRestorationFilters(
     dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
     view: first(params.vista) === "kanban" ? "kanban" : "tabla",
+    scope: first(params.historial) === "1" ? "historial" : "activas",
   };
 }
 
@@ -132,6 +140,7 @@ export function restorationFiltersQuery(
   if (next.page > 1 && next.view === "tabla")
     params.set("pagina", String(next.page));
   if (next.view === "kanban") params.set("vista", "kanban");
+  if (next.scope === "historial") params.set("historial", "1");
   return params.toString();
 }
 
@@ -191,5 +200,6 @@ export function listRestorationsArgs(
         ? RESTORATIONS_KANBAN_LIMIT
         : limit,
     p_offset: all || filters.view === "kanban" ? 0 : (filters.page - 1) * limit,
+    p_scope: filters.scope,
   };
 }

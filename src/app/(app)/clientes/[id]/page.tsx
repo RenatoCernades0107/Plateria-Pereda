@@ -75,7 +75,11 @@ export default async function ClienteDetallePage({
   const work = canSeeHistory
     ? await Promise.all([
         listRestorations(
-          { ...parseRestorationFilters({}), clientId: client.id },
+          {
+            ...parseRestorationFilters({}),
+            clientId: client.id,
+            scope: "todas",
+          },
           { limit: CLIENT_LIST_LIMIT },
         ),
         can(user.role, "cotizaciones-whatsapp.usar")
