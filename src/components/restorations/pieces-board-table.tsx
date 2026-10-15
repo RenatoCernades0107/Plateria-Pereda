@@ -33,7 +33,7 @@ import {
   PiecesBulkBar,
   WORKSHOP_LOCKED,
 } from "./pieces-bulk-bar";
-import { PiecesExportButtons } from "./pieces-export";
+import { ProviderReportButton } from "./provider-report-button";
 import { usePieceActions, type PieceAction } from "./piece-status-actions";
 import { RT } from "./responsive-table";
 import {
@@ -408,11 +408,7 @@ export function PiecesBoardTable({
         onDone={() => setSelected([])}
         workshopPicker={false}
       >
-        <PiecesExportButtons
-          pieces={chosen}
-          showPrice={showPrice}
-          showClient={showClient}
-        />
+        <ProviderReportButton pieces={chosen} />
       </PiecesBulkBar>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {selectable.length > 0 ? (
