@@ -443,6 +443,7 @@ export type Database = {
           last_sent_at: string | null;
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
+          material_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -480,6 +481,7 @@ export type Database = {
           last_sent_at?: string | null;
           location?: never;
           material_id?: string | null;
+          material_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -517,6 +519,7 @@ export type Database = {
           last_sent_at?: string | null;
           location?: never;
           material_id?: string | null;
+          material_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1253,6 +1256,7 @@ export type Database = {
           description: string;
           id: string;
           material_id: string | null;
+          material_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -1269,6 +1273,7 @@ export type Database = {
           description: string;
           id?: string;
           material_id?: string | null;
+          material_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1285,6 +1290,7 @@ export type Database = {
           description?: string;
           id?: string;
           material_id?: string | null;
+          material_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1483,6 +1489,7 @@ export type Database = {
           last_sent_at: string | null;
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
+          material_ids: string[] | null;
           material_name: string | null;
           measure: string | null;
           notes: string | null;
@@ -1692,6 +1699,13 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      create_catalog_option: {
+        Args: { p_kind: string; p_name: string };
+        Returns: {
+          id: string;
+          name: string;
+        }[];
       };
       create_restoration: {
         Args: {

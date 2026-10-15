@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { chooseCatalog } from "./support/catalog";
 import { pieceAction } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
@@ -33,7 +34,11 @@ async function fillPiece(
   const card = page.getByTestId(`pieza-${index}`);
   await card.getByLabel("Descripción").fill(piece.description);
   // El servicio es obligatorio (D59).
-  await card.getByLabel("Servicio").fill(piece.service ?? "Limpieza");
+  await chooseCatalog(
+    page,
+    card.getByLabel("Servicio"),
+    piece.service ?? "Limpieza",
+  );
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }
 
@@ -185,7 +190,7 @@ test.describe("Restauraciones", () => {
       page.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
     // El servicio es obligatorio (D59).
-    await expect(page.getByText("Elige o escribe el servicio")).toBeVisible();
+    await expect(page.getByText("Elige el servicio")).toBeVisible();
     // El precio de venta es opcional: queda "Por definir" (D58).
     await expect(page.getByText("Ingresa el precio")).toHaveCount(0);
     // El IGV ya viene respondido: por defecto no incluido (D59).
@@ -265,7 +270,7 @@ test.describe("Restauraciones", () => {
     const card = page.getByTestId("pieza-1");
     // El taller lo asignan logística y el admin (D60): ventas no lo elige.
     await expect(card.getByText("Taller", { exact: true })).toHaveCount(0);
-    await card.getByLabel("Servicio").fill("Limpieza");
+    await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza");
     await card.getByLabel("Descripción").fill("Tetera sin precio");
     await expect(card.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
@@ -341,7 +346,7 @@ test.describe("Restauraciones", () => {
 
     await page.getByRole("button", { name: "Agregar pieza" }).click();
     dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Servicio").fill("Limpieza");
+    await chooseCatalog(page, dialog.getByLabel("Servicio"), "Limpieza");
     await dialog.getByLabel("Descripción").fill("Azucarera");
     await dialog.getByLabel("Precio (S/)").fill("64.50");
     await dialog.getByRole("button", { name: "Agregar pieza" }).click();
@@ -378,10 +383,16 @@ test.describe("Restauraciones", () => {
     await expect(
       dialog.getByText("Solo el administrador asigna el precio de venta."),
     ).toBeVisible();
-    await dialog.getByLabel("Material").fill("Plata 925");
+    // Varios materiales: uno del catálogo y otro que ventas crea en el buscador.
+    await chooseCatalog(page, dialog.getByLabel("Material"), "Plata 925", {
+      multiple: true,
+    });
+    await chooseCatalog(page, dialog.getByLabel("Material"), `Oro ${run}`, {
+      multiple: true,
+    });
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByTestId(`pieza-${code}-2`)).toContainText(
-      "Plata 925",
+      `Plata 925, Oro ${run}`,
     );
   });
 

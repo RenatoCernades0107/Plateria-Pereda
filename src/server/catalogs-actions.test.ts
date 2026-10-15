@@ -4,16 +4,29 @@ const mocks = vi.hoisted(() => ({
   forbidden: false,
   calls: [] as unknown[][],
   result: { error: null as { code: string } | null },
+  permission: "" as string,
+  rpc: {
+    data: { id: "n1", name: "Oro 18k" } as { id: string; name: string } | null,
+    error: null as { code: string } | null,
+  },
+  refresh: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({
-  requirePermission: async () => {
+  requirePermission: async (permission: string) => {
+    mocks.permission = permission;
     if (mocks.forbidden) throw new Error("FORBIDDEN");
     return { id: "a1", role: "admin" };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: (fn: string, args: object) => ({
+      single: async () => {
+        mocks.calls.push(["rpc", fn, args]);
+        return mocks.rpc;
+      },
+    }),
     from: (table: string) => ({
       insert: async (row: object) => {
         mocks.calls.push(["insert", table, row]);
@@ -28,16 +41,25 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
   }),
 }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  refresh: () => mocks.refresh(),
+}));
 
-const { createCatalogItem, setCatalogItemActive, updateCatalogItem } =
-  await import("./catalogs-actions");
+const {
+  createCatalogItem,
+  createCatalogOption,
+  setCatalogItemActive,
+  updateCatalogItem,
+} = await import("./catalogs-actions");
 
 describe("acciones de catálogos", () => {
   beforeEach(() => {
     mocks.forbidden = false;
     mocks.calls = [];
     mocks.result = { error: null };
+    mocks.rpc = { data: { id: "n1", name: "Oro 18k" }, error: null };
+    mocks.refresh.mockReset();
   });
 
   it("los servicios guardan el precio sugerido; los materiales solo el nombre", async () => {
@@ -124,5 +146,37 @@ describe("acciones de catálogos", () => {
     await expect(
       createCatalogItem("materials", { name: "Oro", price: "" }),
     ).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("desde la pieza, quien edita restauraciones crea materiales y servicios", async () => {
+    expect(await createCatalogOption("materials", "  Oro 18k ")).toEqual({
+      ok: true,
+      option: { id: "n1", name: "Oro 18k" },
+    });
+    expect(mocks.permission).toBe("restauraciones.editar");
+    expect(mocks.calls).toEqual([
+      [
+        "rpc",
+        "create_catalog_option",
+        { p_kind: "materials", p_name: "Oro 18k" },
+      ],
+    ]);
+    // Los demás buscadores de la página lo ofrecen.
+    expect(mocks.refresh).toHaveBeenCalled();
+  });
+
+  it("valida el catálogo y el nombre, y muestra el error de la BD", async () => {
+    expect(
+      await createCatalogOption("payment_methods" as "materials", "Visa"),
+    ).toEqual({ error: "Catálogo inválido." });
+    expect(await createCatalogOption("services", "  ")).toEqual({
+      error: "Escribe un nombre de hasta 100 caracteres.",
+    });
+    expect(mocks.calls).toEqual([]);
+    mocks.rpc = { data: null, error: { code: "42501" } };
+    expect(await createCatalogOption("services", "Dorado")).toEqual({
+      error: "No se pudo crear el ítem.",
+    });
+    expect(mocks.refresh).not.toHaveBeenCalled();
   });
 });

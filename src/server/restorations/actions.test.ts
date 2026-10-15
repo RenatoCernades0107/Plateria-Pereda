@@ -36,7 +36,7 @@ const piece = {
   workshopId: null,
   description: "Fuente ovalada",
   measure: "40 cm",
-  material: { id: null, name: "Plata 950" },
+  materials: [],
   service: { id: null, name: "Limpieza" },
   weight: "820,5",
   price: "1,200.50",
@@ -188,13 +188,13 @@ describe("createRestoration", () => {
 });
 
 describe("pieceToRpc", () => {
-  it("convierte céntimos a soles y los catálogos a id + nombre", () => {
+  it("convierte céntimos a soles; servicio con id + nombre y los ids de los materiales", () => {
     expect(
       pieceToRpc({
         workshopId: null,
         description: "Fuente",
         measure: "",
-        material: { id: "m1", name: "Plata" },
+        materials: ["m1", "m2"],
         service: { id: "s1", name: "Limpieza" },
         weightGrams: 12.5,
         priceCents: 120050,
@@ -205,8 +205,7 @@ describe("pieceToRpc", () => {
       workshop_id: null,
       description: "Fuente",
       measure: "",
-      material_id: "m1",
-      material_name: "Plata",
+      material_ids: ["m1", "m2"],
       service_id: "s1",
       service_name: "Limpieza",
       weight_grams: "12.50",
@@ -225,7 +224,7 @@ describe("pieceToRpc", () => {
         workshopId: null,
         description: "Fuente",
         measure: "",
-        material: null,
+        materials: [],
         service: { id: null, name: "Limpieza" },
         weightGrams: null,
         priceCents: null,
@@ -241,7 +240,7 @@ describe("pieceToRpc", () => {
         workshopId: null,
         description: "Fuente",
         measure: "",
-        material: null,
+        materials: [],
         service: { id: null, name: "Limpieza" },
         weightGrams: null,
         priceCents: 1000,
@@ -262,7 +261,7 @@ describe("withoutSalePrices (D58)", () => {
     workshopId: null,
     description: "Fuente",
     measure: "",
-    material: null,
+    materials: [],
     service: { id: null, name: "Limpieza" },
     weightGrams: null,
     urgent: false,
@@ -290,7 +289,7 @@ describe("withoutWorkshops (D60)", () => {
     const base = {
       description: "Fuente",
       measure: "",
-      material: null,
+      materials: [],
       service: { id: null, name: "Limpieza" },
       weightGrams: null,
       priceCents: null,

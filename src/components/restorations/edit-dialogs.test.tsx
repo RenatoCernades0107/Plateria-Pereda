@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   updatePiece: vi.fn(),
   addPiece: vi.fn(),
   updateRestoration: vi.fn(),
+  createCatalogOption: vi.fn(),
 }));
 
 vi.mock("@/server/restorations/actions", () => ({
@@ -24,11 +25,21 @@ vi.mock("@/server/clients/search-actions", () => ({
   importShopifyCustomer: vi.fn(),
 }));
 vi.mock("@/server/clients/actions", () => ({ createClient: vi.fn() }));
+vi.mock("@/server/catalogs-actions", () => ({
+  createCatalogOption: (...a: unknown[]) => mocks.createCatalogOption(...a),
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/restauraciones/r1",
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+const M1 = "00000000-0000-4000-8000-0000000000a1";
+const M2 = "00000000-0000-4000-8000-0000000000a2";
+const M3 = "00000000-0000-4000-8000-0000000000a3";
+const M9 = "00000000-0000-4000-8000-0000000000a9";
+const S1 = "00000000-0000-4000-8000-0000000000b1";
+const S2 = "00000000-0000-4000-8000-0000000000b2";
 
 const piece: PieceDetail = {
   id: "p1",
@@ -45,8 +56,8 @@ const piece: PieceDetail = {
   weightGrams: 820.5,
   workshopId: null,
   workshopName: null,
-  materialId: null,
-  serviceId: null,
+  materialIds: [M1],
+  serviceId: S1,
   notes: "",
   arrivedAt: "2026-10-04T10:00:00Z",
   createdAt: "2026-10-04T10:00:00Z",
@@ -55,7 +66,18 @@ const piece: PieceDetail = {
   priceCents: 120050,
 };
 
-const props = { workshops: [], materials: [], services: [] };
+const props = {
+  workshops: [],
+  materials: [
+    { id: M1, name: "Plata", price: null },
+    { id: M2, name: "Alpaca", price: null },
+    { id: M3, name: "Bronce", price: null, active: false },
+  ],
+  services: [
+    { id: S1, name: "Limpieza", price: null },
+    { id: S2, name: "Pulido", price: 40 },
+  ],
+};
 
 beforeEach(() => {
   for (const fn of Object.values(mocks))
@@ -85,15 +107,39 @@ describe("PieceDialog", () => {
       within(dialog).getByText("Solo el administrador cambia el precio."),
     ).toBeVisible();
 
-    await user.clear(within(dialog).getByLabelText("Material"));
-    await user.type(within(dialog).getByLabelText("Material"), "Plata 925");
+    // Varios materiales: se agrega Alpaca a Plata; los desactivados no se ofrecen.
+    expect(within(dialog).getByLabelText("Material")).toHaveTextContent(
+      "Plata",
+    );
+    await user.click(within(dialog).getByLabelText("Material"));
+    expect(screen.queryByRole("option", { name: "Bronce" })).toBeNull();
+    await user.click(screen.getByRole("option", { name: "Alpaca" }));
+    // Lo que no existe se crea desde el buscador.
+    mocks.createCatalogOption.mockResolvedValue({
+      ok: true,
+      option: { id: M9, name: "Plata 925" },
+    });
+    await user.type(
+      screen.getByPlaceholderText("Buscar o crear…"),
+      "Plata 925",
+    );
+    await user.click(screen.getByRole("option", { name: "Crear «Plata 925»" }));
+    expect(mocks.createCatalogOption).toHaveBeenCalledWith(
+      "materials",
+      "Plata 925",
+    );
+    await user.keyboard("{Escape}");
+    expect(within(dialog).getByLabelText("Material")).toHaveTextContent(
+      "Plata, Alpaca, Plata 925",
+    );
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),
     );
     expect(mocks.updatePiece).toHaveBeenCalledWith(
       "p1",
       expect.objectContaining({
-        material: { id: null, name: "Plata 925" },
+        materials: [M1, M2, M9],
+        service: { id: S1, name: "Limpieza" },
         price: "1200.50",
         weight: "820.5",
       }),
@@ -134,11 +180,10 @@ describe("PieceDialog", () => {
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
     // El servicio es obligatorio (D59).
-    expect(
-      await within(dialog).findByText("Elige o escribe el servicio"),
-    ).toBeVisible();
+    expect(await within(dialog).findByText("Elige el servicio")).toBeVisible();
     expect(mocks.addPiece).not.toHaveBeenCalled();
-    await user.type(within(dialog).getByLabelText("Servicio"), "Pulido");
+    await user.click(within(dialog).getByLabelText("Servicio"));
+    await user.click(screen.getByRole("option", { name: "Pulido" }));
     await user.click(
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
@@ -146,7 +191,7 @@ describe("PieceDialog", () => {
       "r1",
       expect.objectContaining({
         description: "Azucarera",
-        service: { id: null, name: "Pulido" },
+        service: { id: S2, name: "Pulido" },
         price: "64.5",
       }),
     );

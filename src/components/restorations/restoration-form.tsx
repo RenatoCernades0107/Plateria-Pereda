@@ -103,7 +103,7 @@ export const EMPTY_PIECE: PieceFormInput = {
   workshopId: null,
   description: "",
   measure: "",
-  material: { id: null, name: "" },
+  materials: [],
   service: { id: null, name: "" },
   weight: "",
   price: "",

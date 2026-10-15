@@ -22,7 +22,7 @@ const piece: PieceFormInput = {
   workshopId: "",
   description: "  Bandeja   ovalada con asas ",
   measure: "40 × 30 cm",
-  material: { id: SILVER, name: "Plata 950" },
+  materials: [SILVER],
   service: { id: null, name: " Limpieza y pulido " },
   weight: "850,5",
   price: "1,250.50",
@@ -63,7 +63,7 @@ describe("pieceSchema", () => {
       workshopId: null,
       description: "Bandeja ovalada con asas",
       measure: "40 × 30 cm",
-      material: { id: SILVER, name: "Plata 950" },
+      materials: [SILVER],
       service: { id: null, name: "Limpieza y pulido" },
       weightGrams: 850.5,
       priceCents: 125_050,
@@ -84,7 +84,6 @@ describe("pieceSchema", () => {
         workshopId: null,
         description: "Cáliz",
         measure: "",
-        material: { id: null, name: "" },
         service: { id: null, name: "Limpieza" },
         weight: "",
         price: "0",
@@ -94,7 +93,7 @@ describe("pieceSchema", () => {
       workshopId: null,
       description: "Cáliz",
       measure: "",
-      material: null,
+      materials: [],
       service: { id: null, name: "Limpieza" },
       weightGrams: null,
       priceCents: 0,
@@ -142,10 +141,10 @@ describe("pieceSchema", () => {
     for (const schema of [pieceSchema, quotePieceSchema]) {
       expect(
         errorsOf(schema, { ...piece, service: { id: null, name: "  " } }),
-      ).toEqual({ "service.name": "Elige o escribe el servicio" });
+      ).toEqual({ "service.name": "Elige el servicio" });
       expect(
         errorsOf(schema, { ...piece, service: { id: SILVER, name: "" } }),
-      ).toEqual({ "service.name": "Elige o escribe el servicio" });
+      ).toEqual({ "service.name": "Elige el servicio" });
     }
     expect(
       pieceSchema.parse({ ...piece, service: { id: SILVER, name: "Pulido" } })
@@ -165,21 +164,32 @@ describe("pieceSchema", () => {
         ...piece,
         description: "a".repeat(301),
         measure: "a".repeat(101),
-        material: { id: null, name: "a".repeat(101) },
         notes: "a".repeat(1001),
       }),
     ).toEqual({
       description: "Máximo 300 caracteres",
       measure: "Máximo 100 caracteres",
-      "material.name": "Máximo 100 caracteres",
       notes: "Máximo 1000 caracteres",
     });
   });
 
-  it("un material del catálogo necesita su nombre", () => {
+  it("los materiales son ids del catálogo, sin repetir y hasta 10", () => {
     expect(
-      errorsOf(pieceSchema, { ...piece, material: { id: SILVER, name: " " } }),
-    ).toEqual({ "material.name": "Escribe el nombre" });
+      pieceSchema.parse({ ...piece, materials: [SILVER, SILVER] }).materials,
+    ).toEqual([SILVER]);
+    expect(
+      errorsOf(pieceSchema, { ...piece, materials: ["plata"] }),
+    ).toMatchObject({ "materials.0": expect.any(String) });
+    expect(
+      errorsOf(pieceSchema, {
+        ...piece,
+        materials: Array.from(
+          { length: 11 },
+          (_, i) =>
+            `1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d${String(i).padStart(2, "0")}`,
+        ),
+      }),
+    ).toEqual({ materials: "Máximo 10 materiales" });
   });
 
   it("rechaza ids inválidos", () => {

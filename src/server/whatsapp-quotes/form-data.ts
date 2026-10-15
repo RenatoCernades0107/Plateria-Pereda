@@ -40,7 +40,7 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
         workshopId: null,
         description: item.description,
         measure: item.measure,
-        material: { id: item.materialId, name: item.materialName },
+        materials: item.materialIds,
         service: { id: item.serviceId, name: item.serviceName },
         weight: item.weightGrams === null ? "" : String(item.weightGrams),
         price: item.priceCents === null ? "" : toDecimalString(item.priceCents),

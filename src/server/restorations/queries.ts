@@ -43,7 +43,8 @@ export type PieceDetail = {
   weightGrams: number | null;
   workshopId: string | null;
   workshopName: string | null;
-  materialId: string | null;
+  /** Materiales del catálogo, en orden (materialName los junta con comas). */
+  materialIds: string[];
   serviceId: string | null;
   notes: string;
   arrivedAt: string | null;
@@ -231,7 +232,7 @@ export async function getRestorationDetail(
       serviceName: p.service_name ?? "",
       weightGrams: p.weight_grams === null ? null : Number(p.weight_grams),
       workshopId: p.workshop_id,
-      materialId: p.material_id,
+      materialIds: p.material_ids ?? [],
       serviceId: p.service_id,
       workshopName: p.workshop_id
         ? (workshopName.get(p.workshop_id) ?? null)

@@ -33,7 +33,7 @@ const piece = {
   workshopId: null,
   description: "Bandeja",
   measure: "",
-  material: { id: null, name: "" },
+  materials: [],
   service: { id: null, name: "Limpieza" },
   weight: "",
   price: "",

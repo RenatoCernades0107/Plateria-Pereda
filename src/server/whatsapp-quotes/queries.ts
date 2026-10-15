@@ -14,7 +14,8 @@ export type WhatsappQuoteItem = {
   number: number;
   description: string;
   measure: string;
-  materialId: string | null;
+  /** Materiales del catálogo, en orden (materialName los junta con comas). */
+  materialIds: string[];
   materialName: string;
   serviceId: string | null;
   serviceName: string;
@@ -147,7 +148,7 @@ export async function getWhatsappQuote(
       number: i.number,
       description: i.description,
       measure: i.measure,
-      materialId: i.material_id,
+      materialIds: i.material_ids,
       materialName: i.material_name,
       serviceId: i.service_id,
       serviceName: i.service_name,

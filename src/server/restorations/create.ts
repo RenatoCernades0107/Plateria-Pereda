@@ -15,8 +15,8 @@ export function pieceToRpc(piece: PieceInput) {
     workshop_id: piece.workshopId,
     description: piece.description,
     measure: piece.measure,
-    material_id: piece.material?.id ?? null,
-    material_name: piece.material?.name ?? "",
+    // El primer material y los nombres los deriva la BD (trigger pieces_catalogs_link).
+    material_ids: piece.materials,
     service_id: piece.service?.id ?? null,
     service_name: piece.service?.name ?? "",
     weight_grams:

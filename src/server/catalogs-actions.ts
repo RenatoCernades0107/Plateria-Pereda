@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 
 import { CATALOGS, isCatalogKind, type CatalogKind } from "@/domain/catalogs";
 import { createClient } from "@/lib/supabase/server";
@@ -93,4 +93,38 @@ export async function setCatalogItemActive(
   if (error) return { error: "No se pudo actualizar el ítem." };
   revalidatePath(CATALOGS[kind].href);
   return { ok: true };
+}
+
+/** Materiales y servicios: los que se crean desde el formulario de la pieza. */
+export type PieceCatalogKind = "materials" | "services";
+
+export type CatalogOptionResult =
+  { ok: true; option: { id: string; name: string } } | { error: string };
+
+/**
+ * Crea un material o servicio desde el buscador de la pieza (admin y ventas, quienes
+ * registran y editan piezas). Si ya existe, aunque esté desactivado, se reutiliza. El
+ * precio sugerido del servicio lo pone el admin en Configuración.
+ */
+export async function createCatalogOption(
+  kind: PieceCatalogKind,
+  name: string,
+): Promise<CatalogOptionResult> {
+  await requirePermission("restauraciones.editar");
+  if (kind !== "materials" && kind !== "services") {
+    return { error: "Catálogo inválido." };
+  }
+  const parsed = catalogItemSchema.shape.name.safeParse(name);
+  if (!parsed.success)
+    return { error: "Escribe un nombre de hasta 100 caracteres." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("create_catalog_option", { p_kind: kind, p_name: parsed.data })
+    .single();
+  if (error || !data) return { error: "No se pudo crear el ítem." };
+  revalidatePath(CATALOGS[kind].href);
+  // Los demás buscadores de la página (otras piezas) también lo ofrecen.
+  refresh();
+  return { ok: true, option: { id: data.id, name: data.name } };
 }

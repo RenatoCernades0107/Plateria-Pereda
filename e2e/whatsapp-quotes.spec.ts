@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { chooseCatalog } from "./support/catalog";
 import { adminClient } from "./support/supabase";
 
 // Comparten la cotización creada: en serie.
@@ -31,7 +32,7 @@ async function fillPiece(
 ) {
   const card = page.getByTestId(`pieza-${index}`);
   // El servicio es obligatorio (D59).
-  await card.getByLabel("Servicio").fill("Limpieza");
+  await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza");
   await card.getByLabel("Descripción").fill(piece.description);
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }
