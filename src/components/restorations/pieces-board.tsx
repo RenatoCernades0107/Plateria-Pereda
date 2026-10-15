@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Loader2, Pencil, Tag } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Tag,
+} from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -131,7 +138,7 @@ function PieceRow({
           </div>
         ) : null}
       </td>
-      <td className={cn(CELL, RT.full, "min-w-44")}>
+      <td className={cn(CELL, RT.full, "min-w-40")}>
         <p className="break-words">{piece.description}</p>
         {details ? (
           <p className="text-muted-foreground mt-0.5 text-xs break-words">
@@ -192,13 +199,23 @@ function PieceRow({
       <td className={cn(CELL, "max-md:basis-full md:text-right")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
+            {/*
+              En el detalle a dos columnas con la pantalla justa (1440–1520 px), solo
+              el ícono ⋯ para que la tabla entre sin desplazarse de lado.
+            */}
             <Button
               variant="outline"
               size="sm"
               aria-label={`Acciones de ${piece.code}`}
+              title="Acciones"
+              className="wide:max-[95rem]:px-2"
             >
-              Acciones
-              <ChevronDown aria-hidden />
+              <span className="wide:max-[95rem]:hidden">Acciones</span>
+              <ChevronDown aria-hidden className="wide:max-[95rem]:hidden" />
+              <MoreHorizontal
+                aria-hidden
+                className="wide:max-[95rem]:block hidden"
+              />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent

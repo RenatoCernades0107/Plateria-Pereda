@@ -11,6 +11,7 @@ export function MoneySummary({
   totalCents,
   paidCents,
   igv,
+  stackOnWide = false,
   className,
 }: {
   totalCents: Cents;
@@ -18,6 +19,11 @@ export function MoneySummary({
   paidCents: Cents;
   /** Desglose del IGV del total (P13): sumado a los precios o incluido en ellos. */
   igv?: { taxableBase: Cents; igv: Cents; included: boolean };
+  /**
+   * En pantallas anchas (columna angosta de la guía), un monto por fila
+   * («Total … S/ 90.00») para que no se corten.
+   */
+  stackOnWide?: boolean;
   className?: string;
 }) {
   const balance = totalCents - paidCents;
@@ -30,9 +36,21 @@ export function MoneySummary({
   ];
   return (
     <div className={cn("space-y-1", className)}>
-      <dl className="grid grid-cols-3 gap-3">
+      <dl
+        className={cn(
+          "grid grid-cols-3 gap-3",
+          stackOnWide && "wide:grid-cols-1 wide:gap-1.5",
+        )}
+      >
         {items.map((item) => (
-          <div key={item.testId} className="min-w-0">
+          <div
+            key={item.testId}
+            className={cn(
+              "min-w-0",
+              stackOnWide &&
+                "wide:flex wide:items-baseline wide:justify-between wide:gap-3",
+            )}
+          >
             <dt className="text-muted-foreground text-xs">{item.label}</dt>
             <dd
               data-testid={item.testId}

@@ -208,7 +208,7 @@ export function PiecesBulkBar({
 
   return (
     <div
-      className="bg-muted/50 flex flex-wrap items-end gap-2 rounded-lg border p-3"
+      className="bg-card border-primary/40 flex flex-wrap items-end gap-2 rounded-lg border p-3"
       role="region"
       aria-label="Acciones para las piezas elegidas"
     >
