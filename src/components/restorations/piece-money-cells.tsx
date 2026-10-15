@@ -5,7 +5,6 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { FormAlert } from "@/components/auth/form-alert";
-import { MoneyCell } from "@/components/money-cell";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -190,34 +189,29 @@ export function ServiceCostCell({
   );
 }
 
+/** Monto de solo lectura de las tablas: el importe o "Por definir". */
+function PlainAmount({ cents }: { cents: Cents | null }) {
+  return cents === null ? (
+    <span className="text-muted-foreground">Por definir</span>
+  ) : (
+    <span className="tabular-nums">{formatCents(cents)}</span>
+  );
+}
+
 /**
- * Costo de servicio en la tabla de piezas: el monto con su lápiz salvo en el modo
- * «Editar costo de servicio» (admin y logística), donde todas las filas muestran el
- * campo con su botón de guardar, como en «Editar precio de venta».
+ * Costo de servicio en la tabla de piezas: el lápiz solo sale si aún está "Por
+ * definir" (admin y logística); un costo ya puesto se cambia desde el detalle de la
+ * pieza.
  */
 export function BoardServiceCostCell({
   piece,
   cents,
-  editing,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
-  editing: boolean;
 }) {
-  if (!editing) return <ServiceCostCell piece={piece} cents={cents} />;
-  return (
-    <MoneyCell
-      // Al entrar al modo edición el campo parte del costo guardado.
-      key={`${editing}-${cents}`}
-      cents={cents}
-      editable
-      emptyText="Por definir"
-      inputLabel={`Costo de servicio de ${piece.code}`}
-      saveLabel={`Guardar costo de ${piece.code}`}
-      savedMessage={`Costo de ${piece.code} guardado.`}
-      onSave={(value) => setPieceServiceCost(piece.id, value)}
-    />
-  );
+  if (cents !== null) return <PlainAmount cents={cents} />;
+  return <ServiceCostCell piece={piece} cents={cents} />;
 }
 
 /**
@@ -238,13 +232,7 @@ export function SalePriceCell({
   editable: boolean;
   align?: "start" | "end";
 }) {
-  if (!editable) {
-    return cents === null ? (
-      <span className="text-muted-foreground">Por definir</span>
-    ) : (
-      <span className="tabular-nums">{formatCents(cents)}</span>
-    );
-  }
+  if (!editable) return <PlainAmount cents={cents} />;
   if (hasOrder && cents !== null) {
     return (
       <div
@@ -280,54 +268,21 @@ export function SalePriceCell({
 }
 
 /**
- * Precio de venta en la tabla de piezas: texto de solo lectura salvo en el modo
- * «Editar precio de venta» (solo admin), donde todas las filas muestran el campo. Si la orden
- * de Shopify ya está creada, guardar abre el cambio de precio con motivo (P12).
+ * Precio de venta en la tabla de piezas: el admin ve el lápiz solo si aún está "Por
+ * definir" (D58); un precio ya asignado se cambia desde el detalle de la pieza (con
+ * motivo si la orden de Shopify ya está creada, P12).
  */
 export function BoardSalePriceCell({
   piece,
   cents,
-  hasOrder,
-  editing,
+  editable,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
-  hasOrder: boolean;
-  editing: boolean;
+  editable: boolean;
 }) {
-  const [proposed, setProposed] = useState<Cents | null>(null);
-  const withReason = hasOrder && cents !== null;
+  if (!editable || cents !== null) return <PlainAmount cents={cents} />;
   return (
-    <>
-      <MoneyCell
-        // Al entrar o salir del modo edición el campo vuelve al precio guardado.
-        key={`${editing}-${cents}`}
-        cents={cents}
-        editable={editing}
-        emptyText="Por definir"
-        inputLabel={`Precio de venta de ${piece.code}`}
-        saveLabel={`Guardar precio de ${piece.code}`}
-        savedMessage={`Precio de ${piece.code} guardado.`}
-        onSave={async (value) => {
-          if (!withReason) return setPieceSalePrice(piece.id, value);
-          const next = parseMoney(value.trim());
-          if (next === null) {
-            return { error: "Ingresa un monto válido (hasta 2 decimales)." };
-          }
-          setProposed(next);
-          return { pending: true };
-        }}
-      />
-      {withReason && proposed !== null ? (
-        <PriceChangeDialog
-          key={proposed}
-          restorationId={piece.restorationId}
-          piece={{ id: piece.id, code: piece.code, priceCents: cents }}
-          proposedCents={proposed}
-          open
-          onOpenChange={(open) => !open && setProposed(null)}
-        />
-      ) : null}
-    </>
+    <SalePriceCell piece={piece} cents={cents} hasOrder={false} editable />
   );
 }

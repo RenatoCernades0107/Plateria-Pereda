@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { HistoryPiece } from "@/server/restorations/piece-history-queries";
 
 import { materialSummary, PiecePhoto } from "./piece-photo";
-import { PieceStatusBadge, UrgentBadge } from "./status-badges";
+import { PieceStatusBadge, UrgentIcon } from "./status-badges";
 
 const Money = ({ cents, empty }: { cents: number | null; empty: string }) =>
   cents === null ? (
@@ -100,18 +100,17 @@ export function PiecesHistoryTable({
                 <PiecePhoto code={piece.code} url={piece.photoUrl} />
               </td>
               <td className={cn(cell, "whitespace-nowrap")}>
-                <Link
-                  href={pieceHref(piece)}
-                  data-primary-link
-                  className="text-heading font-medium underline-offset-4 hover:underline"
-                >
-                  {piece.code}
-                </Link>
-                {piece.urgent ? (
-                  <div className="mt-1">
-                    <UrgentBadge />
-                  </div>
-                ) : null}
+                {/* Urgente: solo el rayo, al costado del código. */}
+                <span className="inline-flex items-center gap-1">
+                  <Link
+                    href={pieceHref(piece)}
+                    data-primary-link
+                    className="text-heading font-medium underline-offset-4 hover:underline"
+                  >
+                    {piece.code}
+                  </Link>
+                  {piece.urgent ? <UrgentIcon /> : null}
+                </span>
               </td>
               <td className={cn(cell, "max-w-44")}>
                 <Link
