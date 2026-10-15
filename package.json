@@ -29,7 +29,8 @@
     "shopify:register-webhooks": "node --env-file-if-exists=.env.local scripts/shopify-register-webhooks.mjs",
     "shopify:import-customers": "node --env-file-if-exists=.env.local scripts/shopify-import-customers.mjs",
     "shopify:seed-customers": "node --env-file-if-exists=.env.local scripts/shopify-seed-customers.mjs",
-    "shopify:spike": "node --env-file-if-exists=.env.local scripts/shopify-spike.mjs"
+    "shopify:spike": "node --env-file-if-exists=.env.local scripts/shopify-spike.mjs",
+    "shopify:cleanup-spike": "node --env-file-if-exists=.env.local scripts/shopify-cleanup-spike.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
