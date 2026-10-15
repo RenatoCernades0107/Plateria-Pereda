@@ -210,7 +210,6 @@ test.describe("Fotos y archivos", () => {
 
     // Un archivo que subió ventas (en la primera restauración): logística no lo borra.
     await openFiles(page, restorationIds[0]!);
-    await page.getByRole("button", { name: "Mostrar antes-1.png" }).click();
     await page.getByRole("button", { name: "Ver antes-1.png" }).click();
     await expect(
       page.getByRole("dialog").getByRole("button", { name: "Borrar" }),
