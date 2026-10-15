@@ -159,7 +159,7 @@ export function Timeline({
                       </Badge>
                     )}
                     {current ? (
-                      <span className="text-primary text-[11px] font-medium uppercase">
+                      <span className="text-primary text-xs font-medium tracking-wide uppercase">
                         Último
                       </span>
                     ) : null}

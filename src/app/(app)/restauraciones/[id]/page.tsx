@@ -36,9 +36,9 @@ import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending"
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlTabs } from "@/components/url-tabs";
 import { ViewToggle } from "@/components/view-toggle";
-import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import { SHOPIFY_BADGE_CLASS, ShopifyBadge } from "@/components/shopify-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
@@ -100,6 +100,14 @@ export default async function RestauracionDetallePage({
   const depositPending = query.adelanto === "pendiente";
   // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
   const piecesView = parseRestorationPiecesView(query);
+  // Pestaña abierta (`?pestana=pagos`): sobrevive a recargas y se puede enlazar.
+  const tabs = canSeeMoney
+    ? ["piezas", "pagos", "archivos", "historial"]
+    : ["piezas", "archivos"];
+  const tab =
+    typeof query.pestana === "string" && tabs.includes(query.pestana)
+      ? query.pestana
+      : "piezas";
   const settings = canSeeMoney ? await getSettings() : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
   const quoteData = settings
@@ -265,23 +273,6 @@ export default async function RestauracionDetallePage({
                   data-testid="estado-pago"
                 />
               ) : null}
-              <Badge variant="outline">
-                {PAYMENT_TYPE_LABELS[restoration.paymentType]}
-                {restoration.money?.depositAmountCents != null
-                  ? ` (${formatCents(restoration.money.depositAmountCents)}${
-                      restoration.money.depositPercent === null
-                        ? ""
-                        : ` · ${restoration.money.depositPercent} %`
-                    })`
-                  : restoration.money?.depositPercent
-                    ? ` (${restoration.money.depositPercent} %)`
-                    : ""}
-              </Badge>
-              {restoration.money ? (
-                <Badge variant="outline" data-testid="igv">
-                  {igvLabel(restoration.money.pricesIncludeIgv)}
-                </Badge>
-              ) : null}
               {restoration.shopifyOrderName ? (
                 // Con el logotipo y el verde de Shopify; con enlace al admin se ve
                 // como enlace (ícono de pestaña nueva y subrayado al pasar).
@@ -316,30 +307,51 @@ export default async function RestauracionDetallePage({
                   lastError={sync.lastError}
                 />
               ) : null}
-              <Badge
-                variant="outline"
+            </div>
+            {/* Datos de la guía en texto: las insignias quedan para los estados. */}
+            <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span>
+                {PAYMENT_TYPE_LABELS[restoration.paymentType]}
+                {restoration.money?.depositAmountCents != null
+                  ? ` (${formatCents(restoration.money.depositAmountCents)}${
+                      restoration.money.depositPercent === null
+                        ? ""
+                        : ` · ${restoration.money.depositPercent} %`
+                    })`
+                  : restoration.money?.depositPercent
+                    ? ` (${restoration.money.depositPercent} %)`
+                    : ""}
+              </span>
+              {restoration.money ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span data-testid="igv">
+                    {igvLabel(restoration.money.pricesIncludeIgv)}
+                  </span>
+                </>
+              ) : null}
+              <span aria-hidden>·</span>
+              <span
                 data-testid="origen"
-                className={
-                  restoration.origin === "whatsapp"
-                    ? WHATSAPP_BADGE_CLASS
-                    : undefined
-                }
+                className="inline-flex items-center gap-1"
               >
-                {restoration.origin === "whatsapp" ? <WhatsAppIcon /> : null}
-                {RESTORATION_ORIGIN_LABELS[restoration.origin]}
+                {restoration.origin === "whatsapp" ? (
+                  <WhatsAppIcon className="text-whatsapp-strong size-3.5" />
+                ) : null}
+                Origen: {RESTORATION_ORIGIN_LABELS[restoration.origin]}
                 {quote ? (
                   <>
                     {" · desde "}
                     <Link
                       href={`/cotizaciones-whatsapp/${restoration.whatsappQuoteId}`}
-                      className="underline underline-offset-4"
+                      className="text-foreground underline underline-offset-4"
                     >
                       {quote}
                     </Link>
                   </>
                 ) : null}
-              </Badge>
-            </div>
+              </span>
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {editing ? (
@@ -443,7 +455,7 @@ export default async function RestauracionDetallePage({
         </Notice>
       ) : null}
 
-      <Tabs defaultValue="piezas">
+      <UrlTabs initial="piezas" defaultValue={tab}>
         <TabsList>
           <TabsTrigger value="piezas">
             Piezas ({restoration.pieces.length})
@@ -580,7 +592,7 @@ export default async function RestauracionDetallePage({
             />
           </TabsContent>
         ) : null}
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

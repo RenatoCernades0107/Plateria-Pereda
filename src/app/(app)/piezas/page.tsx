@@ -56,14 +56,14 @@ export default async function PiezasPage({
           </Link>
         </Button>
       </div>
+      {/* Atajos de un clic antes del formulario, como en Restauraciones. */}
+      <FilterChips label="Mostrar solo" chips={pieceFilterChips(filters)} />
       <PiecesBoardFiltersForm
         // Al navegar con otros filtros el formulario se reinicia con los de la URL.
         key={pieceBoardHref(filters)}
         filters={filters}
         workshops={workshops.data}
       />
-      {/* Un solo juego de filtros: los atajos de un clic van aquí, no en el formulario. */}
-      <FilterChips label="Mostrar solo" chips={pieceFilterChips(filters)} />
       <ViewToggle
         view={filters.view}
         tableHref={pieceBoardHref(filters, { view: "tabla", page: 1 })}

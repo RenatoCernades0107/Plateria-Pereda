@@ -117,7 +117,7 @@ function MoneyEditCell({
             type="button"
             size="icon"
             variant="ghost"
-            className="size-7 print:hidden"
+            className="size-7 print:hidden pointer-coarse:size-10"
             aria-label={buttonLabel}
             title={buttonTitle}
           >

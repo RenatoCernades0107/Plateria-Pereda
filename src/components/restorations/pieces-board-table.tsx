@@ -150,7 +150,7 @@ function WorkshopCell({
             type="button"
             size="icon"
             variant="ghost"
-            className="size-7 print:hidden"
+            className="size-7 print:hidden pointer-coarse:size-10"
             aria-label={`Cambiar taller de ${piece.code}`}
             title="Cambiar taller"
           >
@@ -220,7 +220,8 @@ function PieceActionsMenu({
         <Button
           variant="ghost"
           size="icon-xs"
-          className="print:hidden"
+          // En pantallas táctiles, del tamaño de un dedo (≥ 40 px).
+          className="print:hidden pointer-coarse:size-10"
           aria-label={`Cambiar estado de ${code}`}
           title="Cambiar estado"
         >

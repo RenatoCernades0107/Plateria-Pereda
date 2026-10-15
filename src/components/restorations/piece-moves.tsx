@@ -207,6 +207,7 @@ export function MoveToMenu({
         <Button
           variant="ghost"
           size="icon-xs"
+          className="pointer-coarse:size-9"
           aria-label={`Mover ${code} a…`}
           title="Mover a…"
         >
