@@ -17,12 +17,7 @@ import {
 
 /** `alert`: lo que pide atención (urgente, demorado) va en un rojo tenue. */
 export type ChipTone =
-  | "default"
-  | "alert"
-  | "info"
-  | "success"
-  | "attention"
-  | "whatsapp";
+  "default" | "alert" | "info" | "success" | "attention" | "whatsapp";
 
 export type FilterChip = {
   key: string;

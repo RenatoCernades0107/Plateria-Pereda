@@ -80,7 +80,7 @@ export function FilterChips({
             className={cn(
               "focus-visible:ring-ring/50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors outline-none focus-visible:ring-[3px] pointer-coarse:py-2",
               chip.active ? tone.active : tone.idle,
-              chip.dashed && "border-dashed border-foreground/40",
+              chip.dashed && "border-foreground/40 border-dashed",
             )}
           >
             {chip.tone === "whatsapp" ? (
