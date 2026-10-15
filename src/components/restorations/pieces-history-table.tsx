@@ -29,11 +29,14 @@ export function PiecesHistoryTable({
   pieces,
   showCost,
   showPrice,
+  showClient = true,
   empty,
 }: {
   pieces: HistoryPiece[];
   showCost: boolean;
   showPrice: boolean;
+  /** Logística no ve clientes: solo el código de la guía. */
+  showClient?: boolean;
   /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
   empty?: React.ReactNode;
 }) {
@@ -61,7 +64,7 @@ export function PiecesHistoryTable({
               Pieza
             </th>
             <th scope="col" className={head}>
-              Guía · cliente
+              {showClient ? "Guía · cliente" : "Guía"}
             </th>
             <th scope="col" className={head}>
               Descripción
@@ -125,9 +128,11 @@ export function PiecesHistoryTable({
                 >
                   {piece.restorationCode}
                 </Link>
-                <p className="text-muted-foreground text-xs">
-                  {piece.clientName}
-                </p>
+                {showClient ? (
+                  <p className="text-muted-foreground text-xs">
+                    {piece.clientName}
+                  </p>
+                ) : null}
               </td>
               <td className={cn(cell, "max-w-60 min-w-44")}>
                 <p className="break-words">{piece.description}</p>

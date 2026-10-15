@@ -91,7 +91,13 @@ export type RestorationDetail = {
   createdAt: string;
   /** Quien registró la guía (id de su perfil). */
   createdBy: string | null;
-  client: { id: string; name: string; phone: string | null; kind: string };
+  /** null si quien mira no ve clientes (logística). */
+  client: {
+    id: string;
+    name: string;
+    phone: string | null;
+    kind: string;
+  } | null;
   contact: { id: string; name: string; phone: string | null } | null;
   pieces: PieceDetail[];
   /** Solo para admin y ventas (P42). */
@@ -115,11 +121,12 @@ export async function getProfileName(id: string): Promise<string | null> {
 /**
  * Detalle de una restauración. Los datos sin dinero salen de las vistas
  * `*_operational` (logística no ve las pasadas, D24); los montos solo se leen si
- * `withMoney` (admin y ventas; la RLS de las tablas lo exige igual).
+ * `withMoney` (admin y ventas; la RLS de las tablas lo exige igual). Cliente y
+ * contacto solo se leen si `withClient` (admin y ventas): logística no los ve.
  */
 export async function getRestorationDetail(
   id: string,
-  { withMoney }: { withMoney: boolean },
+  { withMoney, withClient }: { withMoney: boolean; withClient: boolean },
 ): Promise<RestorationDetail | null> {
   const supabase = await createClient();
   const { data: r, error } = await supabase
@@ -136,12 +143,14 @@ export async function getRestorationDetail(
       .select("*")
       .eq("restoration_id", id)
       .order("number"),
-    supabase
-      .from("clients")
-      .select("id, display_name, phone, kind")
-      .eq("id", r.client_id!)
-      .single(),
-    r.contact_id
+    withClient
+      ? supabase
+          .from("clients")
+          .select("id, display_name, phone, kind")
+          .eq("id", r.client_id!)
+          .single()
+      : Promise.resolve({ data: null, error: null }),
+    withClient && r.contact_id
       ? supabase
           .from("contacts")
           .select("id, display_name, phone")
@@ -193,12 +202,14 @@ export async function getRestorationDetail(
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
     createdAt: r.created_at!,
     createdBy: r.created_by,
-    client: {
-      id: client.data!.id,
-      name: client.data!.display_name ?? "",
-      phone: client.data!.phone,
-      kind: client.data!.kind,
-    },
+    client: client.data
+      ? {
+          id: client.data.id,
+          name: client.data.display_name ?? "",
+          phone: client.data.phone,
+          kind: client.data.kind,
+        }
+      : null,
     contact: contact.data
       ? {
           id: contact.data.id,
@@ -325,6 +336,7 @@ export async function getLogisticsInfo(
 export type RestorationListItem = {
   id: string;
   code: string;
+  /** Vacíos (clientId, clientName, contactName, documentNumber) si quien mira no ve clientes. */
   clientId: string;
   clientName: string;
   documentNumber: string | null;
@@ -353,8 +365,10 @@ const centsOrNull = (value: number | null) =>
 /** Listado con filtros, orden y paginación en la BD (`list_restorations`). */
 export async function listRestorations(
   filters: RestorationFilters,
-  options: { all?: boolean; limit?: number } = {},
+  options: { all?: boolean; limit?: number; withClient?: boolean } = {},
 ): Promise<RestorationsPage> {
+  // Logística no ve clientes: sin nombre, documento ni contacto en el listado.
+  const withClient = options.withClient ?? true;
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(
     "list_restorations",
@@ -368,10 +382,10 @@ export async function listRestorations(
     items: data.map((r) => ({
       id: r.id,
       code: r.code,
-      clientId: r.client_id,
-      clientName: r.client_name ?? "",
-      documentNumber: r.document_number,
-      contactName: r.contact_name,
+      clientId: withClient ? r.client_id : "",
+      clientName: withClient ? (r.client_name ?? "") : "",
+      documentNumber: withClient ? r.document_number : null,
+      contactName: withClient ? r.contact_name : null,
       status: toRestorationStatus(r.status),
       paymentStatus: r.payment_status,
       paymentType: r.payment_type,
@@ -444,6 +458,7 @@ export type BoardPiece = {
   code: string;
   restorationId: string;
   restorationCode: string;
+  /** Vacío si quien mira no ve clientes (logística). */
   clientName: string;
   description: string;
   status: PieceStatus;
@@ -484,6 +499,7 @@ export type BoardPiece = {
  */
 export async function listPiecesBoard(
   filters: PieceBoardFilters,
+  { withClient }: { withClient: boolean },
 ): Promise<{ items: BoardPiece[]; total: number; pages: number }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(
@@ -505,7 +521,7 @@ export async function listPiecesBoard(
       code: p.code,
       restorationId: p.restoration_id,
       restorationCode: p.restoration_code,
-      clientName: p.client_name ?? "",
+      clientName: withClient ? (p.client_name ?? "") : "",
       description: p.description,
       status: p.status,
       location: p.location,

@@ -29,9 +29,10 @@ export default async function PiezasHistorialPage({
 }: PageProps<"/piezas/historial">) {
   const user = await requirePermission("restauraciones.ver");
   const filters = parsePieceHistoryFilters(await searchParams);
+  const showClient = can(user.role, "clientes.ver");
   const supabase = await createClient();
   const [{ items, total, pages }, workshops] = await Promise.all([
-    listPiecesHistory(filters),
+    listPiecesHistory(filters, { withClient: showClient }),
     // Con los inactivos: una pieza antigua pudo ir a un taller que ya no se usa.
     supabase.from("workshops").select("id, name").order("name"),
   ]);
@@ -51,11 +52,16 @@ export default async function PiezasHistorialPage({
           </Link>
         </Button>
       </div>
-      <PiecesHistoryFiltersForm filters={filters} workshops={workshops.data} />
+      <PiecesHistoryFiltersForm
+        filters={filters}
+        workshops={workshops.data}
+        showClient={showClient}
+      />
       <PiecesHistoryTable
         pieces={items}
         showCost={can(user.role, "piezas.costo-servicio")}
         showPrice={can(user.role, "dinero.ver")}
+        showClient={showClient}
         empty={
           pieceHistoryHref(filters, { page: 1 }) !== "/piezas/historial" ? (
             <FilteredEmptyState resetHref="/piezas/historial" />

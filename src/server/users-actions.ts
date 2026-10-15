@@ -24,6 +24,22 @@ async function accessLink() {
   return `${origin}/auth/confirm?next=/restablecer-contrasena`;
 }
 
+function inviteErrorMessage(code: string | undefined) {
+  switch (code) {
+    case "email_exists":
+    case "user_already_exists":
+      return "Ya existe un usuario con ese email.";
+    case "over_email_send_rate_limit":
+    case "over_request_rate_limit":
+      return "Se alcanzó el límite de correos por hora. Espera un rato e intenta de nuevo.";
+    case "email_address_invalid":
+    case "validation_failed":
+      return "El email no es válido.";
+    default:
+      return "No se pudo crear el usuario. Intenta de nuevo.";
+  }
+}
+
 /** Crea el usuario y le envía por correo el enlace para crear su contraseña. */
 export async function createUser(
   input: NewUserInput,
@@ -41,12 +57,12 @@ export async function createUser(
     },
   );
   if (error) {
-    return {
-      error:
-        error.code === "email_exists"
-          ? "Ya existe un usuario con ese email."
-          : "No se pudo crear el usuario. Intenta de nuevo.",
-    };
+    console.error("No se pudo invitar al usuario", {
+      code: error.code,
+      status: error.status,
+      message: error.message,
+    });
+    return { error: inviteErrorMessage(error.code) };
   }
 
   const { error: roleError } = await admin.auth.admin.updateUserById(

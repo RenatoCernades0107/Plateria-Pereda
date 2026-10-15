@@ -217,24 +217,13 @@ test.describe("Detalle de clientes", () => {
     ).toBeVisible();
   });
 
-  test("logística ve los datos y contactos, sin editar ni ver el historial", async ({
-    page,
-    loginAs,
-  }) => {
+  test("logística no ve los clientes", async ({ page, loginAs }) => {
     await loginAs("logistica");
-    await page.goto(detailUrl);
-    await expect(page.getByRole("heading", { name: legalName })).toBeVisible();
-    await expect(page.getByText("Cayma, Arequipa")).toBeVisible();
+    const response = await page.goto(detailUrl);
+    expect(response?.status()).toBe(403);
     await expect(
-      page.getByTestId(`contacto-Contacto${run} Cambiado`),
+      page.getByRole("heading", { name: "No tienes acceso a esta sección" }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Editar" })).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Agregar contacto" }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("heading", { name: "Historial de cambios" }),
-    ).toHaveCount(0);
   });
 
   test("desactivar la empresa la saca del listado de activos", async ({

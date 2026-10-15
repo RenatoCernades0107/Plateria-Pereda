@@ -31,7 +31,7 @@ describe("AppShell", () => {
         "Cotizaciones",
       ],
     ],
-    ["logistica", ["Restauraciones", "Piezas", "Clientes", "Talleres"]],
+    ["logistica", ["Restauraciones", "Piezas", "Talleres"]],
   ] as const)("muestra a %s solo los módulos permitidos", (role, visibles) => {
     render(<AppShell user={{ ...user, role }}>contenido</AppShell>);
     const nav = screen.getByRole("list", { name: "Navegación principal" });

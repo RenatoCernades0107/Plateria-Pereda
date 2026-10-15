@@ -25,9 +25,12 @@ const ALL = "todos";
 export function PiecesHistoryFiltersForm({
   filters,
   workshops,
+  showClient = true,
 }: {
   filters: PieceHistoryFilters;
   workshops: { id: string; name: string }[];
+  /** Logística no ve clientes: la búsqueda no los menciona. */
+  showClient?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -44,7 +47,11 @@ export function PiecesHistoryFiltersForm({
       onSubmit={submit}
     >
       <div className="space-y-1.5">
-        <Label htmlFor="historial-texto">Código, descripción o cliente</Label>
+        <Label htmlFor="historial-texto">
+          {showClient
+            ? "Código, descripción o cliente"
+            : "Código o descripción"}
+        </Label>
         <Input
           id="historial-texto"
           type="search"

@@ -16,6 +16,7 @@ export type HistoryPiece = {
   code: string;
   restorationId: string;
   restorationCode: string;
+  /** Vacío si quien mira no ve clientes (logística). */
   clientName: string;
   description: string;
   status: PieceStatus;
@@ -46,6 +47,7 @@ const centsOrNull = (value: number | null) =>
  */
 export async function listPiecesHistory(
   filters: PieceHistoryFilters,
+  { withClient }: { withClient: boolean },
 ): Promise<{ items: HistoryPiece[]; total: number; pages: number }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(
@@ -65,7 +67,7 @@ export async function listPiecesHistory(
       code: p.code,
       restorationId: p.restoration_id,
       restorationCode: p.restoration_code,
-      clientName: p.client_name ?? "",
+      clientName: withClient ? (p.client_name ?? "") : "",
       description: p.description,
       status: p.status,
       location: p.location,

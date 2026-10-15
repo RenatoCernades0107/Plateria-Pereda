@@ -86,7 +86,8 @@ test.describe("Vista de piezas", () => {
     await seedReceived(1, "Bandeja");
     await loginAs("logistica");
     await page.goto("/piezas");
-    await page.getByLabel("Código, descripción o cliente").fill(clientName);
+    // Logística no ve clientes: el filtro de texto dice solo "Código o descripción".
+    await page.getByLabel("Código o descripción").fill(clientName);
     await page.getByLabel("Ubicación").click();
     await page.getByRole("option", { name: "Sin enviar" }).click();
     await page.getByLabel("Estado", { exact: true }).click();

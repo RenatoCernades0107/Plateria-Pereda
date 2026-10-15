@@ -30,7 +30,8 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "fotos.subir": [A, V, L],
   "fotos.eliminar-ajenas": [A],
   "talleres.gestionar": [A, L],
-  "clientes.ver": [A, V, L],
+  "guias.exportar-pdf": [A, V],
+  "clientes.ver": [A, V],
   "clientes.editar": [A, V],
   "cotizador.usar": [A, V],
   "cotizaciones-whatsapp.usar": [A, V],
@@ -57,6 +58,12 @@ describe("matriz de permisos", () => {
 
   it.each(casos)("%s para %s → %s", (permission, role, permitido) => {
     expect(can(role, permission)).toBe(permitido);
+  });
+
+  it("logística no ve clientes ni exporta la guía en PDF", () => {
+    for (const permission of ["clientes.ver", "guias.exportar-pdf"] as const) {
+      expect(can(L, permission)).toBe(false);
+    }
   });
 
   it("logística no ve precios, pagos, métricas ni historial", () => {

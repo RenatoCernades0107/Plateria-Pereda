@@ -32,6 +32,7 @@ import {
   parseRestorationFilters,
   restorationFiltersHref,
   restorationFiltersQuery,
+  type RestorationFilters,
 } from "@/domain/restoration-filters";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
@@ -49,7 +50,16 @@ export default async function RestauracionesPage({
 }: PageProps<"/restauraciones">) {
   const user = await requirePermission("restauraciones.ver");
   const canEdit = can(user.role, "restauraciones.editar");
-  const filters = parseRestorationFilters(await searchParams);
+  const showClient = can(user.role, "clientes.ver");
+  const parsed = parseRestorationFilters(await searchParams);
+  // Logística no ve clientes: ni filtra ni ordena por ellos.
+  const filters: RestorationFilters = showClient
+    ? parsed
+    : {
+        ...parsed,
+        clientId: null,
+        sort: parsed.sort === "client" ? "created_at" : parsed.sort,
+      };
   const supabase = await createClient();
   // Contadores de los chips: lo que daría cada uno con los demás filtros.
   const chipFilters = restorationChipCountFilters(filters, {
@@ -57,7 +67,7 @@ export default async function RestauracionesPage({
   });
   const [{ items, total, pages }, clientName, workshops, chipTotals] =
     await Promise.all([
-      listRestorations(filters),
+      listRestorations(filters, { withClient: showClient }),
       filters.clientId ? getClientName(filters.clientId) : null,
       supabase.from("workshops").select("id, name").order("name"),
       Promise.all(
@@ -116,6 +126,7 @@ export default async function RestauracionesPage({
         clientName={clientName}
         workshops={workshops.data}
         showMoney={canEdit}
+        showClient={showClient}
       />
       {/* Barra de la lista: cuántas hay y el cambio de vista. */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
@@ -179,6 +190,7 @@ export default async function RestauracionesPage({
         <RestorationsKanban
           items={items}
           showMoney={canEdit}
+          showClient={showClient}
           progress={progress}
         />
       ) : (
@@ -187,6 +199,7 @@ export default async function RestauracionesPage({
             items={items}
             filters={filters}
             showMoney={canEdit}
+            showClient={showClient}
             emptyMessage="Aún no hay restauraciones registradas."
             empty={
               <EmptyState

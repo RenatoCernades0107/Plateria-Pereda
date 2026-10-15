@@ -32,9 +32,12 @@ const ALL = "todos";
 export function PiecesBoardFiltersForm({
   filters,
   workshops,
+  showClient = true,
 }: {
   filters: PieceBoardFilters;
   workshops: { id: string; name: string }[];
+  /** Logística no ve clientes: la búsqueda no los menciona. */
+  showClient?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -51,7 +54,11 @@ export function PiecesBoardFiltersForm({
       onSubmit={submit}
     >
       <div className="space-y-1.5">
-        <Label htmlFor="filtro-texto">Código, descripción o cliente</Label>
+        <Label htmlFor="filtro-texto">
+          {showClient
+            ? "Código, descripción o cliente"
+            : "Código o descripción"}
+        </Label>
         <Input
           id="filtro-texto"
           type="search"

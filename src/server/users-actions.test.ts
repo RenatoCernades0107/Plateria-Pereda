@@ -105,6 +105,18 @@ describe("acciones de usuarios", () => {
       });
     });
 
+    it("avisa si se alcanzó el límite de correos", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+        data: {},
+        error: { code: "over_email_send_rate_limit", status: 429 },
+      });
+      expect(await createUser(nuevo)).toEqual({
+        error:
+          "Se alcanzó el límite de correos por hora. Espera un rato e intenta de nuevo.",
+      });
+    });
+
     it("avisa si no pudo asignar el rol", async () => {
       mocks.admin.auth.admin.updateUserById.mockResolvedValue({
         error: { code: "unexpected_failure" },
