@@ -14,9 +14,21 @@ import {
  * activo, el clic lo quita. Se combinan con los demás filtros.
  */
 
+/** Tono del chip: el mismo que la insignia del estado que filtra. */
+export type FilterChipTone =
+  | "neutral"
+  | "info"
+  | "success"
+  | "attention"
+  | "urgent"
+  | "whatsapp";
+
 export type FilterChip = {
   key: string;
   label: string;
+  tone: FilterChipTone;
+  /** Borde punteado: "a medias" (parcialmente aprobada). */
+  dashed?: boolean;
   active: boolean;
   href: string;
 };
@@ -24,6 +36,8 @@ export type FilterChip = {
 type Preset<F> = {
   key: string;
   label: string;
+  tone: FilterChipTone;
+  dashed?: boolean;
   on: Partial<F>;
   off: Partial<F>;
   isActive: (filters: F) => boolean;
@@ -32,6 +46,7 @@ type Preset<F> = {
 export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
   {
     key: "urgentes",
+    tone: "urgent",
     label: "Urgentes",
     on: { urgent: true },
     off: { urgent: false },
@@ -39,6 +54,7 @@ export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
   },
   {
     key: "listas",
+    tone: "success",
     label: "Listas para entregar",
     on: { ready: true },
     off: { ready: false },
@@ -46,6 +62,7 @@ export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
   },
   {
     key: "devolver",
+    tone: "info",
     label: "Por devolver",
     on: { toReturn: true },
     off: { toReturn: false },
@@ -53,6 +70,7 @@ export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
   },
   {
     key: "taller",
+    tone: "attention",
     label: `En taller ${WORKSHOP_DAYS_ALERT}+ días`,
     on: { minDays: WORKSHOP_DAYS_ALERT },
     off: { minDays: null },
@@ -66,6 +84,7 @@ const sameSet = (a: readonly string[], b: readonly string[]) =>
 export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
   {
     key: "pago-pendiente",
+    tone: "attention",
     label: "Pago pendiente",
     on: { paymentStatus: ["pendiente"] },
     off: { paymentStatus: [] },
@@ -73,6 +92,7 @@ export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
   },
   {
     key: "pago-parcial",
+    tone: "info",
     label: "Pago parcial",
     on: { paymentStatus: ["parcial"] },
     off: { paymentStatus: [] },
@@ -80,6 +100,8 @@ export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
   },
   {
     key: "parcialmente-aprobadas",
+    tone: "info",
+    dashed: true,
     label: "Parcialmente aprobadas",
     on: { status: ["parcialmente_aprobada"] },
     off: { status: [] },
@@ -87,6 +109,7 @@ export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
   },
   {
     key: "listas",
+    tone: "success",
     label: "Listas para entregar",
     on: { status: ["parcialmente_lista", "lista"] },
     off: { status: [] },
@@ -94,6 +117,7 @@ export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
   },
   {
     key: "whatsapp",
+    tone: "whatsapp",
     label: "De WhatsApp",
     on: { origin: ["whatsapp"] },
     off: { origin: [] },
@@ -111,6 +135,8 @@ function chips<F extends { page: number }>(
     return {
       key: p.key,
       label: p.label,
+      tone: p.tone,
+      dashed: p.dashed,
       active,
       href: href(filters, {
         ...(active ? p.off : p.on),
