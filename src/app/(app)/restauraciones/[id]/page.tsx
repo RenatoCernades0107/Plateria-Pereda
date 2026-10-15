@@ -221,7 +221,8 @@ export default async function RestauracionDetallePage({
       <RefreshWhilePending
         pending={sync?.status === "pending" || sync?.status === "processing"}
       />
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/restauraciones">
           <ArrowLeft />
           Restauraciones

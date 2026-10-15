@@ -132,6 +132,20 @@ describe("PieceWorkshopField", () => {
     ).toBeInTheDocument();
   });
 
+  it("sin taller y con permiso muestra solo el botón «Asignar taller»", () => {
+    render(
+      <PieceWorkshopField
+        piece={{ ...piece, workshopId: null, workshopName: null }}
+        workshops={workshops}
+        canAssign
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Asignar taller de RES-00001-1" }),
+    ).toHaveTextContent("Asignar taller");
+    expect(screen.queryByText("Sin taller")).toBeNull();
+  });
+
   it("sin permiso solo muestra el nombre o «Sin taller»", () => {
     const { rerender } = render(
       <PieceWorkshopField

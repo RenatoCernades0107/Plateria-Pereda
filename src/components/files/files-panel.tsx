@@ -20,6 +20,7 @@ export function FilesPanel({
   isAdmin,
   emptyText,
   showTargetLabels,
+  stacked = false,
   className,
 }: {
   restorationId: string;
@@ -31,6 +32,11 @@ export function FilesPanel({
   emptyText?: string;
   /** Con un solo destino (la ficha de la pieza) el título de la galería sobra. */
   showTargetLabels?: boolean;
+  /**
+   * En una columna (ficha de la pieza): primero las fotos y debajo el formulario, sin
+   * ponerlos lado a lado.
+   */
+  stacked?: boolean;
   className?: string;
 }) {
   const gallery = (
@@ -45,6 +51,14 @@ export function FilesPanel({
     />
   );
   if (!canUpload) return <div className={className}>{gallery}</div>;
+  if (stacked) {
+    return (
+      <div className={cn("space-y-4", className)}>
+        {gallery}
+        <FileUploader restorationId={restorationId} targets={targets} />
+      </div>
+    );
+  }
   return (
     <div
       className={cn(

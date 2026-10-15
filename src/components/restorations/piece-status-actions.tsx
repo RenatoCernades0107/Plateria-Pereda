@@ -731,99 +731,153 @@ function MoreActionsMenu({
   );
 }
 
+/** Estado, ubicación y urgente de la pieza: solo informan (insignias, no se pulsan). */
+function PieceStatusBadges({
+  piece,
+  pending,
+  label = true,
+}: {
+  piece: StatusPiece;
+  pending: boolean;
+  /** Rótulo "Estado" encima (en la cabecera de la ficha sobra). */
+  label?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5" data-testid="estado-pieza">
+      {label ? (
+        <p className="text-muted-foreground text-xs font-medium">Estado</p>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <PieceStatusBadge status={piece.status} className={LARGE_BADGE_CLASS} />
+        <LocationBadge
+          location={piece.location}
+          className={LARGE_BADGE_CLASS}
+        />
+        {piece.urgent ? <UrgentBadge className={LARGE_BADGE_CLASS} /> : null}
+        {pending ? (
+          <Loader2
+            className="text-muted-foreground size-4 animate-spin"
+            aria-label="Guardando"
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 /**
- * Estado, ubicación y acciones de una pieza (detalle de la pieza). Solo muestra lo
- * que el rol puede hacer (ver `usePieceActions`).
- *
- * Jerarquía visual (Refactoring UI, NN/g, Material): el estado en insignias grandes y
- * agrupadas; una sola acción principal (botón relleno), las demás secundarias (con
- * borde) y los cierres, que no se deshacen, apartados en «Más acciones» y con
- * confirmación.
+ * Lo que el rol puede hacer con la pieza (ver `usePieceActions`), aparte de las
+ * insignias de estado. Jerarquía visual (Refactoring UI, NN/g, Material): una sola
+ * acción principal (botón relleno), las demás secundarias (con borde) y los cierres,
+ * que no se deshacen, apartados en «Más acciones» y con confirmación.
  */
+function PieceActionBar({
+  code,
+  actions,
+  balanceWarning,
+  className,
+}: {
+  code: string;
+  actions: PieceAction[];
+  balanceWarning: boolean;
+  className?: string;
+}) {
+  if (actions.length === 0) return null;
+  const { primary, secondary, overflow, inlineClosing } =
+    arrangeActions(actions);
+  return (
+    <div className={cn("space-y-2", className)}>
+      <div
+        className="flex flex-wrap items-center gap-2"
+        aria-label={`Acciones de ${code}`}
+        role="group"
+      >
+        {primary ? (
+          <Button disabled={primary.disabled} onClick={primary.onSelect}>
+            {primary.label}
+          </Button>
+        ) : null}
+        {secondary.map((a) => (
+          <Button
+            key={a.key}
+            variant="outline"
+            disabled={a.disabled}
+            onClick={a.onSelect}
+          >
+            {a.label}
+          </Button>
+        ))}
+        {inlineClosing.map((a) => (
+          <Button
+            key={a.key}
+            variant="outline"
+            className="text-destructive hover:text-destructive"
+            disabled={a.disabled}
+            onClick={a.onSelect}
+          >
+            {a.label}
+          </Button>
+        ))}
+        {overflow.length > 0 ? (
+          <MoreActionsMenu code={code} actions={overflow} />
+        ) : null}
+      </div>
+      {balanceWarning ? (
+        <p className="text-destructive text-sm">Falta cobrar el saldo</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Estado y acciones de una pieza, uno debajo del otro. */
 export function PieceStatusPanel({
   className,
   ...props
 }: PieceActionsInput & { className?: string }) {
-  const {
-    piece: optimistic,
-    pending,
-    actions,
-    balanceWarning,
-    dialogs,
-  } = usePieceActions(props);
-  const { piece } = props;
-  const { primary, secondary, overflow, inlineClosing } =
-    arrangeActions(actions);
-
+  const { piece, pending, actions, balanceWarning, dialogs } =
+    usePieceActions(props);
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Estado y ubicación: solo informan (insignias, no se pulsan). */}
-      <div className="space-y-1.5" data-testid="estado-pieza">
-        <p className="text-muted-foreground text-xs font-medium">Estado</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <PieceStatusBadge
-            status={optimistic.status}
-            className={LARGE_BADGE_CLASS}
-          />
-          <LocationBadge
-            location={optimistic.location}
-            className={LARGE_BADGE_CLASS}
-          />
-          {optimistic.urgent ? (
-            <UrgentBadge className={LARGE_BADGE_CLASS} />
-          ) : null}
-          {pending ? (
-            <Loader2
-              className="text-muted-foreground size-4 animate-spin"
-              aria-label="Guardando"
-            />
-          ) : null}
-        </div>
+      <PieceStatusBadges piece={piece} pending={pending} />
+      <PieceActionBar
+        code={props.piece.code}
+        actions={actions}
+        balanceWarning={balanceWarning}
+      />
+      {dialogs}
+    </div>
+  );
+}
+
+/**
+ * Cabecera de la ficha de la pieza, como la de la guía: a la izquierda el título
+ * (`heading`, armado en el servidor) y debajo las insignias de estado; a la derecha
+ * la barra de acciones. En pantallas angostas, las acciones van debajo.
+ */
+export function PieceHeader({
+  heading,
+  className,
+  ...props
+}: PieceActionsInput & { heading: React.ReactNode; className?: string }) {
+  const { piece, pending, actions, balanceWarning, dialogs } =
+    usePieceActions(props);
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between",
+        className,
+      )}
+    >
+      <div className="min-w-0 space-y-3">
+        {heading}
+        <PieceStatusBadges piece={piece} pending={pending} label={false} />
       </div>
-      {actions.length > 0 ? (
-        <div className="space-y-2">
-          <div
-            className="flex flex-wrap items-center gap-2"
-            aria-label={`Acciones de ${piece.code}`}
-            role="group"
-          >
-            {primary ? (
-              <Button disabled={primary.disabled} onClick={primary.onSelect}>
-                {primary.label}
-              </Button>
-            ) : null}
-            {secondary.map((a) => (
-              <Button
-                key={a.key}
-                variant="outline"
-                disabled={a.disabled}
-                onClick={a.onSelect}
-              >
-                {a.label}
-              </Button>
-            ))}
-            {inlineClosing.map((a) => (
-              <Button
-                key={a.key}
-                variant="outline"
-                className="text-destructive hover:text-destructive"
-                disabled={a.disabled}
-                onClick={a.onSelect}
-              >
-                {a.label}
-              </Button>
-            ))}
-            {overflow.length > 0 ? (
-              <div className="ml-auto">
-                <MoreActionsMenu code={piece.code} actions={overflow} />
-              </div>
-            ) : null}
-          </div>
-          {balanceWarning ? (
-            <p className="text-destructive text-sm">Falta cobrar el saldo</p>
-          ) : null}
-        </div>
-      ) : null}
+      <PieceActionBar
+        code={props.piece.code}
+        actions={actions}
+        balanceWarning={balanceWarning}
+        className="lg:max-w-[50%] lg:[&>[role=group]]:justify-end lg:[&>p]:text-right"
+      />
       {dialogs}
     </div>
   );

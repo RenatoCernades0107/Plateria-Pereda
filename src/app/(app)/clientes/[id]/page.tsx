@@ -91,7 +91,8 @@ export default async function ClienteDetallePage({
   return (
     <div className="space-y-6">
       <PageBreadcrumb label={client.displayName} />
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/clientes">
           <ArrowLeft />
           Clientes

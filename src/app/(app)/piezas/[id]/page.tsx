@@ -1,4 +1,4 @@
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, Images } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,12 +14,10 @@ import {
   PieceTimelineStrip,
 } from "@/components/restorations/piece-history";
 import { PieceMoneyTiles } from "@/components/restorations/piece-money-tiles";
-import { PieceStatusPanel } from "@/components/restorations/piece-status-actions";
+import { PieceHeader } from "@/components/restorations/piece-status-actions";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
 import { PieceWorkshopField } from "@/components/restorations/workshop-edit-button";
 import { Button } from "@/components/ui/button";
-import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UrlTabs } from "@/components/url-tabs";
 import { toCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { formatDate } from "@/lib/format";
@@ -41,16 +39,18 @@ export async function generateMetadata({
   return recordMetadata("piece", (await params).id, "Pieza");
 }
 
+const CARD_CLASS = "bg-card rounded-lg border p-4 shadow-xs sm:p-5";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Detalle completo de una pieza (P55), con el mismo esquema que el de la guía: la
- * tarjeta de la pieza (estado, acciones, montos y datos) y, en pestañas, sus fotos y
- * su historial. Desde 1440 px, en dos columnas; si no, la tarjeta arriba.
+ * Detalle completo de una pieza (P55). Arriba, como en la guía, la cabecera: título y
+ * estado a la izquierda, acciones a la derecha. Debajo, en dos columnas desde `lg`,
+ * montos y datos junto a las fotos (lo esencial sin desplazarse) y al final la línea
+ * de tiempo a lo ancho. En el celular, todo en una columna en ese orden.
  */
 export default async function PiezaDetallePage({
   params,
-  searchParams,
 }: PageProps<"/piezas/[id]">) {
   const user = await requirePermission("restauraciones.ver");
   const { id } = await params;
@@ -104,14 +104,12 @@ export default async function PiezaDetallePage({
       ? null
       : `${piece.weightGrams.toLocaleString("es-PE")} g`;
   const showMoney = canSeeCost || canSeeMoney;
-  // Pestaña abierta (`?pestana=historial`): sobrevive a recargas y se puede enlazar.
-  const query = await searchParams;
-  const tab = query.pestana === "historial" ? "historial" : "archivos";
 
   return (
     <div className="space-y-6">
       <PageBreadcrumb label={piece.code} />
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva a Piezas. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/piezas">
           <ArrowLeft />
           Piezas
@@ -119,22 +117,23 @@ export default async function PiezaDetallePage({
       </Button>
 
       {/*
-        El mismo esquema que el detalle de la guía: la pieza en su tarjeta (blanca, con
-        el acento de pieza) y sus fotos e historial en pestañas. En pantallas anchas,
-        dos columnas: la pieza a la izquierda (fija al bajar) y las pestañas a la
-        derecha; si no, debajo.
+        Como la guía: la cabecera de la pieza (título y estado a la izquierda, acciones
+        a la derecha) en su tarjeta blanca con el acento de pieza. Debajo, montos y
+        datos (2/5) junto a las fotos (3/5); al final, el historial a lo ancho.
       */}
-      <div className="wide:grid-cols-[20rem_minmax(0,1fr)] grid items-start gap-6">
-        <section
-          aria-labelledby="titulo-pieza"
-          className={cn(
-            PIECE_CARD_CLASS,
-            "wide:sticky wide:top-4 wide:max-h-[calc(100svh-2rem)] wide:overflow-y-auto space-y-4",
-          )}
-          data-testid="pieza"
-        >
-          <header className="wide:flex-col flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 space-y-2">
+      <section
+        aria-labelledby="titulo-pieza"
+        className={PIECE_CARD_CLASS}
+        data-testid="pieza"
+      >
+        <PieceHeader
+          restorationId={restoration.id}
+          piece={piece}
+          role={user.role}
+          workshops={workshops.data}
+          balanceDue={balanceDue}
+          heading={
+            <div className="space-y-2">
               <PieceEyebrow number={piece.number} code={piece.code} />
               <h1
                 id="titulo-pieza"
@@ -142,54 +141,43 @@ export default async function PiezaDetallePage({
               >
                 {piece.description}
               </h1>
-              <p className="text-sm">
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
                 <Link
                   href={`/clientes/${restoration.client.id}`}
                   className="font-medium underline-offset-4 hover:underline"
                 >
                   {restoration.client.name}
                 </Link>
-                <span className="text-muted-foreground">
-                  {" "}
-                  ·{" "}
-                  <span className="whitespace-nowrap">
-                    Guía {restoration.code}
-                  </span>
+                <span className="text-muted-foreground" aria-hidden>
+                  ·
                 </span>
+                <Link
+                  href={`/restauraciones/${restoration.id}`}
+                  aria-label={`Ver guía ${restoration.code}`}
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 whitespace-nowrap underline-offset-4 hover:underline"
+                >
+                  <ClipboardList aria-hidden className="size-3.5" />
+                  Guía {restoration.code}
+                </Link>
+                <RestorationStatusBadge status={restoration.status} />
               </p>
-              <RestorationStatusBadge status={restoration.status} />
             </div>
-            {/* Navegación, no acción: botón secundario para no competir con las acciones. */}
-            <Button asChild variant="outline" size="sm" className="shrink-0">
-              <Link href={`/restauraciones/${restoration.id}`}>
-                <ClipboardList />
-                Ver guía {restoration.code}
-              </Link>
-            </Button>
-          </header>
+          }
+        />
+      </section>
 
-          <PieceStatusPanel
-            className="border-t pt-4"
-            restorationId={restoration.id}
-            piece={piece}
-            role={user.role}
-            workshops={workshops.data}
-            balanceDue={balanceDue}
-          />
-
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="min-w-0 space-y-6">
           {showMoney ? (
             <section
-              className="space-y-2 border-t pt-4"
+              className={cn(CARD_CLASS, "space-y-3")}
               aria-labelledby="montos-pieza"
             >
-              <h2
-                id="montos-pieza"
-                className="text-muted-foreground text-xs font-medium"
-              >
+              <h2 id="montos-pieza" className="text-heading font-semibold">
                 Montos
               </h2>
               <PieceMoneyTiles
-                stackOnWide
+                className="sm:grid-cols-2"
                 piece={{
                   id: piece.id,
                   code: piece.code,
@@ -220,22 +208,18 @@ export default async function PiezaDetallePage({
           ) : null}
 
           <section
-            className="space-y-3 border-t pt-4"
+            className={cn(CARD_CLASS, "space-y-3")}
             aria-labelledby="datos-pieza"
           >
-            <h2
-              id="datos-pieza"
-              className="text-muted-foreground text-xs font-medium"
-            >
+            <h2 id="datos-pieza" className="text-heading font-semibold">
               Datos de la pieza
             </h2>
-            <dl className="wide:grid-cols-2 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <Field label="Servicio">{piece.serviceName || null}</Field>
               <Field label="Material">{piece.materialName || null}</Field>
               <Field label="Peso">{weight}</Field>
               <Field label="Medida">{piece.measure || null}</Field>
-              {/* En la columna angosta, a lo ancho: el nombre y su lápiz no se parten. */}
-              <Field label="Taller" className="wide:col-span-full">
+              <Field label="Taller">
                 {/* Aquí se cambia un taller ya asignado (en /piezas solo se asigna). */}
                 <PieceWorkshopField
                   piece={{
@@ -250,66 +234,64 @@ export default async function PiezaDetallePage({
                 />
               </Field>
               <Field label="Registrada">{formatDate(piece.createdAt)}</Field>
-              <Field label="Llegó a la tienda">
-                {piece.arrivedAt ? formatDate(piece.arrivedAt) : null}
-              </Field>
+              {/* Lo que aún no pasó (llegada, entrega) o está vacío (notas) no se muestra. */}
+              {piece.arrivedAt ? (
+                <Field label="Llegó a la tienda">
+                  {formatDate(piece.arrivedAt)}
+                </Field>
+              ) : null}
               {piece.deliveredAt ? (
                 <Field label="Entregada">{formatDate(piece.deliveredAt)}</Field>
               ) : null}
-              <Field label="Notas de la pieza" wide>
-                {piece.notes || null}
-              </Field>
+              {piece.notes ? (
+                <Field label="Notas de la pieza" wide>
+                  {piece.notes}
+                </Field>
+              ) : null}
             </dl>
+            {/* Logística no ve la línea de tiempo: su resumen va con los datos. */}
+            {!canSeeMoney && info ? (
+              <div className="border-t pt-3">
+                <LogisticsPieceSummary info={info} />
+              </div>
+            ) : null}
           </section>
-        </section>
+        </div>
 
-        <UrlTabs initial="archivos" defaultValue={tab} className="min-w-0">
-          <TabsList>
-            <TabsTrigger value="archivos">
-              Fotos y archivos
-              {pieceFiles.length > 0 ? ` (${pieceFiles.length})` : ""}
-            </TabsTrigger>
-            <TabsTrigger value="historial">Historial</TabsTrigger>
-          </TabsList>
-          <TabsContent value="archivos">
-            <FilesPanel
-              restorationId={restoration.id}
-              files={pieceFiles}
-              targets={fileTargets}
-              canUpload={canUpload}
-              currentUserId={user.id}
-              isAdmin={user.role === "admin"}
-              emptyText="La pieza aún no tiene fotos."
-              showTargetLabels={false}
-            />
-          </TabsContent>
-          <TabsContent value="historial">
-            {canSeeMoney ? (
-              <PieceTimelineStrip
-                piece={piece}
-                events={history.filter((e) => e.pieceId === piece.id)}
-                now={new Date()}
-              />
-            ) : (
-              <section
-                className="bg-card space-y-2 rounded-lg border p-3 sm:p-4"
-                aria-labelledby="historia-pieza"
-              >
-                <h2 id="historia-pieza" className="text-heading font-semibold">
-                  Historia
-                </h2>
-                {info ? (
-                  <LogisticsPieceSummary info={info} />
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Sin movimientos.
-                  </p>
-                )}
-              </section>
-            )}
-          </TabsContent>
-        </UrlTabs>
+        <section className="min-w-0 space-y-3" aria-labelledby="fotos-pieza">
+          <h2
+            id="fotos-pieza"
+            className="text-heading flex items-center gap-1.5 font-semibold"
+          >
+            <Images aria-hidden className="size-4" />
+            Fotos y archivos
+            {pieceFiles.length > 0 ? (
+              <span className="text-muted-foreground font-normal">
+                ({pieceFiles.length})
+              </span>
+            ) : null}
+          </h2>
+          <FilesPanel
+            stacked
+            restorationId={restoration.id}
+            files={pieceFiles}
+            targets={fileTargets}
+            canUpload={canUpload}
+            currentUserId={user.id}
+            isAdmin={user.role === "admin"}
+            emptyText="La pieza aún no tiene fotos."
+            showTargetLabels={false}
+          />
+        </section>
       </div>
+
+      {canSeeMoney ? (
+        <PieceTimelineStrip
+          piece={piece}
+          events={history.filter((e) => e.pieceId === piece.id)}
+          now={new Date()}
+        />
+      ) : null}
     </div>
   );
 }
@@ -317,18 +299,14 @@ export default async function PiezaDetallePage({
 function Field({
   label,
   wide = false,
-  className,
   children,
 }: {
   label: string;
   wide?: boolean;
-  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn("min-w-0 space-y-0.5", wide && "col-span-full", className)}
-    >
+    <div className={cn("min-w-0 space-y-0.5", wide && "col-span-full")}>
       <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
       <dd className="break-words whitespace-pre-wrap">
         {children ?? <span className="text-muted-foreground">—</span>}

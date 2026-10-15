@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -35,6 +35,13 @@ type MoneyPiece = { id: string; code: string; restorationId: string };
 type SaveResult = { error: string } | { ok: true } | object;
 
 /**
+ * Dato editable que aún falta (p. ej. "Definir precio" en la ficha de la pieza): un
+ * botón secundario con borde punteado, para que se vea como acción y no como texto.
+ */
+export const EMPTY_VALUE_BUTTON_CLASS =
+  "text-muted-foreground hover:text-foreground border-dashed font-normal print:hidden";
+
+/**
  * Monto con un botón de lápiz que abre un diálogo para cambiarlo (pedido del
  * 2026-10-14): la celda muestra el monto (o el texto vacío) y la edición es una acción
  * explícita, igual en la tabla de piezas, la guía y el detalle de la pieza.
@@ -51,6 +58,7 @@ function MoneyEditCell({
   savedMessage,
   inputId,
   align = "end",
+  emptyActionText,
   onSave,
 }: {
   cents: Cents | null;
@@ -64,8 +72,11 @@ function MoneyEditCell({
   savedMessage: string;
   inputId: string;
   align?: "start" | "end";
+  /** Sin monto, el botón muestra este texto (p. ej. "Definir precio") en vez del lápiz. */
+  emptyActionText?: string;
   onSave: (value: string) => Promise<SaveResult>;
 }) {
+  const emptyAction = cents === null && emptyActionText !== undefined;
   const saved = cents === null ? "" : toDecimalString(cents);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(saved);
@@ -96,7 +107,7 @@ function MoneyEditCell({
         align === "end" ? "justify-end" : "justify-start",
       )}
     >
-      {cents === null ? (
+      {emptyAction ? null : cents === null ? (
         <span className="text-muted-foreground">{emptyText}</span>
       ) : (
         <span className="tabular-nums">{formatCents(cents)}</span>
@@ -112,16 +123,29 @@ function MoneyEditCell({
         }}
       >
         <DialogTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-7 print:hidden pointer-coarse:size-10"
-            aria-label={buttonLabel}
-            title={buttonTitle}
-          >
-            <Pencil />
-          </Button>
+          {emptyAction ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className={EMPTY_VALUE_BUTTON_CLASS}
+              aria-label={buttonLabel}
+            >
+              <Plus aria-hidden />
+              {emptyActionText}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="size-7 print:hidden pointer-coarse:size-10"
+              aria-label={buttonLabel}
+              title={buttonTitle}
+            >
+              <Pencil />
+            </Button>
+          )}
         </DialogTrigger>
         <DialogContent>
           <form onSubmit={submit} className="space-y-4">
@@ -166,15 +190,19 @@ export function ServiceCostCell({
   piece,
   cents,
   align,
+  emptyAsButton = false,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
   align?: "start" | "end";
+  /** Sin costo, un botón "Definir costo" en vez de "Por definir" y el lápiz. */
+  emptyAsButton?: boolean;
 }) {
   return (
     <MoneyEditCell
       cents={cents}
       align={align}
+      emptyActionText={emptyAsButton ? "Definir costo" : undefined}
       emptyText="Por definir"
       fieldLabel="Costo de servicio (S/)"
       title={`Costo de servicio de ${piece.code}`}
@@ -225,12 +253,15 @@ export function SalePriceCell({
   hasOrder,
   editable,
   align,
+  emptyAsButton = false,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
   hasOrder: boolean;
   editable: boolean;
   align?: "start" | "end";
+  /** Sin precio, un botón "Definir precio" en vez de "Por definir" y el lápiz. */
+  emptyAsButton?: boolean;
 }) {
   if (!editable) return <PlainAmount cents={cents} />;
   if (hasOrder && cents !== null) {
@@ -253,6 +284,7 @@ export function SalePriceCell({
     <MoneyEditCell
       cents={cents}
       align={align}
+      emptyActionText={emptyAsButton ? "Definir precio" : undefined}
       emptyText="Por definir"
       fieldLabel="Precio de venta (S/)"
       title={`Precio de venta de ${piece.code}`}

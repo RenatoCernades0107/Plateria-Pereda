@@ -116,7 +116,8 @@ export default async function CotizacionWhatsappPage({
   return (
     <div className="space-y-6">
       <PageBreadcrumb label={quote.code} />
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/cotizaciones-whatsapp">
           <ArrowLeft />
           Cotizaciones de WhatsApp

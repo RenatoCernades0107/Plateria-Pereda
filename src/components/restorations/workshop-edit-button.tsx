@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 import { cn } from "@/lib/utils";
 import { assignWorkshop } from "@/server/restorations/status-actions";
 
+import { EMPTY_VALUE_BUTTON_CLASS } from "./piece-money-cells";
 import type { WorkshopOption } from "./piece-fields";
 import { WORKSHOP_LOCKED } from "./pieces-bulk-bar";
 
@@ -40,6 +41,7 @@ const NO_WORKSHOP = "ninguno";
 export function WorkshopEditButton({
   piece,
   workshops,
+  emptyAsButton = false,
   className,
 }: {
   piece: {
@@ -50,6 +52,8 @@ export function WorkshopEditButton({
   };
   /** Talleres activos para elegir. */
   workshops: WorkshopOption[];
+  /** Sin taller, un botón "Asignar taller" (borde punteado) en vez del lápiz. */
+  emptyAsButton?: boolean;
   className?: string;
 }) {
   const current = piece.workshopId ?? NO_WORKSHOP;
@@ -87,19 +91,32 @@ export function WorkshopEditButton({
       }}
     >
       <DialogTrigger asChild>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "size-7 print:hidden pointer-coarse:size-10",
-            className,
-          )}
-          aria-label={`${action} de ${piece.code}`}
-          title={action}
-        >
-          <Pencil />
-        </Button>
+        {emptyAsButton && !piece.workshopId ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={cn(EMPTY_VALUE_BUTTON_CLASS, className)}
+            aria-label={`${action} de ${piece.code}`}
+          >
+            <Plus aria-hidden />
+            {action}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "size-7 print:hidden pointer-coarse:size-10",
+              className,
+            )}
+            aria-label={`${action} de ${piece.code}`}
+            title={action}
+          >
+            <Pencil />
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={submit} className="space-y-4">
@@ -167,6 +184,12 @@ export function PieceWorkshopField({
     <span className="text-muted-foreground">Sin taller</span>
   );
   if (!canAssign || WORKSHOP_LOCKED.includes(piece.status)) return name;
+  // Sin taller: solo el botón "Asignar taller" (el dato que falta se ve como acción).
+  if (!piece.workshopId) {
+    return (
+      <WorkshopEditButton piece={piece} workshops={workshops} emptyAsButton />
+    );
+  }
   return (
     <span className="-my-1.5 inline-flex items-center gap-1">
       {name}
