@@ -320,7 +320,8 @@ test.describe("Estados de las piezas", () => {
     );
     await expect(page.getByTestId("rotulo-pieza")).toContainText(code);
     const piecePath = new URL(page.url()).pathname;
-    // Siempre a la vista (horizontal), sin desplegar nada.
+    // En la pestaña «Historial» de la ficha (horizontal), sin desplegar nada más.
+    await page.getByRole("tab", { name: "Historial" }).click();
     const timeline = page.getByTestId("linea-tiempo");
     await expect(timeline).toBeVisible();
     const events = timeline.getByTestId("evento");
@@ -364,7 +365,7 @@ test.describe("Estados de las piezas", () => {
     await expect(card(page, code)).toContainText("Observación");
 
     await loginAs("logistica");
-    await page.goto(piecePath);
+    await page.goto(`${piecePath}?pestana=historial`);
     await expect(page.getByTestId("resumen-logistica")).toBeVisible();
     await expect(page.getByTestId("linea-tiempo")).toHaveCount(0);
     const summary = page.getByTestId("resumen-logistica");

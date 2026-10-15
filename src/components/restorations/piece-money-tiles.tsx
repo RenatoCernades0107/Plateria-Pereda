@@ -17,6 +17,7 @@ export function PieceMoneyTiles({
   sale,
   costCents,
   guide,
+  stackOnWide = false,
   className,
 }: {
   piece: MoneyPiece;
@@ -31,6 +32,11 @@ export function PieceMoneyTiles({
   costCents: Cents | null | undefined;
   /** Total y pagado de la guía; null si el rol no ve pagos. */
   guide: { totalCents: Cents; paidCents: Cents } | null;
+  /**
+   * En pantallas anchas (columna angosta de la ficha), un monto por fila
+   * («Precio de venta … S/ 90.00»), como el resumen de la guía.
+   */
+  stackOnWide?: boolean;
   className?: string;
 }) {
   const showCost = costCents !== undefined;
@@ -45,8 +51,13 @@ export function PieceMoneyTiles({
 
   return (
     <dl
-      className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3", className)}
+      className={cn(
+        "grid grid-cols-2 gap-2 sm:grid-cols-3",
+        stackOnWide && "wide:grid-cols-1 wide:gap-0 wide:divide-y",
+        className,
+      )}
       data-testid="montos-pieza"
+      data-stack={stackOnWide ? "" : undefined}
     >
       {sale ? (
         <Tile label="Precio de venta">
@@ -101,6 +112,10 @@ export function PieceMoneyTiles({
   );
 }
 
+/**
+ * Una cifra. Dentro de una lista con `data-stack`, desde `wide` pasa a fila: rótulo a
+ * la izquierda y monto (con su ayuda) a la derecha.
+ */
 function Tile({
   label,
   children,
@@ -109,9 +124,11 @@ function Tile({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-muted/40 min-w-0 rounded-md border px-3 py-2">
-      <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
-      <dd className="flex min-h-8 flex-col items-start justify-center text-lg font-semibold">
+    <div className="bg-muted/40 in-data-stack:wide:flex in-data-stack:wide:items-start in-data-stack:wide:justify-between in-data-stack:wide:gap-3 in-data-stack:wide:rounded-none in-data-stack:wide:border-0 in-data-stack:wide:bg-transparent in-data-stack:wide:px-0 min-w-0 rounded-md border px-3 py-2">
+      <dt className="text-muted-foreground in-data-stack:wide:shrink-0 in-data-stack:wide:pt-1 text-xs font-medium">
+        {label}
+      </dt>
+      <dd className="in-data-stack:wide:items-end in-data-stack:wide:text-base in-data-stack:wide:text-right flex min-h-8 flex-col items-start justify-center text-lg font-semibold">
         {children}
       </dd>
     </div>

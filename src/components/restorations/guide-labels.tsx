@@ -20,6 +20,9 @@ export const GUIDE_SURFACE_CLASS = "bg-guide rounded-lg border p-4 sm:p-5";
 /** Acento de una pieza (lista y kanban del detalle). */
 export const PIECE_ACCENT_CLASS = "border-l-4 border-l-primary/60";
 
+/** Tarjeta de una pieza (su ficha): blanca, con el acento de pieza a la izquierda. */
+export const PIECE_CARD_CLASS = `bg-card rounded-lg border p-4 shadow-xs sm:p-5 ${PIECE_ACCENT_CLASS}`;
+
 const EYEBROW_CLASS =
   "text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase [&>svg]:size-3.5 [&>svg]:shrink-0";
 

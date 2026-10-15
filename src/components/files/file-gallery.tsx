@@ -516,13 +516,12 @@ function CategoryGroup({
 /**
  * Las fotos de un destino: Antes y Después lado a lado (si la tarjeta da), con
  * miniaturas de tamaño fijo; debajo, Documento y Otro si hay. Lo que no se ve como
- * foto (PDF, HEIC) va aparte, en una lista compacta. Con `card`, en su tarjeta.
+ * foto (PDF, HEIC) va aparte, en una lista compacta. Cada destino, en su tarjeta.
  */
 function TargetSection({
   target,
   files,
   showLabel,
-  card,
   canDelete,
   onOpen,
   onDelete,
@@ -531,7 +530,6 @@ function TargetSection({
   target: FileTarget;
   files: RestorationFile[];
   showLabel: boolean;
-  card: boolean;
   canDelete: (file: RestorationFile) => boolean;
   onOpen: (file: RestorationFile, kind: ViewKind) => void;
   onDelete: (file: RestorationFile) => void;
@@ -565,10 +563,7 @@ function TargetSection({
   return (
     <section
       aria-labelledby={headingId}
-      className={cn(
-        "@container min-w-0 space-y-4",
-        card && "bg-card rounded-lg border p-4 shadow-xs",
-      )}
+      className="bg-card @container min-w-0 space-y-4 rounded-lg border p-4 shadow-xs"
       data-testid={headingId}
     >
       <div
@@ -747,8 +742,6 @@ export function FileGallery({
               target={target}
               files={list}
               showLabel={showTargetLabels}
-              // Sin nombres (ficha de la pieza) la galería ya va dentro de una tarjeta.
-              card={showTargetLabels}
               canDelete={canDelete}
               onOpen={(f, kind) =>
                 setViewing({ target: target.id, kind, id: f.id })

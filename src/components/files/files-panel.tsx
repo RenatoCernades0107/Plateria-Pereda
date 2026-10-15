@@ -19,6 +19,7 @@ export function FilesPanel({
   currentUserId,
   isAdmin,
   emptyText,
+  showTargetLabels,
   className,
 }: {
   restorationId: string;
@@ -28,6 +29,8 @@ export function FilesPanel({
   currentUserId: string;
   isAdmin: boolean;
   emptyText?: string;
+  /** Con un solo destino (la ficha de la pieza) el título de la galería sobra. */
+  showTargetLabels?: boolean;
   className?: string;
 }) {
   const gallery = (
@@ -37,6 +40,7 @@ export function FilesPanel({
       currentUserId={currentUserId}
       isAdmin={isAdmin}
       emptyText={emptyText}
+      showTargetLabels={showTargetLabels}
       className="min-w-0"
     />
   );

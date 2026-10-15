@@ -192,7 +192,7 @@ function PieceRow({
         </div>
       </td>
       <td
-        className={cn(LABELED, "text-muted-foreground md:whitespace-nowrap")}
+        className={cn(LABELED, "text-muted-foreground break-words")}
         data-label="Taller"
       >
         {piece.workshopName ?? "Sin taller"}
