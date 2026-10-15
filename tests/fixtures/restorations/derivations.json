@@ -1340,6 +1340,86 @@
         "days": 4,
         "ongoing": false
       }
+    },
+    {
+      "name": "retroceso desde En restauración: cierra el viaje al taller",
+      "history": [
+        {
+          "event": "estado",
+          "from": null,
+          "to": "registrada",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "registrada",
+          "to": "aprobada",
+          "at": "2026-10-01T16:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "aprobada",
+          "to": "enviada_taller",
+          "at": "2026-10-02T15:00:00Z"
+        },
+        {
+          "event": "retroceso",
+          "from": "enviada_taller",
+          "to": "aprobada",
+          "at": "2026-10-04T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": {
+        "days": 2,
+        "ongoing": false
+      }
+    },
+    {
+      "name": "retroceso a En restauración no abre un viaje",
+      "history": [
+        {
+          "event": "estado",
+          "from": null,
+          "to": "registrada",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "registrada",
+          "to": "aprobada",
+          "at": "2026-10-01T16:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "aprobada",
+          "to": "enviada_taller",
+          "at": "2026-10-02T15:00:00Z"
+        },
+        {
+          "event": "vuelta_taller",
+          "from": "enviada_taller",
+          "to": "enviada_taller",
+          "at": "2026-10-04T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "enviada_taller",
+          "to": "entregada",
+          "at": "2026-10-05T15:00:00Z"
+        },
+        {
+          "event": "retroceso",
+          "from": "entregada",
+          "to": "enviada_taller",
+          "at": "2026-10-06T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": {
+        "days": 2,
+        "ongoing": false
+      }
     }
   ],
   "fulfillmentDays": [

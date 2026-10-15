@@ -29,6 +29,7 @@ import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue } from "@/server/payments/queries";
 import {
   getLogisticsInfo,
+  getPreviousStatus,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -74,21 +75,29 @@ export default async function PiezaDetallePage({
   if (!restoration || !piece) notFound();
 
   const canSeeCost = can(user.role, "piezas.costo-servicio");
-  const [history, logistics, files, balanceDue, workshops, cost] =
-    await Promise.all([
-      canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
-      canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
-      listRestorationFiles(restoration.id),
-      getBalanceDue(restoration.id),
-      supabase
-        .from("workshops")
-        .select("id, name")
-        .eq("active", true)
-        .order("name"),
-      canSeeCost
-        ? supabase.rpc("get_piece_service_cost", { p_piece_id: id })
-        : Promise.resolve({ data: null, error: null }),
-    ]);
+  const [
+    history,
+    logistics,
+    files,
+    balanceDue,
+    workshops,
+    cost,
+    previousStatus,
+  ] = await Promise.all([
+    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+    canSeeMoney ? Promise.resolve(null) : getLogisticsInfo(restoration.id),
+    listRestorationFiles(restoration.id),
+    getBalanceDue(restoration.id),
+    supabase
+      .from("workshops")
+      .select("id, name")
+      .eq("active", true)
+      .order("name"),
+    canSeeCost
+      ? supabase.rpc("get_piece_service_cost", { p_piece_id: id })
+      : Promise.resolve({ data: null, error: null }),
+    getPreviousStatus(id),
+  ]);
   if (workshops.error) throw workshops.error;
   if (cost.error) throw cost.error;
   const costCents = cost.data === null ? null : toCents(Number(cost.data));
@@ -132,6 +141,7 @@ export default async function PiezaDetallePage({
           role={user.role}
           workshops={workshops.data}
           balanceDue={balanceDue}
+          previousStatus={previousStatus}
           heading={
             <div className="space-y-2">
               <PieceEyebrow number={piece.number} code={piece.code} />

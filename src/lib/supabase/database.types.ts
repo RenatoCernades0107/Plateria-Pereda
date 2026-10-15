@@ -2015,6 +2015,10 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      piece_previous_status: {
+        Args: { p_piece_id: string };
+        Returns: Database["public"]["Enums"]["piece_status"];
+      };
       piece_requirement_facts: {
         Args: { p_piece_ids: string[] };
         Returns: {
@@ -2093,6 +2097,13 @@ export type Database = {
           status: string;
         }[];
       };
+      undo_piece_status: {
+        Args: { p_note: string; p_piece_id: string };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
       update_whatsapp_quote: {
         Args: {
           p_client_id: string;
@@ -2141,7 +2152,8 @@ export type Database = {
         | "devolucion_cliente"
         | "cambio_precio"
         | "envio_revision"
-        | "vuelta_revision";
+        | "vuelta_revision"
+        | "retroceso";
       piece_location:
         | "por_whatsapp"
         | "sin_enviar"
@@ -2317,6 +2329,7 @@ export const Constants = {
         "cambio_precio",
         "envio_revision",
         "vuelta_revision",
+        "retroceso",
       ],
       piece_location: [
         "por_whatsapp",

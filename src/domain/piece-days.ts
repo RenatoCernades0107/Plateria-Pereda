@@ -56,6 +56,10 @@ export type StatusHistoryEntry = {
  * Revisión en taller: el viaje empieza al llevarla a revisar y termina con "Volvió de
  * revisión"; mientras sigue abierta, pasar a Espera o Aprobada no lo corta y pasar a
  * En restauración lo continúa (mismo viaje). Igual que `workshop_days` en la BD.
+ *
+ * Un retroceso de estado cuenta como un cambio de estado que saca la pieza del taller
+ * (o la deja en revisión), pero nunca abre un viaje: volver a En restauración no dice
+ * si la pieza sigue en el taller.
  */
 export function daysInWorkshop(
   history: readonly StatusHistoryEntry[],
@@ -75,7 +79,7 @@ export function daysInWorkshop(
       review = false;
     } else if (
       review &&
-      event === "estado" &&
+      (event === "estado" || event === "retroceso") &&
       (entry.to === "en_espera" || entry.to === "aprobada")
     ) {
       // Sigue en el taller por la revisión.
@@ -83,7 +87,8 @@ export function daysInWorkshop(
       sentAt &&
       (event === "vuelta_taller" ||
         event === "vuelta_revision" ||
-        (event === "estado" && entry.to !== "enviada_taller"))
+        ((event === "estado" || event === "retroceso") &&
+          entry.to !== "enviada_taller"))
     ) {
       days += calendarDaysBetween(sentAt, entry.at);
       sentAt = null;

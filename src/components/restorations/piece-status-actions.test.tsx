@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   giveBack: vi.fn(),
   sendReview: vi.fn(),
   backFromReview: vi.fn(),
+  undo: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -27,6 +28,7 @@ vi.mock("@/server/restorations/status-actions", () => ({
   returnPiecesToClient: (...a: unknown[]) => mocks.giveBack(...a),
   sendPiecesForReview: (...a: unknown[]) => mocks.sendReview(...a),
   receivePiecesFromReview: (...a: unknown[]) => mocks.backFromReview(...a),
+  undoPieceStatus: (...a: unknown[]) => mocks.undo(...a),
   assignWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({
@@ -48,6 +50,7 @@ function renderPanel(
     readyForDelivery?: boolean;
     urgent?: boolean;
     reviewSentAt?: string | null;
+    previousStatus?: PieceStatus | null;
   } = {},
 ) {
   const arrivedAt = extra.arrivedAt ?? null;
@@ -83,6 +86,7 @@ function renderPanel(
       }}
       role={role}
       workshops={workshops}
+      previousStatus={extra.previousStatus ?? null}
     />,
   );
 }
@@ -106,6 +110,7 @@ beforeEach(() => {
   mocks.giveBack.mockResolvedValue({ ok: true });
   mocks.sendReview.mockResolvedValue({ ok: true });
   mocks.backFromReview.mockResolvedValue({ ok: true });
+  mocks.undo.mockResolvedValue({ ok: true });
 });
 
 describe("PieceStatusPanel", () => {
@@ -428,5 +433,48 @@ describe("commonTransitions", () => {
     expect(anular.map((c) => c.to)).toEqual(["anulada"]);
     expect(anular.find((c) => c.to === "anulada")?.requiresNote).toBe(true);
     expect(commonTransitions([], "admin")).toEqual([]);
+  });
+});
+
+describe("Retroceder estado", () => {
+  it("no se ofrece sin estado anterior ni a un rol que no podía hacer el avance", async () => {
+    const user = userEvent.setup();
+    renderPanel("aprobada", "ventas");
+    expect(await moreActions(user)).toEqual(["Anular"]);
+    cleanup();
+    // aprobada → enviada_taller no es de ventas: no puede deshacerla.
+    renderPanel("enviada_taller", "ventas", {
+      arrivedAt: ARRIVED,
+      previousStatus: "aprobada",
+    });
+    expect(screen.queryByRole("button", { name: "Más acciones" })).toBeNull();
+  });
+
+  it("va en «Más acciones», aparte de los cierres", async () => {
+    const user = userEvent.setup();
+    renderPanel("aprobada", "ventas", { previousStatus: "registrada" });
+    expect(await moreActions(user)).toEqual(["Retroceder estado", "Anular"]);
+  });
+
+  it("pide el motivo y retrocede la pieza", async () => {
+    const user = userEvent.setup();
+    renderPanel("aprobada", "ventas", {
+      arrivedAt: ARRIVED,
+      previousStatus: "registrada",
+    });
+    await user.click(screen.getByRole("button", { name: "Más acciones" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Retroceder estado" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("de «Aprobada» a «Registrada»");
+    await user.click(within(dialog).getByRole("button", { name: /Confirmar/ }));
+    expect(mocks.undo).not.toHaveBeenCalled();
+    expect(dialog).toHaveTextContent("Escribe el motivo del retroceso.");
+
+    await user.type(within(dialog).getByLabelText(/Motivo/), "Me equivoqué");
+    await user.click(within(dialog).getByRole("button", { name: /Confirmar/ }));
+    expect(mocks.undo).toHaveBeenCalledWith("r1", "p1", "Me equivoqué");
   });
 });
