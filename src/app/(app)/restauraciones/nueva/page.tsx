@@ -33,8 +33,8 @@ export default async function NuevaRestauracionPage({
   const [settings, materials, services, methods, workshops] = await Promise.all(
     [
       getSettings(),
-      listCatalog("materials", { onlyActive: true }),
-      listCatalog("services", { onlyActive: true }),
+      listCatalog("materials"),
+      listCatalog("services"),
       // Método del adelanto: se registra como pago al guardar.
       listCatalog("payment_methods", { onlyActive: true }),
       supabase
@@ -70,12 +70,18 @@ export default async function NuevaRestauracionPage({
         canSetPrice={can(user.role, "piezas.precio-venta")}
         canAssignWorkshop={can(user.role, "piezas.asignar-taller")}
         workshops={workshops.data}
-        materials={materials.map(({ id, name, price }) => ({
+        materials={materials.map(({ id, name, price, active }) => ({
           id,
           name,
           price,
+          active,
         }))}
-        services={services.map(({ id, name, price }) => ({ id, name, price }))}
+        services={services.map(({ id, name, price, active }) => ({
+          id,
+          name,
+          price,
+          active,
+        }))}
         paymentMethods={methods.map(({ id, name }) => ({ id, name }))}
       />
     </div>

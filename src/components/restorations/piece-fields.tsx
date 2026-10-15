@@ -9,13 +9,16 @@ import {
 
 import { TextField } from "@/components/clients/form-fields";
 import {
+  CatalogCombobox,
+  type CatalogOption,
+} from "@/components/restorations/catalog-combobox";
+import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,59 +31,89 @@ import {
   type PieceEditableField,
 } from "@/domain/restoration-edit";
 
-export type CatalogOption = { id: string; name: string; price: number | null };
+export type { CatalogOption };
 export type WorkshopOption = { id: string; name: string };
 
 const NONE = "ninguno";
 
 type AnyForm = UseFormReturn<FieldValues>;
 
-/** Material o servicio: sugerencias del catálogo o texto libre (P22). */
-function CatalogField({
+/** Servicio de la pieza: uno, elegido (o creado) en el buscador del catálogo. */
+function ServiceField({
   form,
   prefix,
-  name,
-  label,
   options,
   disabled,
 }: {
   form: AnyForm;
   prefix: string;
-  name: "material" | "service";
-  label: string;
   options: CatalogOption[];
   disabled: boolean;
 }) {
-  const listId = `${prefix.replace(/\W/g, "-")}${name}-opciones`;
+  const name = `${prefix}service.name` as Path<FieldValues>;
+  const serviceId = useWatch({
+    control: form.control,
+    name: `${prefix}service.id` as Path<FieldValues>,
+  }) as string | null | undefined;
   return (
     <FormField
       control={form.control}
-      name={`${prefix}${name}.name` as Path<FieldValues>}
+      name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <FormLabel>Servicio</FormLabel>
           <FormControl>
-            <Input
-              list={listId}
-              autoComplete="off"
+            <CatalogCombobox
+              kind="services"
+              options={options}
+              value={serviceId ? [serviceId] : []}
               disabled={disabled}
-              {...field}
-              value={field.value ?? ""}
-              onChange={(event) => {
-                const value = event.target.value;
-                const match = options.find(
-                  (o) => o.name.toLowerCase() === value.trim().toLowerCase(),
-                );
-                field.onChange(value);
-                form.setValue(`${prefix}${name}.id`, match?.id ?? null);
+              placeholder="Selecciona un servicio"
+              fallbackLabel={field.value || undefined}
+              onChange={(picked) => {
+                const option = picked[0];
+                form.setValue(`${prefix}service.id`, option?.id ?? null);
+                field.onChange(option?.name ?? "");
               }}
             />
           </FormControl>
-          <datalist id={listId}>
-            {options.map((o) => (
-              <option key={o.id} value={o.name} />
-            ))}
-          </datalist>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
+/** Materiales de la pieza: uno o más del catálogo (o creados en el buscador). */
+function MaterialsField({
+  form,
+  prefix,
+  options,
+  disabled,
+}: {
+  form: AnyForm;
+  prefix: string;
+  options: CatalogOption[];
+  disabled: boolean;
+}) {
+  return (
+    <FormField
+      control={form.control}
+      name={`${prefix}materials` as Path<FieldValues>}
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Material</FormLabel>
+          <FormControl>
+            <CatalogCombobox
+              kind="materials"
+              multiple
+              options={options}
+              value={(field.value as string[] | undefined) ?? []}
+              disabled={disabled}
+              placeholder="Sin material"
+              onChange={(picked) => field.onChange(picked.map((o) => o.id))}
+            />
+          </FormControl>
           <FormMessage />
         </FormItem>
       )}
@@ -93,8 +126,9 @@ function CatalogField({
  * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
  * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: primero
  * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
- * material, peso, medida y precio (opcionales) en una sola fila y al final taller y
- * urgente. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
+ * materiales, peso, medida y precio (opcionales) en una sola fila y al final taller y
+ * urgente. Servicio y materiales se eligen con un buscador del catálogo (los
+ * materiales, uno o más) y si no existen se crean ahí mismo. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
  * precio de venta no sale del servicio: es opcional ("Por definir") y solo lo asigna el
  * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y también es
  * opcional ("Por definir").
@@ -159,11 +193,9 @@ export function PieceFields({
           disabled={off("notes")}
         />
       </div>
-      <CatalogField
+      <ServiceField
         form={form}
         prefix={prefix}
-        name="service"
-        label="Servicio"
         options={services}
         disabled={off("service")}
       />
@@ -171,11 +203,9 @@ export function PieceFields({
         {/* Los cuatro datos cortos en una fila (2 en tablet, 1 en móvil); `items-start`
             mantiene las etiquetas alineadas aunque un campo muestre su error. */}
         <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <CatalogField
+          <MaterialsField
             form={form}
             prefix={prefix}
-            name="material"
-            label="Material"
             options={materials}
             disabled={off("material")}
           />

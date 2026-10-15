@@ -38,7 +38,7 @@ const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
   weightGrams: null,
   workshopId: null,
   workshopName: null,
-  materialId: null,
+  materialIds: [],
   serviceId: null,
   notes: "",
   arrivedAt: null,

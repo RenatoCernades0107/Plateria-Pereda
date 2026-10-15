@@ -12,8 +12,8 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
- * P22 y D59: el servicio (del catálogo o escrito libremente) y la descripción son
- * obligatorios; material, peso en gramos, medida y precio son opcionales; taller
+ * P22 y D59: el servicio (del catálogo) y la descripción son obligatorios; los
+ * materiales (uno o más, del catálogo), peso en gramos, medida y precio son opcionales; taller
  * opcional al registrar. El precio de venta vacío queda "Por definir" (lo asigna el
  * admin, D58); en las cotizaciones de WhatsApp también es opcional ("Por definir").
  * Al registrar la restauración (directa o desde una cotización) la pieza sin precio
@@ -52,23 +52,18 @@ const optionalId = z
   .transform((v) => v || null)
   .pipe(z.guid().nullable());
 
-/** Material o servicio: elegido del catálogo (id y nombre) o escrito libremente (solo nombre). */
-const catalogChoice = z
-  .object({ id: optionalId, name: line(100) })
-  .transform(({ id, name }, ctx) => {
-    if (name) return { id, name };
-    if (id) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["name"],
-        message: "Escribe el nombre",
-      });
-      return z.NEVER;
-    }
-    return null;
-  });
+/** Materiales de la pieza: ids del catálogo, en el orden elegido y sin repetir. */
+export const MAX_MATERIALS = 10;
+const materialIds = z
+  .array(z.guid())
+  .max(MAX_MATERIALS, `Máximo ${MAX_MATERIALS} materiales`)
+  .default([])
+  .transform((ids) => [...new Set(ids)]);
 
-/** Servicio de la pieza (D59): obligatorio, del catálogo o escrito libremente. */
+/**
+ * Servicio de la pieza (D59): obligatorio, elegido del catálogo (o creado ahí mismo).
+ * Un nombre sin id también se acepta: la BD lo agrega al catálogo.
+ */
 const requiredService = z
   .object({ id: optionalId, name: line(100) })
   .transform(({ id, name }, ctx) => {
@@ -76,7 +71,7 @@ const requiredService = z
       ctx.addIssue({
         code: "custom",
         path: ["name"],
-        message: "Elige o escribe el servicio",
+        message: "Elige el servicio",
       });
       return z.NEVER;
     }
@@ -120,7 +115,7 @@ const pieceFields = {
     z.string().min(1, "Describe la pieza (qué es y cómo está)"),
   ),
   measure: line(100),
-  material: catalogChoice,
+  materials: materialIds,
   service: requiredService,
   weight,
   /** Marca "Urgente" (P47): no es un estado. */

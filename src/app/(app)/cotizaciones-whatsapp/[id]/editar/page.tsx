@@ -34,8 +34,8 @@ export default async function EditarCotizacionWhatsappPage({
   }
   const [settings, materials, services] = await Promise.all([
     getSettings(),
-    listCatalog("materials", { onlyActive: true }),
-    listCatalog("services", { onlyActive: true }),
+    listCatalog("materials"),
+    listCatalog("services"),
   ]);
 
   return (
@@ -49,12 +49,18 @@ export default async function EditarCotizacionWhatsappPage({
         mode={{ kind: "editar-cotizacion", quote: quoteForForm(quote) }}
         defaultDepositPercent={settings.depositPercent}
         workshops={[]}
-        materials={materials.map(({ id, name, price }) => ({
+        materials={materials.map(({ id, name, price, active }) => ({
           id,
           name,
           price,
+          active,
         }))}
-        services={services.map(({ id, name, price }) => ({ id, name, price }))}
+        services={services.map(({ id, name, price, active }) => ({
+          id,
+          name,
+          price,
+          active,
+        }))}
       />
     </div>
   );

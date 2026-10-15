@@ -667,12 +667,12 @@ export default async function RestauracionDetallePage({
   );
 }
 
-/** Catálogos activos y contactos de la empresa para los diálogos de edición. */
+/** Catálogos y contactos de la empresa para los diálogos de edición. */
 async function loadEditingData(client: { id: string; kind: string }) {
   const supabase = await createClient();
   const [materials, services, contacts] = await Promise.all([
-    listCatalog("materials", { onlyActive: true }),
-    listCatalog("services", { onlyActive: true }),
+    listCatalog("materials"),
+    listCatalog("services"),
     client.kind === "empresa"
       ? supabase
           .from("contacts")
@@ -683,18 +683,22 @@ async function loadEditingData(client: { id: string; kind: string }) {
       : Promise.resolve({ data: null, error: null }),
   ]);
   if (contacts.error) throw contacts.error;
+  // Con los desactivados: el buscador los muestra solo si la pieza ya los tiene.
   const option = ({
     id,
     name,
     price,
+    active,
   }: {
     id: string;
     name: string;
     price: number | null;
+    active: boolean;
   }) => ({
     id,
     name,
     price,
+    active,
   });
   return {
     materials: materials.map(option),

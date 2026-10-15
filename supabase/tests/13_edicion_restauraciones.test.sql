@@ -59,11 +59,12 @@ select throws_ok(
 reset role;
 update public.restorations set shopify_order_id = 'gid://shopify/Order/901'
   where id = '00000000-0000-0000-0000-00000000f901';
+insert into public.materials (id, name) values ('00000000-0000-0000-0000-00000000a9f1', 'Plata de edición');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009a1","role":"authenticated"}', true);
 
 select lives_ok(
-  $$ update public.pieces set material_name = 'Plata 950', service_name = 'Pulido'
+  $$ update public.pieces set material_ids = array['00000000-0000-0000-0000-00000000a9f1']::uuid[], service_name = 'Pulido'
      where id = '00000000-0000-0000-0000-00000000a911' $$,
   'con la orden creada se editan los campos que no tocan Shopify'
 );

@@ -199,7 +199,8 @@ describe("RestorationForm", () => {
     const user = userEvent.setup();
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
-    await user.type(card.getByLabelText("Servicio"), "Limpieza");
+    await user.click(card.getByLabelText("Servicio"));
+    await user.click(screen.getByRole("option", { name: "Limpieza" }));
     expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
     expect(card.getByLabelText("Precio (S/)")).toHaveAttribute(
       "placeholder",
@@ -258,12 +259,12 @@ describe("RestorationForm", () => {
       first.queryByText("Describe la pieza (qué es y cómo está)"),
     ).toBeNull();
     // El servicio es obligatorio (D59); el precio de venta, opcional (D58).
-    expect(first.getByText("Elige o escribe el servicio")).toBeVisible();
+    expect(first.getByText("Elige el servicio")).toBeVisible();
     expect(first.queryByText("Ingresa el precio")).toBeNull();
     expect(
       second.getByText("Describe la pieza (qué es y cómo está)"),
     ).toBeVisible();
-    expect(second.getByText("Elige o escribe el servicio")).toBeVisible();
+    expect(second.getByText("Elige el servicio")).toBeVisible();
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
@@ -399,7 +400,7 @@ const quoteItem = (
     workshopId: null,
     description,
     measure: "",
-    material: { id: null, name: "" },
+    materials: [],
     service: { id: null, name: "Limpieza" },
     weight: "",
     price,
@@ -458,7 +459,8 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
 
     await user.type(screen.getByLabelText("Nombre (opcional)"), "Ana Pérez");
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
-    await user.type(within(piece).getByLabelText("Servicio"), "Limpieza");
+    await user.click(within(piece).getByLabelText("Servicio"));
+    await user.click(screen.getByRole("option", { name: "Limpieza" }));
     await user.type(within(piece).getByLabelText("Precio (S/)"), "100");
     // Por defecto el precio no incluye IGV (D59).
     expect(screen.getByTestId("igv-en-vivo")).toHaveTextContent("S/ 18.00");

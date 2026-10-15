@@ -7,7 +7,7 @@ export const CATALOGS = {
     hasPrice: false,
     hasShopifyName: false,
     description:
-      "Se proponen al registrar cada pieza; también se puede escribir otro.",
+      "Se eligen en cada pieza (uno o varios). Si falta uno, admin y ventas lo crean desde el buscador de la pieza.",
   },
   services: {
     title: "Servicios",
@@ -16,7 +16,7 @@ export const CATALOGS = {
     hasPrice: true,
     hasShopifyName: false,
     description:
-      "Se proponen al cotizar cada pieza, con su precio sugerido (editable en cada pieza).",
+      "Se eligen en cada pieza. Si falta uno, admin y ventas lo crean desde el buscador de la pieza (sin precio sugerido; se agrega aquí).",
   },
   payment_methods: {
     title: "Métodos de pago",

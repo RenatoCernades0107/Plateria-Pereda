@@ -55,7 +55,7 @@ const piece = {
   workshopId: null,
   description: "Fuente",
   measure: "",
-  material: { id: null, name: "Plata" },
+  materials: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e"],
   service: { id: null, name: "Limpieza" },
   weight: "",
   price: "1,300",
@@ -139,7 +139,10 @@ describe("edición de restauraciones", () => {
   it("updatePiece convierte el precio y muestra las reglas de la BD", async () => {
     expect(await updatePiece("p1", piece)).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenCalledWith(
-      expect.objectContaining({ price: 1300, material_name: "Plata" }),
+      expect.objectContaining({
+        price: 1300,
+        material_ids: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e"],
+      }),
     );
     expect(mocks.update.mock.calls[0]![0]).not.toHaveProperty("arrived_at");
 

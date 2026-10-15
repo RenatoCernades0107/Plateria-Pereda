@@ -52,6 +52,13 @@ describe("registro de restauraciones", () => {
       .select("id")
       .single();
     created.clients.push(client!.id);
+    // Materiales del catálogo (seed); la pieza puede llevar varios.
+    const { data: materials } = await admin
+      .from("materials")
+      .select("id, name")
+      .in("name", ["Plata 950", "Alpaca"]);
+    const materialId = (name: string) =>
+      materials!.find((m) => m.name === name)!.id;
 
     const input = restorationSchema.parse({
       clientId: client!.id,
@@ -68,7 +75,7 @@ describe("registro de restauraciones", () => {
           workshopId: null,
           description: "Fuente ovalada",
           measure: "40 cm",
-          material: { id: null, name: "Plata 950" },
+          materials: [materialId("Plata 950"), materialId("Alpaca")],
           service: { id: null, name: "Limpieza" },
           weight: "820.5",
           price: "0.10",
@@ -78,7 +85,7 @@ describe("registro de restauraciones", () => {
           workshopId: null,
           description: "Bandeja",
           measure: "",
-          material: { id: null, name: "" },
+          materials: [],
           service: { id: null, name: "Pulido" },
           weight: "",
           price: "0.20",
@@ -113,7 +120,7 @@ describe("registro de restauraciones", () => {
     expect(pieces.map(({ id, ...rest }) => (id ? rest : null))).toEqual([
       {
         code: `${result.code}-1`,
-        material_name: "Plata 950",
+        material_name: "Plata 950, Alpaca",
         price: 0.1,
         // Las piezas de oficina nacen en la tienda, sin enviar al taller (P48).
         location: "sin_enviar",
@@ -143,7 +150,7 @@ describe("registro de restauraciones", () => {
       workshopId: null,
       description: "Jarra",
       measure: "",
-      material: { id: null, name: "" },
+      materials: [],
       service: { id: null, name: "Limpieza" },
       weight: "",
       price: "",

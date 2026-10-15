@@ -188,8 +188,8 @@ function pieceColumns(
       ...(withWorkshop && { workshop_id: p.workshopId }),
       description: p.description,
       measure: p.measure,
-      material_id: p.material?.id ?? null,
-      material_name: p.material?.name ?? "",
+      // El primer material y los nombres los deriva la BD.
+      material_ids: p.materials,
       service_id: p.service?.id ?? null,
       service_name: p.service?.name ?? "",
       weight_grams: p.weightGrams,
