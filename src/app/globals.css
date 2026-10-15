@@ -34,6 +34,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: #e8dbd1;
   --input: #e8dbd1;
+  /* Borde de los botones `outline`: más marcado que --border para que se lean
+     como botones también sobre el fondo de la guía (--guide) y las tarjetas. */
+  --control-border: #bfa596;
   --ring: #a47668;
   --chart-1: #a47668;
   --chart-2: #530000;
@@ -60,6 +63,14 @@
   --shopify: #95bf47;
   --shopify-strong: #5e8e3e;
   --shopify-foreground: #36591e;
+  /* PDF: el rojo de los archivos PDF; el "strong" para íconos (5.8:1 sobre blanco,
+     5.1:1 sobre --guide). */
+  --pdf: #ea4335;
+  --pdf-strong: #c5221f;
+  /* Editar: amarillo lápiz; el "strong" para íconos (4.9:1 sobre blanco, 4.3:1
+     sobre --guide; el amarillo puro no llega a 3:1). */
+  --edit: #facc15;
+  --edit-strong: #a16207;
 }
 
 /* Solo hay tema claro (no se activa `.dark` en ningún sitio). Si se agrega un tema
@@ -90,6 +101,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-control-border: var(--control-border);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -115,6 +127,10 @@
   --color-shopify: var(--shopify);
   --color-shopify-strong: var(--shopify-strong);
   --color-shopify-foreground: var(--shopify-foreground);
+  --color-pdf: var(--pdf);
+  --color-pdf-strong: var(--pdf-strong);
+  --color-edit: var(--edit);
+  --color-edit-strong: var(--edit-strong);
 }
 
 @layer base {
