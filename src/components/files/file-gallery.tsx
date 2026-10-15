@@ -403,29 +403,38 @@ const EMPTY_COLUMN: Partial<Record<FileCategory, string>> = {
 };
 
 /**
- * Una foto en miniatura de tamaño fijo: al pulsarla se abre el visor y, si se puede,
- * lleva un botón chico de borrar en la esquina. Debajo, la fecha de subida.
+ * Una foto en miniatura: al pulsarla se abre el visor y, si se puede, lleva un botón
+ * chico de borrar en la esquina. Debajo, la fecha de subida. De tamaño fijo, o con
+ * `fill` del ancho de su celda (cuadrada).
  */
 function PhotoTile({
   file,
   canDelete,
   onOpen,
   onDelete,
+  fill,
 }: {
   file: RestorationFile;
   canDelete: boolean;
   onOpen: () => void;
   onDelete: () => void;
+  fill: boolean;
 }) {
   return (
-    <li className="w-24 sm:w-28 lg:w-32" data-testid="miniatura">
+    <li
+      className={fill ? "min-w-0" : "w-24 sm:w-28 lg:w-32"}
+      data-testid="miniatura"
+    >
       <div className="group relative">
         <button
           type="button"
           aria-label={`Ver ${file.name}`}
           title="Ver en grande"
           onClick={onOpen}
-          className="bg-muted focus-visible:ring-ring/50 relative block size-24 cursor-zoom-in overflow-hidden rounded-md border shadow-xs transition outline-none hover:shadow-md focus-visible:ring-[3px] sm:size-28 lg:size-32"
+          className={cn(
+            "bg-muted focus-visible:ring-ring/50 relative block cursor-zoom-in overflow-hidden rounded-md border shadow-xs transition outline-none hover:shadow-md focus-visible:ring-[3px]",
+            fill ? "aspect-square w-full" : "size-24 sm:size-28 lg:size-32",
+          )}
         >
           <Thumbnail
             file={file}
@@ -469,12 +478,18 @@ function CategoryGroup({
   canDelete,
   onOpen,
   onDelete,
+  fill,
+  action,
 }: {
   category: FileCategory;
   files: RestorationFile[];
   canDelete: (file: RestorationFile) => boolean;
   onOpen: (file: RestorationFile) => void;
   onDelete: (file: RestorationFile) => void;
+  /** Miniaturas que llenan la columna en una grilla (ficha de la pieza). */
+  fill: boolean;
+  /** Acción al final del rótulo (p. ej. «Comparar»), en la misma línea. */
+  action?: React.ReactNode;
 }) {
   const label = FILE_CATEGORY_LABELS[category];
   return (
@@ -483,15 +498,27 @@ function CategoryGroup({
       aria-label={`${label} (${files.length})`}
       className="min-w-0 space-y-2"
     >
-      <p aria-hidden className="flex items-center gap-1.5 text-sm font-medium">
-        <span className={cn("size-2 rounded-full", CATEGORY_DOT[category])} />
-        {label}
-        <span className="text-muted-foreground font-normal tabular-nums">
-          {files.length}
-        </span>
-      </p>
+      <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+        <p
+          aria-hidden
+          className="flex items-center gap-1.5 text-sm font-medium"
+        >
+          <span className={cn("size-2 rounded-full", CATEGORY_DOT[category])} />
+          {label}
+          <span className="text-muted-foreground font-normal tabular-nums">
+            {files.length}
+          </span>
+        </p>
+        {action}
+      </div>
       {files.length > 0 ? (
-        <ul className="flex flex-wrap gap-2">
+        <ul
+          className={
+            fill
+              ? "grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-3"
+              : "flex flex-wrap gap-2"
+          }
+        >
           {files.map((f) => (
             <PhotoTile
               key={f.id}
@@ -499,15 +526,29 @@ function CategoryGroup({
               canDelete={canDelete(f)}
               onOpen={() => onOpen(f)}
               onDelete={() => onDelete(f)}
+              fill={fill}
             />
           ))}
         </ul>
       ) : (
         // Del mismo tamaño que una miniatura, para que las dos columnas se vean parejas.
-        <p className="text-muted-foreground bg-muted/30 flex size-24 flex-col items-center justify-center gap-1.5 rounded-md border border-dashed p-2 text-center text-xs sm:size-28 lg:size-32">
-          <ImageIcon className="size-5 opacity-50" aria-hidden />
-          {EMPTY_COLUMN[category]}
-        </p>
+        <div
+          className={
+            fill
+              ? "grid grid-cols-[repeat(auto-fill,minmax(min(100%,10rem),1fr))] gap-3"
+              : undefined
+          }
+        >
+          <p
+            className={cn(
+              "text-muted-foreground bg-muted/30 flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed p-2 text-center text-xs",
+              fill ? "aspect-square w-full" : "size-24 sm:size-28 lg:size-32",
+            )}
+          >
+            <ImageIcon className="size-5 opacity-50" aria-hidden />
+            {EMPTY_COLUMN[category]}
+          </p>
+        </div>
       )}
     </div>
   );
@@ -526,10 +567,12 @@ function TargetSection({
   onOpen,
   onDelete,
   onCompare,
+  fill,
 }: {
   target: FileTarget;
   files: RestorationFile[];
   showLabel: boolean;
+  fill: boolean;
   canDelete: (file: RestorationFile) => boolean;
   onOpen: (file: RestorationFile, kind: ViewKind) => void;
   onDelete: (file: RestorationFile) => void;
@@ -547,7 +590,31 @@ function TargetSection({
     (g) => g.files,
   );
 
-  const group = (category: FileCategory, list: RestorationFile[]) => (
+  const compareButton = onCompare ? (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      onClick={onCompare}
+      aria-label="Comparar antes y después"
+      title="Comparar antes y después"
+      // En una tarjeta angosta, solo el icono: así no baja de línea ni corre las fotos.
+      className={cn(fill && "@max-lg:size-8 @max-lg:px-0")}
+    >
+      <Columns2 />
+      <span className={cn(fill && "hidden @lg:inline")}>
+        Comparar antes y después
+      </span>
+    </Button>
+  ) : null;
+  // Sin título visible, «Comparar» va en la línea de «Después»: sin fila propia.
+  const inlineCompare = !showLabel;
+
+  const group = (
+    category: FileCategory,
+    list: RestorationFile[],
+    action?: React.ReactNode,
+  ) => (
     <CategoryGroup
       key={category}
       category={category}
@@ -555,6 +622,8 @@ function TargetSection({
       canDelete={canDelete}
       onOpen={(f) => onOpen(f, "images")}
       onDelete={onDelete}
+      fill={fill}
+      action={action}
     />
   );
 
@@ -566,37 +635,32 @@ function TargetSection({
       className="bg-card @container min-w-0 space-y-4 rounded-lg border p-4 shadow-xs"
       data-testid={headingId}
     >
-      <div
-        className={cn(
-          "flex min-h-8 flex-wrap items-center justify-between gap-2",
-          !showLabel && !onCompare && "sr-only",
-        )}
-      >
-        <h2
-          id={headingId}
-          className={cn("min-w-0 font-semibold", !showLabel && "sr-only")}
-        >
+      {inlineCompare ? (
+        <h2 id={headingId} className="sr-only">
           {target.label}
         </h2>
-        {onCompare ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={onCompare}
-            className={cn(!showLabel && "ml-auto")}
-          >
-            <Columns2 />
-            Comparar antes y después
-          </Button>
-        ) : null}
-      </div>
+      ) : (
+        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
+          <h2 id={headingId} className="min-w-0 font-semibold">
+            {target.label}
+          </h2>
+          {compareButton}
+        </div>
+      )}
 
       {before.length > 0 || after.length > 0 ? (
         // Lado a lado aun en el celular; solo en tarjetas muy angostas se apilan.
-        <div className="grid gap-4 @xs:grid-cols-2">
+        <div
+          className={cn(
+            "grid",
+            // Con `fill`, siempre lado a lado: las miniaturas se achican a la columna.
+            fill
+              ? "grid-cols-2 gap-x-4 gap-y-4 @lg:gap-x-6"
+              : "gap-4 @xs:grid-cols-2",
+          )}
+        >
           {group("antes", before)}
-          {group("despues", after)}
+          {group("despues", after, inlineCompare ? compareButton : undefined)}
         </div>
       ) : null}
 
@@ -670,6 +734,7 @@ export function FileGallery({
   emptyText = "Aún no hay fotos ni archivos.",
   className,
   showTargetLabels = true,
+  fill = false,
 }: {
   files: RestorationFile[];
   targets: FileTarget[];
@@ -682,6 +747,8 @@ export function FileGallery({
    * false queda solo para lectores de pantalla (p. ej. en la ficha de la pieza).
    */
   showTargetLabels?: boolean;
+  /** Miniaturas que llenan el ancho de cada columna (ficha de la pieza). */
+  fill?: boolean;
 }) {
   const [viewing, setViewing] = useState<{
     target: string | null;
@@ -742,6 +809,7 @@ export function FileGallery({
               target={target}
               files={list}
               showLabel={showTargetLabels}
+              fill={fill}
               canDelete={canDelete}
               onOpen={(f, kind) =>
                 setViewing({ target: target.id, kind, id: f.id })
