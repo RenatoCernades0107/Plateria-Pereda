@@ -67,6 +67,7 @@ import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
+  getProfileName,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -90,8 +91,12 @@ export default async function RestauracionDetallePage({
   if (!UUID.test(id)) notFound();
   // Montos, pagos e historial: solo admin y ventas (P42).
   const canSeeMoney = can(user.role, "restauraciones.editar");
+  // Cliente, contacto y PDF de la guía: logística no los ve.
+  const canSeeClient = can(user.role, "clientes.ver");
+  const canExportPdf = can(user.role, "guias.exportar-pdf");
   const restoration = await getRestorationDetail(id, {
     withMoney: canSeeMoney,
+    withClient: canSeeClient,
   });
   if (!restoration) notFound();
 
@@ -116,7 +121,7 @@ export default async function RestauracionDetallePage({
   const quoteData = settings
     ? {
         code: restoration.code,
-        clientName: restoration.client.name,
+        clientName: restoration.client?.name ?? "",
         contactName: restoration.contact?.name ?? null,
         pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
@@ -138,7 +143,7 @@ export default async function RestauracionDetallePage({
     can(user.role, "piezas.consultar-aprobar-anular") &&
     !["anulada", "rechazada", "completada"].includes(restoration.status) &&
     restoration.pieces.some((p) => !isClosedStatus(p.status));
-  const phone = restoration.contact?.phone ?? restoration.client.phone;
+  const phone = restoration.contact?.phone ?? restoration.client?.phone ?? null;
   // Orden de Shopify (9.1): enlace al admin y estado del último envío (admin y ventas).
   const orderUrl = shopifyOrderAdminUrl(
     serverEnv().SHOPIFY_STORE_DOMAIN,
@@ -161,9 +166,10 @@ export default async function RestauracionDetallePage({
       : null;
 
   // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita.
-  const editing = canSeeMoney
-    ? await loadEditingData(restoration.client)
-    : null;
+  const editing =
+    canSeeMoney && restoration.client
+      ? await loadEditingData(restoration.client)
+      : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
 
@@ -217,6 +223,10 @@ export default async function RestauracionDetallePage({
   ];
   // Miniatura de cada pieza en la tabla: su primera foto "Antes".
   const photos = firstBeforePhotos(files);
+  // Quien registró la guía: los perfiles ajenos no se leen con RLS, solo el nombre.
+  const attendedBy = restoration.createdBy
+    ? await getProfileName(restoration.createdBy)
+    : null;
   // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
   const pdfData = {
     company: {
@@ -230,10 +240,11 @@ export default async function RestauracionDetallePage({
     createdAt: restoration.createdAt,
     status: restoration.status,
     paymentType: restoration.paymentType,
-    clientName: restoration.client.name,
+    clientName: restoration.client?.name ?? "",
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
     shopifyOrderName: restoration.shopifyOrderName,
+    attendedBy,
     notes: restoration.notes,
     pieces: restoration.pieces.map((p) => ({
       id: p.id,
@@ -293,26 +304,28 @@ export default async function RestauracionDetallePage({
               >
                 {restoration.code}
               </h1>
-              <p className="text-sm">
-                <Link
-                  href={`/clientes/${restoration.client.id}`}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {restoration.client.name}
-                </Link>
-                {restoration.contact ? (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · Contacto: {restoration.contact.name}
-                  </span>
-                ) : null}
-                {phone ? (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {formatPhone(phone)}
-                  </span>
-                ) : null}
-              </p>
+              {restoration.client ? (
+                <p className="text-sm">
+                  <Link
+                    href={`/clientes/${restoration.client.id}`}
+                    className="font-medium underline-offset-4 hover:underline"
+                  >
+                    {restoration.client.name}
+                  </Link>
+                  {restoration.contact ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · Contacto: {restoration.contact.name}
+                    </span>
+                  ) : null}
+                  {phone ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {formatPhone(phone)}
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <span data-testid="estado-restauracion" className="contents">
                   <RestorationStatusBadge status={restoration.status} />
@@ -426,7 +439,9 @@ export default async function RestauracionDetallePage({
                   hasPayments={payments.length > 0}
                 />
               ) : null}
-              <GuidePdfButton data={pdfData} photos={photos} />
+              {canExportPdf ? (
+                <GuidePdfButton data={pdfData} photos={photos} />
+              ) : null}
               {canClose ? (
                 <CloseRestorationMenu
                   restorationId={restoration.id}

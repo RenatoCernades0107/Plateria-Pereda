@@ -71,6 +71,7 @@ export function RestorationsList({
   items,
   filters,
   showMoney,
+  showClient = true,
   emptyMessage,
   emptyAction,
   empty,
@@ -78,6 +79,8 @@ export function RestorationsList({
   items: RestorationListItem[];
   filters: RestorationFilters;
   showMoney: boolean;
+  /** Logística no ve clientes: sin la columna ni el nombre en las tarjetas. */
+  showClient?: boolean;
   emptyMessage: string;
   /** Salida del vacío: limpiar los filtros o registrar la primera. */
   emptyAction?: React.ReactNode;
@@ -104,11 +107,13 @@ export function RestorationsList({
                 Fecha
               </SortHeader>
             </TableHead>
-            <TableHead>
-              <SortHeader filters={filters} sort="client">
-                Cliente
-              </SortHeader>
-            </TableHead>
+            {showClient ? (
+              <TableHead>
+                <SortHeader filters={filters} sort="client">
+                  Cliente
+                </SortHeader>
+              </TableHead>
+            ) : null}
             <TableHead>Estado</TableHead>
             <TableHead>Pago</TableHead>
             <TableHead className="text-right">Piezas</TableHead>
@@ -139,14 +144,16 @@ export function RestorationsList({
               <TableCell className="whitespace-nowrap">
                 {formatDate(r.createdAt)}
               </TableCell>
-              <TableCell className="max-w-56">
-                <span className="block truncate">{r.clientName}</span>
-                {r.contactName ? (
-                  <span className="text-muted-foreground block truncate text-xs">
-                    {r.contactName}
-                  </span>
-                ) : null}
-              </TableCell>
+              {showClient ? (
+                <TableCell className="max-w-56">
+                  <span className="block truncate">{r.clientName}</span>
+                  {r.contactName ? (
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {r.contactName}
+                    </span>
+                  ) : null}
+                </TableCell>
+              ) : null}
               <TableCell>
                 <RestorationStatusBadge status={r.status} />
               </TableCell>
@@ -189,7 +196,9 @@ export function RestorationsList({
                 >
                   {r.code}
                 </Link>
-                <p className="truncate text-sm">{r.clientName}</p>
+                {showClient ? (
+                  <p className="truncate text-sm">{r.clientName}</p>
+                ) : null}
               </div>
               <RestorationStatusBadge status={r.status} />
             </div>

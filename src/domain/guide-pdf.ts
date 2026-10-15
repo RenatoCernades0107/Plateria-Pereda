@@ -1,12 +1,6 @@
 import { formatDate } from "@/lib/format";
 
-import { igvLabel, igvTotals } from "./igv";
-import {
-  formatCents,
-  PAYMENT_TYPE_LABELS,
-  type Cents,
-  type PaymentType,
-} from "./money";
+import { formatCents, type Cents, type PaymentType } from "./money";
 import {
   isClosedStatus,
   PIECE_STATUS_LABELS,
@@ -55,6 +49,8 @@ export type GuidePdfData = {
   contactName: string | null;
   phone: string | null;
   shopifyOrderName: string | null;
+  /** Nombre de quien registró la guía. */
+  attendedBy: string | null;
   notes: string;
   pieces: GuidePdfPiece[];
   /** Solo para quien ve montos (admin y ventas, P42). */
@@ -64,6 +60,15 @@ export type GuidePdfData = {
     paidCents: Cents;
   } | null;
 };
+
+export type GuidePdfOptions = {
+  /** Versión para el taller: sin datos del cliente ni precios de venta. */
+  forWorkshop?: boolean;
+};
+
+/** Cláusula para el cliente, al pie de la guía. */
+export const PICKUP_CLAUSE =
+  "IMPORTANTE: Una vez notificado que su trabajo se encuentra listo, el cliente tendrá un plazo máximo de 30 días calendario para recogerlo.";
 
 export type GuidePdfRow = {
   id: string;
@@ -85,17 +90,24 @@ export type GuidePdfModel = {
   code: string;
   /** Datos de la empresa bajo el logo, una línea cada uno. */
   companyLines: string[];
-  /** Recuadro de la esquina: fecha, número de guía, exportado. */
+  /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
+  /** Vacío en la versión para taller (no se dibuja el bloque del cliente). */
   client: string[];
   guide: [label: string, value: string][];
   showPrice: boolean;
+  /** Versión para taller: la tabla lleva siempre la foto de cada pieza. */
+  forWorkshop: boolean;
   rows: GuidePdfRow[];
-  /** Totales de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo). */
+  /** Subtotal de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo). */
   totals: GuidePdfTotal[];
-  /** Aviso bajo los totales (p. ej. piezas sin precio). */
+  /** Aviso bajo el subtotal (p. ej. piezas por cotizar). */
   totalsNote: string | null;
   notes: string;
+  /** Cláusula para el cliente; null en la versión para taller. */
+  clause: string | null;
+  /** Nombre que va bajo la firma de la empresa; null si no hay firmas. */
+  signer: string | null;
   footer: string;
 };
 
@@ -119,40 +131,32 @@ function pieceDetail(piece: GuidePdfPiece): string {
 export function guidePdfModel(
   data: GuidePdfData,
   selectedIds: ReadonlySet<string>,
-  now = new Date(),
+  { forWorkshop = false }: GuidePdfOptions = {},
 ): GuidePdfModel {
   const pieces = data.pieces.filter((p) => selectedIds.has(p.id));
-  const showPrice = data.money !== null;
+  // El taller no ve precios de venta.
+  const showPrice = data.money !== null && !forWorkshop;
   const { company } = data;
 
   const totals: GuidePdfTotal[] = [];
   let totalsNote: string | null = null;
-  if (data.money) {
+  if (showPrice) {
     const charged = pieces.filter((p) => !isClosedStatus(p.status));
-    const t = igvTotals(
-      charged.map((p) => p.priceCents ?? 0),
-      data.money.pricesIncludeIgv,
-    );
-    totals.push(
-      { label: "Op. gravada", value: formatCents(t.taxableBase) },
-      { label: "IGV (18 %)", value: formatCents(t.igv) },
-      { label: "Total", value: formatCents(t.total), strong: true },
-    );
-    // A cuenta de toda la guía: solo si se exportan todas sus piezas.
-    if (pieces.length === data.pieces.length) {
-      totals.push(
-        { label: "A cuenta", value: formatCents(data.money.paidCents) },
-        {
-          label: "Saldo",
-          value: formatCents(
-            Math.max(data.money.totalCents - data.money.paidCents, 0),
-          ),
-          strong: true,
-        },
-      );
-    }
-    if (charged.some((p) => p.priceCents === null))
-      totalsNote = "Hay piezas sin precio (por definir).";
+    const priced = charged.filter((p) => p.priceCents !== null);
+    const pending = charged.length - priced.length;
+    // Sin ninguna pieza con precio, el subtotal no es 0: está por definir.
+    totals.push({
+      label: "Subtotal",
+      value: priced.length
+        ? formatCents(priced.reduce((sum, p) => sum + p.priceCents!, 0))
+        : "Por definir",
+      strong: true,
+    });
+    if (priced.length && pending)
+      totalsNote =
+        pending === 1
+          ? "Falta 1 pieza por cotizar."
+          : `Faltan ${pending} piezas por cotizar.`;
   }
 
   const contact = [company.phones, company.email]
@@ -164,7 +168,7 @@ export function guidePdfModel(
     title: "GUÍA DE RESTAURACIÓN",
     code: data.code,
     companyLines: [
-      company.name,
+      "Oficina",
       company.ruc ? `RUC ${company.ruc}` : "",
       company.address,
       company.phones ? `Teléfono: ${company.phones}` : "",
@@ -175,28 +179,26 @@ export function guidePdfModel(
     meta: [
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],
-      ["Impreso", formatDate(now)],
     ],
-    client: [
-      data.clientName,
-      data.contactName ? `Contacto: ${data.contactName}` : "",
-      data.phone ? `Teléfono: ${data.phone}` : "",
-    ].filter(Boolean),
+    client: forWorkshop
+      ? []
+      : [
+          data.clientName,
+          data.contactName ? `Contacto: ${data.contactName}` : "",
+          data.phone ? `Teléfono: ${data.phone}` : "",
+        ].filter(Boolean),
     guide: [
       ["Estado", RESTORATION_STATUS_LABELS[data.status]],
-      ["Tipo de pago", PAYMENT_TYPE_LABELS[data.paymentType]],
-      ...(data.money
-        ? ([["Precios", igvLabel(data.money.pricesIncludeIgv)]] as [
-            string,
-            string,
-          ][])
+      ...(data.attendedBy
+        ? ([["Atendió", data.attendedBy]] as [string, string][])
         : []),
       ["Piezas", `${pieces.length} de ${data.pieces.length}`],
-      ...(data.shopifyOrderName
+      ...(data.shopifyOrderName && !forWorkshop
         ? ([["Orden", data.shopifyOrderName]] as [string, string][])
         : []),
     ],
     showPrice,
+    forWorkshop,
     rows: pieces.map((p, i) => ({
       id: p.id,
       number: i + 1,
@@ -217,8 +219,12 @@ export function guidePdfModel(
     totals,
     totalsNote,
     notes: data.notes.trim(),
-    footer: contact
-      ? `Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros: ${contact}`
-      : "Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros.",
+    clause: forWorkshop ? null : PICKUP_CLAUSE,
+    signer: forWorkshop ? null : company.name.trim() || "Platería Pereda",
+    footer: forWorkshop
+      ? ""
+      : contact
+        ? `Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros: ${contact}`
+        : "Si tiene alguna pregunta sobre esta guía, comuníquese con nosotros.",
   };
 }

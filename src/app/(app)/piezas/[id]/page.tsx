@@ -70,6 +70,7 @@ export default async function PiezaDetallePage({
   const canSeeMoney = can(user.role, "restauraciones.editar");
   const restoration = await getRestorationDetail(row.restoration_id, {
     withMoney: canSeeMoney,
+    withClient: can(user.role, "clientes.ver"),
   });
   const piece = restoration?.pieces.find((p) => p.id === id);
   if (!restoration || !piece) notFound();
@@ -152,15 +153,19 @@ export default async function PiezaDetallePage({
                 {piece.description}
               </h1>
               <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
-                <Link
-                  href={`/clientes/${restoration.client.id}`}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {restoration.client.name}
-                </Link>
-                <span className="text-muted-foreground" aria-hidden>
-                  ·
-                </span>
+                {restoration.client ? (
+                  <>
+                    <Link
+                      href={`/clientes/${restoration.client.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {restoration.client.name}
+                    </Link>
+                    <span className="text-muted-foreground" aria-hidden>
+                      ·
+                    </span>
+                  </>
+                ) : null}
                 <Link
                   href={`/restauraciones/${restoration.id}`}
                   aria-label={`Ver guía ${restoration.code}`}

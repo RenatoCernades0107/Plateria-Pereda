@@ -8,6 +8,7 @@ import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import { BOARD_STATUSES, isLongInWorkshop } from "@/domain/piece-board-filters";
 import { pieceKanbanColumns } from "@/domain/piece-moves";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
+import { can } from "@/domain/permissions";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
@@ -90,9 +91,11 @@ export function PiecesKanban({
                   >
                     {piece.code}
                   </Link>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {piece.clientName}
-                  </p>
+                  {can(role, "clientes.ver") ? (
+                    <p className="text-muted-foreground truncate text-xs">
+                      {piece.clientName}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <MoveToMenu

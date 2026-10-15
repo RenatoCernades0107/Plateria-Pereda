@@ -39,6 +39,7 @@ const data: GuidePdfData = {
   contactName: null,
   phone: "+51 999 888 777",
   shopifyOrderName: null,
+  attendedBy: "María Quispe",
   notes: "  Entregar en caja  ",
   pieces: [
     piece("1"),
@@ -63,8 +64,11 @@ describe("guidePdfModel", () => {
     expect(model.notes).toBe("Entregar en caja");
     expect(model.client).toEqual(["Ana Torres", "Teléfono: +51 999 888 777"]);
     expect(model.guide).toContainEqual(["Piezas", "2 de 3"]);
+    expect(model.meta.map(([label]) => label)).toEqual(["Fecha", "Guía N°"]);
+    expect(model.guide).toContainEqual(["Atendió", "María Quispe"]);
+    expect(model.clause).toContain("30 días calendario");
     expect(model.companyLines).toEqual([
-      "Platería Pereda",
+      "Oficina",
       "RUC 20100047218",
       "Av. Larco 123, Miraflores",
       "Teléfono: 01 444 5555",
@@ -73,28 +77,36 @@ describe("guidePdfModel", () => {
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
   });
 
-  it("totaliza sin las piezas cerradas y muestra a cuenta y saldo solo con todas", () => {
+  it("muestra el subtotal de las piezas con precio y cuántas faltan por cotizar", () => {
     const all = guidePdfModel(data, new Set(["1", "2", "3"]));
     expect(all.rows[2]!.price).toBe("No se cobra");
-    expect(all.totals).toContainEqual({
-      label: "Total",
-      value: "S/ 100.00",
-      strong: true,
-    });
-    expect(all.totals).toContainEqual({
-      label: "Saldo",
-      value: "S/ 60.00",
-      strong: true,
-    });
-    expect(all.totalsNote).toBe("Hay piezas sin precio (por definir).");
+    expect(all.totals).toEqual([
+      { label: "Subtotal", value: "S/ 100.00", strong: true },
+    ]);
+    expect(all.totalsNote).toBe("Falta 1 pieza por cotizar.");
 
     const some = guidePdfModel(data, new Set(["1"]));
-    expect(some.totals.map((t) => t.label)).toEqual([
-      "Op. gravada",
-      "IGV (18 %)",
-      "Total",
-    ]);
     expect(some.totalsNote).toBeNull();
+  });
+
+  it("sin ninguna pieza con precio, el subtotal sale por definir", () => {
+    const model = guidePdfModel(data, new Set(["2"]));
+    expect(model.totals).toEqual([
+      { label: "Subtotal", value: "Por definir", strong: true },
+    ]);
+    expect(model.totalsNote).toBeNull();
+  });
+
+  it("para taller quita cliente, precios, cláusula y firmas", () => {
+    const model = guidePdfModel(data, new Set(["1", "2"]), {
+      forWorkshop: true,
+    });
+    expect(model.client).toEqual([]);
+    expect(model.showPrice).toBe(false);
+    expect(model.rows.every((r) => r.price === null)).toBe(true);
+    expect(model.totals).toEqual([]);
+    expect(model.clause).toBeNull();
+    expect(model.signer).toBeNull();
   });
 
   it("sin montos (logística) no muestra precios ni totales", () => {
@@ -109,7 +121,6 @@ describe("guidePdfModel", () => {
     expect(model.showPrice).toBe(false);
     expect(model.rows[0]!.price).toBeNull();
     expect(model.totals).toEqual([]);
-    expect(model.guide.map(([label]) => label)).not.toContain("Precios");
   });
 });
 

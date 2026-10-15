@@ -385,7 +385,7 @@ test.describe("Restauraciones", () => {
     );
   });
 
-  test("logística ve el detalle sin precios, pagos ni historial", async ({
+  test("logística ve el detalle sin cliente, precios, pagos ni historial", async ({
     page,
     loginAs,
   }) => {
@@ -399,6 +399,12 @@ test.describe("Restauraciones", () => {
     await expect(page.getByRole("tab", { name: "Historial" })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Mensaje de cotización" }),
+    ).toHaveCount(0);
+    // Sin cliente y sin exportar la guía en PDF.
+    await expect(page.getByText(clientName)).toHaveCount(0);
+    await expect(page.getByRole("link", { name: clientName })).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Exportar PDF" }),
     ).toHaveCount(0);
   });
 

@@ -21,7 +21,10 @@ const PERMISSIONS = {
   "fotos.subir": ["admin", "ventas", "logistica"],
   "fotos.eliminar-ajenas": ["admin"],
   "talleres.gestionar": ["admin", "logistica"],
-  "clientes.ver": ["admin", "ventas", "logistica"],
+  /** PDF de la guía: lleva los datos del cliente, así que logística no lo exporta. */
+  "guias.exportar-pdf": ["admin", "ventas"],
+  /** Clientes y sus datos (nombre, teléfono, contactos): logística no los ve en ningún lado. */
+  "clientes.ver": ["admin", "ventas"],
   "clientes.editar": ["admin", "ventas"],
   "cotizador.usar": ["admin", "ventas"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */

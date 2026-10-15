@@ -15,7 +15,6 @@ test.describe("Permisos por rol", () => {
     await expect(nav(page).getByRole("link")).toHaveText([
       "Restauraciones",
       "Piezas",
-      "Clientes",
       "Talleres",
     ]);
   });

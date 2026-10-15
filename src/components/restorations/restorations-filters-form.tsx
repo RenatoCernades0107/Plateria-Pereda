@@ -64,12 +64,15 @@ export function RestorationsFiltersForm({
   clientName,
   workshops,
   showMoney,
+  showClient = true,
 }: {
   filters: RestorationFilters;
   clientName: string | null;
   workshops: { id: string; name: string }[];
   /** El estado de pago solo para admin y ventas (P42). */
   showMoney: boolean;
+  /** Logística no ve clientes: sin filtro de cliente ni búsqueda por cliente. */
+  showClient?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -121,7 +124,9 @@ export function RestorationsFiltersForm({
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
-          <Label htmlFor="filtro-texto">Código, cliente o documento</Label>
+          <Label htmlFor="filtro-texto">
+            {showClient ? "Código, cliente o documento" : "Código"}
+          </Label>
           <Input
             id="filtro-texto"
             type="search"
@@ -150,30 +155,32 @@ export function RestorationsFiltersForm({
             onChange={(paymentStatus) => set({ paymentStatus })}
           />
         ) : null}
-        <div className="space-y-1.5">
-          <Label htmlFor="filtro-cliente">Cliente</Label>
-          {client ? (
-            <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
-              <span className="min-w-0 flex-1 truncate">{client.name}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                aria-label="Quitar filtro de cliente"
-                onClick={() => set({ clientId: null })}
-              >
-                <X aria-hidden />
-              </Button>
-            </div>
-          ) : (
-            <ClientPicker
-              id="filtro-cliente"
-              placeholder="Todos los clientes"
-              onSelect={chooseClient}
-            />
-          )}
-        </div>
+        {showClient ? (
+          <div className="space-y-1.5">
+            <Label htmlFor="filtro-cliente">Cliente</Label>
+            {client ? (
+              <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
+                <span className="min-w-0 flex-1 truncate">{client.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Quitar filtro de cliente"
+                  onClick={() => set({ clientId: null })}
+                >
+                  <X aria-hidden />
+                </Button>
+              </div>
+            ) : (
+              <ClientPicker
+                id="filtro-cliente"
+                placeholder="Todos los clientes"
+                onSelect={chooseClient}
+              />
+            )}
+          </div>
+        ) : null}
       </div>
 
       {showMore ? (
