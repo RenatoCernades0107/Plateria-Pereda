@@ -37,6 +37,7 @@ const data: GuidePdfData = {
   contactName: null,
   phone: null,
   shopifyOrderName: null,
+  attendedBy: null,
   notes: "",
   pieces: [piece("1"), piece("2")],
   money: null,
@@ -48,7 +49,9 @@ describe("GuidePdfButton", () => {
     render(<GuidePdfButton data={data} />);
     await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
 
-    const boxes = screen.getAllByRole("checkbox");
+    const workshop = screen.getByRole("checkbox", { name: /Para taller/ });
+    expect(workshop).not.toBeChecked();
+    const boxes = screen.getAllByRole("checkbox").filter((b) => b !== workshop);
     expect(boxes).toHaveLength(2);
     expect(boxes.every((b) => (b as HTMLInputElement).checked)).toBe(true);
     expect(screen.getByText("Piezas en el PDF (2/2)")).toBeInTheDocument();

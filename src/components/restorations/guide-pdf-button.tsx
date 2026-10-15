@@ -46,6 +46,8 @@ export function GuidePdfButton({
   );
   const hasPhotos = data.pieces.some((p) => photos[p.id]);
   const [withPhotos, setWithPhotos] = useState(true);
+  // Versión para el taller: sin cliente ni precios, con la foto de cada pieza.
+  const [forWorkshop, setForWorkshop] = useState(false);
 
   function toggle(id: string, checked: boolean) {
     setSelected((prev) => {
@@ -63,11 +65,11 @@ export function GuidePdfButton({
     }
     setBusy(true);
     try {
-      const model = guidePdfModel(data, selected);
+      const model = guidePdfModel(data, selected, { forWorkshop });
       const [logo, images] = await Promise.all([
         // Sin el logo, el PDF sale igual.
         thumbnail(LOGO_URL, 400).catch(() => null),
-        hasPhotos && withPhotos
+        hasPhotos && (withPhotos || forWorkshop)
           ? loadPhotos(
               data.pieces.filter((p) => selected.has(p.id)),
               photos,
@@ -95,6 +97,7 @@ export function GuidePdfButton({
         onClick={() => {
           // Cada vez que se abre, todas las piezas vuelven a estar elegidas.
           setSelected(new Set(allIds));
+          setForWorkshop(false);
           setOpen(true);
         }}
         disabled={data.pieces.length === 0}
@@ -151,12 +154,28 @@ export function GuidePdfButton({
               <input
                 type="checkbox"
                 className="accent-primary size-4"
-                checked={withPhotos}
+                checked={withPhotos || forWorkshop}
+                disabled={forWorkshop}
                 onChange={(e) => setWithPhotos(e.target.checked)}
               />
               Incluir la foto «Antes» de cada pieza
             </label>
           ) : null}
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary mt-0.5 size-4"
+              checked={forWorkshop}
+              onChange={(e) => setForWorkshop(e.target.checked)}
+            />
+            <span>
+              Para taller
+              <span className="text-muted-foreground block text-xs">
+                Sin datos del cliente ni precios de venta, con la foto de cada
+                pieza.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <Button
               type="button"
