@@ -269,7 +269,11 @@ test.describe("Estados de las piezas", () => {
 
     // La línea de tiempo está en el detalle de la pieza (/piezas/[id]).
     await card(page, code).getByRole("link", { name: code }).click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(code);
+    // Título: la descripción; el código va en el rótulo "Pieza N · código".
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Sopera con historia",
+    );
+    await expect(page.getByTestId("rotulo-pieza")).toContainText(code);
     const piecePath = new URL(page.url()).pathname;
     // Siempre a la vista (horizontal), sin desplegar nada.
     const timeline = page.getByTestId("linea-tiempo");

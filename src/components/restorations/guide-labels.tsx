@@ -16,10 +16,6 @@ export const GUIDE_CARD_CLASS =
 /** Acento de una pieza (lista y kanban del detalle). */
 export const PIECE_ACCENT_CLASS = "border-l-4 border-l-primary/60";
 
-/** Rótulo pequeño de una fila de la pieza (p. ej. "Estado", "Acciones"). */
-export const ROW_LABEL_CLASS =
-  "text-muted-foreground w-16 shrink-0 text-xs font-medium";
-
 const EYEBROW_CLASS =
   "text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase [&>svg]:size-3.5 [&>svg]:shrink-0";
 

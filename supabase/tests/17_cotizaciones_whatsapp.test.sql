@@ -46,7 +46,7 @@ select results_eq(
   'las piezas cotizadas quedan numeradas'
 );
 select is(
-  (select count(*)::int from public.restorations), 0,
+  (select count(*)::int from public.restorations where origin = 'whatsapp'), 0,
   'una cotización no crea restauraciones'
 );
 

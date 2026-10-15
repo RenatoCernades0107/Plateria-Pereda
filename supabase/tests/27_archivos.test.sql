@@ -72,11 +72,13 @@ select throws_ok(
 -- Logística: ve y sube en restauraciones activas; no en las pasadas.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000cc2","role":"authenticated"}', true);
 select is(
-  (select count(*)::int from public.restoration_files), 2,
+  (select count(*)::int from public.restoration_files
+   where restoration_id in ('00000000-0000-0000-0000-00000000cc30', '00000000-0000-0000-0000-00000000cc31')), 2,
   'logística ve los archivos de la restauración activa'
 );
 select is(
-  (select count(*)::int from storage.objects where bucket_id = 'restoration-files'), 2,
+  (select count(*)::int from storage.objects
+   where bucket_id = 'restoration-files' and name like 'restorations/00000000-0000-0000-0000-00000000cc3%'), 2,
   'y puede leer sus objetos (URLs firmadas)'
 );
 select lives_ok(

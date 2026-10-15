@@ -125,6 +125,14 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+# Fotos de prueba del seed (antes / después de las piezas). El bucket lo crea la migración
+# de archivos; aquí se repiten sus límites para que la CLI no los cambie.
+[storage.buckets.restoration-files]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"]
+objects_path = "./seed-files/restoration-files"
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true

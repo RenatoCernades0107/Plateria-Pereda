@@ -33,7 +33,7 @@ describe("exportación de piezas", () => {
     });
     expect(exportRow(piece, false).price).toBeNull();
     expect(exportRow({ ...piece, priceCents: null }, true).price).toBe(
-      "Sin asignar",
+      "Por definir",
     );
   });
 });

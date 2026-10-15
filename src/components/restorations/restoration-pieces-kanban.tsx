@@ -110,7 +110,7 @@ export function RestorationPiecesKanban({
                   <span className="text-xs tabular-nums" data-testid="precio">
                     <span className="sr-only">Precio: </span>
                     {piece.priceCents === null ? (
-                      <span className="text-muted-foreground">Sin asignar</span>
+                      <span className="text-muted-foreground">Por definir</span>
                     ) : (
                       formatCents(piece.priceCents)
                     )}
