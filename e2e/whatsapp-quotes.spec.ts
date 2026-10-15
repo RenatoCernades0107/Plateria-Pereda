@@ -113,7 +113,7 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await expect(page.getByText(pieceName)).toHaveCount(0);
     await page.goto(`/piezas?q=${pieceName}`);
     await expect(
-      page.getByText("No hay piezas con esos filtros."),
+      page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();
   });
 
@@ -126,7 +126,6 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await page
       .getByLabel("Código, cliente, teléfono o pieza cotizada")
       .fill(pieceName);
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page.getByText("1 cotización · Página 1 de 1")).toBeVisible();
   });
 

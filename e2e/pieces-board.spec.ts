@@ -91,7 +91,6 @@ test.describe("Vista de piezas", () => {
     await page.getByRole("option", { name: "Sin enviar" }).click();
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("option", { name: "Aprobada" }).click();
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/ubicacion=sin_enviar&estado=aprobada/);
     await expect(page.getByText("3 piezas · Página 1 de 1")).toBeVisible();
 
@@ -108,7 +107,7 @@ test.describe("Vista de piezas", () => {
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
     await expect(
-      page.getByText("No hay piezas con esos filtros."),
+      page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();
 
     await page.goto(`/piezas?q=${clientName}&ubicacion=en_taller`);
@@ -181,7 +180,7 @@ test.describe("Vista de piezas", () => {
       .getByRole("button", { name: "Confirmar: Enviar al taller" })
       .click();
     await expect(
-      page.getByText("No hay piezas con esos filtros."),
+      page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();
     const scrollWidth = await page.evaluate(
       () => document.documentElement.scrollWidth,
@@ -353,7 +352,6 @@ test.describe("Vista de piezas", () => {
     await loginAs("logistica");
     await page.goto("/piezas");
     await page.getByLabel("N.º de guía").fill(r.code.replace(/^RES-0*/, ""));
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/guia=\d+/);
     await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
     const row = page.getByTestId(`pieza-${code}`);
@@ -461,7 +459,6 @@ test.describe("Vista de piezas", () => {
     await page.getByRole("link", { name: "Historial" }).click();
     await expect(page).toHaveURL(/\/piezas\/historial$/);
     await page.getByLabel("Código, descripción o cliente").fill(clientName);
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page.getByTestId(`historial-${before!.code}`)).toBeVisible();
     await expect(page.getByTestId(`historial-${today!.code}`)).toBeVisible();
   });

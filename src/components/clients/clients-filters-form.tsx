@@ -1,10 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
+import { FilterFormActions } from "@/components/filter-form-actions";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLiveFilters } from "@/components/use-live-filters";
 import {
   clientFiltersHref,
   parseClientFilters,
@@ -60,21 +60,19 @@ function FilterSelect({
   );
 }
 
-/** Búsqueda y filtros del listado de clientes (se guardan en la URL). */
+/** Búsqueda y filtros del listado de clientes (en la URL; se aplican solos). */
 export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const set = (patch: Partial<ClientFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => clientFiltersHref(f, { page: 1 }),
+  );
+  const set = (patch: Partial<ClientFilters>) => update(patch);
 
   return (
     <form
       aria-label="Filtros de clientes"
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(clientFiltersHref(state, { page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <div className="space-y-1.5">
         <Label htmlFor="filtro-texto">
@@ -85,7 +83,8 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
           type="search"
           value={state.q}
           maxLength={100}
-          onChange={(e) => set({ q: e.target.value })}
+          placeholder="Escribe para buscar"
+          onChange={(e) => update({ q: e.target.value }, { debounce: true })}
         />
       </div>
       <FilterSelect
@@ -127,19 +126,10 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
           set({ status: (status ?? "todos") as ClientFilters["status"] })
         }
       />
-      <div className="flex items-end gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setState(parseClientFilters({}));
-            router.push("/clientes");
-          }}
-        >
-          Limpiar
-        </Button>
-      </div>
+      <FilterFormActions
+        pending={pending}
+        onReset={() => reset(parseClientFilters({}))}
+      />
     </form>
   );
 }

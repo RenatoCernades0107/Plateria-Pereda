@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   updateContact: vi.fn(),
   setContactActive: vi.fn(),
   push: vi.fn(),
+  replace: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -35,7 +36,11 @@ vi.mock("@/server/clients/actions", () => ({
 vi.mock("@/server/shopify-sync/actions", () => ({ retryShopifyJob: vi.fn() }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/clientes/c2",
-  useRouter: () => ({ push: mocks.push, refresh: vi.fn() }),
+  useRouter: () => ({
+    push: mocks.push,
+    replace: mocks.replace,
+    refresh: vi.fn(),
+  }),
 }));
 vi.mock("sonner", () => ({
   toast: { success: mocks.success, error: mocks.error },
@@ -312,7 +317,7 @@ describe("ClientsList (detalle)", () => {
 });
 
 describe("ClientsFiltersForm", () => {
-  it("lleva los filtros a la URL desde la primera página", async () => {
+  it("aplica los filtros solos y desde la primera página", async () => {
     const user = userEvent.setup();
     render(
       <ClientsFiltersForm filters={parseClientFilters({ pagina: "3" })} />,
@@ -327,13 +332,16 @@ describe("ClientsFiltersForm", () => {
     await user.click(await screen.findByRole("option", { name: "Con error" }));
     await user.click(screen.getByLabelText("Estado"));
     await user.click(await screen.findByRole("option", { name: "Todos" }));
-    await user.click(screen.getByRole("button", { name: "Filtrar" }));
-    expect(mocks.push).toHaveBeenCalledWith(
+    expect(screen.queryByRole("button", { name: "Filtrar" })).toBeNull();
+    expect(mocks.replace).toHaveBeenLastCalledWith(
       "/clientes?q=andina&tipo=empresa&sync=error&estado=todos",
+      { scroll: false },
     );
 
     await user.click(screen.getByRole("button", { name: "Limpiar" }));
-    expect(mocks.push).toHaveBeenLastCalledWith("/clientes");
+    expect(mocks.replace).toHaveBeenLastCalledWith("/clientes", {
+      scroll: false,
+    });
     expect(
       screen.getByLabelText("Nombre, documento, teléfono o email"),
     ).toHaveValue("");

@@ -1,9 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { FilterFormActions } from "@/components/filter-form-actions";
+import { useLiveFilters } from "@/components/use-live-filters";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,7 +21,7 @@ import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 
 const ALL = "todos";
 
-/** Filtros del historial de piezas (se guardan en la URL). */
+/** Filtros del historial de piezas (se guardan en la URL y se aplican solos). */
 export function PiecesHistoryFiltersForm({
   filters,
   workshops,
@@ -31,19 +29,19 @@ export function PiecesHistoryFiltersForm({
   filters: PieceHistoryFilters;
   workshops: { id: string; name: string }[];
 }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const set = (patch: Partial<PieceHistoryFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => pieceHistoryHref(f, { page: 1 }),
+  );
+  const set = (patch: Partial<PieceHistoryFilters>) => update(patch);
+  const type = (patch: Partial<PieceHistoryFilters>) =>
+    update(patch, { debounce: true });
 
   return (
     <form
       aria-label="Filtros del historial"
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(4,minmax(0,1fr))_auto]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(pieceHistoryHref(state, { page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <div className="space-y-1.5">
         <Label htmlFor="historial-texto">Código, descripción o cliente</Label>
@@ -52,7 +50,8 @@ export function PiecesHistoryFiltersForm({
           type="search"
           value={state.q}
           maxLength={100}
-          onChange={(e) => set({ q: e.target.value })}
+          placeholder="Escribe para buscar"
+          onChange={(e) => type({ q: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">
@@ -64,7 +63,7 @@ export function PiecesHistoryFiltersForm({
           placeholder="RES-00123"
           value={state.guide}
           maxLength={20}
-          onChange={(e) => set({ guide: e.target.value })}
+          onChange={(e) => type({ guide: e.target.value })}
         />
       </div>
       <div className="space-y-1.5">
@@ -129,18 +128,10 @@ export function PiecesHistoryFiltersForm({
           onChange={(e) => set({ to: e.target.value || null })}
         />
       </div>
-      <div className="flex items-end gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() =>
-            router.push(pieceHistoryHref(parsePieceHistoryFilters({})))
-          }
-        >
-          Limpiar
-        </Button>
-      </div>
+      <FilterFormActions
+        pending={pending}
+        onReset={() => reset(parsePieceHistoryFilters({}))}
+      />
     </form>
   );
 }

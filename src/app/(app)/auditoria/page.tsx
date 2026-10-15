@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AuditFiltersForm } from "@/components/audit/audit-filters-form";
 import { AuditLogList, recordKey } from "@/components/audit/audit-log-list";
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { AUDIT_ENTITIES } from "@/domain/audit";
@@ -43,14 +44,18 @@ export default async function AuditoriaPage({
         title="Auditoría"
         description="Quién cambió qué y cuándo en todo el sistema."
       />
-      <AuditFiltersForm
-        // Al navegar con otros filtros el formulario se reinicia con los de la URL.
-        key={auditHref(filters)}
-        filters={filters}
-        actors={actors}
-        entities={entities}
+      <AuditFiltersForm filters={filters} actors={actors} entities={entities} />
+      <AuditLogList
+        entries={entries}
+        recordLabels={recordLabels}
+        empty={
+          auditHref({ ...filters, page: 1 }) !== "/auditoria" ? (
+            <FilteredEmptyState resetHref="/auditoria" />
+          ) : (
+            <EmptyState title="Aún no hay cambios registrados." />
+          )
+        }
       />
-      <AuditLogList entries={entries} recordLabels={recordLabels} />
       <Pagination
         page={filters.page}
         pages={pages}

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Wrench } from "lucide-react";
+import { Hammer } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -128,14 +128,18 @@ export function PiecesKanban({
                         : "text-muted-foreground",
                     )}
                     data-testid="dias-en-taller"
+                    title="Total de días en el taller, sumando todas las idas"
                   >
+                    {/* Martillo (total en taller), no el triángulo del semáforo
+                        del estado: son conteos distintos. */}
                     {long ? (
-                      <AlertTriangle
+                      <Hammer
                         className="size-3.5"
+                        role="img"
                         aria-label="Muchos días en el taller"
                       />
                     ) : (
-                      <Wrench className="size-3.5" aria-hidden />
+                      <Hammer className="size-3.5" aria-hidden />
                     )}
                     {piece.workshopDays}{" "}
                     {piece.workshopDays === 1 ? "día" : "días"} en taller

@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { QuotesFiltersForm } from "@/components/quotes/quotes-filters-form";
@@ -38,18 +39,16 @@ export default async function CotizacionesPage({
           </Link>
         </Button>
       </div>
-      <QuotesFiltersForm
-        // Al navegar con otros filtros el formulario se reinicia con los de la URL.
-        key={quoteFiltersHref(filters)}
-        filters={filters}
-        clientName={clientName}
-      />
+      <QuotesFiltersForm filters={filters} clientName={clientName} />
       <QuotesList
         quotes={quotes}
-        emptyMessage={
-          filtered
-            ? "No hay cotizaciones con esos filtros."
-            : "Aún no hay cotizaciones."
+        emptyMessage="Aún no hay cotizaciones."
+        empty={
+          filtered ? (
+            <FilteredEmptyState resetHref="/cotizaciones" />
+          ) : (
+            <EmptyState title="Aún no hay cotizaciones." />
+          )
         }
       />
       <Pagination

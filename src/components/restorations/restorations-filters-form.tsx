@@ -1,14 +1,15 @@
 "use client";
 
 import { ChevronDown, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ClientPicker } from "@/components/clients/client-picker";
+import { FilterFormActions } from "@/components/filter-form-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { useLiveFilters } from "@/components/use-live-filters";
 import type { ClientOption } from "@/domain/client-search";
 import {
   PAYMENT_STATUS_LABELS,
@@ -54,7 +55,10 @@ function FilterMulti<T extends string>({
   );
 }
 
-/** Búsqueda y filtros del listado de restauraciones (se guardan en la URL). */
+/**
+ * Búsqueda y filtros del listado de restauraciones (en la URL): se aplican solos, el
+ * texto al dejar de escribir y lo demás al elegirlo.
+ */
 export function RestorationsFiltersForm({
   filters,
   clientName,
@@ -67,13 +71,25 @@ export function RestorationsFiltersForm({
   /** El estado de pago solo para admin y ventas (P42). */
   showMoney: boolean;
 }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const [client, setClient] = useState<{ id: string; name: string } | null>(
-    filters.clientId && clientName
-      ? { id: filters.clientId, name: clientName }
-      : null,
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => restorationFiltersHref(f, { page: 1 }),
   );
+  // Nombre del cliente elegido aquí; el de la URL lo da la página.
+  const [chosen, setChosen] = useState<{ id: string; name: string } | null>(
+    null,
+  );
+  const client = state.clientId
+    ? {
+        id: state.clientId,
+        name:
+          chosen?.id === state.clientId
+            ? chosen.name
+            : state.clientId === filters.clientId
+              ? (clientName ?? "")
+              : "",
+      }
+    : null;
   // Los filtros secundarios se ocultan, salvo que alguno ya esté aplicado.
   const hiddenActive = [
     filters.paymentType.length > 0,
@@ -83,13 +99,12 @@ export function RestorationsFiltersForm({
     filters.to !== null,
   ].filter(Boolean).length;
   const [showMore, setShowMore] = useState(hiddenActive > 0);
-  const set = (patch: Partial<RestorationFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const set = (patch: Partial<RestorationFilters>) => update(patch);
 
   const chooseClient = (option: ClientOption) => {
     if (option.source !== "local") return;
     const name = option.kind === "contacto" ? option.companyName : option.name;
-    setClient({ id: option.clientId, name });
+    setChosen({ id: option.clientId, name });
     set({ clientId: option.clientId });
   };
 
@@ -102,10 +117,7 @@ export function RestorationsFiltersForm({
     <form
       aria-label="Filtros de restauraciones"
       className="space-y-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(restorationFiltersHref(state, { page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
@@ -115,7 +127,8 @@ export function RestorationsFiltersForm({
             type="search"
             value={state.q}
             maxLength={100}
-            onChange={(e) => set({ q: e.target.value })}
+            placeholder="Escribe para buscar"
+            onChange={(e) => update({ q: e.target.value }, { debounce: true })}
           />
         </div>
         <FilterMulti
@@ -148,10 +161,7 @@ export function RestorationsFiltersForm({
                 size="icon"
                 className="size-7"
                 aria-label="Quitar filtro de cliente"
-                onClick={() => {
-                  setClient(null);
-                  set({ clientId: null });
-                }}
+                onClick={() => set({ clientId: null })}
               >
                 <X aria-hidden />
               </Button>
@@ -219,21 +229,12 @@ export function RestorationsFiltersForm({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() =>
-            router.push(
-              restorationFiltersHref(parseRestorationFilters({}), {
-                view: filters.view,
-              }),
-            )
-          }
-        >
-          Limpiar
-        </Button>
+      <FilterFormActions
+        pending={pending}
+        onReset={() =>
+          reset({ ...parseRestorationFilters({}), view: filters.view })
+        }
+      >
         <Button
           type="button"
           variant="outline"
@@ -248,7 +249,7 @@ export function RestorationsFiltersForm({
             className={showMore ? "rotate-180" : undefined}
           />
         </Button>
-      </div>
+      </FilterFormActions>
     </form>
   );
 }

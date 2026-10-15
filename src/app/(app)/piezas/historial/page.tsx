@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { EmptyState, FilteredEmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { PiecesHistoryFiltersForm } from "@/components/restorations/pieces-history-filters-form";
@@ -50,16 +51,18 @@ export default async function PiezasHistorialPage({
           </Link>
         </Button>
       </div>
-      <PiecesHistoryFiltersForm
-        // Al navegar con otros filtros el formulario se reinicia con los de la URL.
-        key={pieceHistoryHref(filters)}
-        filters={filters}
-        workshops={workshops.data}
-      />
+      <PiecesHistoryFiltersForm filters={filters} workshops={workshops.data} />
       <PiecesHistoryTable
         pieces={items}
         showCost={can(user.role, "piezas.costo-servicio")}
         showPrice={can(user.role, "dinero.ver")}
+        empty={
+          pieceHistoryHref(filters, { page: 1 }) !== "/piezas/historial" ? (
+            <FilteredEmptyState resetHref="/piezas/historial" />
+          ) : (
+            <EmptyState title="Aún no hay piezas en el historial." />
+          )
+        }
       />
       <Pagination
         page={filters.page}

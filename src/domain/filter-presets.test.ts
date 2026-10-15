@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { pieceFilterChips, restorationFilterChips } from "./filter-presets";
+import {
+  pieceChipCountFilters,
+  pieceFilterChips,
+  restorationChipCountFilters,
+  restorationFilterChips,
+} from "./filter-presets";
 import { parsePieceBoardFilters } from "./piece-board-filters";
 import { parseRestorationFilters } from "./restoration-filters";
 
@@ -46,6 +51,36 @@ describe("filtros de un clic (K12)", () => {
     );
     expect(
       restorationFilterChips(filters, { showMoney: false }).map((c) => c.key),
+    ).toEqual(["parcialmente-aprobadas", "listas", "whatsapp"]);
+  });
+
+  it("los chips que piden atención van en tono de alerta y muestran su contador", () => {
+    const chips = pieceFilterChips(parsePieceBoardFilters({}), {
+      urgentes: 3,
+      listas: 5,
+    });
+    expect(chips.map((c) => [c.key, c.tone, c.count])).toEqual([
+      ["urgentes", "alert", 3],
+      ["listas", "default", 5],
+      ["devolver", "default", undefined],
+      ["taller", "alert", undefined],
+    ]);
+  });
+
+  it("cada chip se cuenta con los filtros actuales y el chip encendido", () => {
+    const filters = parsePieceBoardFilters({ q: "fuente", pagina: "2" });
+    const sets = pieceChipCountFilters({ ...filters, urgent: true });
+    expect(sets[0]).toMatchObject({ key: "urgentes", active: true });
+    expect(sets[1]).toMatchObject({
+      key: "listas",
+      active: false,
+      filters: { q: "fuente", urgent: true, ready: true, page: 1 },
+    });
+    expect(sets[3]!.filters.minDays).toBe(7);
+    expect(
+      restorationChipCountFilters(parseRestorationFilters({}), {
+        showMoney: false,
+      }).map((c) => c.key),
     ).toEqual(["parcialmente-aprobadas", "listas", "whatsapp"]);
   });
 });

@@ -67,7 +67,6 @@ test.describe("Listado de restauraciones", () => {
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("option", { name: "Parcialmente lista" }).click();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/estado=parcialmente_lista/);
     await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
     await expect(
@@ -80,7 +79,6 @@ test.describe("Listado de restauraciones", () => {
     await page.getByLabel("Estado de pago").click();
     await page.getByRole("option", { name: "Pagado" }).click();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/pago=pagado/);
     await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
     await expect(
@@ -110,7 +108,6 @@ test.describe("Listado de restauraciones", () => {
     await expect(page.getByLabel("Estado", { exact: true })).toContainText(
       "2 seleccionados",
     );
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/estado=parcialmente_lista&estado=lista/);
     await expect(page.getByTestId(`restauracion-${codes[0]}`)).toBeVisible();
     await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
@@ -122,7 +119,6 @@ test.describe("Listado de restauraciones", () => {
   test("busca por código", async ({ page }) => {
     await page.goto("/restauraciones");
     await page.getByLabel("Código, cliente o documento").fill(codes[5]!);
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page.getByTestId(`restauracion-${codes[5]}`)).toBeVisible();
     await expect(
       page.getByText("1 restauración · Página 1 de 1"),
@@ -220,10 +216,9 @@ test.describe("Listado de restauraciones", () => {
       page.getByRole("navigation", { name: "Paginación" }),
     ).toHaveCount(0);
 
-    // Filtrar mantiene la vista kanban.
+    // Los filtros se aplican solos y mantienen la vista kanban.
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("option", { name: "Lista", exact: true }).click();
-    await page.getByRole("button", { name: "Filtrar" }).click();
     await expect(page).toHaveURL(/estado=lista.*vista=kanban/);
     await expect(page.getByTestId(`tarjeta-${codes[1]}`)).toBeVisible();
     await expect(page.getByTestId(`tarjeta-${codes[0]}`)).toHaveCount(0);

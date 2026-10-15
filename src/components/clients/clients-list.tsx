@@ -77,13 +77,16 @@ export function ClientsList({
   clients,
   canRetry,
   emptyMessage = "Aún no hay clientes registrados.",
+  empty,
 }: {
   clients: ClientListItem[];
   canRetry: boolean;
   emptyMessage?: string;
+  /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
+  empty?: React.ReactNode;
 }) {
   if (clients.length === 0) {
-    return <EmptyState>{emptyMessage}</EmptyState>;
+    return empty ?? <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (

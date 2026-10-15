@@ -1,9 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
+import { FilterFormActions } from "@/components/filter-form-actions";
+import { useLiveFilters } from "@/components/use-live-filters";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,25 +21,23 @@ import {
 
 const ALL = "todos";
 
-/** Búsqueda y filtros del listado de cotizaciones de WhatsApp (se guardan en la URL). */
+/** Búsqueda y filtros de las cotizaciones de WhatsApp (en la URL; se aplican solos). */
 export function WhatsappQuotesFiltersForm({
   filters,
 }: {
   filters: WhatsappQuoteFilters;
 }) {
-  const router = useRouter();
-  const [state, setState] = useState(filters);
-  const set = (patch: Partial<WhatsappQuoteFilters>) =>
-    setState((s) => ({ ...s, ...patch }));
+  const { state, update, reset, submit, pending } = useLiveFilters(
+    filters,
+    (f) => whatsappQuoteFiltersHref(f, { page: 1 }),
+  );
+  const set = (patch: Partial<WhatsappQuoteFilters>) => update(patch);
 
   return (
     <form
       aria-label="Filtros de cotizaciones de WhatsApp"
       className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_repeat(2,minmax(0,1fr))_auto]"
-      onSubmit={(event) => {
-        event.preventDefault();
-        router.push(whatsappQuoteFiltersHref(state, { page: 1 }));
-      }}
+      onSubmit={submit}
     >
       <div className="space-y-1.5">
         <Label htmlFor="filtro-texto">
@@ -53,7 +49,7 @@ export function WhatsappQuotesFiltersForm({
           value={state.q}
           maxLength={100}
           placeholder="p. ej. fuente ovalada"
-          onChange={(e) => set({ q: e.target.value })}
+          onChange={(e) => update({ q: e.target.value }, { debounce: true })}
         />
       </div>
       <div className="space-y-1.5">
@@ -97,18 +93,10 @@ export function WhatsappQuotesFiltersForm({
           onChange={(e) => set({ to: e.target.value || null })}
         />
       </div>
-      <div className="flex items-end gap-2">
-        <Button type="submit">Filtrar</Button>
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() =>
-            router.push(whatsappQuoteFiltersHref(parseWhatsappQuoteFilters({})))
-          }
-        >
-          Limpiar
-        </Button>
-      </div>
+      <FilterFormActions
+        pending={pending}
+        onReset={() => reset(parseWhatsappQuoteFilters({}))}
+      />
     </form>
   );
 }
