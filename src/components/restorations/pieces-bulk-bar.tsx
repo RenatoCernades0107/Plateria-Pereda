@@ -135,8 +135,8 @@ export function PiecesBulkBar({
   /** Piezas que se pueden elegir, para el contador "N de M". */
   total?: number;
   /**
-   * Selector "Taller" + "Asignar taller" en la barra. La tabla de piezas lo apaga
-   * porque tiene su propio botón «Cambiar taller».
+   * Selector "Taller" + "Asignar taller" en la barra. La tabla de piezas lo apaga:
+   * allí el taller se asigna con el lápiz de cada pieza sin taller.
    */
   workshopPicker?: boolean;
   /** Acciones extra de la vista (p. ej. exportar las piezas elegidas). */

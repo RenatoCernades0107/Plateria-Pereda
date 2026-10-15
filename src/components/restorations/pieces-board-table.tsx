@@ -1,27 +1,10 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Check,
-  Loader2,
-  MoreHorizontal,
-  Pencil,
-} from "lucide-react";
+import { AlertTriangle, Loader2, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,14 +12,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { navigateRow } from "@/components/clickable-row";
 import { isLongInWorkshop } from "@/domain/piece-board-filters";
@@ -45,12 +20,10 @@ import { pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
-import { assignWorkshop } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import { BoardSalePriceCell, BoardServiceCostCell } from "./piece-money-cells";
-import { BulkWorkshopButton } from "./bulk-workshop-button";
 import {
   isSelectable,
   PiecesBulkBar,
@@ -63,8 +36,9 @@ import {
   LocationBadge,
   PieceStatusBadge,
   StatusAge,
-  UrgentBadge,
+  UrgentIcon,
 } from "./status-badges";
+import { WorkshopEditButton } from "./workshop-edit-button";
 
 /** Días en el taller: columna propia, "—" si la pieza nunca fue al taller. */
 function Days({ piece }: { piece: BoardPiece }) {
@@ -96,11 +70,10 @@ function Days({ piece }: { piece: BoardPiece }) {
   );
 }
 
-const NO_WORKSHOP = "ninguno";
-
 /**
- * Taller de una fila: el nombre como texto y, para logística y el admin (P55), un
- * botón con lápiz que abre el diálogo para asignarlo o cambiarlo.
+ * Taller de una fila: el nombre como texto. Solo si la pieza aún no tiene taller,
+ * logística y el admin (P55) ven el lápiz para asignarlo; un taller ya asignado se
+ * cambia desde el detalle de la pieza.
  */
 function WorkshopCell({
   piece,
@@ -111,90 +84,17 @@ function WorkshopCell({
   workshops: WorkshopOption[];
   editable: boolean;
 }) {
-  const current = piece.workshopId ?? NO_WORKSHOP;
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(current);
-  const [pending, startTransition] = useTransition();
-  const selectId = `taller-${piece.id}`;
-
-  const name = piece.workshopName ? (
-    <span>{piece.workshopName}</span>
-  ) : (
-    <span className="text-muted-foreground">Sin taller</span>
-  );
-  if (!editable) return name;
-
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    startTransition(async () => {
-      const id = value === NO_WORKSHOP ? null : value;
-      const result = await assignWorkshop(null, [piece.id], id);
-      if ("error" in result) return void toast.error(result.error);
-      toast.success(`Taller de ${piece.code} actualizado.`);
-      setOpen(false);
-    });
-  };
-
+  if (piece.workshopId || !editable) {
+    return piece.workshopName ? (
+      <span>{piece.workshopName}</span>
+    ) : (
+      <span className="text-muted-foreground">Sin taller</span>
+    );
+  }
   return (
     <div className="flex items-center gap-1 whitespace-nowrap">
-      {name}
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (next) setValue(current);
-        }}
-      >
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="size-7 print:hidden"
-            aria-label={`Cambiar taller de ${piece.code}`}
-            title="Cambiar taller"
-          >
-            <Pencil />
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <form onSubmit={submit} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>Taller de {piece.code}</DialogTitle>
-              <DialogDescription>
-                Elige el taller que restaurará esta pieza.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={selectId}>Taller</Label>
-              <Select value={value} onValueChange={setValue}>
-                <SelectTrigger id={selectId} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_WORKSHOP}>Sin taller</SelectItem>
-                  {workshops.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancelar
-                </Button>
-              </DialogClose>
-              <Button type="submit" disabled={pending || value === current}>
-                {pending ? <Loader2 className="animate-spin" /> : null}
-                Guardar taller
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <span className="text-muted-foreground">Sin taller</span>
+      <WorkshopEditButton piece={piece} workshops={workshops} />
     </div>
   );
 }
@@ -269,8 +169,7 @@ function BoardRow({
   onToggle,
   showCost,
   showPrice,
-  editingPrices,
-  editingCosts,
+  editPrice,
   assignTaller,
   balanceDue,
 }: {
@@ -281,8 +180,7 @@ function BoardRow({
   onToggle: (on: boolean) => void;
   showCost: boolean;
   showPrice: boolean;
-  editingPrices: boolean;
-  editingCosts: boolean;
+  editPrice: boolean;
   assignTaller: boolean;
   balanceDue: boolean;
 }) {
@@ -331,13 +229,17 @@ function BoardRow({
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
         <td className={cn(cell, "max-w-48 max-md:min-w-0 max-md:flex-1")}>
-          <Link
-            href={pieceHref(piece)}
-            data-primary-link
-            className="text-heading font-medium whitespace-nowrap underline-offset-4 hover:underline"
-          >
-            {piece.code}
-          </Link>
+          {/* Urgente: solo el rayo, al costado del código. */}
+          <span className="inline-flex items-center gap-1">
+            <Link
+              href={pieceHref(piece)}
+              data-primary-link
+              className="text-heading font-medium whitespace-nowrap underline-offset-4 hover:underline"
+            >
+              {piece.code}
+            </Link>
+            {piece.urgent ? <UrgentIcon /> : null}
+          </span>
           <p className="text-muted-foreground text-xs">
             <Link
               href={`/restauraciones/${piece.restorationId}`}
@@ -348,11 +250,6 @@ function BoardRow({
             </Link>{" "}
             · {piece.clientName}
           </p>
-          {piece.urgent ? (
-            <div className="mt-1">
-              <UrgentBadge />
-            </div>
-          ) : null}
         </td>
         <td className={cn(cell, RT.full, "max-w-64 min-w-48")}>
           <p className="break-words">{piece.description}</p>
@@ -418,7 +315,6 @@ function BoardRow({
             <BoardServiceCostCell
               piece={piece}
               cents={piece.serviceCostCents}
-              editing={editingCosts}
             />
           </td>
         ) : null}
@@ -431,8 +327,7 @@ function BoardRow({
             <BoardSalePriceCell
               piece={piece}
               cents={piece.priceCents}
-              hasOrder={piece.hasOrder}
-              editing={editingPrices}
+              editable={editPrice}
             />
           </td>
         ) : null}
@@ -446,8 +341,10 @@ function BoardRow({
  * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
  * "Antes" de cada pieza y sus datos principales; logística y el admin ingresan el
  * costo de servicio y, viéndolo, el admin pone el precio de venta (D58). Ventas ve el
- * precio y logística no ve montos de venta. Selección para acciones en bloque; las
- * urgentes van primero y se resaltan las que llevan muchos días en el taller.
+ * precio y logística no ve montos de venta. El lápiz solo sale donde falta el dato
+ * (sin taller, costo o precio por definir); lo ya puesto se cambia desde el detalle
+ * de la pieza. Selección para acciones en bloque; las urgentes van primero y se
+ * resaltan las que llevan muchos días en el taller.
  */
 export function PiecesBoardTable({
   pieces,
@@ -472,8 +369,6 @@ export function PiecesBoardTable({
   const showPrice = can(role, "dinero.ver");
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");
-  const [editingPrices, setEditingPrices] = useState(false);
-  const [editingCosts, setEditingCosts] = useState(false);
 
   if (pieces.length === 0) {
     return (
@@ -498,35 +393,6 @@ export function PiecesBoardTable({
         <PiecesExportButtons pieces={chosen} showPrice={showPrice} />
       </PiecesBulkBar>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        {showPrice && editPrice ? (
-          <Button
-            size="sm"
-            variant={editingPrices ? "default" : "outline"}
-            aria-pressed={editingPrices}
-            onClick={() => setEditingPrices((on) => !on)}
-          >
-            {editingPrices ? <Check /> : <Pencil />}
-            Editar precio de venta
-          </Button>
-        ) : null}
-        {showCost ? (
-          <Button
-            size="sm"
-            variant={editingCosts ? "default" : "outline"}
-            aria-pressed={editingCosts}
-            onClick={() => setEditingCosts((on) => !on)}
-          >
-            {editingCosts ? <Check /> : <Pencil />}
-            Editar costo de servicio
-          </Button>
-        ) : null}
-        {assignTaller ? (
-          <BulkWorkshopButton
-            chosen={chosen}
-            workshops={workshops}
-            onDone={() => setSelected([])}
-          />
-        ) : null}
         {selectable.length > 0 ? (
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -596,8 +462,7 @@ export function PiecesBoardTable({
                 onToggle={(on) => toggle(piece.id, on)}
                 showCost={showCost}
                 showPrice={showPrice}
-                editingPrices={editPrice && editingPrices}
-                editingCosts={showCost && editingCosts}
+                editPrice={editPrice}
                 assignTaller={assignTaller}
                 balanceDue={balanceDue.includes(piece.restorationId)}
               />

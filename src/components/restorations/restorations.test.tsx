@@ -17,6 +17,7 @@ import {
   LocationBadge,
   PieceStatusBadge,
   UrgentBadge,
+  UrgentIcon,
   RestorationStatusBadge,
 } from "./status-badges";
 import { Timeline, type TimelineEvent } from "./timeline";
@@ -58,7 +59,20 @@ describe("insignias", () => {
     expect(screen.getByText("Rechazado (cliente)")).toHaveClass("bg-amber-900");
     expect(screen.getByText("Anulado")).toHaveClass("line-through");
     expect(screen.getByText("Anulada")).toHaveClass("line-through");
-    expect(screen.getByText("Urgente")).toHaveAttribute("data-urgent");
+    const urgent = screen.getByText("Urgente");
+    expect(urgent).toHaveAttribute("data-urgent");
+    // Amarilla como su rayo, distinta del amarillo de "Observación".
+    expect(urgent).toHaveClass("bg-amber-300");
+    expect(urgent).not.toHaveClass("bg-yellow-500");
+  });
+
+  it("en las tablas «Urgente» es solo el rayo, que se lee como «Urgente»", () => {
+    render(<UrgentIcon />);
+    const icon = screen.getByTitle("Urgente");
+    expect(icon).toHaveAttribute("data-urgent");
+    expect(icon).toHaveTextContent("Urgente");
+    expect(screen.getByText("Urgente")).toHaveClass("sr-only");
+    expect(icon.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("lo que está por WhatsApp lleva su ícono y su verde", () => {

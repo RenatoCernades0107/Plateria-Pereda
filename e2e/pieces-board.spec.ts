@@ -379,12 +379,27 @@ test.describe("Vista de piezas", () => {
     await page.goto(`/piezas?guia=${encodeURIComponent(r.code)}`);
     const adminRow = page.getByTestId(`pieza-${code}`);
     await expect(adminRow).toContainText("S/ 45.00");
-    await page.getByRole("button", { name: "Editar precio de venta" }).click();
-    await adminRow.getByLabel(`Precio de venta de ${code}`).fill("120");
+    // Con el costo ya puesto, su lápiz ya no sale en la tabla (se cambia en el detalle).
+    await expect(
+      adminRow.getByRole("button", {
+        name: `Editar costo de servicio de ${code}`,
+      }),
+    ).toHaveCount(0);
     await adminRow
-      .getByRole("button", { name: `Guardar precio de ${code}` })
+      .getByRole("button", { name: `Editar precio de venta de ${code}` })
       .click();
+    const priceDialog = page.getByRole("dialog", {
+      name: `Precio de venta de ${code}`,
+    });
+    await priceDialog.getByLabel("Precio de venta (S/)").fill("120");
+    await priceDialog.getByRole("button", { name: "Guardar precio" }).click();
     await expect(page.getByText(`Precio de ${code} guardado.`)).toBeVisible();
+    await expect(adminRow).toContainText("S/ 120.00");
+    await expect(
+      adminRow.getByRole("button", {
+        name: `Editar precio de venta de ${code}`,
+      }),
+    ).toHaveCount(0);
     const serious = async () =>
       (await makeAxeBuilder().analyze()).violations.filter((v) =>
         ["critical", "serious"].includes(v.impact ?? ""),
@@ -398,6 +413,12 @@ test.describe("Vista de piezas", () => {
     await expect(page.getByRole("region", { name: "Montos" })).toContainText(
       "S/ 120.00",
     );
+    // El taller se asigna o cambia desde el detalle de la pieza.
+    await expect(
+      page
+        .getByRole("region", { name: "Datos de la pieza" })
+        .getByRole("button", { name: `Asignar taller de ${code}` }),
+    ).toBeVisible();
     expect(await serious()).toEqual([]);
     await page.getByRole("link", { name: `Ver guía ${r.code}` }).click();
     await expect(page).toHaveURL(new RegExp(`/restauraciones/${r.id}$`));

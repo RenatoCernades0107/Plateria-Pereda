@@ -16,6 +16,7 @@ import {
 import { PieceMoneyTiles } from "@/components/restorations/piece-money-tiles";
 import { PieceStatusPanel } from "@/components/restorations/piece-status-actions";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
+import { PieceWorkshopField } from "@/components/restorations/workshop-edit-button";
 import { Button } from "@/components/ui/button";
 import { toCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
@@ -249,7 +250,20 @@ export default async function PiezaDetallePage({
             <Field label="Material">{piece.materialName || null}</Field>
             <Field label="Peso">{weight}</Field>
             <Field label="Medida">{piece.measure || null}</Field>
-            <Field label="Taller">{piece.workshopName ?? "Sin taller"}</Field>
+            <Field label="Taller">
+              {/* Aquí se cambia un taller ya asignado (en /piezas solo se asigna). */}
+              <PieceWorkshopField
+                piece={{
+                  id: piece.id,
+                  code: piece.code,
+                  status: piece.status,
+                  workshopId: piece.workshopId,
+                  workshopName: piece.workshopName,
+                }}
+                workshops={workshops.data}
+                canAssign={can(user.role, "piezas.asignar-taller")}
+              />
+            </Field>
             <Field label="Registrada">{formatDate(piece.createdAt)}</Field>
             <Field label="Llegó a la tienda">
               {piece.arrivedAt ? formatDate(piece.arrivedAt) : null}

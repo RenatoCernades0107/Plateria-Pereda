@@ -299,7 +299,8 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     ).toBeNull();
   });
 
-  it("el admin lo cambia con el lápiz de la tabla", async () => {
+  it("el admin asigna con el lápiz de la tabla el precio por definir", async () => {
+    const { setPieceSalePrice } = await import("@/server/sale-price-actions");
     const user = userEvent.setup();
     renderBoard(pieces, { role: "admin", editing: editingFor(pieces) });
     expect(screen.getByTestId("pieza-RES-00001-2")).toHaveTextContent(
@@ -307,10 +308,26 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     );
     await user.click(
       screen.getByRole("button", {
-        name: "Editar precio de venta de RES-00001-1",
+        name: "Editar precio de venta de RES-00001-2",
       }),
     );
-    expect(screen.getByLabelText("Precio de venta (S/)")).toHaveValue("120.50");
+    const input = screen.getByLabelText("Precio de venta (S/)");
+    expect(input).toHaveValue("");
+    await user.type(input, "80");
+    await user.click(screen.getByRole("button", { name: "Guardar precio" }));
+    expect(setPieceSalePrice).toHaveBeenCalledWith("p2", "80");
+  });
+
+  it("con precio asignado la tabla solo muestra el monto (se cambia en «Acciones»)", () => {
+    renderBoard(pieces, { role: "admin", editing: editingFor(pieces) });
+    expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
+      "S/ 120.50",
+    );
+    expect(
+      screen.queryByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toBeNull();
   });
 
   it("logística no ve la columna ni si faltan", () => {

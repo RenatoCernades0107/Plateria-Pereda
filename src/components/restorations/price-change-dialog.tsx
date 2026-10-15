@@ -31,15 +31,12 @@ export function PriceChangeDialog({
   piece,
   open: controlledOpen,
   onOpenChange,
-  proposedCents,
 }: {
   restorationId: string;
   piece: Pick<PieceDetail, "id" | "code" | "priceCents">;
   /** Abierto desde fuera (p. ej. el menú «Acciones» de la tabla): sin botón propio. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  /** Precio nuevo ya escrito (p. ej. en el modo «Editar precio de venta» de la tabla). */
-  proposedCents?: number;
 }) {
   const current = piece.priceCents ?? 0;
   const [ownOpen, setOwnOpen] = useState(false);
@@ -49,9 +46,7 @@ export function PriceChangeDialog({
     if (!controlled) setOwnOpen(next);
     onOpenChange?.(next);
   };
-  const [price, setPrice] = useState(
-    ((proposedCents ?? current) / 100).toFixed(2),
-  );
+  const [price, setPrice] = useState((current / 100).toFixed(2));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

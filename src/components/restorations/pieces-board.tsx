@@ -29,7 +29,7 @@ import { materialSummary, PiecePhoto } from "./piece-photo";
 import { usePieceActions } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentIcon } from "./status-badges";
 
 export { commonTransitions } from "./pieces-bulk-bar";
 
@@ -118,17 +118,16 @@ function PieceRow({
         <PiecePhoto code={piece.code} url={photoUrl} />
       </td>
       <td className={cn(CELL, "whitespace-nowrap")}>
-        <Link
-          href={pieceHref(piece)}
-          className="text-heading font-medium underline-offset-4 hover:underline"
-        >
-          {piece.code}
-        </Link>
-        {live.urgent ? (
-          <div className="mt-1">
-            <UrgentBadge />
-          </div>
-        ) : null}
+        {/* Urgente: solo el rayo, al costado del código. */}
+        <span className="inline-flex items-center gap-1">
+          <Link
+            href={pieceHref(piece)}
+            className="text-heading font-medium underline-offset-4 hover:underline"
+          >
+            {piece.code}
+          </Link>
+          {live.urgent ? <UrgentIcon /> : null}
+        </span>
       </td>
       <td className={cn(CELL, RT.full, "min-w-44")}>
         <p className="break-words">{piece.description}</p>
@@ -145,7 +144,9 @@ function PieceRow({
       </td>
       {showPrice ? (
         <td className={cn(LABELED, "md:text-right")} data-label="Precio venta">
-          {editPrice ? (
+          {/* Lápiz solo con el precio por definir; uno ya asignado se cambia desde
+              «Acciones» o el detalle de la pieza. */}
+          {editPrice && piece.priceCents === null ? (
             <SalePriceCell
               piece={{ id: piece.id, code: piece.code, restorationId }}
               cents={piece.priceCents}
