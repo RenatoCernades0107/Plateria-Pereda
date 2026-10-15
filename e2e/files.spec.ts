@@ -93,12 +93,10 @@ test.describe("Fotos y archivos", () => {
     await expect(page.getByText("Archivo subido.")).toBeVisible();
 
     const piece = page.getByRole("region", { name: `${r.code}-1 · Fuente` });
-    await expect(
-      piece.getByRole("heading", { name: "Antes (2)" }),
-    ).toBeVisible();
-    await expect(
-      piece.getByRole("heading", { name: "Documento (1)" }),
-    ).toBeVisible();
+    await expect(piece.getByRole("group", { name: "Antes (2)" })).toBeVisible();
+    await expect(piece.getByRole("list", { name: "Archivos" })).toContainText(
+      "guia.pdf",
+    );
     await expect(page.getByRole("tab", { name: "Archivos (3)" })).toBeVisible();
 
     // Con una foto «Después» se puede comparar.
@@ -120,9 +118,7 @@ test.describe("Fotos y archivos", () => {
     await viewer.getByRole("button", { name: "Borrar" }).click();
     await viewer.getByRole("button", { name: "Confirmar: borrar" }).click();
     await expect(page.getByText("Archivo borrado.")).toBeVisible();
-    await expect(piece.getByRole("heading", { name: /Documento/ })).toHaveCount(
-      0,
-    );
+    await expect(piece.getByRole("list", { name: "Archivos" })).toHaveCount(0);
   });
 
   test("en el detalle de la pieza el destino es fijo, la foto se ve al lado y se borra", async ({
@@ -209,11 +205,12 @@ test.describe("Fotos y archivos", () => {
     await page.getByLabel("Archivos a subir").setInputFiles(png("pieza.png"));
     const piece = page.getByRole("region", { name: `${r.code}-1 · Fuente` });
     await expect(
-      piece.getByRole("heading", { name: "Antes (1)" }),
+      piece.getByRole("button", { name: "Ver pieza.png" }),
     ).toBeVisible();
 
     // Un archivo que subió ventas (en la primera restauración): logística no lo borra.
     await openFiles(page, restorationIds[0]!);
+    await page.getByRole("button", { name: "Mostrar antes-1.png" }).click();
     await page.getByRole("button", { name: "Ver antes-1.png" }).click();
     await expect(
       page.getByRole("dialog").getByRole("button", { name: "Borrar" }),

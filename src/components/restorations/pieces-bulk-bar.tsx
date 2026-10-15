@@ -119,6 +119,7 @@ export function PiecesBulkBar({
   onDone,
   statusPicker = false,
   total = chosen.length,
+  workshopPicker = true,
   children,
 }: {
   restorationId: string | null;
@@ -133,6 +134,11 @@ export function PiecesBulkBar({
   statusPicker?: boolean;
   /** Piezas que se pueden elegir, para el contador "N de M". */
   total?: number;
+  /**
+   * Selector "Taller" + "Asignar taller" en la barra. La tabla de piezas lo apaga
+   * porque tiene su propio botón «Cambiar taller».
+   */
+  workshopPicker?: boolean;
   /** Acciones extra de la vista (p. ej. exportar las piezas elegidas). */
   children?: React.ReactNode;
 }) {
@@ -148,6 +154,7 @@ export function PiecesBulkBar({
   const bulkReceive = every((p) => canReceiveFromWorkshop(p, role));
   const bulkReturn = every((p) => canReturnToClient(p, role));
   const bulkAssign =
+    workshopPicker &&
     can(role, "piezas.asignar-taller") &&
     chosen.length > 0 &&
     chosen.every((p) => !WORKSHOP_LOCKED.includes(p.status));

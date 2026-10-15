@@ -118,9 +118,7 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
     await expect(page).toHaveURL(/\/piezas\/[0-9a-f-]{36}$/, {
       timeout: 30_000,
     });
-    await expect(
-      page.getByRole("heading", { level: 1, name: approvedCode }),
-    ).toBeVisible();
+    await expect(page.getByTestId("rotulo-pieza")).toContainText(approvedCode);
     await page.getByRole("link", { name: /Ver guía RES-/ }).click();
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId(`pieza-${approvedCode}`)).toBeVisible();

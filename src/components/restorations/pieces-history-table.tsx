@@ -140,7 +140,7 @@ export function PiecesHistoryTable({
               ) : null}
               {showPrice ? (
                 <td className={cn(cell, "text-right")}>
-                  <Money cents={piece.priceCents} empty="Sin asignar" />
+                  <Money cents={piece.priceCents} empty="Por definir" />
                 </td>
               ) : null}
               <td className={cn(cell, "text-muted-foreground max-w-40")}>

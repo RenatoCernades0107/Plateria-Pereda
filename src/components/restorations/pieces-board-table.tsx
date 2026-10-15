@@ -50,7 +50,8 @@ import { assignWorkshop } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
 import { materialSummary, PiecePhoto } from "./piece-photo";
-import { BoardSalePriceCell, ServiceCostCell } from "./piece-money-cells";
+import { BoardSalePriceCell, BoardServiceCostCell } from "./piece-money-cells";
+import { BulkWorkshopButton } from "./bulk-workshop-button";
 import {
   isSelectable,
   PiecesBulkBar,
@@ -271,6 +272,7 @@ function BoardRow({
   showCost,
   showPrice,
   editingPrices,
+  editingCosts,
   assignTaller,
   balanceDue,
 }: {
@@ -282,6 +284,7 @@ function BoardRow({
   showCost: boolean;
   showPrice: boolean;
   editingPrices: boolean;
+  editingCosts: boolean;
   assignTaller: boolean;
   balanceDue: boolean;
 }) {
@@ -414,7 +417,11 @@ function BoardRow({
             data-label="Costo servicio"
             data-row-click="ignore"
           >
-            <ServiceCostCell piece={piece} cents={piece.serviceCostCents} />
+            <BoardServiceCostCell
+              piece={piece}
+              cents={piece.serviceCostCents}
+              editing={editingCosts}
+            />
           </td>
         ) : null}
         {showPrice ? (
@@ -468,6 +475,7 @@ export function PiecesBoardTable({
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");
   const [editingPrices, setEditingPrices] = useState(false);
+  const [editingCosts, setEditingCosts] = useState(false);
 
   if (pieces.length === 0) {
     return <EmptyState>No hay piezas con esos filtros.</EmptyState>;
@@ -483,10 +491,11 @@ export function PiecesBoardTable({
         role={role}
         workshops={workshops}
         onDone={() => setSelected([])}
+        workshopPicker={false}
       >
         <PiecesExportButtons pieces={chosen} showPrice={showPrice} />
       </PiecesBulkBar>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {showPrice && editPrice ? (
           <Button
             size="sm"
@@ -495,8 +504,26 @@ export function PiecesBoardTable({
             onClick={() => setEditingPrices((on) => !on)}
           >
             {editingPrices ? <Check /> : <Pencil />}
-            {editingPrices ? "Terminar edición" : "Editar precios"}
+            Editar precio de venta
           </Button>
+        ) : null}
+        {showCost ? (
+          <Button
+            size="sm"
+            variant={editingCosts ? "default" : "outline"}
+            aria-pressed={editingCosts}
+            onClick={() => setEditingCosts((on) => !on)}
+          >
+            {editingCosts ? <Check /> : <Pencil />}
+            Editar costo de servicio
+          </Button>
+        ) : null}
+        {assignTaller ? (
+          <BulkWorkshopButton
+            chosen={chosen}
+            workshops={workshops}
+            onDone={() => setSelected([])}
+          />
         ) : null}
         {selectable.length > 0 ? (
           <label className="flex items-center gap-2 text-sm">
@@ -568,6 +595,7 @@ export function PiecesBoardTable({
                 showCost={showCost}
                 showPrice={showPrice}
                 editingPrices={editPrice && editingPrices}
+                editingCosts={showCost && editingCosts}
                 assignTaller={assignTaller}
                 balanceDue={balanceDue.includes(piece.restorationId)}
               />

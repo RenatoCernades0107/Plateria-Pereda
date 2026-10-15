@@ -159,7 +159,7 @@ function PieceRow({
               className="text-muted-foreground"
               data-testid="precio-sin-asignar"
             >
-              Sin asignar
+              Por definir
             </span>
           ) : (
             <span className="tabular-nums">

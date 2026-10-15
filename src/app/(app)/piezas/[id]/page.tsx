@@ -1,10 +1,11 @@
-import { ArrowLeft, ClipboardList } from "lucide-react";
+import { ArrowLeft, ClipboardList, Images } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
-import { FilesPanel } from "@/components/files/files-panel";
+import { FileGallery } from "@/components/files/file-gallery";
+import { FileUploader } from "@/components/files/file-uploader";
 import {
   PIECE_ACCENT_CLASS,
   PieceEyebrow,
@@ -13,15 +14,11 @@ import {
   LogisticsPieceSummary,
   PieceTimelineStrip,
 } from "@/components/restorations/piece-history";
-import {
-  SalePriceCell,
-  ServiceCostCell,
-} from "@/components/restorations/piece-money-cells";
+import { PieceMoneyTiles } from "@/components/restorations/piece-money-tiles";
 import { PieceStatusPanel } from "@/components/restorations/piece-status-actions";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
 import { Button } from "@/components/ui/button";
-import { IGV_PERCENT, priceWithIgv } from "@/domain/igv";
-import { formatCents, toCents } from "@/domain/money";
+import { toCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -44,10 +41,14 @@ export async function generateMetadata({
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const CARD_CLASS = "bg-card rounded-lg border p-4 shadow-xs sm:p-5";
+
 /**
- * Detalle completo de una pieza (P55): sus datos, estado y acciones, montos según el
- * rol, línea de tiempo (horizontal, siempre a la vista) y fotos, con un acceso
- * explícito a su guía (la restauración). En pantallas anchas va en columnas.
+ * Detalle completo de una pieza (P55). En pantallas anchas, lo esencial cabe sin
+ * desplazarse: a la izquierda (~40 %) las fotos; a la derecha (~60 %) la cabecera
+ * (código, descripción, cliente y guía), el estado, las acciones, los montos y los
+ * datos de la pieza. Debajo, lo secundario: la historia y la subida de archivos.
+ * En el celular va en una columna: cabecera, acciones, montos, fotos y datos.
  */
 export default async function PiezaDetallePage({
   params,
@@ -93,20 +94,16 @@ export default async function PiezaDetallePage({
   if (cost.error) throw cost.error;
   const costCents = cost.data === null ? null : toCents(Number(cost.data));
   const pieceFiles = files.filter((f) => f.pieceId === piece.id);
+  // Destino fijo: lo que se sube aquí es de esta pieza (no se elige "Para").
   const fileTargets = [
     { id: piece.id, label: `${piece.code} · ${piece.description}` },
   ];
+  const canUpload = can(user.role, "fotos.subir");
   const info = logistics?.get(piece.id);
   const weight =
     piece.weightGrams === null
       ? null
       : `${piece.weightGrams.toLocaleString("es-PE")} g`;
-  const moneyPiece = {
-    id: piece.id,
-    code: piece.code,
-    restorationId: restoration.id,
-  };
-
   const showMoney = canSeeCost || canSeeMoney;
 
   return (
@@ -119,90 +116,142 @@ export default async function PiezaDetallePage({
         </Link>
       </Button>
 
-      {/* Cabecera: en pantallas anchas, título a la izquierda y estado/acciones al lado. */}
-      <section
-        className={cn(
-          "bg-card grid gap-4 rounded-lg border p-4 shadow-xs lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-6",
-          PIECE_ACCENT_CLASS,
-        )}
-        aria-labelledby="titulo-pieza"
-      >
-        <div className="min-w-0 space-y-2">
-          <div className="space-y-0.5">
-            <PieceEyebrow number={piece.number} code={piece.code} />
-            <h1
-              id="titulo-pieza"
-              className="text-heading text-2xl font-semibold tracking-tight"
-            >
-              {piece.code}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              {restoration.client.name}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Acceso explícito a la guía (la restauración) de la pieza. */}
-            <Button asChild size="sm">
+      {/*
+        Encima del pliegue. En escritorio: fotos a la izquierda (abarcan las dos filas)
+        y, a la derecha, la cabecera arriba y los datos debajo. En el celular el orden
+        del DOM manda: cabecera (con acciones y montos), fotos y datos.
+      */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[auto_1fr] lg:gap-5">
+        <section
+          className={cn(CARD_CLASS, PIECE_ACCENT_CLASS, "lg:col-start-2")}
+          aria-labelledby="titulo-pieza"
+        >
+          <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+            <div className="min-w-0 space-y-1.5">
+              <PieceEyebrow number={piece.number} code={piece.code} />
+              <h1
+                id="titulo-pieza"
+                className="text-heading text-2xl font-semibold tracking-tight text-balance"
+              >
+                {piece.description}
+              </h1>
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm">
+                <Link
+                  href={`/clientes/${restoration.client.id}`}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {restoration.client.name}
+                </Link>
+                <span className="text-muted-foreground" aria-hidden>
+                  ·
+                </span>
+                <span className="text-muted-foreground">
+                  Guía {restoration.code}
+                </span>
+                <RestorationStatusBadge
+                  status={restoration.status}
+                  className="ml-0.5"
+                />
+              </p>
+            </div>
+            {/* Navegación, no acción: botón secundario para no competir con la principal. */}
+            <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link href={`/restauraciones/${restoration.id}`}>
                 <ClipboardList />
                 Ver guía {restoration.code}
               </Link>
             </Button>
-            <span className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-sm">
-              Estado de la guía:{" "}
-              <RestorationStatusBadge status={restoration.status} />
-            </span>
-          </div>
-        </div>
+          </header>
 
-        <div className="min-w-0 lg:border-l lg:pl-6">
           <PieceStatusPanel
+            className="mt-4 border-t pt-4"
             restorationId={restoration.id}
             piece={piece}
             role={user.role}
             workshops={workshops.data}
             balanceDue={balanceDue}
           />
-        </div>
-      </section>
 
-      {/* Historia siempre a la vista, en horizontal, justo bajo la cabecera. */}
-      {canSeeMoney ? (
-        <PieceTimelineStrip
-          piece={piece}
-          events={history.filter((e) => e.pieceId === piece.id)}
-          now={new Date()}
-        />
-      ) : (
-        <section
-          className="bg-card space-y-2 rounded-lg border p-3 sm:p-4"
-          aria-labelledby="historia-pieza"
-        >
-          <h2 id="historia-pieza" className="text-heading font-semibold">
-            Historia
-          </h2>
-          {info ? (
-            <LogisticsPieceSummary info={info} />
-          ) : (
-            <p className="text-muted-foreground text-sm">Sin movimientos.</p>
-          )}
+          {showMoney ? (
+            <section
+              className="mt-4 space-y-2 border-t pt-4"
+              aria-labelledby="montos-pieza"
+            >
+              <h2
+                id="montos-pieza"
+                className="text-muted-foreground text-xs font-medium"
+              >
+                Montos
+              </h2>
+              <PieceMoneyTiles
+                piece={{
+                  id: piece.id,
+                  code: piece.code,
+                  restorationId: restoration.id,
+                }}
+                sale={
+                  canSeeMoney
+                    ? {
+                        cents: piece.priceCents,
+                        hasOrder: restoration.hasOrder,
+                        editable: can(user.role, "piezas.precio-venta"),
+                        pricesIncludeIgv:
+                          restoration.money?.pricesIncludeIgv ?? null,
+                      }
+                    : null
+                }
+                costCents={canSeeCost ? costCents : undefined}
+                guide={
+                  restoration.money
+                    ? {
+                        totalCents: restoration.money.totalCents,
+                        paidCents: restoration.money.paidCents,
+                      }
+                    : null
+                }
+              />
+            </section>
+          ) : null}
         </section>
-      )}
 
-      <div
-        className={cn(
-          "grid items-start gap-4",
-          showMoney && "lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]",
-        )}
-      >
-        <section className="space-y-2" aria-labelledby="datos-pieza">
+        <section
+          className={cn(
+            CARD_CLASS,
+            "space-y-3 lg:col-start-1 lg:row-span-2 lg:row-start-1",
+          )}
+          aria-labelledby="fotos-pieza"
+        >
+          <h2
+            id="fotos-pieza"
+            className="text-heading flex items-center gap-1.5 font-semibold"
+          >
+            <Images aria-hidden className="size-4" />
+            Fotos y archivos
+            {pieceFiles.length > 0 ? (
+              <span className="text-muted-foreground font-normal">
+                ({pieceFiles.length})
+              </span>
+            ) : null}
+          </h2>
+          <FileGallery
+            files={pieceFiles}
+            targets={fileTargets}
+            currentUserId={user.id}
+            isAdmin={user.role === "admin"}
+            emptyText="La pieza aún no tiene fotos."
+            className="min-w-0"
+            showTargetLabels={false}
+          />
+        </section>
+
+        <section
+          className={cn(CARD_CLASS, "space-y-3 lg:col-start-2")}
+          aria-labelledby="datos-pieza"
+        >
           <h2 id="datos-pieza" className="text-heading font-semibold">
             Datos de la pieza
           </h2>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5 rounded-lg border p-3 text-sm sm:p-4 xl:grid-cols-3">
-            <Field label="Descripción" wide>
-              {piece.description}
-            </Field>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
             <Field label="Servicio">{piece.serviceName || null}</Field>
             <Field label="Material">{piece.materialName || null}</Field>
             <Field label="Peso">{weight}</Field>
@@ -220,68 +269,48 @@ export default async function PiezaDetallePage({
             </Field>
           </dl>
         </section>
-
-        {showMoney ? (
-          <section className="space-y-2" aria-labelledby="montos-pieza">
-            <h2 id="montos-pieza" className="text-heading font-semibold">
-              Montos
-            </h2>
-            <dl className="grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-2 sm:p-4 lg:grid-cols-1">
-              {canSeeCost ? (
-                <div className="space-y-1">
-                  <dt className="text-muted-foreground">Costo de servicio</dt>
-                  <dd className="flex">
-                    <ServiceCostCell
-                      piece={moneyPiece}
-                      cents={costCents}
-                      align="start"
-                    />
-                  </dd>
-                </div>
-              ) : null}
-              {canSeeMoney ? (
-                <div className="space-y-1">
-                  <dt className="text-muted-foreground">Precio de venta</dt>
-                  <dd className="flex flex-col items-start gap-1">
-                    <SalePriceCell
-                      piece={moneyPiece}
-                      cents={piece.priceCents}
-                      hasOrder={restoration.hasOrder}
-                      editable={can(user.role, "piezas.precio-venta")}
-                      align="start"
-                    />
-                    {restoration.money && piece.priceCents !== null ? (
-                      <span className="text-muted-foreground text-xs">
-                        {restoration.money.pricesIncludeIgv
-                          ? "IGV incluido"
-                          : `Con IGV (${IGV_PERCENT} %): ${formatCents(
-                              priceWithIgv(piece.priceCents, false),
-                            )}`}
-                      </span>
-                    ) : null}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
-        ) : null}
       </div>
 
-      <section className="space-y-2" aria-labelledby="fotos-pieza">
-        <h2 id="fotos-pieza" className="text-heading font-semibold">
-          Fotos y archivos
-        </h2>
-        {/* Destino fijo: lo que se sube aquí es de esta pieza (no se elige "Para"). */}
-        <FilesPanel
-          restorationId={restoration.id}
-          files={pieceFiles}
-          targets={fileTargets}
-          canUpload={can(user.role, "fotos.subir")}
-          currentUserId={user.id}
-          isAdmin={user.role === "admin"}
-          emptyText="La pieza aún no tiene fotos."
-        />
-      </section>
+      {/* Debajo del pliegue: historia y subida de archivos. */}
+      <div
+        className={cn(
+          "grid items-start gap-4 lg:gap-5",
+          canUpload && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+        )}
+      >
+        <div className={cn("min-w-0", canUpload && "lg:col-start-2")}>
+          {canSeeMoney ? (
+            <PieceTimelineStrip
+              piece={piece}
+              events={history.filter((e) => e.pieceId === piece.id)}
+              now={new Date()}
+            />
+          ) : (
+            <section
+              className="bg-card space-y-2 rounded-lg border p-3 sm:p-4"
+              aria-labelledby="historia-pieza"
+            >
+              <h2 id="historia-pieza" className="text-heading font-semibold">
+                Historia
+              </h2>
+              {info ? (
+                <LogisticsPieceSummary info={info} />
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  Sin movimientos.
+                </p>
+              )}
+            </section>
+          )}
+        </div>
+        {canUpload ? (
+          <FileUploader
+            restorationId={restoration.id}
+            targets={fileTargets}
+            className="bg-card min-w-0 lg:col-start-1 lg:row-start-1"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -296,8 +325,8 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-0.5", wide && "col-span-2 xl:col-span-3")}>
-      <dt className="text-muted-foreground">{label}</dt>
+    <div className={cn("min-w-0 space-y-0.5", wide && "col-span-full")}>
+      <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
       <dd className="break-words whitespace-pre-wrap">
         {children ?? <span className="text-muted-foreground">—</span>}
       </dd>

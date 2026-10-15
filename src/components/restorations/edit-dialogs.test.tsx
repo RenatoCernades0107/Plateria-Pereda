@@ -215,7 +215,7 @@ describe("PieceDialog: taller (D60)", () => {
 });
 
 describe("PieceDialog: precio de venta sin asignar (D58)", () => {
-  it("una pieza sin precio muestra «Sin asignar» y se guarda sin precio", async () => {
+  it("una pieza sin precio muestra «Por definir» y se guarda sin precio", async () => {
     const user = userEvent.setup();
     render(
       <PieceDialog
@@ -230,7 +230,7 @@ describe("PieceDialog: precio de venta sin asignar (D58)", () => {
     const dialog = screen.getByRole("dialog");
     const price = within(dialog).getByLabelText("Precio (S/)");
     expect(price).toHaveValue("");
-    expect(price).toHaveAttribute("placeholder", "Sin asignar");
+    expect(price).toHaveAttribute("placeholder", "Por definir");
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),
     );
