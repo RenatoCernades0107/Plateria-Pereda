@@ -18,7 +18,11 @@ import {
  */
 type MoveSnapshot = Pick<
   PieceSnapshot,
-  "status" | "arrivedAt" | "readyForDelivery"
+  | "status"
+  | "arrivedAt"
+  | "readyForDelivery"
+  | "reviewSentAt"
+  | "reviewReturnedAt"
 >;
 
 /** Estados a los que el rol puede mover la pieza ahora. */

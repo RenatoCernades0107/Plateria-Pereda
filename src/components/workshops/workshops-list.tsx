@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,9 +91,9 @@ function Contact({ workshop }: { workshop: WorkshopRow }) {
 export function WorkshopsList({ workshops }: { workshops: WorkshopRow[] }) {
   if (workshops.length === 0) {
     return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
+      <EmptyState>
         Aún no hay talleres. Crea el primero con &quot;Nuevo taller&quot;.
-      </p>
+      </EmptyState>
     );
   }
 

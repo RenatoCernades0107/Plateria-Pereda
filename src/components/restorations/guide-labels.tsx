@@ -5,16 +5,23 @@ import { cn } from "@/lib/utils";
 /**
  * Ayudas visuales para distinguir la guía (la restauración RES-xxxxx) de sus piezas
  * (RES-xxxxx-1, -2…). Usan los mismos íconos que el menú: la guía con el de
- * Restauraciones y la pieza con el de Piezas. La guía lleva un acento arriba y cada
- * pieza uno a la izquierda, como hija de la guía.
+ * Restauraciones y la pieza con el de Piezas. La guía va sobre un fondo cálido tenue
+ * (`bg-guide`) con un acento arriba; cada pieza, en blanco con un acento a la
+ * izquierda, como hoja de la guía.
  */
 
-/** Superficie de la guía: tarjeta con acento de marca arriba. */
+/** Superficie de la guía: fondo cálido tenue y acento de marca arriba. */
 export const GUIDE_CARD_CLASS =
-  "bg-card rounded-lg border border-t-4 border-t-primary/70 p-4 shadow-xs sm:p-5";
+  "bg-guide rounded-lg border border-t-4 border-t-primary/70 p-4 shadow-xs sm:p-5";
+
+/** Superficie de la guía sin acento (p. ej., el formulario que la registra). */
+export const GUIDE_SURFACE_CLASS = "bg-guide rounded-lg border p-4 sm:p-5";
 
 /** Acento de una pieza (lista y kanban del detalle). */
 export const PIECE_ACCENT_CLASS = "border-l-4 border-l-primary/60";
+
+/** Tarjeta de una pieza (su ficha): blanca, con el acento de pieza a la izquierda. */
+export const PIECE_CARD_CLASS = `bg-card rounded-lg border p-4 shadow-xs sm:p-5 ${PIECE_ACCENT_CLASS}`;
 
 const EYEBROW_CLASS =
   "text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase [&>svg]:size-3.5 [&>svg]:shrink-0";

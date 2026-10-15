@@ -1,5 +1,6 @@
 import { Pencil, Users } from "lucide-react";
 
+import { EmptyState } from "@/components/empty-state";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
@@ -109,10 +110,10 @@ export function ContactsSection({
         ) : null}
       </div>
       {client.contacts.length === 0 ? (
-        <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
+        <EmptyState>
           <Users className="mx-auto mb-2 size-5" aria-hidden />
           Esta empresa aún no tiene contactos.
-        </p>
+        </EmptyState>
       ) : (
         <>
           <div className="hidden rounded-md border md:block">

@@ -150,6 +150,8 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
       lastSentAt,
       lastReturnedAt,
       returnedAt,
+      reviewSentAt,
+      reviewReturnedAt,
       expected,
     }) => {
       expect(
@@ -160,6 +162,8 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
           lastSentAt: date(lastSentAt),
           lastReturnedAt: date(lastReturnedAt),
           returnedAt: date(returnedAt),
+          reviewSentAt: date(reviewSentAt),
+          reviewReturnedAt: date(reviewReturnedAt),
         }),
       ).toBe(expected);
     },

@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { PiecesHistoryFiltersForm } from "@/components/restorations/pieces-history-filters-form";
 import { PiecesHistoryTable } from "@/components/restorations/pieces-history-table";
@@ -60,35 +61,13 @@ export default async function PiezasHistorialPage({
         showCost={can(user.role, "piezas.costo-servicio")}
         showPrice={can(user.role, "dinero.ver")}
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 pieza" : `${total} piezas`} · Página {filters.page}{" "}
-          de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={pieceHistoryHref(filters, { page: filters.page - 1 })}
-              >
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={pieceHistoryHref(filters, { page: filters.page + 1 })}
-              >
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      <Pagination
+        page={filters.page}
+        pages={pages}
+        total={total}
+        noun={["pieza", "piezas"]}
+        hrefFor={(page) => pieceHistoryHref(filters, { page })}
+      />
     </div>
   );
 }

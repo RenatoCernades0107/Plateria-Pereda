@@ -72,6 +72,7 @@ import {
   updateWhatsappQuote,
 } from "@/server/whatsapp-quotes/actions";
 
+import { GUIDE_SURFACE_CLASS, PIECE_ACCENT_CLASS } from "./guide-labels";
 import { IgvField } from "./igv-field";
 import { PieceFields, type CatalogOption } from "./piece-fields";
 
@@ -179,7 +180,12 @@ function PieceCard({
 
   return (
     <li
-      className={cn("rounded-lg border", errors && "border-destructive")}
+      // Cada pieza en blanco con el acento de pieza, sobre el fondo de la guía.
+      className={cn(
+        "bg-card rounded-lg border",
+        PIECE_ACCENT_CLASS,
+        errors && "border-destructive",
+      )}
       data-testid={`pieza-${index + 1}`}
     >
       <div className="flex items-center gap-2 p-3">
@@ -668,7 +674,12 @@ export function RestorationForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6" noValidate>
+      {/* El formulario es la guía: va sobre su fondo y sus piezas en blanco. */}
+      <form
+        onSubmit={onSubmit}
+        className={cn(GUIDE_SURFACE_CLASS, "space-y-6")}
+        noValidate
+      >
         {error ? <FormAlert>{error}</FormAlert> : null}
 
         {mode.kind === "nueva" ? (
@@ -797,7 +808,7 @@ export function RestorationForm({
                 ? "Puedes ajustar el precio o agregar piezas nuevas abajo."
                 : "Las piezas pedidas conservan el precio cotizado; las nuevas quedan sin precio de venta hasta que lo asigne el administrador."}
             </p>
-            <ul className="divide-y rounded-lg border">
+            <ul className="bg-card divide-y rounded-lg border">
               {mode.quote.items.map((item) => (
                 <li key={item.id} className="flex items-start gap-3 p-3">
                   <input

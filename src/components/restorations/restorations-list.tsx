@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/empty-state";
 import { WhatsAppBadge } from "@/components/whatsapp-badge";
 import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
@@ -71,18 +72,17 @@ export function RestorationsList({
   filters,
   showMoney,
   emptyMessage,
+  emptyAction,
 }: {
   items: RestorationListItem[];
   filters: RestorationFilters;
   showMoney: boolean;
   emptyMessage: string;
+  /** Salida del vacío: limpiar los filtros o registrar la primera. */
+  emptyAction?: React.ReactNode;
 }) {
   if (items.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState action={emptyAction}>{emptyMessage}</EmptyState>;
   }
   return (
     <>

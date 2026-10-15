@@ -1,9 +1,17 @@
 "use client";
 
-import { ChevronDown, ChevronRight, Loader2, Pencil, Tag } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Tag,
+} from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
+import { EmptyState } from "@/components/empty-state";
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +37,7 @@ import { materialSummary, PiecePhoto } from "./piece-photo";
 import { usePieceActions } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentIcon } from "./status-badges";
 
 export { commonTransitions } from "./pieces-bulk-bar";
 
@@ -118,19 +126,18 @@ function PieceRow({
         <PiecePhoto code={piece.code} url={photoUrl} />
       </td>
       <td className={cn(CELL, "whitespace-nowrap")}>
-        <Link
-          href={pieceHref(piece)}
-          className="text-heading font-medium underline-offset-4 hover:underline"
-        >
-          {piece.code}
-        </Link>
-        {live.urgent ? (
-          <div className="mt-1">
-            <UrgentBadge />
-          </div>
-        ) : null}
+        {/* Urgente: solo el rayo, al costado del código. */}
+        <span className="inline-flex items-center gap-1">
+          <Link
+            href={pieceHref(piece)}
+            className="text-heading font-medium underline-offset-4 hover:underline"
+          >
+            {piece.code}
+          </Link>
+          {live.urgent ? <UrgentIcon /> : null}
+        </span>
       </td>
-      <td className={cn(CELL, RT.full, "min-w-44")}>
+      <td className={cn(CELL, RT.full, "min-w-40")}>
         <p className="break-words">{piece.description}</p>
         {details ? (
           <p className="text-muted-foreground mt-0.5 text-xs break-words">
@@ -145,7 +152,9 @@ function PieceRow({
       </td>
       {showPrice ? (
         <td className={cn(LABELED, "md:text-right")} data-label="Precio venta">
-          {editPrice ? (
+          {/* Lápiz solo con el precio por definir; uno ya asignado se cambia desde
+              «Acciones» o el detalle de la pieza. */}
+          {editPrice && piece.priceCents === null ? (
             <SalePriceCell
               piece={{ id: piece.id, code: piece.code, restorationId }}
               cents={piece.priceCents}
@@ -183,7 +192,7 @@ function PieceRow({
         </div>
       </td>
       <td
-        className={cn(LABELED, "text-muted-foreground md:whitespace-nowrap")}
+        className={cn(LABELED, "text-muted-foreground break-words")}
         data-label="Taller"
       >
         {piece.workshopName ?? "Sin taller"}
@@ -191,13 +200,23 @@ function PieceRow({
       <td className={cn(CELL, "max-md:basis-full md:text-right")}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
+            {/*
+              En el detalle a dos columnas con la pantalla justa (1440–1520 px), solo
+              el ícono ⋯ para que la tabla entre sin desplazarse de lado.
+            */}
             <Button
               variant="outline"
               size="sm"
               aria-label={`Acciones de ${piece.code}`}
+              title="Acciones"
+              className="wide:max-[95rem]:px-2"
             >
-              Acciones
-              <ChevronDown aria-hidden />
+              <span className="wide:max-[95rem]:hidden">Acciones</span>
+              <ChevronDown aria-hidden className="wide:max-[95rem]:hidden" />
+              <MoreHorizontal
+                aria-hidden
+                className="wide:max-[95rem]:block hidden"
+              />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -323,11 +342,7 @@ export function PiecesBoard({
   const showPrice = can(role, "dinero.ver");
 
   if (pieces.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        La guía aún no tiene piezas.
-      </p>
-    );
+    return <EmptyState>La guía aún no tiene piezas.</EmptyState>;
   }
 
   return (

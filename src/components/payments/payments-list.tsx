@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/empty-state";
 import { ShopifyBadge } from "@/components/shopify-badge";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,11 +22,7 @@ export function shopifyLabel(p: PaymentRecord): string {
 /** Historial de pagos y reembolsos (Pasos 11.2 y 11.4). */
 export function PaymentsList({ payments }: { payments: PaymentRecord[] }) {
   if (payments.length === 0)
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        Aún no hay pagos registrados.
-      </p>
-    );
+    return <EmptyState>Aún no hay pagos registrados.</EmptyState>;
   return (
     <Table aria-label="Historial de pagos">
       <TableHeader>

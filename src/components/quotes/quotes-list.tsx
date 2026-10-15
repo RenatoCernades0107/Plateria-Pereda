@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { EmptyState } from "@/components/empty-state";
 import { ClickableItem, ClickableRow } from "@/components/clickable-row";
 import {
   Table,
@@ -54,11 +55,7 @@ export function QuotesList({
   emptyMessage: string;
 }) {
   if (quotes.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (

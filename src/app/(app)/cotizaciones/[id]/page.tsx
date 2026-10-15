@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { PageHeader } from "@/components/page-header";
 import { QuoteActions } from "@/components/quotes/quote-actions";
 import { QuoteForm } from "@/components/quotes/quote-form";
@@ -10,9 +11,14 @@ import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { getQuote } from "@/server/quotes/queries";
 
-export const metadata: Metadata = { title: "Cotización" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/cotizaciones/[id]">): Promise<Metadata> {
+  return recordMetadata("quote", (await params).id, "Cotización");
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,7 +35,9 @@ export default async function CotizacionPage({
 
   return (
     <div className="space-y-4">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      {quote.code ? <PageBreadcrumb label={quote.code} /> : null}
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/cotizaciones">
           <ArrowLeft aria-hidden />
           Cotizaciones

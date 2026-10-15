@@ -129,9 +129,10 @@ describe("PiecesBoardTable", () => {
     );
   });
 
-  it("logística edita el costo de servicio con el lápiz y no ve el precio de venta", async () => {
+  it("logística ingresa con el lápiz el costo por definir y no ve el precio de venta", async () => {
     const { setPieceServiceCost } =
       await import("@/server/service-cost-actions");
+    vi.mocked(setPieceServiceCost).mockClear();
     const user = userEvent.setup();
     render(
       <PiecesBoardTable
@@ -154,30 +155,34 @@ describe("PiecesBoardTable", () => {
     expect(
       screen.queryByRole("columnheader", { name: "Precio venta" }),
     ).toBeNull();
-    // La celda muestra el monto como texto, sin campos a la vista.
+    // Con costo: solo el monto como texto, sin lápiz (se cambia en el detalle).
     const row = screen.getByTestId("pieza-RES-00001-1");
     expect(row).toHaveTextContent("S/ 40.00");
     expect(within(row).queryByRole("textbox")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "Editar costo de servicio de RES-00001-1",
+      }),
+    ).toBeNull();
     expect(screen.getByTestId("pieza-RES-00001-2")).toHaveTextContent(
       "Por definir",
     );
 
     await user.click(
       screen.getByRole("button", {
-        name: "Editar costo de servicio de RES-00001-1",
+        name: "Editar costo de servicio de RES-00001-2",
       }),
     );
     const dialog = await screen.findByRole("dialog", {
-      name: "Costo de servicio de RES-00001-1",
+      name: "Costo de servicio de RES-00001-2",
     });
     const input = within(dialog).getByLabelText("Costo de servicio (S/)");
-    expect(input).toHaveValue("40.00");
-    await user.clear(input);
+    expect(input).toHaveValue("");
     await user.type(input, "45");
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar costo" }),
     );
-    expect(setPieceServiceCost).toHaveBeenCalledWith("p1", "45");
+    expect(setPieceServiceCost).toHaveBeenCalledWith("p2", "45");
   });
 
   it("no guarda un costo de servicio inválido", async () => {
@@ -185,7 +190,13 @@ describe("PiecesBoardTable", () => {
       await import("@/server/service-cost-actions");
     vi.mocked(setPieceServiceCost).mockClear();
     const user = userEvent.setup();
-    render(<PiecesBoardTable role="admin" workshops={[]} pieces={[base]} />);
+    render(
+      <PiecesBoardTable
+        role="admin"
+        workshops={[]}
+        pieces={[{ ...base, serviceCostCents: null }]}
+      />,
+    );
     await user.click(
       screen.getByRole("button", {
         name: "Editar costo de servicio de RES-00001-1",
@@ -193,7 +204,6 @@ describe("PiecesBoardTable", () => {
     );
     const dialog = await screen.findByRole("dialog");
     const input = within(dialog).getByLabelText("Costo de servicio (S/)");
-    await user.clear(input);
     await user.type(input, "abc");
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar costo" }),
@@ -204,27 +214,29 @@ describe("PiecesBoardTable", () => {
     expect(setPieceServiceCost).not.toHaveBeenCalled();
   });
 
-  it("el admin ve el costo e ingresa el precio de venta", async () => {
+  it("el admin ingresa con el lápiz el precio de venta por definir", async () => {
     const { setPieceSalePrice } = await import("@/server/sale-price-actions");
     const user = userEvent.setup();
     render(<PiecesBoardTable role="admin" workshops={[]} pieces={[base]} />);
-    expect(
-      screen.queryByLabelText("Precio de venta de RES-00001-1"),
-    ).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
     await user.click(
-      screen.getByRole("button", { name: "Editar precio de venta" }),
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
     );
-    const price = screen.getByLabelText("Precio de venta de RES-00001-1");
+    const dialog = await screen.findByRole("dialog", {
+      name: "Precio de venta de RES-00001-1",
+    });
+    const price = within(dialog).getByLabelText("Precio de venta (S/)");
     expect(price).toHaveAttribute("placeholder", "Por definir");
     await user.type(price, "150");
     await user.click(
-      screen.getByRole("button", { name: "Guardar precio de RES-00001-1" }),
+      within(dialog).getByRole("button", { name: "Guardar precio" }),
     );
     expect(setPieceSalePrice).toHaveBeenCalledWith("p1", "150");
   });
 
-  it("con la orden creada el admin cambia el precio con motivo", async () => {
-    const user = userEvent.setup();
+  it("con precio asignado el admin solo ve el monto (se cambia en el detalle)", () => {
     render(
       <PiecesBoardTable
         role="admin"
@@ -235,28 +247,19 @@ describe("PiecesBoardTable", () => {
     const row = screen.getByTestId("pieza-RES-00001-1");
     expect(row).toHaveTextContent("S/ 150.00");
     expect(
+      within(row).queryByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toBeNull();
+    expect(
       within(row).queryByRole("button", { name: "Cambiar precio" }),
     ).toBeNull();
-    await user.click(
-      screen.getByRole("button", { name: "Editar precio de venta" }),
-    );
-    const price = within(row).getByLabelText("Precio de venta de RES-00001-1");
-    await user.clear(price);
-    await user.type(price, "180");
-    await user.click(
-      within(row).getByRole("button", {
-        name: "Guardar precio de RES-00001-1",
-      }),
-    );
-    const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByLabelText("Nuevo precio (S/)")).toHaveValue(
-      "180.00",
-    );
   });
 
-  it("logística asigna el taller desde la fila con el lápiz", async () => {
+  it("logística asigna con el lápiz el taller solo a las piezas sin taller", async () => {
     const { assignWorkshop } =
       await import("@/server/restorations/status-actions");
+    vi.mocked(assignWorkshop).mockClear();
     vi.mocked(assignWorkshop).mockResolvedValue({ ok: true });
     const user = userEvent.setup();
     render(
@@ -269,8 +272,14 @@ describe("PiecesBoardTable", () => {
             ...base,
             id: "p2",
             code: "RES-00001-2",
-            status: "enviada_taller",
+            workshopId: "w1",
             workshopName: "Taller Central",
+          },
+          {
+            ...base,
+            id: "p3",
+            code: "RES-00001-3",
+            status: "enviada_taller",
           },
         ]}
       />,
@@ -280,16 +289,20 @@ describe("PiecesBoardTable", () => {
     expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
       "Sin taller",
     );
-    // En el taller no se cambia.
+    // Con taller ya asignado no hay lápiz: se cambia en el detalle de la pieza.
     expect(screen.getByTestId("pieza-RES-00001-2")).toHaveTextContent(
       "Taller Central",
     );
     expect(
-      screen.queryByRole("button", { name: "Cambiar taller de RES-00001-2" }),
+      screen.queryByRole("button", { name: /taller de RES-00001-2/ }),
+    ).toBeNull();
+    // En el taller no se cambia.
+    expect(
+      screen.queryByRole("button", { name: /taller de RES-00001-3/ }),
     ).toBeNull();
 
     await user.click(
-      screen.getByRole("button", { name: "Cambiar taller de RES-00001-1" }),
+      screen.getByRole("button", { name: "Asignar taller de RES-00001-1" }),
     );
     const dialog = await screen.findByRole("dialog", {
       name: "Taller de RES-00001-1",
@@ -355,193 +368,45 @@ describe("PiecesBoardTable", () => {
     ).toHaveTextContent("—");
   });
 
-  it("ventas no asigna taller ni ve las ediciones en bloque", () => {
+  it("no hay botones de edición en bloque en la barra de la tabla", () => {
+    for (const role of ["admin", "logistica", "ventas"] as const) {
+      const { unmount } = render(
+        <PiecesBoardTable role={role} workshops={[]} pieces={[base]} />,
+      );
+      for (const name of [
+        "Editar precio de venta",
+        "Editar costo de servicio",
+        "Cambiar taller",
+      ]) {
+        expect(screen.queryByRole("button", { name })).toBeNull();
+      }
+      unmount();
+    }
+  });
+
+  it("ventas no asigna taller", () => {
     render(<PiecesBoardTable role="ventas" workshops={[]} pieces={[base]} />);
     expect(
-      screen.queryByRole("button", { name: "Cambiar taller de RES-00001-1" }),
+      screen.queryByRole("button", { name: /taller de RES-00001-1/ }),
     ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Editar precio de venta" }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Editar costo de servicio" }),
-    ).toBeNull();
-    expect(screen.queryByRole("button", { name: "Cambiar taller" })).toBeNull();
   });
 
-  it("logística no ve «Editar precio de venta» pero sí costo y taller", () => {
-    render(
-      <PiecesBoardTable role="logistica" workshops={[]} pieces={[base]} />,
-    );
-    expect(
-      screen.queryByRole("button", { name: "Editar precio de venta" }),
-    ).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Editar costo de servicio" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Cambiar taller" }),
-    ).toBeInTheDocument();
-  });
-
-  it("«Editar costo de servicio» muestra el campo en todas las filas", async () => {
-    const { setPieceServiceCost } =
-      await import("@/server/service-cost-actions");
-    vi.mocked(setPieceServiceCost).mockClear();
+  it("la barra de la selección no ofrece asignar taller", async () => {
     const user = userEvent.setup();
     render(
       <PiecesBoardTable
-        role="logistica"
-        workshops={[]}
-        pieces={[
-          base,
-          { ...base, id: "p2", code: "RES-00001-2", serviceCostCents: null },
-        ]}
+        role="admin"
+        workshops={[{ id: "w1", name: "Taller Central" }]}
+        pieces={[base, { ...base, id: "p2", code: "RES-00001-2" }]}
       />,
     );
+    await user.click(screen.getByLabelText("Elegir todas las de esta página"));
+    const bar = screen.getByRole("region", {
+      name: "Acciones para las piezas elegidas",
+    });
     expect(
-      screen.queryByLabelText("Costo de servicio de RES-00001-1"),
+      within(bar).queryByRole("button", { name: "Asignar taller" }),
     ).toBeNull();
-    const toggle = screen.getByRole("button", {
-      name: "Editar costo de servicio",
-    });
-    expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await user.click(toggle);
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(
-      screen.getByLabelText("Costo de servicio de RES-00001-1"),
-    ).toHaveValue("40.00");
-    const empty = screen.getByLabelText("Costo de servicio de RES-00001-2");
-    expect(empty).toHaveAttribute("placeholder", "Por definir");
-    await user.type(empty, "55");
-    await user.click(
-      screen.getByRole("button", { name: "Guardar costo de RES-00001-2" }),
-    );
-    expect(setPieceServiceCost).toHaveBeenCalledWith("p2", "55");
-    // Al terminar vuelve al monto con su lápiz.
-    await user.click(toggle);
-    expect(
-      screen.queryByLabelText("Costo de servicio de RES-00001-1"),
-    ).toBeNull();
-    expect(
-      screen.getByRole("button", {
-        name: "Editar costo de servicio de RES-00001-1",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  describe("«Cambiar taller»", () => {
-    const pieces: BoardPiece[] = [
-      base,
-      { ...base, id: "p2", code: "RES-00001-2", workshopId: "w2" },
-      {
-        ...base,
-        id: "p3",
-        code: "RES-00001-3",
-        status: "enviada_taller",
-        location: "en_taller",
-        workshopId: "w2",
-        workshopName: "Taller Norte",
-      },
-    ];
-    const workshops = [
-      { id: "w1", name: "Taller Central" },
-      { id: "w2", name: "Taller Norte" },
-    ];
-
-    it("sin piezas elegidas pide elegirlas", async () => {
-      const user = userEvent.setup();
-      render(
-        <PiecesBoardTable
-          role="logistica"
-          workshops={workshops}
-          pieces={pieces}
-        />,
-      );
-      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
-      const dialog = await screen.findByRole("dialog", {
-        name: "Cambiar taller",
-      });
-      expect(dialog).toHaveTextContent("Elige con las casillas las piezas");
-      expect(
-        within(dialog).queryByRole("button", { name: "Guardar taller" }),
-      ).toBeNull();
-    });
-
-    it("asigna el taller elegido a las piezas elegidas que pueden cambiarlo", async () => {
-      const { assignWorkshop } =
-        await import("@/server/restorations/status-actions");
-      vi.mocked(assignWorkshop).mockClear();
-      vi.mocked(assignWorkshop).mockResolvedValue({ ok: true });
-      const user = userEvent.setup();
-      render(
-        <PiecesBoardTable role="admin" workshops={workshops} pieces={pieces} />,
-      );
-      await user.click(
-        screen.getByLabelText("Elegir todas las de esta página"),
-      );
-      // La barra no repite el selector de taller: lo hace este botón.
-      const bar = screen.getByRole("region", {
-        name: "Acciones para las piezas elegidas",
-      });
-      expect(
-        within(bar).queryByRole("button", { name: "Asignar taller" }),
-      ).toBeNull();
-
-      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
-      const dialog = await screen.findByRole("dialog", {
-        name: "Cambiar taller",
-      });
-      expect(dialog).toHaveTextContent("RES-00001-1, RES-00001-2");
-      // La que está en el taller no cambia.
-      expect(within(dialog).getByRole("note")).toHaveTextContent("RES-00001-3");
-      await user.click(
-        within(dialog).getByRole("combobox", { name: "Taller" }),
-      );
-      await user.click(
-        await screen.findByRole("option", { name: "Taller Central" }),
-      );
-      await user.click(
-        within(dialog).getByRole("button", { name: "Guardar taller" }),
-      );
-      expect(assignWorkshop).toHaveBeenCalledWith(null, ["p1", "p2"], "w1");
-      // Al terminar se limpia la selección.
-      expect(
-        screen.queryByRole("region", {
-          name: "Acciones para las piezas elegidas",
-        }),
-      ).toBeNull();
-    });
-
-    it("muestra el error del servidor y no limpia la selección", async () => {
-      const { assignWorkshop } =
-        await import("@/server/restorations/status-actions");
-      const { toast } = await import("sonner");
-      vi.mocked(assignWorkshop).mockResolvedValue({ error: "Sin permiso." });
-      const user = userEvent.setup();
-      render(
-        <PiecesBoardTable
-          role="logistica"
-          workshops={workshops}
-          pieces={pieces}
-        />,
-      );
-      await user.click(screen.getByLabelText("Elegir RES-00001-2"));
-      await user.click(screen.getByRole("button", { name: "Cambiar taller" }));
-      const dialog = await screen.findByRole("dialog", {
-        name: "Cambiar taller",
-      });
-      // Parte del taller que ya tiene la pieza.
-      expect(
-        within(dialog).getByRole("combobox", { name: "Taller" }),
-      ).toHaveTextContent("Taller Norte");
-      await user.click(
-        within(dialog).getByRole("button", { name: "Guardar taller" }),
-      );
-      expect(assignWorkshop).toHaveBeenCalledWith(null, ["p2"], "w2");
-      expect(toast.error).toHaveBeenCalledWith("Sin permiso.");
-      expect(screen.getByLabelText("Elegir RES-00001-2")).toBeChecked();
-    });
   });
 
   it("ventas ve el precio sin editarlo y no ve el costo", () => {

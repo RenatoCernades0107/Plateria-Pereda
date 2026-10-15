@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { ClientsFiltersForm } from "@/components/clients/clients-filters-form";
 import { ClientsList } from "@/components/clients/clients-list";
 import { ClientsSearch } from "@/components/clients/clients-search";
 import { NewClientDialog } from "@/components/clients/new-client-dialog";
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
-import { Button } from "@/components/ui/button";
 import { clientFiltersHref, parseClientFilters } from "@/domain/client-filters";
 import { can } from "@/domain/permissions";
 import { requirePermission } from "@/server/auth";
@@ -48,35 +47,13 @@ export default async function ClientesPage({
             : "Aún no hay clientes registrados."
         }
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 cliente" : `${total} clientes`} · Página{" "}
-          {filters.page} de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={clientFiltersHref(filters, { page: filters.page - 1 })}
-              >
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={clientFiltersHref(filters, { page: filters.page + 1 })}
-              >
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      <Pagination
+        page={filters.page}
+        pages={pages}
+        total={total}
+        noun={["cliente", "clientes"]}
+        hrefFor={(page) => clientFiltersHref(filters, { page })}
+      />
       <RefreshWhilePending
         pending={clients.some(
           (c) =>

@@ -43,7 +43,9 @@ export function KanbanColumnFrame({
       role="listitem"
       aria-label={label}
       className={cn(
-        "bg-muted/40 flex w-72 shrink-0 flex-col gap-2 rounded-lg border p-2 transition-[opacity,background-color,box-shadow]",
+        "bg-muted/40 flex shrink-0 flex-col gap-2 rounded-lg border p-2 transition-[opacity,background-color,box-shadow,width]",
+        // Las columnas vacías se angostan: el tablero cabe mejor en la pantalla.
+        count === 0 ? "w-44" : "w-72",
         className,
       )}
       data-testid={`columna-${columnKey}`}

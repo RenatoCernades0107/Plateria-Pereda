@@ -159,6 +159,51 @@ test.describe("Estados de las piezas", () => {
     await expect(restorationStatus(page)).toHaveText("Completada");
   });
 
+  test("revisión en taller: en Consulta va al taller a revisar (En taller) y vuelve (En tienda)", async ({
+    page,
+    loginAs,
+  }) => {
+    const r = await seedRestoration([
+      { description: "Tetera por revisar", arrived: true },
+    ]);
+    const code = `${r.code}-1`;
+    const { error } = await adminClient()
+      .from("pieces")
+      .update({ status: "en_consulta" } as never)
+      .eq("restoration_id", r.id);
+    if (error) throw error;
+
+    await loginAs("logistica");
+    await page.goto(`/restauraciones/${r.id}`);
+    await expect(card(page, code)).toContainText("Consulta");
+    await pieceAction(page, code, "Llevar al taller a revisar");
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Taller").click();
+    await page.getByRole("option", { name: workshopName }).click();
+    await dialog
+      .getByRole("button", { name: "Confirmar: llevar al taller" })
+      .click();
+    await expect(dialog).toBeHidden();
+    // El estado no cambia: sigue en Consulta, ahora En taller.
+    await expect(card(page, code)).toContainText("En taller");
+    await expect(card(page, code)).toContainText("Consulta");
+    await expect(card(page, code)).toContainText(workshopName);
+    expect(await pieceActionNames(page, code)).toContain("Volvió de revisión");
+
+    // Al recargar, lo guardado en la BD dice lo mismo.
+    await page.reload();
+    await expect(card(page, code)).toContainText("En taller");
+
+    await pieceAction(page, code, "Volvió de revisión");
+    await expect(card(page, code)).toContainText("En tienda");
+    await expect(card(page, code)).toContainText("Consulta");
+    await page.reload();
+    await expect(card(page, code)).toContainText("En tienda");
+    expect(await pieceActionNames(page, code)).toContain(
+      "Llevar al taller a revisar",
+    );
+  });
+
   test("consulta: consulta → espera respuesta → aprobada, y espera respuesta → rechazado", async ({
     page,
     loginAs,
@@ -275,7 +320,7 @@ test.describe("Estados de las piezas", () => {
     );
     await expect(page.getByTestId("rotulo-pieza")).toContainText(code);
     const piecePath = new URL(page.url()).pathname;
-    // Siempre a la vista (horizontal), sin desplegar nada.
+    // Siempre a la vista (horizontal, al pie de la ficha), sin desplegar nada.
     const timeline = page.getByTestId("linea-tiempo");
     await expect(timeline).toBeVisible();
     const events = timeline.getByTestId("evento");

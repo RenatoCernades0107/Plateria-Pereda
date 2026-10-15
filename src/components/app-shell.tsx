@@ -1,16 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { LogOut } from "lucide-react";
+import Link, { useLinkStatus } from "next/link";
+import { Loader2, LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import {
   Breadcrumb,
   BreadcrumbItem,
+  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  BreadcrumbProvider,
+  useBreadcrumbLabel,
+} from "@/components/page-breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,6 +47,23 @@ import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { logout } from "@/server/auth-actions";
 
 export type ShellUser = { fullName: string; email: string; role: AppRole };
+
+/**
+ * Indicador de carga del enlace del menú mientras llega la sección. No se usan
+ * `loading.tsx`: con ellos la respuesta se transmite por partes y los 403/404 salen
+ * con código 200.
+ */
+function NavPending() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <Loader2
+      aria-hidden
+      data-testid="cargando-seccion"
+      className="ml-auto animate-spin group-data-[collapsible=icon]:hidden"
+    />
+  );
+}
 
 function AppNav({ role }: { role: AppRole }) {
   const pathname = usePathname();
@@ -88,6 +111,7 @@ function AppNav({ role }: { role: AppRole }) {
                     <Link href={item.href} onClick={() => setOpenMobile(false)}>
                       <item.icon className={item.iconClassName} />
                       <span>{item.title}</span>
+                      <NavPending />
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -135,7 +159,11 @@ function UserMenu({ user }: { user: ShellUser }) {
 }
 
 function AppHeader({ user }: { user: ShellUser }) {
-  const current = findNavItem(usePathname());
+  const pathname = usePathname();
+  const current = findNavItem(pathname);
+  // En un detalle que dio su nombre: "Sección › RES-00012", con la sección como enlace.
+  const label = useBreadcrumbLabel();
+  const detail = current && label && pathname !== current.href ? label : null;
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -146,9 +174,23 @@ function AppHeader({ user }: { user: ShellUser }) {
       />
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage>{current?.title ?? "Inicio"}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {current && detail ? (
+            <>
+              <BreadcrumbItem className="hidden sm:inline-flex">
+                <BreadcrumbLink asChild>
+                  <Link href={current.href}>{current.title}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden sm:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{detail}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          ) : (
+            <BreadcrumbItem>
+              <BreadcrumbPage>{current?.title ?? "Inicio"}</BreadcrumbPage>
+            </BreadcrumbItem>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto">
@@ -167,12 +209,14 @@ export function AppShell({
 }) {
   return (
     <SidebarProvider>
-      <AppNav role={user.role} />
-      {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
-      <SidebarInset className="min-w-0">
-        <AppHeader user={user} />
-        <div className="flex-1 p-4 md:p-6">{children}</div>
-      </SidebarInset>
+      <BreadcrumbProvider>
+        <AppNav role={user.role} />
+        {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
+        <SidebarInset className="min-w-0">
+          <AppHeader user={user} />
+          <div className="flex-1 p-4 md:p-6">{children}</div>
+        </SidebarInset>
+      </BreadcrumbProvider>
     </SidebarProvider>
   );
 }

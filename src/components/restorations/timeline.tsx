@@ -29,6 +29,9 @@ const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
   cambio_precio: "Cambio de precio",
+  // Revisión en taller: la pieza va y vuelve sin cambiar de estado.
+  envio_revision: "Al taller (revisión)",
+  vuelta_revision: "Volvió de revisión",
 };
 
 /** Un paso de `piece_status_history`. */
@@ -159,7 +162,7 @@ export function Timeline({
                       </Badge>
                     )}
                     {current ? (
-                      <span className="text-primary text-[11px] font-medium uppercase">
+                      <span className="text-primary text-xs font-medium tracking-wide uppercase">
                         Último
                       </span>
                     ) : null}

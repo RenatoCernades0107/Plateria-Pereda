@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { FilterChips } from "@/components/filter-chips";
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { RestorationsKanban } from "@/components/restorations/restorations-kanban";
 import { RestorationsFiltersForm } from "@/components/restorations/restorations-filters-form";
@@ -126,40 +127,34 @@ export default async function RestauracionesPage({
                 ? "No hay restauraciones con esos filtros."
                 : "Aún no hay restauraciones registradas."
             }
+            emptyAction={
+              filtered ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={restorationFiltersHref(parseRestorationFilters({}), {
+                      view: filters.view,
+                    })}
+                  >
+                    Limpiar filtros
+                  </Link>
+                </Button>
+              ) : canEdit ? (
+                <Button asChild size="sm">
+                  <Link href="/restauraciones/nueva">
+                    <Plus />
+                    Nueva restauración
+                  </Link>
+                </Button>
+              ) : null
+            }
           />
-          <nav
-            aria-label="Paginación"
-            className="flex items-center justify-between gap-2 text-sm"
-          >
-            <span className="text-muted-foreground">
-              {total === 1 ? "1 restauración" : `${total} restauraciones`} ·
-              Página {filters.page} de {pages}
-            </span>
-            <div className="flex gap-2">
-              {filters.page > 1 ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={restorationFiltersHref(filters, {
-                      page: filters.page - 1,
-                    })}
-                  >
-                    Anterior
-                  </Link>
-                </Button>
-              ) : null}
-              {filters.page < pages ? (
-                <Button asChild variant="outline" size="sm">
-                  <Link
-                    href={restorationFiltersHref(filters, {
-                      page: filters.page + 1,
-                    })}
-                  >
-                    Siguiente
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          </nav>
+          <Pagination
+            page={filters.page}
+            pages={pages}
+            total={total}
+            noun={["restauración", "restauraciones"]}
+            hrefFor={(page) => restorationFiltersHref(filters, { page })}
+          />
         </>
       )}
     </div>

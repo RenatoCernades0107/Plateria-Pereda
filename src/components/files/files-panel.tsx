@@ -7,7 +7,9 @@ import type { FileTarget } from "./types";
 
 /**
  * Subida y galería juntas: en pantallas anchas el formulario va a la izquierda y las
- * fotos al lado (no debajo), así lo recién subido se ve sin bajar.
+ * fotos al lado (no debajo), así lo recién subido se ve sin bajar. Desde `wide` el
+ * panel está en la columna derecha del detalle de la guía: el formulario va arriba
+ * (sin formar una tercera columna) y la galería debajo, con todo el ancho.
  */
 export function FilesPanel({
   restorationId,
@@ -17,6 +19,8 @@ export function FilesPanel({
   currentUserId,
   isAdmin,
   emptyText,
+  showTargetLabels,
+  stacked = false,
   className,
 }: {
   restorationId: string;
@@ -26,6 +30,13 @@ export function FilesPanel({
   currentUserId: string;
   isAdmin: boolean;
   emptyText?: string;
+  /** Con un solo destino (la ficha de la pieza) el título de la galería sobra. */
+  showTargetLabels?: boolean;
+  /**
+   * En una columna (ficha de la pieza): primero las fotos y debajo el formulario, sin
+   * ponerlos lado a lado.
+   */
+  stacked?: boolean;
   className?: string;
 }) {
   const gallery = (
@@ -35,21 +46,30 @@ export function FilesPanel({
       currentUserId={currentUserId}
       isAdmin={isAdmin}
       emptyText={emptyText}
+      showTargetLabels={showTargetLabels}
       className="min-w-0"
     />
   );
   if (!canUpload) return <div className={className}>{gallery}</div>;
+  if (stacked) {
+    return (
+      <div className={cn("space-y-4", className)}>
+        {gallery}
+        <FileUploader restorationId={restorationId} targets={targets} />
+      </div>
+    );
+  }
   return (
     <div
       className={cn(
-        "grid items-start gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]",
+        "wide:grid-cols-1 grid items-start gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]",
         className,
       )}
     >
       <FileUploader
         restorationId={restorationId}
         targets={targets}
-        className="lg:sticky lg:top-4"
+        className="wide:static wide:max-w-xl lg:sticky lg:top-4"
       />
       {gallery}
     </div>

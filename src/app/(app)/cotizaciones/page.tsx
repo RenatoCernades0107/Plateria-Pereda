@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { QuotesFiltersForm } from "@/components/quotes/quotes-filters-form";
 import { QuotesList } from "@/components/quotes/quotes-list";
@@ -51,35 +52,13 @@ export default async function CotizacionesPage({
             : "Aún no hay cotizaciones."
         }
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 cotización" : `${total} cotizaciones`} · Página{" "}
-          {filters.page} de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={quoteFiltersHref(filters, { page: filters.page - 1 })}
-              >
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={quoteFiltersHref(filters, { page: filters.page + 1 })}
-              >
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      <Pagination
+        page={filters.page}
+        pages={pages}
+        total={total}
+        noun={["cotización", "cotizaciones"]}
+        hrefFor={(page) => quoteFiltersHref(filters, { page })}
+      />
     </div>
   );
 }

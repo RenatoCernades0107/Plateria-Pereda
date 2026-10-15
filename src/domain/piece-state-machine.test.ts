@@ -6,17 +6,22 @@ import {
   applyTransition,
   availableTransitions,
   canMarkArrived,
+  canReceiveFromReview,
   canReceiveFromWorkshop,
   canReturnToClient,
+  canSendForReview,
   CLOSED_STATUSES,
   findTransition,
   isClosedStatus,
+  isInReview,
   markArrived,
   PIECE_STATUS_LABELS,
   PIECE_STATUSES,
   PIECE_TRANSITIONS,
+  receiveFromReview,
   receiveFromWorkshop,
   returnToClient,
+  sendForReview,
   TRANSITION_ERROR_MESSAGES,
   type PieceSnapshot,
   type PieceStatus,
@@ -534,5 +539,160 @@ describe("devolver al cliente", () => {
     expect(
       canReturnToClient(piece("anulada", { arrivedAt: BEFORE }), "admin"),
     ).toBe(false);
+  });
+});
+
+describe("revisión en taller", () => {
+  const SENT = new Date("2026-10-02T15:00:00Z");
+  /** En la tienda, en Consulta o Espera, sin revisión abierta. */
+  const enConsulta = (overrides: Partial<PieceSnapshot> = {}) =>
+    piece("en_consulta", { arrivedAt: BEFORE, ...overrides });
+  /** Llevada a revisar al taller w1 y aún sin volver. */
+  const enRevision = (
+    status: PieceStatus = "en_consulta",
+    overrides: Partial<PieceSnapshot> = {},
+  ) =>
+    piece(status, {
+      arrivedAt: BEFORE,
+      workshopId: "w1",
+      reviewSentAt: SENT,
+      ...overrides,
+    });
+
+  it("la revisión está abierta hasta que vuelve (una vuelta anterior no cuenta)", () => {
+    expect(isInReview({})).toBe(false);
+    expect(isInReview({ reviewSentAt: SENT })).toBe(true);
+    expect(isInReview({ reviewSentAt: SENT, reviewReturnedAt: NOW })).toBe(
+      false,
+    );
+    expect(isInReview({ reviewSentAt: SENT, reviewReturnedAt: SENT })).toBe(
+      false,
+    );
+    expect(isInReview({ reviewSentAt: NOW, reviewReturnedAt: SENT })).toBe(
+      true,
+    );
+  });
+
+  it("admin y logística llevan a revisar una pieza en Consulta o Espera que ya llegó", () => {
+    for (const status of ["en_consulta", "en_espera"] as const) {
+      const p = piece(status, { arrivedAt: BEFORE });
+      expect(canSendForReview(p, "admin")).toBe(true);
+      expect(canSendForReview(p, "logistica")).toBe(true);
+      expect(canSendForReview(p, "ventas")).toBe(false);
+    }
+    expect(canSendForReview(piece("en_consulta"), "admin")).toBe(false);
+    expect(canSendForReview(enTienda("aprobada"), "admin")).toBe(false);
+    expect(canSendForReview(enTienda("registrada"), "admin")).toBe(false);
+    expect(canSendForReview(enRevision(), "admin")).toBe(false);
+    expect(
+      canSendForReview(
+        enConsulta({ reviewSentAt: SENT, reviewReturnedAt: NOW }),
+        "admin",
+      ),
+    ).toBe(true);
+  });
+
+  it("llevar a revisar guarda el taller y la fecha; el estado no cambia", () => {
+    expect(sendForReview(enConsulta(), "logistica", "w1", NOW)).toEqual({
+      ok: true,
+      changes: { status: "en_consulta", workshopId: "w1", reviewSentAt: NOW },
+      steps: [
+        { from: "en_consulta", to: "en_consulta", event: "envio_revision" },
+      ],
+      note: null,
+    });
+    expect(sendForReview(enConsulta(), "logistica", null, NOW)).toEqual({
+      ok: false,
+      error: "taller_requerido",
+    });
+    expect(sendForReview(enConsulta(), "ventas", "w1", NOW)).toEqual({
+      ok: false,
+      error: "rol_no_permitido",
+    });
+    expect(sendForReview(enRevision(), "admin", "w1", NOW)).toEqual({
+      ok: false,
+      error: "transicion_invalida",
+    });
+  });
+
+  it("«Volvió de revisión»: admin y logística, solo con la revisión abierta", () => {
+    expect(canReceiveFromReview(enRevision(), "admin")).toBe(true);
+    expect(canReceiveFromReview(enRevision(), "logistica")).toBe(true);
+    expect(canReceiveFromReview(enRevision(), "ventas")).toBe(false);
+    expect(canReceiveFromReview(enConsulta(), "admin")).toBe(false);
+    expect(
+      receiveFromReview(enRevision("en_espera"), "logistica", NOW),
+    ).toEqual({
+      ok: true,
+      changes: { status: "en_espera", reviewReturnedAt: NOW },
+      steps: [{ from: "en_espera", to: "en_espera", event: "vuelta_revision" }],
+      note: null,
+    });
+    expect(receiveFromReview(enConsulta(), "admin", NOW)).toEqual({
+      ok: false,
+      error: "transicion_invalida",
+    });
+  });
+
+  it("en revisión no se cierra la pieza hasta marcar que volvió", () => {
+    expect(
+      applyTransition(enRevision(), {
+        to: "sin_arreglo",
+        role: "admin",
+        note: "x",
+        now: NOW,
+      }),
+    ).toEqual({ ok: false, error: "en_revision" });
+    expect(
+      applyTransition(enRevision("en_espera"), {
+        to: "rechazada",
+        role: "ventas",
+        note: "x",
+        now: NOW,
+      }),
+    ).toEqual({ ok: false, error: "en_revision" });
+    expect(
+      availableTransitions(enRevision("en_espera"), "admin").map((t) => t.to),
+    ).toEqual(["aprobada"]);
+    expect(TRANSITION_ERROR_MESSAGES.en_revision).toMatch(
+      /marca primero que volvió/,
+    );
+    // De vuelta, sí.
+    expect(
+      applyTransition(enRevision("en_consulta", { reviewReturnedAt: NOW }), {
+        to: "sin_arreglo",
+        role: "admin",
+        note: "x",
+        now: NOW,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it("aprobada en revisión pasa a En restauración en el mismo taller y cierra la revisión", () => {
+    expect(
+      applyTransition(enRevision("aprobada"), {
+        to: "enviada_taller",
+        role: "logistica",
+        now: NOW,
+      }),
+    ).toEqual({
+      ok: true,
+      changes: {
+        status: "enviada_taller",
+        firstSentAt: NOW,
+        lastSentAt: NOW,
+        reviewReturnedAt: NOW,
+      },
+      steps: [{ from: "aprobada", to: "enviada_taller", event: "estado" }],
+      note: null,
+    });
+    expect(
+      applyTransition(enRevision("aprobada"), {
+        to: "enviada_taller",
+        role: "logistica",
+        workshopId: "w2",
+        now: NOW,
+      }),
+    ).toEqual({ ok: false, error: "revision_otro_taller" });
   });
 });

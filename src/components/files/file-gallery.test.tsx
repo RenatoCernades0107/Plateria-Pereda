@@ -1,5 +1,5 @@
 import {
-  fireEvent,
+  cleanup,
   render,
   screen,
   waitFor,
@@ -145,7 +145,7 @@ describe("FileGallery", () => {
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 
-  describe("foto principal y miniaturas", () => {
+  describe("antes y después por destino", () => {
     const setup = (files: RestorationFile[], props = {}) => {
       render(
         <FileGallery
@@ -158,93 +158,26 @@ describe("FileGallery", () => {
       );
       return screen.getByRole("region", { name: target.label });
     };
-    const carousel = (section: HTMLElement) =>
-      within(section).getByRole("group", { name: "Fotos" });
-    const main = (section: HTMLElement) =>
-      within(carousel(section)).getByRole("button", { name: /^Ver / });
+    const thumbs = (el: HTMLElement) =>
+      within(el)
+        .getAllByRole("button", { name: /^Ver / })
+        .map((b) => b.getAttribute("aria-label"));
 
-    it("muestra una foto grande con su clasificación y se recorre con flechas, teclado y miniaturas", async () => {
-      const user = userEvent.setup();
+    it("separa las fotos en Antes y Después, cada una con su miniatura", () => {
       const section = setup([
         photo("despues", "u1", "despues"),
         photo("antes-1"),
         photo("antes-2"),
       ]);
-
-      // Antes primero, aunque se haya subido después.
-      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
-      expect(carousel(section)).toHaveTextContent("Antes");
-      expect(carousel(section)).toHaveTextContent("1 de 3");
-
-      await user.click(
-        within(section).getByRole("button", { name: "Foto siguiente" }),
-      );
-      expect(main(section)).toHaveAccessibleName("Ver antes-2.png");
-
-      fireEvent.keyDown(carousel(section), { key: "ArrowRight" });
-      expect(main(section)).toHaveAccessibleName("Ver despues.png");
-      expect(carousel(section)).toHaveTextContent("Después");
-      expect(carousel(section)).toHaveTextContent("3 de 3");
-
-      // Da la vuelta, en los dos sentidos.
-      fireEvent.keyDown(carousel(section), { key: "ArrowRight" });
-      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
-      fireEvent.keyDown(carousel(section), { key: "ArrowLeft" });
-      expect(main(section)).toHaveAccessibleName("Ver despues.png");
-
-      // Deslizar con el dedo hacia la derecha va a la anterior.
-      fireEvent.touchStart(carousel(section), {
-        touches: [{ clientX: 200 }],
-      });
-      fireEvent.touchEnd(carousel(section), {
-        changedTouches: [{ clientX: 300 }],
-      });
-      expect(main(section)).toHaveAccessibleName("Ver antes-2.png");
-
-      const thumb = within(section).getByRole("button", {
-        name: "Mostrar antes-1.png",
-      });
-      await user.click(thumb);
-      expect(thumb).toHaveAttribute("aria-current", "true");
-      expect(main(section)).toHaveAccessibleName("Ver antes-1.png");
-      expect(
-        within(section).getByRole("group", { name: "Antes (2)" }),
-      ).toHaveTextContent("Antes");
-      expect(
-        within(section).getByRole("group", { name: "Después (1)" }),
-      ).toBeInTheDocument();
-    });
-
-    it("el selector Antes / Después muestra cuántas hay y salta al grupo", async () => {
-      const user = userEvent.setup();
-      const section = setup([
-        photo("antes-1"),
-        photo("antes-2"),
-        photo("despues", "u1", "despues"),
-      ]);
-      const toggle = within(section).getByRole("group", {
-        name: "Clasificación",
-      });
-      const antes = within(toggle).getByRole("button", { name: "Antes (2)" });
-      const despues = within(toggle).getByRole("button", {
+      const antes = within(section).getByRole("group", { name: "Antes (2)" });
+      const despues = within(section).getByRole("group", {
         name: "Después (1)",
       });
-      expect(antes).toHaveAttribute("aria-pressed", "true");
-
-      await user.click(despues);
-      expect(despues).toHaveAttribute("aria-pressed", "true");
-      expect(main(section)).toHaveAccessibleName("Ver despues.png");
-
-      // El visor ampliado empieza en la foto que se está viendo.
-      await user.click(main(section));
-      expect(screen.getByRole("dialog")).toHaveTextContent("3 de 3");
-    });
-
-    it("con una sola foto no hay flechas, miniaturas, selector ni comparación", () => {
-      const section = setup([photo("sola")]);
-      expect(main(section)).toHaveAccessibleName("Ver sola.png");
+      expect(thumbs(antes)).toEqual(["Ver antes-1.png", "Ver antes-2.png"]);
+      expect(thumbs(despues)).toEqual(["Ver despues.png"]);
+      // Ya no hay carrusel ni selector.
       expect(
-        within(section).queryByRole("button", { name: "Foto siguiente" }),
+        within(section).queryByRole("group", { name: "Fotos" }),
       ).toBeNull();
       expect(
         within(section).queryByRole("group", { name: "Clasificación" }),
@@ -252,6 +185,87 @@ describe("FileGallery", () => {
       expect(
         within(section).queryByRole("button", { name: /^Mostrar / }),
       ).toBeNull();
+    });
+
+    it("el visor empieza en la foto pulsada y sigue el orden Antes → Después", async () => {
+      const user = userEvent.setup();
+      const section = setup([
+        photo("despues", "u1", "despues"),
+        photo("antes-1"),
+        photo("antes-2"),
+      ]);
+      await user.click(
+        within(section).getByRole("button", { name: "Ver antes-2.png" }),
+      );
+      const viewer = screen.getByRole("dialog");
+      expect(viewer).toHaveTextContent("2 de 3");
+      expect(
+        within(viewer).getByRole("img", { name: "antes-2.png" }),
+      ).toBeVisible();
+      await user.click(
+        within(viewer).getByRole("button", { name: "Siguiente" }),
+      );
+      expect(
+        within(screen.getByRole("dialog")).getByRole("img", {
+          name: "despues.png",
+        }),
+      ).toBeVisible();
+      expect(screen.getByRole("dialog")).toHaveTextContent("3 de 3");
+    });
+
+    it("si falta antes o después, su columna lo dice", () => {
+      const section = setup([photo("antes")]);
+      const despues = within(section).getByRole("group", {
+        name: "Después (0)",
+      });
+      expect(despues).toHaveTextContent("Sin fotos de después aún");
+      expect(
+        within(section).getByRole("group", { name: "Antes (1)" }),
+      ).not.toHaveTextContent("Sin fotos");
+
+      cleanup();
+      const other = setup([photo("despues", "u1", "despues")]);
+      expect(
+        within(other).getByRole("group", { name: "Antes (0)" }),
+      ).toHaveTextContent("Sin fotos de antes aún");
+    });
+
+    it("borrar en la miniatura solo aparece en lo propio, o para el admin", () => {
+      const section = setup([photo("mia"), photo("ajena", "u2", "despues")]);
+      expect(
+        within(section).getByRole("button", { name: "Borrar mia.png" }),
+      ).toBeVisible();
+      expect(
+        within(section).queryByRole("button", { name: "Borrar ajena.png" }),
+      ).toBeNull();
+
+      cleanup();
+      const admin = setup([photo("mia"), photo("ajena", "u2", "despues")], {
+        isAdmin: true,
+      });
+      expect(
+        within(admin).getByRole("button", { name: "Borrar ajena.png" }),
+      ).toBeVisible();
+    });
+
+    it("las fotos de documento van en su propio grupo, sin columnas antes/después", () => {
+      const section = setup([photo("boleta", "u1", "documento")]);
+      expect(
+        thumbs(within(section).getByRole("group", { name: "Documento (1)" })),
+      ).toEqual(["Ver boleta.png"]);
+      expect(
+        within(section).queryByRole("group", { name: /^Antes/ }),
+      ).toBeNull();
+      expect(
+        within(section).queryByRole("group", { name: /^Después/ }),
+      ).toBeNull();
+    });
+
+    it("con una sola foto no hay comparación", () => {
+      const section = setup([photo("sola")]);
+      expect(
+        within(section).getByRole("button", { name: "Ver sola.png" }),
+      ).toHaveClass("cursor-zoom-in");
       expect(
         within(section).queryByRole("button", {
           name: "Comparar antes y después",
@@ -276,7 +290,7 @@ describe("FileGallery", () => {
       expect(within(dialog).getByAltText("despues.png")).toBeInTheDocument();
     });
 
-    it("los PDF y HEIC van en una lista aparte; sin fotos no hay foto principal", async () => {
+    it("los PDF y HEIC van en una lista aparte; sin fotos no hay columnas", async () => {
       const user = userEvent.setup();
       const section = setup([
         {
@@ -290,9 +304,7 @@ describe("FileGallery", () => {
           mimeType: "image/heic",
         },
       ]);
-      expect(
-        within(section).queryByRole("group", { name: "Fotos" }),
-      ).toBeNull();
+      expect(within(section).queryByRole("group")).toBeNull();
       const list = within(section).getByRole("list", { name: "Archivos" });
       expect(list).toHaveTextContent("guia.pdf");
       expect(list).toHaveTextContent("Documento · 1 KB");

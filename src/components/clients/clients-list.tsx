@@ -1,6 +1,7 @@
 import { Building2, User } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/empty-state";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
@@ -82,11 +83,7 @@ export function ClientsList({
   emptyMessage?: string;
 }) {
   if (clients.length === 0) {
-    return (
-      <p className="text-muted-foreground rounded-md border p-6 text-center text-sm">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState>{emptyMessage}</EmptyState>;
   }
 
   return (

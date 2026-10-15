@@ -56,6 +56,7 @@ export function PieceMoneyTiles({
             hasOrder={sale.hasOrder}
             editable={sale.editable}
             align="start"
+            emptyAsButton
           />
           {sale.cents !== null && sale.pricesIncludeIgv !== null ? (
             <Hint>
@@ -70,7 +71,12 @@ export function PieceMoneyTiles({
       ) : null}
       {showCost ? (
         <Tile label="Costo de servicio">
-          <ServiceCostCell piece={piece} cents={costCents} align="start" />
+          <ServiceCostCell
+            piece={piece}
+            cents={costCents}
+            align="start"
+            emptyAsButton
+          />
         </Tile>
       ) : null}
       {margin !== null ? (

@@ -148,17 +148,41 @@ export function PieceStatusBadge({
   );
 }
 
-/** Marca "Urgente" (P47): no es un estado. */
+/**
+ * Marca "Urgente" (P47): no es un estado. Amarilla como su rayo, en un ámbar claro
+ * que no se confunde con el amarillo intenso de "Observada" (contraste AA).
+ */
 export function UrgentBadge({ className }: { className?: string }) {
   return (
     <Badge
       variant="outline"
       data-urgent
-      className={cn("border-transparent bg-cyan-300 text-cyan-950", className)}
+      className={cn(
+        "border-transparent bg-amber-300 text-amber-950",
+        className,
+      )}
     >
       <Zap aria-hidden />
       Urgente
     </Badge>
+  );
+}
+
+/**
+ * Solo el rayo amarillo de "Urgente", para las tablas: va al costado del código de la
+ * pieza. El texto oculto lo dice a los lectores de pantalla y el `title` al pasar el
+ * mouse.
+ */
+export function UrgentIcon({ className }: { className?: string }) {
+  return (
+    <span
+      data-urgent
+      title="Urgente"
+      className={cn("inline-flex shrink-0 items-center", className)}
+    >
+      <Zap aria-hidden className="size-4 fill-amber-400 text-amber-600" />
+      <span className="sr-only">Urgente</span>
+    </span>
   );
 }
 

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
+import { Pagination } from "@/components/pagination";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { WhatsappQuotesFiltersForm } from "@/components/whatsapp-quotes/whatsapp-quotes-filters-form";
@@ -54,39 +55,13 @@ export default async function CotizacionesWhatsappPage({
             : "Aún no hay cotizaciones de WhatsApp."
         }
       />
-      <nav
-        aria-label="Paginación"
-        className="flex items-center justify-between gap-2 text-sm"
-      >
-        <span className="text-muted-foreground">
-          {total === 1 ? "1 cotización" : `${total} cotizaciones`} · Página{" "}
-          {filters.page} de {pages}
-        </span>
-        <div className="flex gap-2">
-          {filters.page > 1 ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={whatsappQuoteFiltersHref(filters, {
-                  page: filters.page - 1,
-                })}
-              >
-                Anterior
-              </Link>
-            </Button>
-          ) : null}
-          {filters.page < pages ? (
-            <Button asChild variant="outline" size="sm">
-              <Link
-                href={whatsappQuoteFiltersHref(filters, {
-                  page: filters.page + 1,
-                })}
-              >
-                Siguiente
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      </nav>
+      <Pagination
+        page={filters.page}
+        pages={pages}
+        total={total}
+        noun={["cotización", "cotizaciones"]}
+        hrefFor={(page) => whatsappQuoteFiltersHref(filters, { page })}
+      />
     </div>
   );
 }

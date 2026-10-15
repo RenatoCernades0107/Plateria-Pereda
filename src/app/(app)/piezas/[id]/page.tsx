@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { FileGallery } from "@/components/files/file-gallery";
-import { FileUploader } from "@/components/files/file-uploader";
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
+import { FilesPanel } from "@/components/files/files-panel";
 import {
-  PIECE_ACCENT_CLASS,
+  PIECE_CARD_CLASS,
   PieceEyebrow,
 } from "@/components/restorations/guide-labels";
 import {
@@ -14,8 +14,9 @@ import {
   PieceTimelineStrip,
 } from "@/components/restorations/piece-history";
 import { PieceMoneyTiles } from "@/components/restorations/piece-money-tiles";
-import { PieceStatusPanel } from "@/components/restorations/piece-status-actions";
+import { PieceHeader } from "@/components/restorations/piece-status-actions";
 import { RestorationStatusBadge } from "@/components/restorations/status-badges";
+import { PieceWorkshopField } from "@/components/restorations/workshop-edit-button";
 import { Button } from "@/components/ui/button";
 import { toCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
@@ -23,6 +24,7 @@ import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue } from "@/server/payments/queries";
 import {
@@ -31,18 +33,21 @@ import {
   getStatusHistory,
 } from "@/server/restorations/queries";
 
-export const metadata: Metadata = { title: "Pieza" };
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export async function generateMetadata({
+  params,
+}: PageProps<"/piezas/[id]">): Promise<Metadata> {
+  return recordMetadata("piece", (await params).id, "Pieza");
+}
 
 const CARD_CLASS = "bg-card rounded-lg border p-4 shadow-xs sm:p-5";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Detalle completo de una pieza (P55). En pantallas anchas, lo esencial cabe sin
- * desplazarse: a la izquierda (~40 %) las fotos; a la derecha (~60 %) la cabecera
- * (código, descripción, cliente y guía), el estado, las acciones, los montos y los
- * datos de la pieza. Debajo, lo secundario: la historia y la subida de archivos.
- * En el celular va en una columna: cabecera, acciones, montos, fotos y datos.
+ * Detalle completo de una pieza (P55). Arriba, como en la guía, la cabecera: título y
+ * estado a la izquierda, acciones a la derecha. Debajo, en dos columnas desde `lg`,
+ * montos y datos junto a las fotos (lo esencial sin desplazarse) y al final la línea
+ * de tiempo a lo ancho. En el celular, todo en una columna en ese orden.
  */
 export default async function PiezaDetallePage({
   params,
@@ -101,8 +106,10 @@ export default async function PiezaDetallePage({
   const showMoney = canSeeCost || canSeeMoney;
 
   return (
-    <div className="space-y-4">
-      <Button asChild variant="ghost" size="sm" className="-my-1 -ml-2">
+    <div className="space-y-6">
+      <PageBreadcrumb label={piece.code} />
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva a Piezas. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/piezas">
           <ArrowLeft />
           Piezas
@@ -110,17 +117,23 @@ export default async function PiezaDetallePage({
       </Button>
 
       {/*
-        Encima del pliegue. En escritorio: fotos a la izquierda (abarcan las dos filas)
-        y, a la derecha, la cabecera arriba y los datos debajo. En el celular el orden
-        del DOM manda: cabecera (con acciones y montos), fotos y datos.
+        Como la guía: la cabecera de la pieza (título y estado a la izquierda, acciones
+        a la derecha) en su tarjeta blanca con el acento de pieza. Debajo, montos y
+        datos (2/5) junto a las fotos (3/5); al final, el historial a lo ancho.
       */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-rows-[auto_1fr] lg:gap-5">
-        <section
-          className={cn(CARD_CLASS, PIECE_ACCENT_CLASS, "lg:col-start-2")}
-          aria-labelledby="titulo-pieza"
-        >
-          <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-            <div className="min-w-0 space-y-1.5">
+      <section
+        aria-labelledby="titulo-pieza"
+        className={PIECE_CARD_CLASS}
+        data-testid="pieza"
+      >
+        <PieceHeader
+          restorationId={restoration.id}
+          piece={piece}
+          role={user.role}
+          workshops={workshops.data}
+          balanceDue={balanceDue}
+          heading={
+            <div className="space-y-2">
               <PieceEyebrow number={piece.number} code={piece.code} />
               <h1
                 id="titulo-pieza"
@@ -138,45 +151,33 @@ export default async function PiezaDetallePage({
                 <span className="text-muted-foreground" aria-hidden>
                   ·
                 </span>
-                <span className="text-muted-foreground">
+                <Link
+                  href={`/restauraciones/${restoration.id}`}
+                  aria-label={`Ver guía ${restoration.code}`}
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 whitespace-nowrap underline-offset-4 hover:underline"
+                >
+                  <ClipboardList aria-hidden className="size-3.5" />
                   Guía {restoration.code}
-                </span>
-                <RestorationStatusBadge
-                  status={restoration.status}
-                  className="ml-0.5"
-                />
+                </Link>
+                <RestorationStatusBadge status={restoration.status} />
               </p>
             </div>
-            {/* Navegación, no acción: botón secundario para no competir con la principal. */}
-            <Button asChild variant="outline" size="sm" className="shrink-0">
-              <Link href={`/restauraciones/${restoration.id}`}>
-                <ClipboardList />
-                Ver guía {restoration.code}
-              </Link>
-            </Button>
-          </header>
+          }
+        />
+      </section>
 
-          <PieceStatusPanel
-            className="mt-4 border-t pt-4"
-            restorationId={restoration.id}
-            piece={piece}
-            role={user.role}
-            workshops={workshops.data}
-            balanceDue={balanceDue}
-          />
-
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="min-w-0 space-y-6">
           {showMoney ? (
             <section
-              className="mt-4 space-y-2 border-t pt-4"
+              className={cn(CARD_CLASS, "space-y-3")}
               aria-labelledby="montos-pieza"
             >
-              <h2
-                id="montos-pieza"
-                className="text-muted-foreground text-xs font-medium"
-              >
+              <h2 id="montos-pieza" className="text-heading font-semibold">
                 Montos
               </h2>
               <PieceMoneyTiles
+                className="sm:grid-cols-2"
                 piece={{
                   id: piece.id,
                   code: piece.code,
@@ -205,15 +206,59 @@ export default async function PiezaDetallePage({
               />
             </section>
           ) : null}
-        </section>
 
-        <section
-          className={cn(
-            CARD_CLASS,
-            "space-y-3 lg:col-start-1 lg:row-span-2 lg:row-start-1",
-          )}
-          aria-labelledby="fotos-pieza"
-        >
+          <section
+            className={cn(CARD_CLASS, "space-y-3")}
+            aria-labelledby="datos-pieza"
+          >
+            <h2 id="datos-pieza" className="text-heading font-semibold">
+              Datos de la pieza
+            </h2>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <Field label="Servicio">{piece.serviceName || null}</Field>
+              <Field label="Material">{piece.materialName || null}</Field>
+              <Field label="Peso">{weight}</Field>
+              <Field label="Medida">{piece.measure || null}</Field>
+              <Field label="Taller">
+                {/* Aquí se cambia un taller ya asignado (en /piezas solo se asigna). */}
+                <PieceWorkshopField
+                  piece={{
+                    id: piece.id,
+                    code: piece.code,
+                    status: piece.status,
+                    workshopId: piece.workshopId,
+                    workshopName: piece.workshopName,
+                  }}
+                  workshops={workshops.data}
+                  canAssign={can(user.role, "piezas.asignar-taller")}
+                />
+              </Field>
+              <Field label="Registrada">{formatDate(piece.createdAt)}</Field>
+              {/* Lo que aún no pasó (llegada, entrega) o está vacío (notas) no se muestra. */}
+              {piece.arrivedAt ? (
+                <Field label="Llegó a la tienda">
+                  {formatDate(piece.arrivedAt)}
+                </Field>
+              ) : null}
+              {piece.deliveredAt ? (
+                <Field label="Entregada">{formatDate(piece.deliveredAt)}</Field>
+              ) : null}
+              {piece.notes ? (
+                <Field label="Notas de la pieza" wide>
+                  {piece.notes}
+                </Field>
+              ) : null}
+            </dl>
+            {/* Logística no ve la línea de tiempo: su resumen va con los datos. */}
+            {!canSeeMoney && info ? (
+              <div className="border-t pt-3">
+                <LogisticsPieceSummary info={info} />
+              </div>
+            ) : null}
+          </section>
+        </div>
+
+        <section className="min-w-0 space-y-3" aria-labelledby="fotos-pieza">
           <h2
             id="fotos-pieza"
             className="text-heading flex items-center gap-1.5 font-semibold"
@@ -226,84 +271,27 @@ export default async function PiezaDetallePage({
               </span>
             ) : null}
           </h2>
-          <FileGallery
+          <FilesPanel
+            stacked
+            restorationId={restoration.id}
             files={pieceFiles}
             targets={fileTargets}
+            canUpload={canUpload}
             currentUserId={user.id}
             isAdmin={user.role === "admin"}
             emptyText="La pieza aún no tiene fotos."
-            className="min-w-0"
             showTargetLabels={false}
           />
         </section>
-
-        <section
-          className={cn(CARD_CLASS, "space-y-3 lg:col-start-2")}
-          aria-labelledby="datos-pieza"
-        >
-          <h2 id="datos-pieza" className="text-heading font-semibold">
-            Datos de la pieza
-          </h2>
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
-            <Field label="Servicio">{piece.serviceName || null}</Field>
-            <Field label="Material">{piece.materialName || null}</Field>
-            <Field label="Peso">{weight}</Field>
-            <Field label="Medida">{piece.measure || null}</Field>
-            <Field label="Taller">{piece.workshopName ?? "Sin taller"}</Field>
-            <Field label="Registrada">{formatDate(piece.createdAt)}</Field>
-            <Field label="Llegó a la tienda">
-              {piece.arrivedAt ? formatDate(piece.arrivedAt) : null}
-            </Field>
-            {piece.deliveredAt ? (
-              <Field label="Entregada">{formatDate(piece.deliveredAt)}</Field>
-            ) : null}
-            <Field label="Notas de la pieza" wide>
-              {piece.notes || null}
-            </Field>
-          </dl>
-        </section>
       </div>
 
-      {/* Debajo del pliegue: historia y subida de archivos. */}
-      <div
-        className={cn(
-          "grid items-start gap-4 lg:gap-5",
-          canUpload && "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
-        )}
-      >
-        <div className={cn("min-w-0", canUpload && "lg:col-start-2")}>
-          {canSeeMoney ? (
-            <PieceTimelineStrip
-              piece={piece}
-              events={history.filter((e) => e.pieceId === piece.id)}
-              now={new Date()}
-            />
-          ) : (
-            <section
-              className="bg-card space-y-2 rounded-lg border p-3 sm:p-4"
-              aria-labelledby="historia-pieza"
-            >
-              <h2 id="historia-pieza" className="text-heading font-semibold">
-                Historia
-              </h2>
-              {info ? (
-                <LogisticsPieceSummary info={info} />
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  Sin movimientos.
-                </p>
-              )}
-            </section>
-          )}
-        </div>
-        {canUpload ? (
-          <FileUploader
-            restorationId={restoration.id}
-            targets={fileTargets}
-            className="bg-card min-w-0 lg:col-start-1 lg:row-start-1"
-          />
-        ) : null}
-      </div>
+      {canSeeMoney ? (
+        <PieceTimelineStrip
+          piece={piece}
+          events={history.filter((e) => e.pieceId === piece.id)}
+          now={new Date()}
+        />
+      ) : null}
     </div>
   );
 }

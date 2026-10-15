@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { EntityHistorySection } from "@/components/audit/entity-history-section";
 import { ActiveToggle } from "@/components/clients/active-toggle";
 import { ClientWorkTabs } from "@/components/clients/client-work-tabs";
@@ -21,11 +22,16 @@ import { parseRestorationFilters } from "@/domain/restoration-filters";
 import { parseWhatsappQuoteFilters } from "@/domain/whatsapp-quotes";
 import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
+import { recordMetadata } from "@/server/page-titles";
 import { getClientDetail, type SyncState } from "@/server/clients/queries";
 import { listRestorations } from "@/server/restorations/queries";
 import { listWhatsappQuotes } from "@/server/whatsapp-quotes/queries";
 
-export const metadata: Metadata = { title: "Cliente" };
+export async function generateMetadata({
+  params,
+}: PageProps<"/clientes/[id]">): Promise<Metadata> {
+  return recordMetadata("client", (await params).id, "Cliente");
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -84,7 +90,9 @@ export default async function ClienteDetallePage({
 
   return (
     <div className="space-y-6">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
+      <PageBreadcrumb label={client.displayName} />
+      {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
         <Link href="/clientes">
           <ArrowLeft />
           Clientes
