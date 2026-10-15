@@ -222,6 +222,39 @@ describe("PiecesBoard: menú «Acciones» de cada pieza", () => {
     expect(within(menu).queryByRole("menuitem", { name: "Editar" })).toBeNull();
   });
 
+  it("aparta los cierres en su grupo, en rojo", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    const menu = await openMenu(user, "RES-00001-1");
+    const [estado, cierre] = within(menu).getAllByRole("group");
+    expect(estado).toHaveTextContent("Cambiar estado");
+    expect(
+      within(estado!).getByRole("menuitem", { name: "Aprobar" }),
+    ).not.toHaveAttribute("data-variant", "destructive");
+    expect(cierre).toHaveTextContent("Cerrar la pieza");
+    expect(
+      within(cierre!).getByRole("menuitem", { name: "Anular" }),
+    ).toHaveAttribute("data-variant", "destructive");
+  });
+
+  it("el paso siguiente está a la vista como botón", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    const row = screen.getByTestId("pieza-RES-00001-1");
+    await user.click(
+      within(row).getByRole("button", { name: "Aprobar: RES-00001-1" }),
+    );
+    await waitFor(() =>
+      expect(mocks.change).toHaveBeenCalledWith(
+        "r1",
+        ["p1"],
+        "aprobada",
+        null,
+        null,
+      ),
+    );
+  });
+
   it("«Aprobar» cambia el estado al instante", async () => {
     const user = userEvent.setup();
     renderBoard();
