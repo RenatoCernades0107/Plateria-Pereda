@@ -52,7 +52,7 @@ export async function dashboardCounts({
   const countRestorations = async (filters: RestorationFilters) => {
     const { data, error } = await supabase.rpc(
       "list_restorations",
-      listRestorationsArgs(filters, { limit: 1 }),
+      listRestorationsArgs({ ...filters, scope: "todas" }, { limit: 1 }),
     );
     if (error) throw error;
     return Number(data[0]?.total_count ?? 0);

@@ -142,7 +142,8 @@ test.describe("Listado de restauraciones", () => {
   test("exporta a CSV con los filtros", async ({ page }) => {
     await page.goto(`/restauraciones?q=${clientName}&estado=lista`);
     const download = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Exportar CSV" }).click();
+    await page.getByRole("button", { name: "Más acciones" }).click();
+    await page.getByRole("menuitem", { name: "Exportar CSV" }).click();
     const file = await download;
     expect(file.suggestedFilename()).toMatch(
       /^restauraciones-\d{4}-\d{2}-\d{2}\.csv$/,

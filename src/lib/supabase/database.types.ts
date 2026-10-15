@@ -1930,6 +1930,7 @@ export type Database = {
           p_payment_status?: Database["public"]["Enums"]["payment_status"][];
           p_payment_type?: Database["public"]["Enums"]["payment_type"][];
           p_query?: string;
+          p_scope?: string;
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["restoration_status"][];
           p_to?: string;
