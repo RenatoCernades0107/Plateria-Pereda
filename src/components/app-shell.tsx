@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { LogOut } from "lucide-react";
+import Link, { useLinkStatus } from "next/link";
+import { Loader2, LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import {
@@ -47,6 +47,23 @@ import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { logout } from "@/server/auth-actions";
 
 export type ShellUser = { fullName: string; email: string; role: AppRole };
+
+/**
+ * Indicador de carga del enlace del menú mientras llega la sección. No se usan
+ * `loading.tsx`: con ellos la respuesta se transmite por partes y los 403/404 salen
+ * con código 200.
+ */
+function NavPending() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <Loader2
+      aria-hidden
+      data-testid="cargando-seccion"
+      className="ml-auto animate-spin group-data-[collapsible=icon]:hidden"
+    />
+  );
+}
 
 function AppNav({ role }: { role: AppRole }) {
   const pathname = usePathname();
@@ -94,6 +111,7 @@ function AppNav({ role }: { role: AppRole }) {
                     <Link href={item.href} onClick={() => setOpenMobile(false)}>
                       <item.icon className={item.iconClassName} />
                       <span>{item.title}</span>
+                      <NavPending />
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
