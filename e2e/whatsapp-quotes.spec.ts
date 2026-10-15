@@ -211,7 +211,7 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
 
     // Filtro por origen en el listado de restauraciones.
     await page.goto(`/restauraciones?q=${clientName}&origen=whatsapp`);
-    await expect(page.getByText("2 restauraciones")).toBeVisible();
+    await expect(page.getByTestId("resumen")).toHaveText("2 restauraciones");
   });
 
   test("descarta y reabre una cotización", async ({ page, loginAs }) => {
