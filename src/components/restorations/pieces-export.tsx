@@ -17,11 +17,20 @@ export function exportFileName(format: ExportFormat, date = new Date()) {
   return `piezas-${date.toISOString().slice(0, 10)}.${format}`;
 }
 
-/** Fila de la hoja exportada (sin foto), con el precio solo si se puede ver. */
-export function exportRow(piece: BoardPiece, showPrice: boolean) {
+/**
+ * Fila de la hoja exportada (sin foto), con el precio y el cliente solo si se pueden
+ * ver (logística no ve clientes: solo el código de la guía).
+ */
+export function exportRow(
+  piece: BoardPiece,
+  showPrice: boolean,
+  showClient = true,
+) {
   return {
     code: piece.code,
-    client: `${piece.restorationCode} · ${piece.clientName}`,
+    client: showClient
+      ? `${piece.restorationCode} · ${piece.clientName}`
+      : piece.restorationCode,
     description: piece.description,
     service: piece.serviceName || "—",
     status: PIECE_STATUS_LABELS[piece.status],
@@ -49,9 +58,11 @@ function download(dataUrl: string, name: string) {
 export function PiecesExportButtons({
   pieces,
   showPrice,
+  showClient = true,
 }: {
   pieces: BoardPiece[];
   showPrice: boolean;
+  showClient?: boolean;
 }) {
   const sheet = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<ExportFormat | null>(null);
@@ -129,7 +140,9 @@ export function PiecesExportButtons({
               <tr>
                 <th className={cell}>Foto</th>
                 <th className={cell}>Pieza</th>
-                <th className={cell}>Guía · cliente</th>
+                <th className={cell}>
+                  {showClient ? "Guía · cliente" : "Guía"}
+                </th>
                 <th className={cell}>Descripción</th>
                 <th className={cell}>Servicio</th>
                 <th className={cell}>Estado</th>
@@ -139,7 +152,7 @@ export function PiecesExportButtons({
             </thead>
             <tbody>
               {pieces.map((piece) => {
-                const row = exportRow(piece, showPrice);
+                const row = exportRow(piece, showPrice, showClient);
                 return (
                   <tr key={piece.id}>
                     <td className={cell}>

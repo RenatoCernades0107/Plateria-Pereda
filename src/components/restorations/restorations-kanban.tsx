@@ -24,10 +24,13 @@ import { PaymentStatusBadge } from "./status-badges";
 export function RestorationsKanban({
   items,
   showMoney,
+  showClient = true,
   progress,
 }: {
   items: RestorationListItem[];
   showMoney: boolean;
+  /** Logística no ve clientes. */
+  showClient?: boolean;
   /** Avance de las restauraciones en estado parcial ("2/6 aprobadas"). */
   progress?: ReadonlyMap<string, PartialProgress>;
 }) {
@@ -57,7 +60,7 @@ export function RestorationsKanban({
               {formatDate(r.createdAt)}
             </span>
           </div>
-          <p className="truncate">{r.clientName}</p>
+          {showClient ? <p className="truncate">{r.clientName}</p> : null}
           <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
             <span>
               {r.piecesCount} {r.piecesCount === 1 ? "pieza" : "piezas"}

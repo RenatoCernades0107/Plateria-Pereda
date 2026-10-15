@@ -168,6 +168,14 @@ test.describe("Listado de restauraciones", () => {
     await expect(page.getByRole("columnheader", { name: /Total/ })).toHaveCount(
       0,
     );
+    // Tampoco ve clientes: ni columna, ni nombre, ni filtro.
+    await expect(
+      page.getByRole("columnheader", { name: /Cliente/ }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Cliente")).toHaveCount(0);
+    await expect(
+      page.getByTestId(`restauracion-${codes[0]}`).getByText(clientName),
+    ).toHaveCount(0);
     const response = await page.request.get("/api/restauraciones/exportar");
     expect(response.status()).toBe(403);
   });

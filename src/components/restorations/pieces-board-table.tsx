@@ -183,6 +183,7 @@ function BoardRow({
   onToggle,
   showCost,
   showPrice,
+  showClient,
   editPrice,
   assignTaller,
   balanceDue,
@@ -194,6 +195,8 @@ function BoardRow({
   onToggle: (on: boolean) => void;
   showCost: boolean;
   showPrice: boolean;
+  /** Logística no ve clientes. */
+  showClient: boolean;
   editPrice: boolean;
   assignTaller: boolean;
   balanceDue: boolean;
@@ -264,9 +267,11 @@ function BoardRow({
             {piece.restorationCode}
           </Link>
         </td>
-        <td className={cn(labeled, "max-w-40")} data-label="Cliente">
-          <span className="break-words">{piece.clientName}</span>
-        </td>
+        {showClient ? (
+          <td className={cn(labeled, "max-w-40")} data-label="Cliente">
+            <span className="break-words">{piece.clientName}</span>
+          </td>
+        ) : null}
         <td className={cn(cell, RT.full, "max-w-64 min-w-48")}>
           <p className="break-words">{piece.description}</p>
           {details ? (
@@ -383,6 +388,7 @@ export function PiecesBoardTable({
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
   const showCost = can(role, "piezas.costo-servicio");
   const showPrice = can(role, "dinero.ver");
+  const showClient = can(role, "clientes.ver");
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");
 
@@ -402,7 +408,11 @@ export function PiecesBoardTable({
         onDone={() => setSelected([])}
         workshopPicker={false}
       >
-        <PiecesExportButtons pieces={chosen} showPrice={showPrice} />
+        <PiecesExportButtons
+          pieces={chosen}
+          showPrice={showPrice}
+          showClient={showClient}
+        />
       </PiecesBulkBar>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {selectable.length > 0 ? (
@@ -436,9 +446,11 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Guía
               </th>
-              <th scope="col" className={head}>
-                Cliente
-              </th>
+              {showClient ? (
+                <th scope="col" className={head}>
+                  Cliente
+                </th>
+              ) : null}
               <th scope="col" className={head}>
                 Descripción
               </th>
@@ -488,6 +500,7 @@ export function PiecesBoardTable({
                 onToggle={(on) => toggle(piece.id, on)}
                 showCost={showCost}
                 showPrice={showPrice}
+                showClient={showClient}
                 editPrice={editPrice}
                 assignTaller={assignTaller}
                 balanceDue={balanceDue.includes(piece.restorationId)}

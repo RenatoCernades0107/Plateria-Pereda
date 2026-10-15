@@ -20,6 +20,7 @@ import {
   pieceBoardHref,
   WORKSHOP_DAYS_ALERT,
 } from "@/domain/piece-board-filters";
+import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { boardBalanceDue } from "@/server/restorations/board-balance";
@@ -35,11 +36,12 @@ export default async function PiezasPage({
 }: PageProps<"/piezas">) {
   const user = await requirePermission("restauraciones.ver");
   const filters = parsePieceBoardFilters(await searchParams);
+  const showClient = can(user.role, "clientes.ver");
   const supabase = await createClient();
   // Contadores de los chips: lo que daría cada uno con los demás filtros.
   const chipFilters = pieceChipCountFilters(filters);
   const [{ items, total, pages }, workshops, chipTotals] = await Promise.all([
-    listPiecesBoard(filters),
+    listPiecesBoard(filters, { withClient: showClient }),
     supabase
       .from("workshops")
       .select("id, name")
@@ -79,7 +81,11 @@ export default async function PiezasPage({
         label="Mostrar solo"
         chips={pieceFilterChips(filters, counts)}
       />
-      <PiecesBoardFiltersForm filters={filters} workshops={workshops.data} />
+      <PiecesBoardFiltersForm
+        filters={filters}
+        workshops={workshops.data}
+        showClient={showClient}
+      />
       {/* Barra de la lista: cuántas hay y, juntas, las acciones de la vista. */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
         <p className="text-muted-foreground text-sm" data-testid="resumen">

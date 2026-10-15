@@ -23,6 +23,10 @@ describe("exportación de piezas", () => {
     );
   });
 
+  it("omite el cliente si el rol no lo ve (logística)", () => {
+    expect(exportRow(piece, false, false).client).toBe("RES-00001");
+  });
+
   it("incluye el precio solo si el rol lo ve", () => {
     const row = exportRow(piece, true);
     expect(row).toMatchObject({

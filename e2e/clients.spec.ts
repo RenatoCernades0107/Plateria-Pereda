@@ -214,16 +214,18 @@ test.describe("Clientes", () => {
     ).toBeVisible();
   });
 
-  test("logística ve los clientes pero no los registra", async ({
-    page,
-    loginAs,
-  }) => {
+  test("logística no ve los clientes", async ({ page, loginAs }) => {
     await loginAs("logistica");
-    await page.goto("/clientes");
-    await expect(page.getByRole("heading", { name: "Clientes" })).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Nuevo cliente" }),
+      page.getByRole("link", { name: "Clientes", exact: true }),
     ).toHaveCount(0);
+    await page.goto("/clientes");
+    await expect(page.getByRole("heading", { name: "Clientes" })).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByText("No tienes acceso a esta sección"),
+    ).toBeVisible();
   });
 
   test("registra un cliente desde el celular @mobile", async ({
