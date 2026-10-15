@@ -50,6 +50,9 @@ export type PieceDetail = {
   deliveredAt: string | null;
   /** Devuelta al cliente (rechazada o sin arreglo, P47). */
   returnedAt: string | null;
+  /** Revisión en taller: último envío a revisar y última vuelta (sin dato: sin revisión). */
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
   /** null si quien mira no ve montos (logística, P42) o si aún no tiene precio de venta (D58). */
   priceCents: Cents | null;
 };
@@ -209,6 +212,8 @@ export async function getRestorationDetail(
       createdAt: p.created_at!,
       deliveredAt: p.delivered_at,
       returnedAt: p.returned_at,
+      reviewSentAt: p.review_sent_at,
+      reviewReturnedAt: p.review_returned_at,
       priceCents: withMoney ? (priceOf.get(p.id!) ?? null) : null,
     })),
     money: money.data
@@ -416,6 +421,9 @@ export type BoardPiece = {
   readyForDelivery: boolean;
   /** Siempre null: las piezas ya devueltas al cliente no salen en la vista. */
   returnedAt: null;
+  /** Revisión en taller: último envío a revisar y última vuelta (sin dato: sin revisión). */
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
   workshopId: string | null;
   workshopName: string | null;
   arrivedAt: string | null;
@@ -473,6 +481,8 @@ export async function listPiecesBoard(
       urgent: p.urgent,
       readyForDelivery: p.ready_for_delivery,
       returnedAt: null,
+      reviewSentAt: p.review_sent_at ?? null,
+      reviewReturnedAt: p.review_returned_at ?? null,
       workshopId: p.workshop_id,
       workshopName: p.workshop_name,
       arrivedAt: p.arrived_at,

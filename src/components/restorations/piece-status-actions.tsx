@@ -39,8 +39,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   availableTransitions,
   canMarkArrived,
+  canReceiveFromReview,
   canReceiveFromWorkshop,
   canReturnToClient,
+  canSendForReview,
   isClosedStatus,
   PIECE_STATUS_LABELS,
   type PieceStatus,
@@ -53,7 +55,9 @@ import {
   changePieceStatus,
   markPiecesArrived,
   receiveFromWorkshop,
+  receivePiecesFromReview,
   returnPiecesToClient,
+  sendPiecesForReview,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -84,14 +88,22 @@ export type StatusPiece = {
   readyForDelivery: boolean;
   returnedAt: string | null;
   urgent: boolean;
+  /** Revisión en taller: último envío a revisar y última vuelta. */
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
 };
+
+const dateOrNull = (value: string | null | undefined) =>
+  value ? new Date(value) : null;
 
 /** Lo que la máquina de estados necesita de una pieza de la interfaz. */
 export const snapshotOf = (piece: StatusPiece) => ({
   status: piece.status,
-  arrivedAt: piece.arrivedAt ? new Date(piece.arrivedAt) : null,
+  arrivedAt: dateOrNull(piece.arrivedAt),
   readyForDelivery: piece.readyForDelivery,
-  returnedAt: piece.returnedAt ? new Date(piece.returnedAt) : null,
+  returnedAt: dateOrNull(piece.returnedAt),
+  reviewSentAt: dateOrNull(piece.reviewSentAt),
+  reviewReturnedAt: dateOrNull(piece.reviewReturnedAt),
 });
 
 export type PendingChange = {
@@ -136,6 +148,41 @@ export function locationAfter(
 }
 
 const NONE = "ninguno";
+
+/** Taller a elegir entre los activos (cambio de estado y revisión en taller). */
+function WorkshopSelect({
+  id,
+  value,
+  onChange,
+  workshops,
+}: {
+  id: string;
+  value: string | null;
+  onChange: (workshopId: string | null) => void;
+  workshops: WorkshopOption[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>Taller</Label>
+      <Select
+        value={value ?? NONE}
+        onValueChange={(v) => onChange(v === NONE ? null : v)}
+      >
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NONE}>Elige un taller</SelectItem>
+          {workshops.map((w) => (
+            <SelectItem key={w.id} value={w.id}>
+              {w.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
 
 /** Confirmación de un cambio de estado con nota y/o taller cuando se requiere. */
 export function StatusChangeDialog({
@@ -207,25 +254,12 @@ export function StatusChangeDialog({
         <div className="space-y-4">
           {error ? <FormAlert>{error}</FormAlert> : null}
           {change.requiresWorkshop ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="cambio-taller">Taller</Label>
-              <Select
-                value={workshopId ?? NONE}
-                onValueChange={(v) => setWorkshopId(v === NONE ? null : v)}
-              >
-                <SelectTrigger id="cambio-taller" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>Elige un taller</SelectItem>
-                  {workshops.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <WorkshopSelect
+              id="cambio-taller"
+              value={workshopId}
+              onChange={setWorkshopId}
+              workshops={workshops}
+            />
           ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="cambio-nota">
@@ -247,6 +281,86 @@ export function StatusChangeDialog({
             disabled={pending}
           >
             {pending ? "Guardando…" : `Confirmar: ${ACTION_LABELS[change.to]}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Textos de la revisión en taller (sin cambiar el estado de la pieza). */
+export const REVIEW_LABELS = {
+  send: "Llevar al taller a revisar",
+  back: "Volvió de revisión",
+} as const;
+
+/**
+ * "Llevar al taller a revisar": se elige el taller (revisión en taller). La pieza
+ * no cambia de estado; su ubicación pasa a En taller hasta que se marca que volvió.
+ */
+export function ReviewDialog({
+  open,
+  onOpenChange,
+  pieces,
+  workshops,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pieces: StatusPiece[];
+  workshops: WorkshopOption[];
+  onConfirm: (workshopId: string) => Promise<string | null>;
+}) {
+  const [workshopId, setWorkshopId] = useState<string | null>(
+    pieces.length === 1 ? pieces[0]!.workshopId : null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  if (pieces.length === 0) return null;
+
+  const subject =
+    pieces.length === 1 ? pieces[0]!.code : `${pieces.length} piezas`;
+  const submit = () => {
+    if (!workshopId) {
+      setError("Elige el taller al que se lleva la pieza.");
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const message = await onConfirm(workshopId);
+      if (message) {
+        setError(message);
+        return;
+      }
+      onOpenChange(false);
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {REVIEW_LABELS.send}: {subject}
+          </DialogTitle>
+          <DialogDescription>
+            Sigue en «{PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En
+            taller» hasta que marques que volvió. Si el cliente aprueba, pasa a
+            En restauración en el mismo taller.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {error ? <FormAlert>{error}</FormAlert> : null}
+          <WorkshopSelect
+            id="revision-taller"
+            value={workshopId}
+            onChange={setWorkshopId}
+            workshops={workshops}
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={pending}>
+            {pending ? "Guardando…" : "Confirmar: llevar al taller"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -278,8 +392,8 @@ export type PieceActionsInput = {
 /**
  * Acciones que el rol puede hacer sobre una pieza y sus diálogos (Pasos 8.4 y 8.6).
  * El cambio se ve al instante (optimista) y vuelve atrás si la BD lo rechaza.
- * Llegada, vuelta del taller y devolución no cambian el estado: solo la ubicación
- * (P47). Lo usan el panel del detalle de la pieza y el menú de la tabla de la guía.
+ * Llegada, vuelta del taller, devolución y la revisión en taller no cambian el
+ * estado: solo la ubicación (P47). Lo usan el panel del detalle de la pieza y el menú de la tabla de la guía.
  */
 export function usePieceActions({
   restorationId,
@@ -295,6 +409,7 @@ export function usePieceActions({
   );
   const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<PendingChange | null>(null);
+  const [reviewDialog, setReviewDialog] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState<
     "aprobar" | "entregar" | null
   >(null);
@@ -305,6 +420,8 @@ export function usePieceActions({
   const arrival = canMarkArrived(snapshot, role);
   const receive = canReceiveFromWorkshop(snapshot, role);
   const giveBack = canReturnToClient(snapshot, role);
+  const toReview = canSendForReview(snapshot, role);
+  const backFromReview = canReceiveFromReview(snapshot, role);
 
   const run = (
     change: PendingChange,
@@ -347,6 +464,31 @@ export function usePieceActions({
       else toast.success(`${piece.code}: ${message}`);
     });
 
+  /** "Llevar al taller a revisar" desde su diálogo: el mensaje de error o null. */
+  const sendToReview = (workshopId: string) =>
+    new Promise<string | null>((resolve) => {
+      startTransition(async () => {
+        setOptimistic({
+          location: "en_taller",
+          workshopId,
+          reviewSentAt: new Date().toISOString(),
+          reviewReturnedAt: null,
+        });
+        const result = await sendPiecesForReview(
+          restorationId,
+          [piece.id],
+          workshopId,
+        );
+        if ("error" in result) {
+          toast.error(result.error);
+          resolve(result.error);
+        } else {
+          toast.success(`${piece.code}: llevada al taller a revisar.`);
+          resolve(null);
+        }
+      });
+    });
+
   const actions: PieceAction[] = [];
   if (arrival) {
     actions.push({
@@ -374,6 +516,32 @@ export function usePieceActions({
           () => receiveFromWorkshop(restorationId, [piece.id]),
           "volvió del taller.",
         ),
+    });
+  }
+  if (backFromReview) {
+    actions.push({
+      key: "vuelta_revision",
+      label: REVIEW_LABELS.back,
+      disabled: pending,
+      destructive: false,
+      onSelect: () =>
+        act(
+          {
+            location: "en_tienda",
+            reviewReturnedAt: new Date().toISOString(),
+          },
+          () => receivePiecesFromReview(restorationId, [piece.id]),
+          "volvió de revisión.",
+        ),
+    });
+  }
+  if (toReview) {
+    actions.push({
+      key: "revision",
+      label: REVIEW_LABELS.send,
+      disabled: pending,
+      destructive: false,
+      onSelect: () => setReviewDialog(true),
     });
   }
   if (giveBack) {
@@ -448,6 +616,14 @@ export function usePieceActions({
         workshops={workshops}
         onConfirm={(extra) => run(dialog!, extra)}
       />
+      <ReviewDialog
+        key={reviewDialog ? "revision-abierta" : "revision-cerrada"}
+        open={reviewDialog}
+        onOpenChange={setReviewDialog}
+        pieces={[piece]}
+        workshops={workshops}
+        onConfirm={sendToReview}
+      />
     </>
   );
 
@@ -469,12 +645,14 @@ export function usePieceActions({
 const PRIMARY_ORDER = [
   "entregada",
   "recibir",
+  "vuelta_revision",
   "devolver",
   "aprobada",
   "enviada_taller",
   "llegada",
   "en_espera",
   "en_consulta",
+  "revision",
 ] as const;
 
 /**

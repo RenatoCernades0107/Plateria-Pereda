@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { BoardPiece } from "@/server/restorations/queries";
@@ -89,5 +90,38 @@ describe("PiecesKanban: tiempos de la tarjeta", () => {
       "Hoy en este estado",
     );
     expect(screen.queryByTestId("dias-en-taller")).not.toBeInTheDocument();
+  });
+});
+
+describe("PiecesKanban: revisión en taller", () => {
+  it("el menú de la tarjeta ofrece llevar a revisar y, en revisión, «Volvió de revisión»", async () => {
+    const user = userEvent.setup();
+    renderKanban([
+      piece(1, {
+        status: "en_consulta",
+        location: "sin_enviar",
+        arrivedAt: "2026-10-01T15:00:00Z",
+      }),
+      piece(2, {
+        status: "en_espera",
+        location: "en_taller",
+        arrivedAt: "2026-10-01T15:00:00Z",
+        reviewSentAt: "2026-10-02T15:00:00Z",
+        reviewReturnedAt: null,
+      }),
+    ]);
+    await user.click(
+      screen.getByRole("button", { name: "Mover RES-00001-1 a…" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "Llevar al taller a revisar" }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await user.click(
+      screen.getByRole("button", { name: "Mover RES-00001-2 a…" }),
+    );
+    const items = screen.getAllByRole("menuitem").map((i) => i.textContent);
+    // En revisión no se rechaza ni se anula hasta que vuelve.
+    expect(items).toEqual(["Aprobada", "Volvió de revisión"]);
   });
 });

@@ -99,6 +99,7 @@ export function PiecesKanban({
                     code={piece.code}
                     targets={moves.targets(piece)}
                     onMove={(to) => moves.move(piece, to)}
+                    actions={moves.actions(piece)}
                   />
                   {drag?.handle}
                 </div>

@@ -379,7 +379,8 @@ select results_eq(
 select is(
   (select count(*)::int from public.pieces p
    where p.location is distinct from public.derive_piece_location(
-     p.status, p.arrived_at, p.first_sent_at, p.last_sent_at, p.last_returned_at, p.returned_at)),
+     p.status, p.arrived_at, p.first_sent_at, p.last_sent_at, p.last_returned_at, p.returned_at,
+     p.review_sent_at, p.review_returned_at)),
   0, 'la columna generada de ubicación coincide con derive_piece_location()'
 );
 

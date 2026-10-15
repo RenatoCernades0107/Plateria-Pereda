@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   arrive: vi.fn(),
   receive: vi.fn(),
   giveBack: vi.fn(),
+  sendReview: vi.fn(),
+  backFromReview: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -23,6 +25,8 @@ vi.mock("@/server/restorations/status-actions", () => ({
   markPiecesArrived: (...a: unknown[]) => mocks.arrive(...a),
   receiveFromWorkshop: (...a: unknown[]) => mocks.receive(...a),
   returnPiecesToClient: (...a: unknown[]) => mocks.giveBack(...a),
+  sendPiecesForReview: (...a: unknown[]) => mocks.sendReview(...a),
+  receivePiecesFromReview: (...a: unknown[]) => mocks.backFromReview(...a),
   assignWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({
@@ -43,10 +47,12 @@ function renderPanel(
     workshopId?: string | null;
     readyForDelivery?: boolean;
     urgent?: boolean;
+    reviewSentAt?: string | null;
   } = {},
 ) {
   const arrivedAt = extra.arrivedAt ?? null;
   const readyForDelivery = extra.readyForDelivery ?? false;
+  const reviewSentAt = extra.reviewSentAt ?? null;
   return render(
     <PieceStatusPanel
       restorationId="r1"
@@ -65,12 +71,15 @@ function renderPanel(
           lastReturnedAt: readyForDelivery
             ? new Date("2026-10-06T10:00:00Z")
             : null,
+          reviewSentAt: reviewSentAt ? new Date(reviewSentAt) : null,
         }),
         arrivedAt,
         workshopId: extra.workshopId ?? null,
         readyForDelivery,
         returnedAt: null,
         urgent: extra.urgent ?? false,
+        reviewSentAt,
+        reviewReturnedAt: null,
       }}
       role={role}
       workshops={workshops}
@@ -95,6 +104,8 @@ beforeEach(() => {
   mocks.arrive.mockResolvedValue({ ok: true });
   mocks.receive.mockResolvedValue({ ok: true });
   mocks.giveBack.mockResolvedValue({ ok: true });
+  mocks.sendReview.mockResolvedValue({ ok: true });
+  mocks.backFromReview.mockResolvedValue({ ok: true });
 });
 
 describe("PieceStatusPanel", () => {
@@ -302,6 +313,97 @@ describe("PieceStatusPanel", () => {
       screen.getByRole("button", { name: "Marcar llegada a tienda" }),
     );
     expect(mocks.arrive).toHaveBeenCalledWith("r1", ["p1"]);
+  });
+});
+
+describe("revisión en taller", () => {
+  const SENT = "2026-10-05T10:00:00Z";
+
+  it("logística lleva al taller a revisar una pieza en Consulta: elige el taller", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderPanel("en_consulta", "logistica", {
+      arrivedAt: ARRIVED,
+    });
+    expect(buttons()).toEqual(["Llevar al taller a revisar"]);
+    await user.click(
+      screen.getByRole("button", { name: "Llevar al taller a revisar" }),
+    );
+    let dialog = screen.getByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: llevar al taller",
+      }),
+    );
+    expect(
+      within(dialog).getByText("Elige el taller al que se lleva la pieza."),
+    ).toBeVisible();
+    expect(mocks.sendReview).not.toHaveBeenCalled();
+    unmount();
+
+    renderPanel("en_consulta", "logistica", {
+      arrivedAt: ARRIVED,
+      workshopId: workshops[0]!.id,
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Llevar al taller a revisar" }),
+    );
+    dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Taller")).toHaveTextContent(
+      "Taller Central",
+    );
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: llevar al taller",
+      }),
+    );
+    expect(mocks.sendReview).toHaveBeenCalledWith(
+      "r1",
+      ["p1"],
+      workshops[0]!.id,
+    );
+    expect(mocks.change).not.toHaveBeenCalled();
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1: llevada al taller a revisar.",
+    );
+  });
+
+  it("ventas no lleva piezas a revisar; tampoco sin llegar a la tienda", () => {
+    const { unmount } = renderPanel("en_consulta", "ventas", {
+      arrivedAt: ARRIVED,
+    });
+    expect(buttons()).not.toContain("Llevar al taller a revisar");
+    unmount();
+    renderPanel("en_consulta", "admin");
+    expect(buttons()).not.toContain("Llevar al taller a revisar");
+  });
+
+  it("en revisión: En taller, «Volvió de revisión» y sin cierres", async () => {
+    const user = userEvent.setup();
+    renderPanel("en_espera", "admin", {
+      arrivedAt: ARRIVED,
+      workshopId: workshops[0]!.id,
+      reviewSentAt: SENT,
+    });
+    expect(screen.getByText("En taller")).toBeInTheDocument();
+    expect(screen.getByText("Espera respuesta cliente")).toBeInTheDocument();
+    // Aprobar sigue disponible; Rechazar y Anular, no (primero vuelve).
+    expect(buttons()).toEqual(["Volvió de revisión", "Aprobar"]);
+    await user.click(
+      screen.getByRole("button", { name: "Volvió de revisión" }),
+    );
+    expect(mocks.backFromReview).toHaveBeenCalledWith("r1", ["p1"]);
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1: volvió de revisión.",
+    );
+  });
+
+  it("aprobada en revisión pasa a En restauración en el mismo taller", () => {
+    renderPanel("aprobada", "logistica", {
+      arrivedAt: ARRIVED,
+      workshopId: workshops[0]!.id,
+      reviewSentAt: SENT,
+    });
+    expect(buttons()).toEqual(["Volvió de revisión", "Enviar al taller"]);
   });
 });
 

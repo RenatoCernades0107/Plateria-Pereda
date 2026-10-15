@@ -626,6 +626,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "por_whatsapp"
     },
     {
@@ -635,6 +637,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "sin_enviar"
     },
     {
@@ -644,6 +648,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "sin_enviar"
     },
     {
@@ -653,6 +659,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "por_whatsapp"
     },
     {
@@ -662,6 +670,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "por_whatsapp"
     },
     {
@@ -671,6 +681,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "sin_enviar"
     },
     {
@@ -680,6 +692,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "en_taller"
     },
     {
@@ -689,6 +703,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "en_tienda"
     },
     {
@@ -698,6 +714,8 @@
       "lastSentAt": "2026-10-06T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "en_taller"
     },
     {
@@ -707,6 +725,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "sin_enviar"
     },
     {
@@ -716,6 +736,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": "2026-10-05T15:00:00Z",
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "entregada"
     },
     {
@@ -725,6 +747,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "sin_enviar"
     },
     {
@@ -734,6 +758,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": "2026-10-07T15:00:00Z",
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "entregada"
     },
     {
@@ -743,6 +769,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "por_whatsapp"
     },
     {
@@ -752,6 +780,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "en_tienda"
     },
     {
@@ -761,6 +791,8 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": "2026-10-07T15:00:00Z",
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "entregada"
     },
     {
@@ -770,6 +802,8 @@
       "lastSentAt": null,
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "anulada"
     },
     {
@@ -779,7 +813,97 @@
       "lastSentAt": "2026-10-02T15:00:00Z",
       "lastReturnedAt": null,
       "returnedAt": null,
+      "reviewSentAt": null,
+      "reviewReturnedAt": null,
       "expected": "anulada"
+    },
+    {
+      "status": "en_consulta",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": null,
+      "expected": "en_taller"
+    },
+    {
+      "status": "en_espera",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": null,
+      "expected": "en_taller"
+    },
+    {
+      "status": "aprobada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": null,
+      "expected": "en_taller"
+    },
+    {
+      "status": "en_consulta",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-04T15:00:00Z",
+      "reviewReturnedAt": "2026-10-03T15:00:00Z",
+      "expected": "en_taller"
+    },
+    {
+      "status": "en_consulta",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-03T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "aprobada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-02T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "rechazada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-03T15:00:00Z",
+      "expected": "en_tienda"
+    },
+    {
+      "status": "enviada_taller",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": "2026-10-04T15:00:00Z",
+      "lastSentAt": "2026-10-04T15:00:00Z",
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-04T15:00:00Z",
+      "expected": "en_taller"
     }
   ],
   "daysInWorkshop": [
@@ -1096,6 +1220,124 @@
       "now": "2026-10-10T15:00:00Z",
       "expected": {
         "days": 2,
+        "ongoing": false
+      }
+    },
+    {
+      "name": "revisión en taller de dos días",
+      "history": [
+        {
+          "event": "envio_revision",
+          "from": "en_consulta",
+          "to": "en_consulta",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "vuelta_revision",
+          "from": "en_consulta",
+          "to": "en_consulta",
+          "at": "2026-10-03T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": {
+        "days": 2,
+        "ongoing": false
+      }
+    },
+    {
+      "name": "revisión en taller en curso (esperando respuesta del cliente)",
+      "history": [
+        {
+          "event": "envio_revision",
+          "from": "en_consulta",
+          "to": "en_consulta",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "en_consulta",
+          "to": "en_espera",
+          "at": "2026-10-02T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-08T15:00:00Z",
+      "expected": {
+        "days": 7,
+        "ongoing": true
+      }
+    },
+    {
+      "name": "aprobada en revisión pasa a En restauración: un solo viaje",
+      "history": [
+        {
+          "event": "envio_revision",
+          "from": "en_consulta",
+          "to": "en_consulta",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "en_consulta",
+          "to": "en_espera",
+          "at": "2026-10-02T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "en_espera",
+          "to": "aprobada",
+          "at": "2026-10-03T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "aprobada",
+          "to": "enviada_taller",
+          "at": "2026-10-04T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": {
+        "days": 9,
+        "ongoing": true
+      }
+    },
+    {
+      "name": "revisión y después restauración: se suman los dos viajes",
+      "history": [
+        {
+          "event": "envio_revision",
+          "from": "en_espera",
+          "to": "en_espera",
+          "at": "2026-10-01T15:00:00Z"
+        },
+        {
+          "event": "vuelta_revision",
+          "from": "en_espera",
+          "to": "en_espera",
+          "at": "2026-10-02T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "en_espera",
+          "to": "aprobada",
+          "at": "2026-10-03T15:00:00Z"
+        },
+        {
+          "event": "estado",
+          "from": "aprobada",
+          "to": "enviada_taller",
+          "at": "2026-10-05T15:00:00Z"
+        },
+        {
+          "event": "vuelta_taller",
+          "from": "enviada_taller",
+          "to": "enviada_taller",
+          "at": "2026-10-08T15:00:00Z"
+        }
+      ],
+      "now": "2026-10-10T15:00:00Z",
+      "expected": {
+        "days": 4,
         "ongoing": false
       }
     }
