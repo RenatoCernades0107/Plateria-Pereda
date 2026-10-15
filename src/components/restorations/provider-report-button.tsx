@@ -45,6 +45,7 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
       const model = providerReportModel(
         pieces.map((p) => ({
           id: p.id,
+          guideCode: p.restorationCode,
           code: p.code,
           status: p.status,
           description: p.description,

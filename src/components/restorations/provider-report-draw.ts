@@ -10,7 +10,14 @@ const MARGIN = 12;
 const MIN_ROWS = 8;
 
 type Column = {
-  key: "number" | "photo" | "code" | "description" | "service" | "status";
+  key:
+    | "number"
+    | "photo"
+    | "guide"
+    | "code"
+    | "description"
+    | "service"
+    | "status";
   title: string;
   width: number;
   align?: "left" | "center";
@@ -18,7 +25,7 @@ type Column = {
 
 /**
  * Dibuja el reporte para el proveedor en un A4 vertical (mm), con la misma tabla que la
- * guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, código,
+ * guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, guía, código,
  * descripción con material, medidas y peso, servicio a realizar, servicio y estado).
  * Sin precios, costos ni datos del cliente. `logo` y las fotos van como data URL.
  */
@@ -65,6 +72,7 @@ export async function drawProviderReport(
   const columns: Column[] = [
     { key: "number", title: "N°", width: 9, align: "center" },
     { key: "photo", title: "FOTO", width: 20 },
+    { key: "guide", title: "N° GUÍA", width: 24 },
     { key: "code", title: "CÓDIGO", width: 27 },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
     { key: "service", title: "SERVICIO", width: 30 },
@@ -111,11 +119,13 @@ export async function drawProviderReport(
     const service = pdf.splitTextToSize(row.service, textW("service"));
     const status = pdf.splitTextToSize(row.status, textW("status"));
     const code = pdf.splitTextToSize(row.code, textW("code"));
+    const guide = pdf.splitTextToSize(row.guide, textW("guide"));
     const lines = Math.max(
       desc.length + detail.length + task.length,
       service.length,
       status.length,
       code.length,
+      guide.length,
     );
     const rowH = Math.max(lines * lineH + pad * 2, 20);
     if (y + rowH > bottomLimit) {
@@ -156,6 +166,10 @@ export async function drawProviderReport(
           }
           break;
         }
+        case "guide":
+          font("normal", 8.5);
+          pdf.text(guide, x + pad, textTop);
+          break;
         case "code":
           font("bold", 8.5);
           pdf.text(code, x + pad, textTop);

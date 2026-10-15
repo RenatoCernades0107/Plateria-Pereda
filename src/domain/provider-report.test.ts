@@ -8,6 +8,7 @@ import {
 
 const piece: ProviderReportPiece = {
   id: "p1",
+  guideCode: "RES-00004",
   code: "RES-00004-1",
   status: "aprobada",
   description: "Marco llano",
@@ -30,6 +31,7 @@ describe("providerReportModel", () => {
       {
         id: "p1",
         number: 1,
+        guide: "RES-00004",
         code: "RES-00004-1",
         status: "Aprobada",
         description: "Marco llano",

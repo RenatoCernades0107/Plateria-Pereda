@@ -11,6 +11,8 @@ import { PIECE_STATUS_LABELS, type PieceStatus } from "./piece-state-machine";
 
 export type ProviderReportPiece = {
   id: string;
+  /** Número de la guía, p. ej. `RES-00004`. */
+  guideCode: string;
   /** Pieza con su guía, p. ej. `RES-00004-1`. */
   code: string;
   status: PieceStatus;
@@ -26,6 +28,8 @@ export type ProviderReportPiece = {
 export type ProviderReportRow = {
   id: string;
   number: number;
+  /** Número de guía. */
+  guide: string;
   code: string;
   status: string;
   description: string;
@@ -65,6 +69,7 @@ export function providerReportModel(
     rows: pieces.map((p, i) => ({
       id: p.id,
       number: i + 1,
+      guide: p.guideCode,
       code: p.code,
       status: PIECE_STATUS_LABELS[p.status],
       description: p.description.trim() || "—",
