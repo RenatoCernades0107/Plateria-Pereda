@@ -67,6 +67,7 @@ import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
+  getProfileName,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -217,6 +218,10 @@ export default async function RestauracionDetallePage({
   ];
   // Miniatura de cada pieza en la tabla: su primera foto "Antes".
   const photos = firstBeforePhotos(files);
+  // Quien registró la guía: los perfiles ajenos no se leen con RLS, solo el nombre.
+  const attendedBy = restoration.createdBy
+    ? await getProfileName(restoration.createdBy)
+    : null;
   // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
   const pdfData = {
     company: {
@@ -234,6 +239,7 @@ export default async function RestauracionDetallePage({
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
     shopifyOrderName: restoration.shopifyOrderName,
+    attendedBy,
     notes: restoration.notes,
     pieces: restoration.pieces.map((p) => ({
       id: p.id,

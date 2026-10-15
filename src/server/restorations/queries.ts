@@ -22,6 +22,7 @@ import {
   RESTORATIONS_PAGE_SIZE,
   type RestorationFilters,
 } from "@/domain/restoration-filters";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { signedPhotoUrls } from "@/server/files/queries";
 
@@ -88,12 +89,28 @@ export type RestorationDetail = {
   /** La orden de Shopify ya existe (cambia lo editable, P12). */
   hasOrder: boolean;
   createdAt: string;
+  /** Quien registró la guía (id de su perfil). */
+  createdBy: string | null;
   client: { id: string; name: string; phone: string | null; kind: string };
   contact: { id: string; name: string; phone: string | null } | null;
   pieces: PieceDetail[];
   /** Solo para admin y ventas (P42). */
   money: RestorationMoney | null;
 };
+
+/**
+ * Nombre de un usuario (p. ej. quien registró la guía). La RLS de `profiles` solo deja
+ * leer el propio perfil, así que se lee con la clave del servidor y solo el nombre.
+ */
+export async function getProfileName(id: string): Promise<string | null> {
+  const { data, error } = await createAdminClient()
+    .from("profiles")
+    .select("full_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.full_name ?? null;
+}
 
 /**
  * Detalle de una restauración. Los datos sin dinero salen de las vistas
@@ -175,6 +192,7 @@ export async function getRestorationDetail(
     whatsappQuoteId: r.whatsapp_quote_id,
     hasOrder: Boolean(money.data?.shopify_order_id ?? r.shopify_order_name),
     createdAt: r.created_at!,
+    createdBy: r.created_by,
     client: {
       id: client.data!.id,
       name: client.data!.display_name ?? "",

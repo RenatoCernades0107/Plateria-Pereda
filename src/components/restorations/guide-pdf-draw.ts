@@ -88,10 +88,13 @@ export async function drawGuidePdf(
   y = Math.max(y + (logo ? 28 : 0), companyY, metaY) + 5;
 
   // --- Bloques de cliente y de la guía.
+  // Versión para taller: sin bloque del cliente, el de la guía va a la izquierda.
   const gap = 8;
   const blockW = (contentW - gap) / 2;
-  bar(MARGIN, y, blockW, 6, "CLIENTE");
-  bar(MARGIN + blockW + gap, y, blockW, 6, "DATOS DE LA GUÍA");
+  const hasClient = model.client.length > 0;
+  const guideBlockX = hasClient ? MARGIN + blockW + gap : MARGIN;
+  if (hasClient) bar(MARGIN, y, blockW, 6, "CLIENTE");
+  bar(guideBlockX, y, blockW, 6, "DATOS DE LA GUÍA");
   let clientY = y + 10.5;
   model.client.forEach((line, i) => {
     font(i === 0 ? "bold" : "normal", 8.5);
@@ -100,7 +103,7 @@ export async function drawGuidePdf(
     clientY += lines.length * 4.4;
   });
   let guideY = y + 10.5;
-  const guideX = MARGIN + blockW + gap + 1;
+  const guideX = guideBlockX + 1;
   for (const [label, value] of model.guide) {
     font("normal", 8.5, 90);
     pdf.text(`${label}:`, guideX, guideY);
@@ -110,10 +113,13 @@ export async function drawGuidePdf(
   }
   y = Math.max(clientY, guideY) + 4;
 
-  // --- Tabla de piezas.
+  // --- Tabla de piezas. Para el taller, la foto va siempre (o "Sin foto").
+  const withPhoto = images !== null || model.forWorkshop;
   const columns: Column[] = [
     { key: "number", title: "N°", width: 9, align: "center" },
-    ...(images ? [{ key: "photo", title: "FOTO", width: 20 } as Column] : []),
+    ...(withPhoto
+      ? [{ key: "photo", title: "FOTO", width: 20 } as Column]
+      : []),
     { key: "code", title: "CÓDIGO", width: 27 },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
     { key: "service", title: "SERVICIO", width: 28 },
@@ -178,7 +184,7 @@ export async function drawGuidePdf(
       status.length,
       code.length,
     );
-    const rowH = Math.max(lines * lineH + pad * 2, images ? 20 : 7);
+    const rowH = Math.max(lines * lineH + pad * 2, withPhoto ? 20 : 7);
     if (y + rowH > bottomLimit) {
       pdf.addPage();
       y = MARGIN;
@@ -257,7 +263,7 @@ export async function drawGuidePdf(
   }
 
   // Filas vacías hasta el mínimo, si caben con el cierre en la misma página.
-  const closingH = 72;
+  const closingH = 82;
   for (
     let n = model.rows.length;
     n < MIN_ROWS && y + 7 + closingH <= bottomLimit;
@@ -320,27 +326,33 @@ export async function drawGuidePdf(
   }
   y = Math.max(y + 6 + commentsH, totalsY) + 18;
 
-  // --- Firmas.
-  const signW = 60;
-  pdf.setDrawColor(120).setLineWidth(0.3);
-  pdf.line(MARGIN + 10, y, MARGIN + 10 + signW, y);
-  pdf.line(right - 10 - signW, y, right - 10, y);
-  font("normal", 8, 90);
-  pdf.text("Recibí conforme (cliente)", MARGIN + 10 + signW / 2, y + 4, {
-    align: "center",
-  });
-  pdf.text(
-    model.companyLines[0] ?? "Platería Pereda",
-    right - 10 - signW / 2,
-    y + 4,
-    { align: "center" },
-  );
+  // --- Cláusula para el cliente.
+  if (model.clause) {
+    y -= 10;
+    font("bold", 8);
+    const clause = pdf.splitTextToSize(model.clause, contentW);
+    pdf.text(clause, MARGIN, y);
+    y += clause.length * 3.8 + 14;
+  }
+
+  // --- Firmas (no van en la versión para taller).
+  if (model.signer) {
+    const signW = 60;
+    pdf.setDrawColor(120).setLineWidth(0.3);
+    pdf.line(MARGIN + 10, y, MARGIN + 10 + signW, y);
+    pdf.line(right - 10 - signW, y, right - 10, y);
+    font("normal", 8, 90);
+    pdf.text("Recibí conforme (cliente)", MARGIN + 10 + signW / 2, y + 4, {
+      align: "center",
+    });
+    pdf.text(model.signer, right - 10 - signW / 2, y + 4, { align: "center" });
+  }
 
   // --- Pie: contacto (última página) y numeración.
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
-    if (page === pages) {
+    if (page === pages && model.footer) {
       font("normal", 8, 90);
       pdf.text(
         pdf.splitTextToSize(model.footer, contentW),

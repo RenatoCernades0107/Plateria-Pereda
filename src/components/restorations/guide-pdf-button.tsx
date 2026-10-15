@@ -22,9 +22,7 @@ import {
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 
 import { drawGuidePdf } from "./guide-pdf-draw";
-
-/** Logo de Pereda (en `public/`) para el encabezado del PDF. */
-const LOGO_URL = "/logo-pereda.png";
+import { loadPhotos, PDF_LOGO_URL, thumbnail } from "./pdf-images";
 
 /**
  * Botón "Exportar PDF" del detalle de la guía. El diálogo deja elegir qué piezas van
@@ -46,6 +44,8 @@ export function GuidePdfButton({
   );
   const hasPhotos = data.pieces.some((p) => photos[p.id]);
   const [withPhotos, setWithPhotos] = useState(true);
+  // Versión para el taller: sin cliente ni precios, con la foto de cada pieza.
+  const [forWorkshop, setForWorkshop] = useState(false);
 
   function toggle(id: string, checked: boolean) {
     setSelected((prev) => {
@@ -63,11 +63,11 @@ export function GuidePdfButton({
     }
     setBusy(true);
     try {
-      const model = guidePdfModel(data, selected);
+      const model = guidePdfModel(data, selected, { forWorkshop });
       const [logo, images] = await Promise.all([
         // Sin el logo, el PDF sale igual.
-        thumbnail(LOGO_URL, 400).catch(() => null),
-        hasPhotos && withPhotos
+        thumbnail(PDF_LOGO_URL, 400).catch(() => null),
+        hasPhotos && (withPhotos || forWorkshop)
           ? loadPhotos(
               data.pieces.filter((p) => selected.has(p.id)),
               photos,
@@ -95,6 +95,7 @@ export function GuidePdfButton({
         onClick={() => {
           // Cada vez que se abre, todas las piezas vuelven a estar elegidas.
           setSelected(new Set(allIds));
+          setForWorkshop(false);
           setOpen(true);
         }}
         disabled={data.pieces.length === 0}
@@ -151,12 +152,28 @@ export function GuidePdfButton({
               <input
                 type="checkbox"
                 className="accent-primary size-4"
-                checked={withPhotos}
+                checked={withPhotos || forWorkshop}
+                disabled={forWorkshop}
                 onChange={(e) => setWithPhotos(e.target.checked)}
               />
               Incluir la foto «Antes» de cada pieza
             </label>
           ) : null}
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary mt-0.5 size-4"
+              checked={forWorkshop}
+              onChange={(e) => setForWorkshop(e.target.checked)}
+            />
+            <span>
+              Para taller
+              <span className="text-muted-foreground block text-xs">
+                Sin datos del cliente ni precios de venta, con la foto de cada
+                pieza.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <Button
               type="button"
@@ -179,41 +196,4 @@ export function GuidePdfButton({
       </Dialog>
     </>
   );
-}
-
-/** Miniaturas JPEG (máx. 240 px) de las fotos; las que no se puedan bajar se omiten. */
-async function loadPhotos(
-  pieces: readonly { id: string }[],
-  photos: Record<string, string>,
-): Promise<Map<string, string>> {
-  const images = new Map<string, string>();
-  await Promise.all(
-    pieces.map(async (p) => {
-      const url = photos[p.id];
-      if (!url) return;
-      try {
-        images.set(p.id, await thumbnail(url, 240));
-      } catch {
-        // Sin la foto, la pieza sale igual (con "Sin foto").
-      }
-    }),
-  );
-  return images;
-}
-
-async function thumbnail(url: string, max: number): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const bitmap = await createImageBitmap(await res.blob());
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Sin canvas");
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  return canvas.toDataURL("image/jpeg", 0.85);
 }
