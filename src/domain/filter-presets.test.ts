@@ -61,8 +61,8 @@ describe("filtros de un clic (K12)", () => {
     });
     expect(chips.map((c) => [c.key, c.tone, c.count])).toEqual([
       ["urgentes", "alert", 3],
-      ["listas", "default", 5],
-      ["devolver", "default", undefined],
+      ["listas", "success", 5],
+      ["devolver", "info", undefined],
       ["taller", "alert", undefined],
     ]);
   });
