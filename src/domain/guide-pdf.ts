@@ -33,11 +33,21 @@ export type GuidePdfPiece = {
 
 export type GuidePdfCompany = {
   name: string;
-  ruc: string | null;
-  address: string;
   phones: string;
   email: string;
 };
+
+/**
+ * Datos del encabezado de la guía, como en la guía impresa de la oficina principal.
+ * Son fijos (no salen de Configuración): la guía lleva siempre este membrete.
+ */
+export const GUIDE_LETTERHEAD = [
+  "OFICINA PRINCIPAL MIRAFLORES:",
+  "Calle Coronel Inclán 928, Miraflores, Lima - Lima",
+  "Teléfono: 995 711 235",
+  "Facebook: Pereda.Plateria.Joyeria",
+  "Web: www.plateriapereda.com",
+] as const;
 
 export type GuidePdfData = {
   company: GuidePdfCompany;
@@ -87,7 +97,7 @@ export type GuidePdfTotal = { label: string; value: string; strong?: boolean };
 export type GuidePdfModel = {
   title: string;
   code: string;
-  /** Datos de la empresa bajo el logo, una línea cada uno. */
+  /** Membrete junto al logo (`GUIDE_LETTERHEAD`), una línea cada uno; la primera va en negrita. */
   companyLines: string[];
   /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
@@ -170,15 +180,7 @@ export function guidePdfModel(
   return {
     title: "GUÍA DE RESTAURACIÓN",
     code: data.code,
-    companyLines: [
-      "Oficina",
-      company.ruc ? `RUC ${company.ruc}` : "",
-      company.address,
-      company.phones ? `Teléfono: ${company.phones}` : "",
-      company.email,
-    ]
-      .map((s) => s.trim())
-      .filter(Boolean),
+    companyLines: [...GUIDE_LETTERHEAD],
     meta: [
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],
