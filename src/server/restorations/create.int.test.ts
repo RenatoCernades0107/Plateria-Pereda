@@ -27,6 +27,16 @@ async function signIn(email: string) {
   return client;
 }
 
+/** Servicio del catálogo (seed): la pieza lo enlaza por id; ya no se crean al registrar. */
+async function catalogService(name: string) {
+  const { data } = await createAdminClient()
+    .from("services")
+    .select("id, name")
+    .eq("name", name)
+    .single();
+  return { id: data!.id, name: data!.name };
+}
+
 describe("registro de restauraciones", () => {
   afterAll(async () => {
     const admin = createAdminClient();
@@ -73,7 +83,7 @@ describe("registro de restauraciones", () => {
           description: "Fuente ovalada",
           measure: "40 cm",
           materials: [materialId("Plata 950"), materialId("Alpaca")],
-          service: { id: null, name: "Limpieza" },
+          service: await catalogService("Limpieza y pulido"),
           weight: "820.5",
           price: "0.10",
           notes: "",
@@ -83,7 +93,7 @@ describe("registro de restauraciones", () => {
           description: "Bandeja",
           measure: "",
           materials: [],
-          service: { id: null, name: "Pulido" },
+          service: await catalogService("Soldadura"),
           weight: "",
           price: "0.20",
           notes: "",
@@ -147,7 +157,7 @@ describe("registro de restauraciones", () => {
       description: "Jarra",
       measure: "",
       materials: [],
-      service: { id: null, name: "Limpieza" },
+      service: await catalogService("Limpieza y pulido"),
       weight: "",
       price: "",
       notes: "",

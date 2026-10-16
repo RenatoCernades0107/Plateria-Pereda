@@ -12,6 +12,9 @@ insert into public.clients (id, kind, first_name, shopify_customer_id)
 insert into public.clients (id, kind, first_name, active, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000d802', 'persona', 'Inactiva', false, 'gid://shopify/Customer/802');
 
+-- Los servicios y materiales solo se crean en el catálogo: la pieza los enlaza por nombre.
+insert into public.services (name) values ('Limpieza') on conflict do nothing;
+
 -- Con precios: los asigna el admin (D58).
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a3","role":"authenticated"}', true);

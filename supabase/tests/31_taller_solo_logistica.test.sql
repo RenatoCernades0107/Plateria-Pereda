@@ -12,6 +12,7 @@ insert into public.workshops (id, name, active) values
   ('00000000-0000-0000-0000-00000000ca11', 'Taller Este', true);
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000ca20', 'persona', 'Ana', 'gid://shopify/Customer/ca20');
+insert into public.services (name) values ('Limpieza') on conflict do nothing;
 insert into public.restorations (id, client_id, payment_type)
   values ('00000000-0000-0000-0000-00000000ca30', '00000000-0000-0000-0000-00000000ca20', 'contado');
 insert into public.pieces (id, restoration_id, description, price, workshop_id) values

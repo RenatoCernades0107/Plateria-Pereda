@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
-import { chooseCatalog } from "./support/catalog";
+import { chooseCatalog, ensureCatalogItem } from "./support/catalog";
 import { pieceAction } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
@@ -44,6 +44,11 @@ async function fillPiece(
 
 test.describe("Restauraciones", () => {
   test.beforeAll(async () => {
+    // El buscador de la pieza solo elige: el catálogo se deja listo.
+    await ensureCatalogItem("services", "Limpieza");
+    await ensureCatalogItem("services", "Restauración completa");
+    await ensureCatalogItem("materials", "Plata 925");
+    await ensureCatalogItem("materials", `Oro ${run}`);
     const { data, error } = await adminClient()
       .from("clients")
       .insert({
@@ -71,6 +76,8 @@ test.describe("Restauraciones", () => {
       await admin.from("pieces").delete().in("restoration_id", ids);
       await admin.from("restorations").delete().in("id", ids);
     }
+    // Ya sin piezas que lo usen, el material de esta corrida se puede borrar.
+    await admin.from("materials").delete().ilike("name", `Oro ${run}`);
     const { data: nuevos } = await admin
       .from("clients")
       .select("id")
@@ -360,7 +367,7 @@ test.describe("Restauraciones", () => {
     await expect(
       dialog.getByText("Solo el administrador asigna el precio de venta."),
     ).toBeVisible();
-    // Varios materiales: uno del catálogo y otro que ventas crea en el buscador.
+    // Varios materiales: dos del catálogo.
     await chooseCatalog(page, dialog.getByLabel("Material"), "Plata 925", {
       multiple: true,
     });

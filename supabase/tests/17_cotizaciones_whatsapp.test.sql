@@ -11,6 +11,8 @@ insert into public.clients (id, kind, first_name, shopify_customer_id) values
   ('00000000-0000-0000-0000-00000000ea20', 'persona', 'Cliente WhatsApp', 'gid://shopify/Customer/ea20'),
   ('00000000-0000-0000-0000-00000000ea21', 'persona', 'Otro Cliente', 'gid://shopify/Customer/ea21');
 
+insert into public.services (name) values ('Limpieza') on conflict do nothing;
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea2","role":"authenticated"}', true);
 select throws_ok(

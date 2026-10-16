@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { ensureCatalogItem } from "./support/catalog";
 import { dragWithMouse } from "./support/drag";
 import { adminClient } from "./support/supabase";
 
@@ -45,6 +46,9 @@ async function seedReceived(count: number, prefix: string) {
 
 test.describe("Vista de piezas", () => {
   test.beforeAll(async () => {
+    // La pieza de la tabla enlaza servicio y material por nombre: tienen que estar en el catálogo.
+    await ensureCatalogItem("services", "Baño de plata");
+    await ensureCatalogItem("materials", "Plata");
     const admin = adminClient();
     const { data: client, error } = await admin
       .from("clients")

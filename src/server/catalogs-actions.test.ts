@@ -5,11 +5,10 @@ const mocks = vi.hoisted(() => ({
   calls: [] as unknown[][],
   result: { error: null as { code: string } | null },
   permission: "" as string,
-  rpc: {
-    data: { id: "n1", name: "Oro 18k" } as { id: string; name: string } | null,
-    error: null as { code: string } | null,
+  deleted: {
+    data: [{ id: "m1" }] as { id: string }[],
+    error: null as { code: string; message: string } | null,
   },
-  refresh: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({
@@ -21,12 +20,6 @@ vi.mock("@/server/auth", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    rpc: (fn: string, args: object) => ({
-      single: async () => {
-        mocks.calls.push(["rpc", fn, args]);
-        return mocks.rpc;
-      },
-    }),
     from: (table: string) => ({
       insert: async (row: object) => {
         mocks.calls.push(["insert", table, row]);
@@ -38,17 +31,22 @@ vi.mock("@/lib/supabase/server", () => ({
           return mocks.result;
         },
       }),
+      delete: () => ({
+        eq: (_c: string, id: string) => ({
+          select: async () => {
+            mocks.calls.push(["delete", table, id]);
+            return mocks.deleted;
+          },
+        }),
+      }),
     }),
   }),
 }));
-vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
-  refresh: () => mocks.refresh(),
-}));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const {
   createCatalogItem,
-  createCatalogOption,
+  deleteCatalogItem,
   setCatalogItemActive,
   updateCatalogItem,
 } = await import("./catalogs-actions");
@@ -58,8 +56,7 @@ describe("acciones de catálogos", () => {
     mocks.forbidden = false;
     mocks.calls = [];
     mocks.result = { error: null };
-    mocks.rpc = { data: { id: "n1", name: "Oro 18k" }, error: null };
-    mocks.refresh.mockReset();
+    mocks.deleted = { data: [{ id: "m1" }], error: null };
   });
 
   it("los servicios guardan el precio sugerido; los materiales solo el nombre", async () => {
@@ -148,35 +145,55 @@ describe("acciones de catálogos", () => {
     ).rejects.toThrow("FORBIDDEN");
   });
 
-  it("desde la pieza, quien edita restauraciones crea materiales y servicios", async () => {
-    expect(await createCatalogOption("materials", "  Oro 18k ")).toEqual({
-      ok: true,
-      option: { id: "n1", name: "Oro 18k" },
-    });
-    expect(mocks.permission).toBe("restauraciones.editar");
+  it("borra un material o servicio sin uso", async () => {
+    expect(await deleteCatalogItem("materials", "m1")).toEqual({ ok: true });
+    expect(await deleteCatalogItem("services", "s1")).toEqual({ ok: true });
+    expect(mocks.permission).toBe("configuracion.gestionar");
     expect(mocks.calls).toEqual([
-      [
-        "rpc",
-        "create_catalog_option",
-        { p_kind: "materials", p_name: "Oro 18k" },
-      ],
+      ["delete", "materials", "m1"],
+      ["delete", "services", "s1"],
     ]);
-    // Los demás buscadores de la página lo ofrecen.
-    expect(mocks.refresh).toHaveBeenCalled();
   });
 
-  it("valida el catálogo y el nombre, y muestra el error de la BD", async () => {
-    expect(
-      await createCatalogOption("payment_methods" as "materials", "Visa"),
-    ).toEqual({ error: "Catálogo inválido." });
-    expect(await createCatalogOption("services", "  ")).toEqual({
-      error: "Escribe un nombre de hasta 100 caracteres.",
+  it("si está en uso muestra el aviso de la BD, que sugiere desactivarlo", async () => {
+    const message =
+      "“Plata 950” está en uso en 3 piezas. Desactívalo en su lugar.";
+    mocks.deleted = { data: [], error: { code: "23503", message } };
+    expect(await deleteCatalogItem("materials", "m1")).toEqual({
+      error: message,
+    });
+  });
+
+  it("no revela otros errores y avisa si no se borró nada", async () => {
+    mocks.deleted = {
+      data: [],
+      error: { code: "XX000", message: "detalle interno" },
+    };
+    expect(await deleteCatalogItem("services", "s1")).toEqual({
+      error: "No se pudo eliminar el ítem.",
+    });
+    // Sin permiso (RLS) o ya borrado: el delete no falla pero no toca filas.
+    mocks.deleted = { data: [], error: null };
+    expect(await deleteCatalogItem("services", "s1")).toEqual({
+      error: "No se pudo eliminar el ítem.",
+    });
+  });
+
+  it("los métodos de pago y los catálogos desconocidos no se borran", async () => {
+    expect(await deleteCatalogItem("payment_methods", "p1")).toEqual({
+      error: "Los métodos de pago solo se desactivan.",
+    });
+    expect(await deleteCatalogItem("profiles" as never, "1")).toEqual({
+      error: "Catálogo inválido.",
     });
     expect(mocks.calls).toEqual([]);
-    mocks.rpc = { data: null, error: { code: "42501" } };
-    expect(await createCatalogOption("services", "Dorado")).toEqual({
-      error: "No se pudo crear el ítem.",
-    });
-    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it("borrar exige el permiso", async () => {
+    mocks.forbidden = true;
+    await expect(deleteCatalogItem("materials", "m1")).rejects.toThrow(
+      "FORBIDDEN",
+    );
+    expect(mocks.calls).toEqual([]);
   });
 });

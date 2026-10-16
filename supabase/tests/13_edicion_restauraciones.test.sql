@@ -60,6 +60,7 @@ reset role;
 update public.restorations set shopify_order_id = 'gid://shopify/Order/901'
   where id = '00000000-0000-0000-0000-00000000f901';
 insert into public.materials (id, name) values ('00000000-0000-0000-0000-00000000a9f1', 'Plata de edición');
+insert into public.services (name) values ('Pulido') on conflict do nothing;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009a1","role":"authenticated"}', true);
 

@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
+import { ensureCatalogItem } from "./support/catalog";
 import {
   pieceAction,
   pieceActionNames,
@@ -77,6 +78,8 @@ const restorationStatus = (page: Page) =>
 
 test.describe("Estados de las piezas", () => {
   test.beforeAll(async () => {
+    // La pieza enlaza el servicio por nombre: tiene que estar en el catálogo.
+    await ensureCatalogItem("services", "Limpieza");
     const admin = adminClient();
     const { data: client, error } = await admin
       .from("clients")

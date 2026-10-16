@@ -608,7 +608,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D12 | Una línea personalizada (custom sale) por pieza en la orden | P11 |
 | D13 | "Observada" (ahora "Observación") solo es posible después de que la pieza estuvo en el taller | P17, P47 |
 | D14 | Se puede enviar una pieza al taller aunque otras sigan en consulta | P18 |
-| D15 | Material y servicio: lista + texto libre | P22 |
+| D15 | Material y servicio: lista + texto libre | P22 (reemplazada por D68: ya no hay texto libre) |
 | D16 | Logística no ve precios, pagos, métricas ni la pestaña "Historial"; no registra restauraciones; sube y edita fotos (por pieza y foto general) | P30, P42 |
 | D17 | GitHub, Vercel y Supabase a nombre del desarrollador; la tienda de Shopify es de la Platería | P01 |
 | D18 | Pruebas en una tienda de desarrollo de la organización del desarrollador; la tienda real no se usa para pruebas | P08 |
@@ -662,6 +662,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D65 | Sin estado general "En proceso": con piezas en el taller la guía queda Aprobada o Parcialmente aprobada | P56, ajusta §7.3 |
 | D66 | Sin IGV en el sistema: no se pregunta "¿El precio incluye IGV?", no se muestra y nunca se suma al total (el IGV se maneja fuera). Reemplaza D54 y la parte de IGV de D59 | P13 (2026-10-16) |
 | D67 | Una restauración con alguna pieza en Observación muestra "2 de 4 piezas observadas" (sobre las piezas vivas) junto a su estado, en el color de las piezas observadas | Pedido del 2026-10-16 |
+| D68 | Materiales y servicios se administran solo en Configuración y solo el admin los crea, edita, desactiva y **borra**. El buscador de la pieza únicamente elige (no crea). Un ítem se borra solo si ninguna pieza ni cotización de WhatsApp lo usa; si está en uso (aunque esté desactivado) la BD lo rechaza y se desactiva. Los métodos de pago y los talleres solo se desactivan. Reemplaza D15 y la creación desde la pieza del 2026-10-15 | Pedido del 2026-10-16 |
 
 ---
 
@@ -669,6 +670,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 | Fecha | Preguntas | Resumen |
 |---|---|---|
+| 2026-10-16 | D68 | Servicios y materiales: el admin los administra en Configuración, incluido borrarlos si nadie los usa; ventas ya no los crea desde la pieza. |
 | 2026-10-16 | P13 (se revierte) | Se quita todo lo del IGV: ni se pregunta, ni se muestra, ni se suma al total. |
 | 2026-10-16 | D67 | "2 de 4 piezas observadas" junto al estado de la restauración, con el color de observada. |
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
