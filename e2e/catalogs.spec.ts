@@ -58,6 +58,102 @@ test.describe("Catálogos", () => {
     ).toEqual([]);
   });
 
+  test("el admin elimina un material que nadie usa", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    const name = unique("Cobre E2E");
+    created.push({ table: "materials", name });
+
+    await page.goto("/configuracion/materiales");
+    await page.getByRole("button", { name: "Agregar" }).click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Nombre").fill(name);
+    await dialog.getByRole("button", { name: "Agregar" }).click();
+    const item = page.getByTestId(`catalogo-${name}`);
+    await expect(item).toBeVisible();
+
+    await item.getByRole("button", { name: `Eliminar ${name}` }).click();
+    dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText(`¿Eliminar "${name}"?`);
+    await dialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(item).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByTestId(`catalogo-${name}`)).toHaveCount(0);
+  });
+
+  test("un servicio en uso no se elimina: el aviso sugiere desactivarlo", async ({
+    page,
+    loginAs,
+  }) => {
+    const admin = adminClient();
+    const name = unique("Dorado E2E");
+    created.push({ table: "services", name });
+    const { data: service, error } = await admin
+      .from("services")
+      .insert({ name })
+      .select("id")
+      .single();
+    if (error) throw error;
+    const { data: client, error: clientError } = await admin
+      .from("clients")
+      .insert({
+        kind: "persona",
+        first_name: unique("Catalogo"),
+        // Ya sincronizado: no encola trabajo para el Shopify falso.
+        shopify_customer_id: `gid://shopify/Customer/c${Date.now()}`,
+      })
+      .select("id")
+      .single();
+    if (clientError) throw clientError;
+
+    try {
+      const { data: restoration, error: restorationError } = await admin
+        .from("restorations")
+        .insert({ client_id: client.id, payment_type: "contado" })
+        .select("id")
+        .single();
+      if (restorationError) throw restorationError;
+      const { error: pieceError } = await admin.from("pieces").insert({
+        restoration_id: restoration.id,
+        description: "Pieza que usa el servicio",
+        service_id: service.id,
+        price: 10,
+        // El código y el número los pone un trigger.
+      } as never);
+      if (pieceError) throw pieceError;
+
+      await loginAs("admin");
+      await page.goto("/configuracion/servicios");
+      const item = page.getByTestId(`catalogo-${name}`);
+      await item.getByRole("button", { name: `Eliminar ${name}` }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Eliminar" }).click();
+      await expect(dialog.getByRole("alert")).toContainText(
+        `“${name}” está en uso en 1 pieza. Desactívalo en su lugar.`,
+      );
+      await dialog.getByRole("button", { name: "Cancelar" }).click();
+      await expect(item).toBeVisible();
+
+      // Lo que sí se puede es desactivarlo.
+      await item.getByRole("button", { name: "Desactivar" }).click();
+      await expect(item).toContainText("Inactivo");
+    } finally {
+      const { data: restorations } = await admin
+        .from("restorations")
+        .select("id")
+        .eq("client_id", client.id);
+      const ids = (restorations ?? []).map((r) => r.id);
+      if (ids.length) {
+        await admin.from("pieces").delete().in("restoration_id", ids);
+        await admin.from("restorations").delete().in("id", ids);
+      }
+      await admin.from("clients").delete().eq("id", client.id);
+    }
+  });
+
   test("los métodos de pago iniciales están cargados y no se repiten nombres", async ({
     page,
     loginAs,

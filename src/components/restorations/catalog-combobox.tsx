@@ -1,8 +1,7 @@
 "use client";
 
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,11 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { CATALOGS, type PieceCatalogKind } from "@/domain/catalogs";
 import { cn } from "@/lib/utils";
-import {
-  createCatalogOption,
-  type PieceCatalogKind,
-} from "@/server/catalogs-actions";
 
 export type CatalogOption = {
   id: string;
@@ -34,12 +30,9 @@ export type CatalogOption = {
 
 export type PickedOption = { id: string; name: string };
 
-const normalize = (value: string) => value.trim().replace(/\s+/g, " ");
-
 /**
- * Buscador del catálogo para la pieza: servicio (uno) o materiales (varios). Si lo
- * buscado no existe se puede crear ahí mismo (admin y ventas); queda en el catálogo
- * para las siguientes piezas.
+ * Buscador del catálogo para la pieza: servicio (uno) o materiales (varios). Solo
+ * elige: lo que falta lo agrega el admin en Configuración.
  */
 export function CatalogCombobox({
   id,
@@ -69,25 +62,13 @@ export function CatalogCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [created, setCreated] = useState<CatalogOption[]>([]);
-  const [pending, startTransition] = useTransition();
 
-  const known = useMemo(() => {
-    const byId = new Map<string, CatalogOption>();
-    for (const o of [...options, ...created]) byId.set(o.id, o);
-    return [...byId.values()];
-  }, [options, created]);
-  const visible = known.filter(
+  const visible = options.filter(
     (o) => o.active !== false || value.includes(o.id),
   );
   const selected = value
-    .map((v) => known.find((o) => o.id === v))
+    .map((v) => options.find((o) => o.id === v))
     .filter((o): o is CatalogOption => Boolean(o));
-
-  const term = normalize(search);
-  const canCreate =
-    term.length > 0 &&
-    !visible.some((o) => o.name.toLowerCase() === term.toLowerCase());
 
   const label =
     selected.length > 0
@@ -111,31 +92,6 @@ export function CatalogCombobox({
           : [...selected, option],
       ),
     );
-  }
-
-  function create() {
-    const name = term;
-    startTransition(async () => {
-      const result = await createCatalogOption(kind, name);
-      if ("error" in result) {
-        toast.error(result.error);
-        return;
-      }
-      const option: CatalogOption = {
-        ...result.option,
-        price: null,
-        active: true,
-      };
-      setCreated((list) => [...list, option]);
-      setSearch("");
-      if (multiple) {
-        const rest = selected.filter((o) => o.id !== option.id);
-        onChange(toPicked([...rest, option]));
-      } else {
-        onChange(toPicked([option]));
-        setOpen(false);
-      }
-    });
   }
 
   return (
@@ -170,12 +126,15 @@ export function CatalogCombobox({
       >
         <Command>
           <CommandInput
-            placeholder="Buscar o crear…"
+            placeholder="Buscar…"
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            {canCreate ? null : <CommandEmpty>Sin resultados.</CommandEmpty>}
+            <CommandEmpty>
+              No existe ese {CATALOGS[kind].singular}. El administrador puede
+              agregarlo en Configuración.
+            </CommandEmpty>
             <CommandGroup>
               {visible.map((o) => {
                 const isSelected = value.includes(o.id);
@@ -198,19 +157,6 @@ export function CatalogCombobox({
                 );
               })}
             </CommandGroup>
-            {canCreate ? (
-              <CommandGroup forceMount>
-                <CommandItem
-                  forceMount
-                  value={`crear ${term}`}
-                  disabled={pending}
-                  onSelect={create}
-                >
-                  <Plus className="size-4" aria-hidden />
-                  {pending ? "Creando…" : `Crear «${term}»`}
-                </CommandItem>
-              </CommandGroup>
-            ) : null}
           </CommandList>
           {multiple && value.length > 0 ? (
             <div className="border-t p-1">

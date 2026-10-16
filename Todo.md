@@ -171,7 +171,7 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `contacts` — client_id, nombre, documento, teléfono, email, cargo/relación, activo.
 - `workshops` — nombre, contacto, teléfono, dirección, notas, activo.
 - `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
-- `materials`, `services` — catálogos editables; la pieza guarda el id del catálogo o un texto libre (P22).
+- `materials`, `services` — catálogos que solo el admin edita, desactiva y borra (si ninguna pieza ni cotización los usa); la pieza guarda el id del catálogo (D68, antes P22: lista o texto libre).
 - `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
 - `restorations` — código `RES-00001`, origen (`oficina`, `whatsapp`, P46) y cotización de origen, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
 - `pieces` — restoration_id, código `RES-00001-1`, pieza de la cotización de origen (P46), marca `urgent` (P47), workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `first_sent_at`, `last_sent_at`, `last_returned_at`, `delivered_at`, `returned_at`, `cancelled_at`), `ready_for_delivery` (generada), notas.
@@ -551,9 +551,9 @@ Objetivo: validar con llamadas reales antes de construir.
 - Commit: `feat(talleres): agrega gestión de talleres`
 
 #### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago
-- [x] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista o se escriben libremente (P22). Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
+- [x] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista (P22; desde D68 ya no se escriben libremente ni se crean desde la pieza) y el admin puede borrarlos si ninguna pieza ni cotización los usa. Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
 - **Unit / BD / E2E:** análogos a 5.2.
-- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado. Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
+- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado (desde D68, materiales y servicios sí se borran si nadie los usa; migración `borrar_materiales_y_servicios`). Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
 - Commit: `feat(catalogos): agrega catálogos de materiales, servicios y métodos de pago`
 
 ### Fase 6 — Clientes y contactos

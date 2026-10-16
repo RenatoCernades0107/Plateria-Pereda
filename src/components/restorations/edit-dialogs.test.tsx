@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
   updatePiece: vi.fn(),
   addPiece: vi.fn(),
   updateRestoration: vi.fn(),
-  createCatalogOption: vi.fn(),
 }));
 
 vi.mock("@/server/restorations/actions", () => ({
@@ -25,9 +24,6 @@ vi.mock("@/server/clients/search-actions", () => ({
   importShopifyCustomer: vi.fn(),
 }));
 vi.mock("@/server/clients/actions", () => ({ createClient: vi.fn() }));
-vi.mock("@/server/catalogs-actions", () => ({
-  createCatalogOption: (...a: unknown[]) => mocks.createCatalogOption(...a),
-}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
   usePathname: () => "/restauraciones/r1",
@@ -37,7 +33,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const M1 = "00000000-0000-4000-8000-0000000000a1";
 const M2 = "00000000-0000-4000-8000-0000000000a2";
 const M3 = "00000000-0000-4000-8000-0000000000a3";
-const M9 = "00000000-0000-4000-8000-0000000000a9";
+const M4 = "00000000-0000-4000-8000-0000000000a4";
 const S1 = "00000000-0000-4000-8000-0000000000b1";
 const S2 = "00000000-0000-4000-8000-0000000000b2";
 
@@ -72,6 +68,7 @@ const props = {
     { id: M1, name: "Plata", price: null },
     { id: M2, name: "Alpaca", price: null },
     { id: M3, name: "Bronce", price: null, active: false },
+    { id: M4, name: "Plata 925", price: null },
   ],
   services: [
     { id: S1, name: "Limpieza", price: null },
@@ -114,20 +111,13 @@ describe("PieceDialog", () => {
     await user.click(within(dialog).getByLabelText("Material"));
     expect(screen.queryByRole("option", { name: "Bronce" })).toBeNull();
     await user.click(screen.getByRole("option", { name: "Alpaca" }));
-    // Lo que no existe se crea desde el buscador.
-    mocks.createCatalogOption.mockResolvedValue({
-      ok: true,
-      option: { id: M9, name: "Plata 925" },
-    });
-    await user.type(
-      screen.getByPlaceholderText("Buscar o crear…"),
-      "Plata 925",
-    );
-    await user.click(screen.getByRole("option", { name: "Crear «Plata 925»" }));
-    expect(mocks.createCatalogOption).toHaveBeenCalledWith(
-      "materials",
-      "Plata 925",
-    );
+    // Se busca otro; lo que no existe en el catálogo no se puede crear desde aquí.
+    const search = screen.getByPlaceholderText("Buscar…");
+    await user.type(search, "Oro 24");
+    expect(screen.queryByRole("option", { name: /Crear/ })).toBeNull();
+    await user.clear(search);
+    await user.type(search, "Plata 925");
+    await user.click(screen.getByRole("option", { name: "Plata 925" }));
     await user.keyboard("{Escape}");
     expect(within(dialog).getByLabelText("Material")).toHaveTextContent(
       "Plata, Alpaca, Plata 925",
@@ -138,7 +128,7 @@ describe("PieceDialog", () => {
     expect(mocks.updatePiece).toHaveBeenCalledWith(
       "p1",
       expect.objectContaining({
-        materials: [M1, M2, M9],
+        materials: [M1, M2, M4],
         service: { id: S1, name: "Limpieza" },
         price: "1200.50",
         weight: "820.5",

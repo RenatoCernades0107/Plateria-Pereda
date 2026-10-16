@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 import { expect, test } from "./fixtures";
-import { chooseCatalog } from "./support/catalog";
+import { chooseCatalog, ensureCatalogItem } from "./support/catalog";
 import { adminClient } from "./support/supabase";
 
 // Comparten la cotización creada: en serie.
@@ -39,6 +39,7 @@ async function fillPiece(
 
 test.describe("Cotizaciones de WhatsApp (P46)", () => {
   test.beforeAll(async () => {
+    await ensureCatalogItem("services", "Limpieza");
     const { data, error } = await adminClient()
       .from("clients")
       .insert({

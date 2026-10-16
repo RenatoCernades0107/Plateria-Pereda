@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
@@ -27,6 +27,7 @@ import { CATALOGS, type CatalogKind } from "@/domain/catalogs";
 import { formatMoney } from "@/lib/format";
 import { setCatalogItemActive } from "@/server/catalogs-actions";
 
+import { CatalogDeleteDialog } from "./catalog-delete-dialog";
 import { CatalogItemDialog, type CatalogItemRow } from "./catalog-item-dialog";
 
 function ItemActions({
@@ -73,6 +74,22 @@ function ItemActions({
       >
         {item.active ? "Desactivar" : "Activar"}
       </Button>
+      {CATALOGS[kind].canDelete ? (
+        <CatalogDeleteDialog
+          kind={kind}
+          item={item}
+          trigger={
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Eliminar ${item.name}`}
+            >
+              <Trash2 className="text-destructive" />
+              Eliminar
+            </Button>
+          }
+        />
+      ) : null}
     </div>
   );
 }
