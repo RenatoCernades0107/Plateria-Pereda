@@ -47,4 +47,21 @@ describe("drawGuidePdf", () => {
     // Un ícono por línea del membrete que lo lleva (sin logo ni fotos en este PDF).
     expect(raw.match(/\/Subtype \/Image/g)).toHaveLength(3);
   });
+
+  it("en la versión para taller el membrete dice solo TALLER, sin datos de la empresa", async () => {
+    const pdf = await drawGuidePdf(
+      guidePdfModel(data, new Set(["1"]), { forWorkshop: true }),
+    );
+    const raw = pdf.output();
+    expect(raw).toContain("(TALLER)");
+    for (const text of [
+      "OFICINA PRINCIPAL MIRAFLORES:",
+      "995 711 235",
+      "Pereda.Plateria.Joyeria",
+      "www.plateriapereda.com",
+    ])
+      expect(raw).not.toContain(text);
+    // Sin íconos del membrete.
+    expect(raw.match(/\/Subtype \/Image/g)).toBeNull();
+  });
 });
