@@ -279,3 +279,26 @@ export function partialProgress(
 export function formatPartialProgress(progress: PartialProgress): string {
   return `${progress.done}/${progress.total} ${progress.label}`;
 }
+
+/** Piezas en Observación de una restauración, sobre las piezas vivas. */
+export type ObservedProgress = { observed: number; total: number };
+
+/**
+ * Cuántas de las piezas vivas (sin anuladas, rechazadas ni sin arreglo) están en
+ * Observación; null si ninguna lo está, para no mostrar nada.
+ */
+export function observedProgress(
+  pieces: readonly { status: PieceStatus }[],
+): ObservedProgress | null {
+  const active = pieces.filter((p) => !isClosedStatus(p.status));
+  const observed = active.filter((p) => p.status === "observada").length;
+  return observed === 0 ? null : { observed, total: active.length };
+}
+
+/** "2 de 4 piezas observadas" (con una sola pieza viva: "1 de 1 pieza observada"). */
+export function formatObservedProgress({
+  observed,
+  total,
+}: ObservedProgress): string {
+  return `${observed} de ${total} ${total === 1 ? "pieza observada" : "piezas observadas"}`;
+}

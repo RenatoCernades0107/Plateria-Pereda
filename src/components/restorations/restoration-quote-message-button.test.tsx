@@ -33,7 +33,6 @@ describe("RestorationQuoteMessageButton", () => {
         data={{
           code: "RES-00001",
           clientName: "Ana",
-          pricesIncludeIgv: true,
           paymentType: "contado",
           depositPercent: 0,
           terms: "",

@@ -263,7 +263,7 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 
 ### 7.5 Pagos (P28 ✅, P29 ✅, 2026-10-12)
 
-- **IGV (P13):** cada restauración indica si el precio incluye IGV; si no, cada pieza se cobra a su precio + 18 % y el total, el adelanto y la orden de Shopify usan ese monto.
+- **IGV:** ya no existe en el sistema (se maneja fuera, 2026-10-16): el total es la suma de los precios tal como se escriben, sin preguntar ni sumar IGV. _(Reemplaza la regla de P13.)_
 - Tipo de pago: **Al contado** (paga el total al aprobar), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto; cualquier cliente, lo eligen ventas o admin). Se cambia solo mientras no haya pagos registrados (P28).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
@@ -781,6 +781,12 @@ Objetivo: validar con llamadas reales antes de construir.
 - **E2E:** ventas registra sin taller, ve el taller como texto al editar y no ve "Asignar taller"; logística sí lo ve.
 - Hecho (2026-10-12): migración `20261014130000_taller_solo_logistica.sql`: `assign_piece_workshop` solo para admin y logística y trigger `pieces_guard_workshop` (en peticiones de usuarios, rol `authenticated`, solo admin y logística ponen o cambian `workshop_id`; dejar el mismo taller no cuenta como cambio). `change_piece_status` (enviar al taller) ya era solo de admin y logística.
 - Commit: `feat(permisos): el taller lo asignan solo logística y admin`
+
+#### Paso 7.10b — Sin IGV y "N de M piezas observadas" (pedido del 2026-10-16)
+- [x] **Sin IGV:** se quita la pregunta "¿El precio incluye IGV?" (registro, cotización de WhatsApp, "Editar" y cotizador `COT-`), la fila de IGV de los totales, la insignia del detalle, el desglose del mensaje de WhatsApp, el margen "sin IGV" y la etiqueta del historial. El total nunca suma IGV; la orden de Shopify lleva el precio de cada pieza.
+- [x] **Observadas:** una restauración con al menos una pieza en Observación muestra "2 de 4 piezas observadas" (sobre las piezas vivas: sin anuladas, rechazadas ni sin arreglo) junto a su estado, con el color de las piezas observadas: en la tabla, en la tarjeta del celular y en el detalle.
+- Hecho (2026-10-16): migración `20261016120000_quitar_igv.sql` (quita `prices_include_igv` de `restorations`, `whatsapp_quotes` y `quotes`, `price_with_igv()` y los triggers `*_apply_igv`; el parámetro `p_prices_include_igv` de `create_restoration`, `create_restoration_from_whatsapp_quote`, `create_whatsapp_quote` y `update_whatsapp_quote`; `save_quote` y `duplicate_quote` ya no lo leen; `private.restoration_total` y `private.quote_total` suman los precios sin IGV; recalcula los totales ya guardados con IGV sumado). `src/domain/igv.ts` y `IgvField` eliminados; `observedProgress()` en `src/domain/restoration-status.ts` y `ObservedBadge`.
+- **BD:** `39_sin_igv` (sin columna ni función; total, adelanto, anuladas, piezas sin precio, cotización de WhatsApp y cotizador sin IGV) reemplaza `23_igv` y `25_igv_cotizaciones`.
 
 #### Paso 7.11 — Estado general "Parcialmente aprobada" (P54 ✅, 2026-10-12)
 - [x] Nuevo estado general entre Registrada y Aprobada: alguna pieza viva aprobada y otras todavía no, sin piezas enviadas al taller (§7.3). Solo avanza (P19): una pieza nueva en una restauración Aprobada no la regresa.

@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterAll, describe, expect, it } from "vitest";
 
-import { igvTotals } from "@/domain/igv";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { restorationSchema } from "@/lib/validation/restorations";
@@ -67,8 +66,6 @@ describe("registro de restauraciones", () => {
       depositAmount: "0.18",
       // El adelanto como pago lo registra la acción (createRestoration), no el RPC.
       depositMethodId: "00000000-0000-0000-0000-0000000000aa",
-      // Sin IGV (P13): cada pieza + 18 % redondeado, igual que igvTotals().
-      pricesIncludeIgv: "no",
       notes: "Prueba de integración",
       pieces: [
         {
@@ -107,10 +104,9 @@ describe("registro de restauraciones", () => {
       )
       .eq("id", result.id)
       .single();
-    // 0.10 → 0.12 y 0.20 → 0.24
-    expect(igvTotals([10, 20], false).total).toBe(36);
+    // Sin IGV: el total es la suma de los precios (0.10 + 0.20).
     expect(restoration).toMatchObject({
-      total: 0.36,
+      total: 0.3,
       expected_deposit: 0.18,
       notes: "Prueba de integración",
     });
@@ -162,7 +158,6 @@ describe("registro de restauraciones", () => {
         contactId: null,
         paymentType: "contado",
         depositAmount: "",
-        pricesIncludeIgv: "si",
         notes: "",
         pieces: [{ ...piece, price }],
       });
@@ -190,7 +185,6 @@ describe("registro de restauraciones", () => {
         paymentType: "contado",
         depositAmount: null,
         depositMethodId: null,
-        pricesIncludeIgv: true,
         notes: "",
         pieces: [],
       }),

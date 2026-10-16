@@ -49,7 +49,6 @@ const input = {
   paymentType: "contado" as const,
   depositAmount: "",
   depositMethodId: "",
-  pricesIncludeIgv: "no" as const,
   notes: "",
   pieces: [piece],
 };

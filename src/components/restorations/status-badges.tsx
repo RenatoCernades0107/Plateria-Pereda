@@ -28,8 +28,10 @@ import {
   type PieceStatus,
 } from "@/domain/piece-state-machine";
 import {
+  formatObservedProgress,
   PIECE_LOCATION_LABELS,
   RESTORATION_STATUS_LABELS,
+  type ObservedProgress,
   type PieceLocation,
   type RestorationStatus,
 } from "@/domain/restoration-status";
@@ -237,6 +239,31 @@ export function RestorationStatusBadge({
     >
       {RESTORATION_STATUS_LABELS[status]}
     </ToneBadge>
+  );
+}
+
+/**
+ * "2 de 4 piezas observadas": va al costado del estado de la restauración cuando al
+ * menos una pieza está en Observación. Lleva el color de la insignia de la pieza
+ * observada (amarillo), así se reconoce de un vistazo.
+ */
+export function ObservedBadge({
+  progress,
+  className,
+}: {
+  progress: ObservedProgress;
+  className?: string;
+}) {
+  const style = PIECE_STATUS_STYLES.observada;
+  return (
+    <Badge
+      variant="outline"
+      data-observed
+      className={cn(style.className, className)}
+    >
+      <StatusDot className={style.dot} />
+      {formatObservedProgress(progress)}
+    </Badge>
   );
 }
 

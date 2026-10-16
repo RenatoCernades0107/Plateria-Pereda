@@ -2,6 +2,10 @@ import type { jsPDF } from "jspdf";
 
 import type { GuidePdfModel } from "@/domain/guide-pdf";
 
+import { PDF_ICONS } from "./pdf-icons";
+
+/** Lado (mm) de los íconos del membrete. */
+const ICON_SIZE = 3.4;
 /** Color de la marca (`--primary`) y su tono claro, en RGB. */
 const BRAND: [number, number, number] = [148, 101, 87];
 const BRAND_LIGHT: [number, number, number] = [241, 233, 230];
@@ -64,11 +68,23 @@ export async function drawGuidePdf(
     leftX = MARGIN + w + 5;
   }
   let companyY = y + 5;
-  model.companyLines.forEach((line, i) => {
+  model.companyLines.forEach(({ text, icon }, i) => {
     if (i === 0) font("bold", 11);
     else font("normal", 8, 90);
-    pdf.text(pdf.splitTextToSize(line, 80)[0] ?? "", leftX, companyY);
-    companyY += i === 0 ? 5 : 4;
+    // Con ícono, el texto va a su derecha y el ícono queda centrado en la línea.
+    const textX = icon ? leftX + ICON_SIZE + 1.8 : leftX;
+    if (icon)
+      pdf.addImage(
+        PDF_ICONS[icon],
+        "PNG",
+        leftX,
+        companyY - 1.1 - ICON_SIZE / 2,
+        ICON_SIZE,
+        ICON_SIZE,
+      );
+    pdf.text(pdf.splitTextToSize(text, 80)[0] ?? "", textX, companyY);
+    const nextIcon = model.companyLines[i + 1]?.icon;
+    companyY += i === 0 ? 5 : icon || nextIcon ? ICON_SIZE + 1.2 : 4;
   });
 
   font("bold", 18).setTextColor(...BRAND);

@@ -5,8 +5,10 @@ import { depositPercentOf, toCents, type Cents } from "@/domain/money";
 import { calendarDaysBetween } from "@/domain/piece-days";
 import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
 import {
+  observedProgress,
   partialProgress,
   toRestorationStatus,
+  type ObservedProgress,
   type PartialProgress,
   type PieceLocation,
   type RestorationOrigin,
@@ -70,8 +72,6 @@ export type RestorationMoney = {
   depositPercent: number | null;
   /** Adelanto "A cuenta" escrito en soles; null si no se escribió (o es antiguo, en %). */
   depositAmountCents: Cents | null;
-  /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
-  pricesIncludeIgv: boolean;
   paymentStatus: "pendiente" | "parcial" | "pagado" | "reembolsado";
 };
 
@@ -162,7 +162,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("restorations")
           .select(
-            "total, paid, expected_deposit, deposit_percent, deposit_amount, prices_include_igv, payment_status, shopify_order_id",
+            "total, paid, expected_deposit, deposit_percent, deposit_amount, payment_status, shopify_order_id",
           )
           .eq("id", id)
           .single()
@@ -264,7 +264,6 @@ export async function getRestorationDetail(
               : money.data.deposit_percent === null
                 ? null
                 : Number(money.data.deposit_percent),
-          pricesIncludeIgv: money.data.prices_include_igv,
           paymentStatus: money.data.payment_status,
         }
       : null,
@@ -362,6 +361,8 @@ export type RestorationListItem = {
   paymentStatus: RestorationMoney["paymentStatus"] | null;
   paymentType: PaymentType;
   piecesCount: number;
+  /** Piezas en Observación sobre las piezas vivas; null si no hay ninguna observada. */
+  observed: ObservedProgress | null;
   totalCents: Cents | null;
   paidCents: Cents | null;
   balanceCents: Cents | null;
@@ -392,6 +393,10 @@ export async function listRestorations(
   );
   if (error) throw error;
   const total = Number(data[0]?.total_count ?? 0);
+  // La exportación trae todas las restauraciones y no muestra esto.
+  const observed = options.all
+    ? new Map<string, ObservedProgress>()
+    : await getObservedProgress(data.map((r) => r.id));
   return {
     total,
     pages: Math.max(1, Math.ceil(total / RESTORATIONS_PAGE_SIZE)),
@@ -406,6 +411,7 @@ export async function listRestorations(
       paymentStatus: r.payment_status,
       paymentType: r.payment_type,
       piecesCount: r.pieces_count,
+      observed: observed.get(r.id) ?? null,
       totalCents: centsOrNull(r.total),
       paidCents: centsOrNull(r.paid),
       balanceCents: centsOrNull(r.balance),
@@ -413,6 +419,43 @@ export async function listRestorations(
       origin: r.origin,
     })),
   };
+}
+
+/**
+ * Piezas en Observación de las restauraciones dadas ("2 de 4 piezas observadas").
+ * Solo trae las piezas de las restauraciones que tienen alguna observada; las demás
+ * no salen en el resultado.
+ */
+async function getObservedProgress(
+  restorationIds: readonly string[],
+): Promise<Map<string, ObservedProgress>> {
+  const result = new Map<string, ObservedProgress>();
+  if (restorationIds.length === 0) return result;
+  const supabase = await createClient();
+  const observed = await supabase
+    .from("pieces_operational")
+    .select("restoration_id")
+    .in("restoration_id", [...restorationIds])
+    .eq("status", "observada");
+  if (observed.error) throw observed.error;
+  const withObserved = [
+    ...new Set(observed.data.map((p) => p.restoration_id!)),
+  ];
+  if (withObserved.length === 0) return result;
+  const pieces = await supabase
+    .from("pieces_operational")
+    .select("restoration_id, status")
+    .in("restoration_id", withObserved);
+  if (pieces.error) throw pieces.error;
+  for (const id of withObserved) {
+    const progress = observedProgress(
+      pieces.data
+        .filter((p) => p.restoration_id === id && p.status)
+        .map((p) => ({ status: p.status! })),
+    );
+    if (progress) result.set(id, progress);
+  }
+  return result;
 }
 
 /** Cuántas restauraciones dan estos filtros (contadores de los chips). */

@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ClientOption } from "@/domain/client-search";
-import { igvTotals, IGV_PERCENT } from "@/domain/igv";
 import {
   depositAmountHint,
   depositAmountLiveError,
@@ -42,6 +41,7 @@ import {
   formatCents,
   parseMoney,
   percentOf,
+  sumCents,
   toDecimalString,
   PAYMENT_TYPE_LABELS,
   PAYMENT_TYPES,
@@ -53,7 +53,6 @@ import { cn } from "@/lib/utils";
 import {
   COPY_INITIAL_STATUSES,
   copyRestorationSchema,
-  igvChoice,
   MAX_PIECES,
   restorationSchema,
   whatsappQuoteSchema,
@@ -73,7 +72,6 @@ import {
 } from "@/server/whatsapp-quotes/actions";
 
 import { GUIDE_SURFACE_CLASS, PIECE_ACCENT_CLASS } from "./guide-labels";
-import { IgvField } from "./igv-field";
 import { PieceFields, type CatalogOption } from "./piece-fields";
 
 export type { CatalogOption };
@@ -91,8 +89,6 @@ type FormValues = {
   depositMethodId: string;
   /** Solo lo lee el esquema de la cotización de WhatsApp (que no lleva pago): siempre "". */
   depositPercent: string;
-  /** "¿El precio incluye IGV?" (P13): por defecto "no" en lo nuevo (D59). */
-  pricesIncludeIgv: "" | "si" | "no";
   notes: string;
   pieces: PieceFormInput[];
 };
@@ -119,26 +115,11 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
 };
 
 /**
- * Totales en vivo: suman los precios válidos (los vacíos o mal escritos cuentan 0)
- * y, si los precios no incluyen IGV, el 18 % de cada uno (P13). Sin precios todavía
- * el IGV es 0 y crece a medida que el admin los asigna (D59).
+ * Total en vivo (lo que paga el cliente): suma los precios válidos; los vacíos o mal
+ * escritos cuentan 0, y crece a medida que el admin asigna los precios (D59).
  */
-export function liveTotals(
-  pieces: readonly { price?: string }[],
-  pricesIncludeIgv = true,
-) {
-  return igvTotals(
-    pieces.map((p) => parseMoney(p.price ?? "") ?? 0),
-    pricesIncludeIgv,
-  );
-}
-
-/** Total en vivo (lo que paga el cliente). */
-export function liveTotal(
-  pieces: readonly { price?: string }[],
-  pricesIncludeIgv = true,
-) {
-  return liveTotals(pieces, pricesIncludeIgv).total;
+export function liveTotal(pieces: readonly { price?: string }[]) {
+  return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
 }
 
 function PieceCard({
@@ -377,7 +358,6 @@ export type QuoteForForm = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: number | null;
-  pricesIncludeIgv: boolean;
   notes: string;
   items: QuoteItemForForm[];
 };
@@ -419,8 +399,6 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
       depositAmount: "",
       depositMethodId: "",
       depositPercent: "",
-      // Por defecto el precio no incluye IGV: se suma el 18 % (D59).
-      pricesIncludeIgv: "no",
       notes: "",
       pieces: [EMPTY_PIECE],
     };
@@ -436,18 +414,11 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
     depositAmount:
       q.paymentType === "a_cuenta" && q.depositPercent
         ? toDecimalString(
-            percentOf(
-              liveTotal(
-                q.items.map((i) => i.piece),
-                q.pricesIncludeIgv,
-              ),
-              q.depositPercent,
-            ),
+            percentOf(liveTotal(q.items.map((i) => i.piece)), q.depositPercent),
           )
         : "",
     depositMethodId: "",
     depositPercent: "",
-    pricesIncludeIgv: igvChoice(q.pricesIncludeIgv),
     notes: mode.kind === "copia" ? "" : q.notes,
     pieces:
       mode.kind === "copia"
@@ -515,9 +486,7 @@ export function RestorationForm({
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
-  const withoutIgv = values.pricesIncludeIgv === "no";
-  const totals = liveTotals(values.pieces ?? [], !withoutIgv);
-  const total = totals.total;
+  const total = liveTotal(values.pieces ?? []);
   const paymentType = values.paymentType ?? "sin_definir";
   const depositText = (values.depositAmount ?? "").trim();
   // "A cuenta": el adelanto se escribe en soles (vacío = sin adelanto).
@@ -901,7 +870,6 @@ export function RestorationForm({
             <h2 id="notas" className="sr-only">
               Notas generales
             </h2>
-            <IgvField form={form} name="pricesIncludeIgv" />
             <TextField
               form={form}
               name="notes"
@@ -995,7 +963,6 @@ export function RestorationForm({
                 />
               ) : null}
             </div>
-            <IgvField form={form} name="pricesIncludeIgv" />
             <TextField
               form={form}
               name="notes"
@@ -1007,30 +974,8 @@ export function RestorationForm({
 
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
           <dl className="flex flex-wrap gap-x-6 gap-y-2">
-            {withoutIgv ? (
-              <>
-                <div>
-                  <dt className="text-muted-foreground text-xs">Subtotal</dt>
-                  <dd className="tabular-nums" data-testid="subtotal-en-vivo">
-                    {formatCents(totals.taxableBase)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground text-xs">
-                    + IGV ({IGV_PERCENT} %)
-                  </dt>
-                  <dd className="tabular-nums" data-testid="igv-en-vivo">
-                    {formatCents(totals.igv)}
-                  </dd>
-                </div>
-              </>
-            ) : null}
             <div>
-              <dt className="text-muted-foreground text-xs">
-                {values.pricesIncludeIgv === "si"
-                  ? "Total (IGV incluido)"
-                  : "Total"}
-              </dt>
+              <dt className="text-muted-foreground text-xs">Total</dt>
               <dd
                 className="text-heading font-semibold tabular-nums"
                 data-testid="total-en-vivo"

@@ -112,14 +112,7 @@ test.describe("Restauraciones", () => {
     await page.getByRole("button", { name: "Agregar pieza" }).click();
     await fillPiece(page, 3, { description: "Cucharita", price: "35" });
 
-    // Por defecto el precio no incluye IGV: subtotal, + IGV y total (D59).
-    await expect(page.getByTestId("subtotal-en-vivo")).toHaveText(
-      "S/ 2,436.00",
-    );
-    await expect(page.getByTestId("igv-en-vivo")).toHaveText("S/ 438.48");
-    await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 2,874.48");
-    await page.getByLabel(/Sí, el precio incluye IGV/).check();
-    await expect(page.getByTestId("igv-en-vivo")).toHaveCount(0);
+    // Sin IGV: el total es la suma de los precios escritos.
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 2,436.00");
     // El tipo de pago parte "Por definir": sin adelanto hasta elegir uno.
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("—");
@@ -193,50 +186,35 @@ test.describe("Restauraciones", () => {
     await expect(page.getByText("Elige el servicio")).toBeVisible();
     // El precio de venta es opcional: queda "Por definir" (D58).
     await expect(page.getByText("Ingresa el precio")).toHaveCount(0);
-    // El IGV ya viene respondido: por defecto no incluido (D59).
-    await expect(page.getByLabel(/No, se suma el IGV/)).toBeChecked();
     await expect(page).toHaveURL(/\/restauraciones\/nueva$/);
   });
 
-  test("sin IGV incluido suma el 18 % al cobro y se puede corregir (P13)", async ({
+  test("no menciona ni suma el IGV: el cobro es el precio escrito", async ({
     page,
   }) => {
     await page.goto("/restauraciones/nueva");
     await pickClient(page, clientName);
     await fillPiece(page, 1, { description: "Salero", price: "100" });
-    // Por defecto el precio no incluye IGV (D59).
-    await expect(page.getByLabel(/No, se suma el IGV/)).toBeChecked();
-    await expect(page.getByTestId("igv-en-vivo")).toHaveText("S/ 18.00");
-    await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 118.00");
+    await expect(page.getByText(/IGV/)).toHaveCount(0);
+    await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 100.00");
     await page.getByLabel("Tipo de pago").click();
     await page.getByRole("option", { name: "Al contado" }).click();
-    await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 118.00");
+    await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 100.00");
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
       timeout: 30_000,
     });
 
     const mensaje = page.getByRole("dialog").getByTestId("mensaje-cotizacion");
-    await expect(mensaje).toContainText("Subtotal (sin IGV): S/ 100.00");
-    await expect(mensaje).toContainText("IGV (18 %): S/ 18.00");
-    await expect(mensaje).toContainText("Total: S/ 118.00");
+    await expect(mensaje).toContainText("Total: S/ 100.00");
+    await expect(mensaje).not.toContainText(/IGV/);
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("igv")).toHaveText("+ IGV (18 %)");
-    await expect(page.getByTestId("monto-total")).toContainText("118.00");
-    await expect(page.getByTestId("monto-igv")).toHaveText(
-      "Subtotal: S/ 100.00 · + IGV (18 %): S/ 18.00",
-    );
-
-    await page.getByRole("button", { name: "Editar", exact: true }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.getByLabel(/Sí, el precio incluye IGV/).check();
-    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
-    await expect(page.getByText("Restauración actualizada.")).toBeVisible();
-    await expect(page.getByTestId("igv")).toHaveText("Incluye IGV");
     await expect(page.getByTestId("monto-total")).toContainText("100.00");
-    await expect(page.getByTestId("monto-igv")).toHaveText(
-      "IGV incluido (18 %): S/ 15.25",
-    );
+    await expect(page.getByText(/IGV/)).toHaveCount(0);
+
+    // Editar tampoco pregunta por el IGV.
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await expect(page.getByRole("dialog").getByText(/IGV/)).toHaveCount(0);
   });
 
   test("crea un cliente nuevo desde el formulario sin perder lo escrito", async ({
@@ -280,9 +258,8 @@ test.describe("Restauraciones", () => {
     await expect(
       card.getByText("Solo el administrador asigna el precio de venta."),
     ).toBeVisible();
-    // Sin precios todavía el IGV es 0; crece cuando el admin los asigna (D59).
-    await expect(page.getByTestId("igv-en-vivo")).toHaveText("S/ 0.00");
-    await page.getByLabel(/Sí, el precio incluye IGV/).check();
+    // Sin precios todavía el total es 0; crece cuando el admin los asigna (D59).
+    await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 0.00");
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(/\/restauraciones\/[0-9a-f-]{36}/, {
       timeout: 30_000,
@@ -441,7 +418,6 @@ test.describe("Restauraciones", () => {
     await page.goto("/restauraciones/nueva");
     await pickClient(page, clientName);
     await fillPiece(page, 1, { description: "Anillo de plata", price: "45" });
-    await page.getByLabel(/Sí, el precio incluye IGV/).check();
     await page.getByLabel("Tipo de pago").click();
     await page.getByRole("option", { name: "Al contado" }).click();
     await expect(page.getByTestId("adelanto-en-vivo")).toHaveText("S/ 45.00");

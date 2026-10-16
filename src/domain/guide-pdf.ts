@@ -33,11 +33,26 @@ export type GuidePdfPiece = {
 
 export type GuidePdfCompany = {
   name: string;
-  ruc: string | null;
-  address: string;
   phones: string;
   email: string;
 };
+
+/** Ícono que va a la izquierda de una línea del membrete (`components/restorations/pdf-icons.ts`). */
+export type GuidePdfIcon = "whatsapp" | "facebook" | "web";
+
+export type GuidePdfLetterheadLine = { text: string; icon?: GuidePdfIcon };
+
+/**
+ * Datos del encabezado de la guía, como en la guía impresa de la oficina principal.
+ * Son fijos (no salen de Configuración): la guía lleva siempre este membrete.
+ */
+export const GUIDE_LETTERHEAD: readonly GuidePdfLetterheadLine[] = [
+  { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+  { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+  { text: "995 711 235", icon: "whatsapp" },
+  { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+  { text: "www.plateriapereda.com", icon: "web" },
+];
 
 export type GuidePdfData = {
   company: GuidePdfCompany;
@@ -55,7 +70,6 @@ export type GuidePdfData = {
   pieces: GuidePdfPiece[];
   /** Solo para quien ve montos (admin y ventas, P42). */
   money: {
-    pricesIncludeIgv: boolean;
     totalCents: Cents;
     paidCents: Cents;
   } | null;
@@ -88,8 +102,8 @@ export type GuidePdfTotal = { label: string; value: string; strong?: boolean };
 export type GuidePdfModel = {
   title: string;
   code: string;
-  /** Datos de la empresa bajo el logo, una línea cada uno. */
-  companyLines: string[];
+  /** Membrete junto al logo (`GUIDE_LETTERHEAD`), una línea cada uno; la primera va en negrita. */
+  companyLines: GuidePdfLetterheadLine[];
   /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
   /** Vacío en la versión para taller (no se dibuja el bloque del cliente). */
@@ -99,7 +113,10 @@ export type GuidePdfModel = {
   /** Versión para taller: la tabla lleva siempre la foto de cada pieza. */
   forWorkshop: boolean;
   rows: GuidePdfRow[];
-  /** Subtotal de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo). */
+  /**
+   * Suma de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo):
+   * "Total" si todas tienen precio; si falta alguna, "Subtotal".
+   */
   totals: GuidePdfTotal[];
   /** Aviso bajo el subtotal (p. ej. piezas por cotizar). */
   totalsNote: string | null;
@@ -144,9 +161,10 @@ export function guidePdfModel(
     const charged = pieces.filter((p) => !isClosedStatus(p.status));
     const priced = charged.filter((p) => p.priceCents !== null);
     const pending = charged.length - priced.length;
-    // Sin ninguna pieza con precio, el subtotal no es 0: está por definir.
+    // Con todas las piezas con precio es el total; si falta alguna, solo un subtotal.
+    // Sin ninguna pieza con precio no es 0: está por definir.
     totals.push({
-      label: "Subtotal",
+      label: priced.length && !pending ? "Total" : "Subtotal",
       value: priced.length
         ? formatCents(priced.reduce((sum, p) => sum + p.priceCents!, 0))
         : "Por definir",
@@ -167,15 +185,7 @@ export function guidePdfModel(
   return {
     title: "GUÍA DE RESTAURACIÓN",
     code: data.code,
-    companyLines: [
-      "Oficina",
-      company.ruc ? `RUC ${company.ruc}` : "",
-      company.address,
-      company.phones ? `Teléfono: ${company.phones}` : "",
-      company.email,
-    ]
-      .map((s) => s.trim())
-      .filter(Boolean),
+    companyLines: [...GUIDE_LETTERHEAD],
     meta: [
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],

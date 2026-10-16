@@ -26,8 +26,6 @@ const piece = (
 const data: GuidePdfData = {
   company: {
     name: "Platería Pereda",
-    ruc: "20100047218",
-    address: "Av. Larco 123, Miraflores",
     phones: "01 444 5555",
     email: "ventas@pereda.pe",
   },
@@ -46,7 +44,7 @@ const data: GuidePdfData = {
     piece("2", { priceCents: null }),
     piece("3", { status: "anulada" }),
   ],
-  money: { pricesIncludeIgv: true, totalCents: 10000, paidCents: 4000 },
+  money: { totalCents: 10000, paidCents: 4000 },
 };
 
 describe("guidePdfModel", () => {
@@ -67,12 +65,13 @@ describe("guidePdfModel", () => {
     expect(model.meta.map(([label]) => label)).toEqual(["Fecha", "Guía N°"]);
     expect(model.guide).toContainEqual(["Atendió", "María Quispe"]);
     expect(model.clause).toContain("30 días calendario");
+    // Membrete fijo de la oficina principal (no depende de Configuración).
     expect(model.companyLines).toEqual([
-      "Oficina",
-      "RUC 20100047218",
-      "Av. Larco 123, Miraflores",
-      "Teléfono: 01 444 5555",
-      "ventas@pereda.pe",
+      { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+      { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+      { text: "995 711 235", icon: "whatsapp" },
+      { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+      { text: "www.plateriapereda.com", icon: "web" },
     ]);
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
   });
@@ -87,6 +86,19 @@ describe("guidePdfModel", () => {
 
     const some = guidePdfModel(data, new Set(["1"]));
     expect(some.totalsNote).toBeNull();
+  });
+
+  it("con todas las piezas con precio dice «Total», no «Subtotal»", () => {
+    const model = guidePdfModel(data, new Set(["1"]));
+    expect(model.totals).toEqual([
+      { label: "Total", value: "S/ 100.00", strong: true },
+    ]);
+    // Las piezas que no se cobran no cuentan: solo falta cotizar las que se cobran.
+    const withClosed = guidePdfModel(data, new Set(["1", "3"]));
+    expect(withClosed.totals).toEqual([
+      { label: "Total", value: "S/ 100.00", strong: true },
+    ]);
+    expect(withClosed.totalsNote).toBeNull();
   });
 
   it("sin ninguna pieza con precio, el subtotal sale por definir", () => {

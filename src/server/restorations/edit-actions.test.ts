@@ -79,7 +79,6 @@ describe("edición de restauraciones", () => {
         contactId: null,
         paymentType: "credito",
         depositAmount: "50",
-        pricesIncludeIgv: "no",
         notes: "Nota",
       }),
     ).toEqual({ ok: true });
@@ -88,7 +87,6 @@ describe("edición de restauraciones", () => {
       payment_type: "credito",
       deposit_percent: null,
       deposit_amount: null,
-      prices_include_igv: false,
       notes: "Nota",
     });
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones/r1");
@@ -98,7 +96,6 @@ describe("edición de restauraciones", () => {
         contactId: null,
         paymentType: "a_cuenta",
         depositAmount: "-1",
-        pricesIncludeIgv: "si",
         notes: "",
       }),
     ).toEqual({ error: "El adelanto no puede ser negativo." });
@@ -108,7 +105,6 @@ describe("edición de restauraciones", () => {
     const edit = {
       contactId: null,
       paymentType: "a_cuenta" as const,
-      pricesIncludeIgv: "si" as const,
       notes: "",
     };
     expect(

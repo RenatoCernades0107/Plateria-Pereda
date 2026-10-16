@@ -32,7 +32,6 @@ const data = (overrides: Partial<QuoteMessageData> = {}): QuoteMessageData => ({
       status: "anulada",
     },
   ],
-  pricesIncludeIgv: true,
   paymentType: "a_cuenta",
   depositPercent: 50,
   terms: "La cotización vale 15 días.",
@@ -119,16 +118,13 @@ describe("mensaje de cotización", () => {
     expect(quoteAmounts(data({ pieces })).totalCents).toBe(120_050);
   });
 
-  it("sin IGV incluido suma el 18 % por pieza y muestra el desglose (P13)", () => {
-    const sinIgv = data({ pricesIncludeIgv: false, paymentType: "contado" });
-    // 1,200.50 → 1,416.59 y 350.00 → 413.00
-    expect(quoteAmounts(sinIgv)).toEqual({
-      totalCents: 182_959,
-      taxableBaseCents: 155_050,
-      igvCents: 27_909,
-      depositCents: 182_959,
+  it("el total es la suma de los precios y el mensaje no menciona el IGV", () => {
+    const contado = data({ paymentType: "contado" });
+    expect(quoteAmounts(contado)).toEqual({
+      totalCents: 155_050,
+      depositCents: 155_050,
     });
-    expect(buildQuoteMessage(DEFAULT_WHATSAPP_TEMPLATE, sinIgv))
+    expect(buildQuoteMessage(DEFAULT_WHATSAPP_TEMPLATE, contado))
       .toMatchInlineSnapshot(`
       "Hola Ana Pérez, te saludamos de Platería Pereda.
       Te compartimos la cotización de tu restauración *RES-00001*:
@@ -136,11 +132,8 @@ describe("mensaje de cotización", () => {
       1. Fuente de plata – Pulido: S/ 1,200.50
       2. Candelabro: S/ 350.00
 
-      Subtotal (sin IGV): S/ 1,550.50
-      IGV (18 %): S/ 279.09
-
-      *Total: S/ 1,829.59*
-      Forma de pago: Al contado (S/ 1,829.59)
+      *Total: S/ 1,550.50*
+      Forma de pago: Al contado (S/ 1,550.50)
       La cotización vale 15 días."
     `);
   });

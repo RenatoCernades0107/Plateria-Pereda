@@ -92,7 +92,6 @@ describe("orden de Shopify al aprobar (9.1)", () => {
         p_notes: "",
         // Ventas registra sin precio de venta; lo asigna el admin (D58).
         p_pieces: [{ description: "Fuente" }, { description: "Jarra" }],
-        p_prices_include_igv: false,
       })
       .single();
     expect(error).toBeNull();
@@ -150,10 +149,10 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     const order = fakeShopify
       .snapshot()
       .orders.find((o) => o.tags.includes(restoration!.code))!;
-    // Sin IGV incluido (P13): 100.00 → 118.00 y 33.33 → 39.33.
+    // Sin IGV: cada línea lleva el precio de la pieza.
     expect(order.lines.map((l) => [l.title, l.price])).toEqual([
-      [`Restauración ${pieces![0]!.code}`, "118.00"],
-      [`Restauración ${pieces![1]!.code}`, "39.33"],
+      [`Restauración ${pieces![0]!.code}`, "100.00"],
+      [`Restauración ${pieces![1]!.code}`, "33.33"],
     ]);
     expect(order.customerId).toBe(customer.id);
 
@@ -167,7 +166,7 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     expect(saved).toMatchObject({
       shopify_order_id: order.id,
       shopify_order_name: order.name,
-      total: 157.33,
+      total: 133.33,
     });
     expect(saved!.pieces.map((p) => p.shopify_line_item_id).sort()).toEqual(
       order.lines.map((l) => l.id).sort(),
@@ -203,8 +202,8 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     });
     expect(error).toBeNull();
     await process_();
-    expect(orderOf(shared!.code).lines.map((l) => l.price)).toEqual(["118.00"]);
-    expect(orderOf(shared!.code).financials.total).toBe("118.00");
+    expect(orderOf(shared!.code).lines.map((l) => l.price)).toEqual(["100.00"]);
+    expect(orderOf(shared!.code).financials.total).toBe("100.00");
     const { data } = await createAdminClient()
       .from("pieces")
       .select("shopify_line_item_id")

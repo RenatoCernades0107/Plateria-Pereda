@@ -1,24 +1,20 @@
-import { IGV_PERCENT } from "@/domain/igv";
 import { formatCents, type Cents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 
 /**
- * Total, pagado y saldo de una restauración (Paso 7.6), con el IGV del total (D59).
+ * Total, pagado y saldo de una restauración (Paso 7.6).
  * Logística no ve montos (P42): la página no debe renderizar este componente para
  * ese rol.
  */
 export function MoneySummary({
   totalCents,
   paidCents,
-  igv,
   stackOnWide = false,
   className,
 }: {
   totalCents: Cents;
   /** Pagos − reembolsos (§7.5). */
   paidCents: Cents;
-  /** Desglose del IGV del total (P13): sumado a los precios o incluido en ellos. */
-  igv?: { taxableBase: Cents; igv: Cents; included: boolean };
   /**
    * En pantallas anchas (columna angosta de la guía), un monto por fila
    * («Total … S/ 90.00») para que no se corten.
@@ -66,13 +62,6 @@ export function MoneySummary({
           </div>
         ))}
       </dl>
-      {igv ? (
-        <p className="text-muted-foreground text-sm" data-testid="monto-igv">
-          {igv.included
-            ? `IGV incluido (${IGV_PERCENT} %): ${formatCents(igv.igv)}`
-            : `Subtotal: ${formatCents(igv.taxableBase)} · + IGV (${IGV_PERCENT} %): ${formatCents(igv.igv)}`}
-        </p>
-      ) : null}
     </div>
   );
 }

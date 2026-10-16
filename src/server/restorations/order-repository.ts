@@ -14,7 +14,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, client_id, contact_id, prices_include_igv, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
+        "id, code, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -41,7 +41,6 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     return {
       id: r.id,
       code: r.code,
-      pricesIncludeIgv: r.prices_include_igv,
       shopifyOrderId: r.shopify_order_id,
       shopifyOrderName: r.shopify_order_name,
       pieces: r.pieces.map((p) => ({
