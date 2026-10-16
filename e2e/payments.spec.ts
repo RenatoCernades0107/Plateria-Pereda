@@ -48,7 +48,7 @@ async function seedClient(request: APIRequestContext, name: string) {
   return data.id;
 }
 
-/** Restauración con una pieza de S/ 200 (IGV incluido). */
+/** Restauración con una pieza de S/ 200. */
 async function seedRestoration(
   clientId: string,
   paymentType: "a_cuenta" | "contado",

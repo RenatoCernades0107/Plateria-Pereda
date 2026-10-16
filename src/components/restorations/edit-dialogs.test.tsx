@@ -297,10 +297,8 @@ describe("EditRestorationDialog", () => {
           paymentType: "a_cuenta",
           depositAmountCents: 30000,
           totalCents: 100000,
-          pricesIncludeIgv: true,
           notes: "",
         }}
-        hasOrder={false}
         contacts={[
           {
             id: "00000000-0000-0000-0000-0000000000c1",
@@ -351,10 +349,8 @@ describe("EditRestorationDialog", () => {
           paymentType: "a_cuenta",
           depositAmountCents: 10000,
           totalCents: 0,
-          pricesIncludeIgv: true,
           notes: "",
         }}
-        hasOrder={false}
         hasPayments
         contacts={[]}
       />,

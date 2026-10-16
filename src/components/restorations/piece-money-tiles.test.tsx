@@ -16,22 +16,17 @@ const tile = (label: string) =>
   screen.getByText(label, { selector: "dt" }).parentElement!;
 
 describe("PieceMoneyTiles", () => {
-  it("admin: precio, costo, margen sin IGV y saldo de la guía", () => {
+  it("admin: precio, costo, margen y saldo de la guía", () => {
     render(
       <PieceMoneyTiles
         piece={piece}
-        sale={{
-          cents: 11_800,
-          hasOrder: false,
-          editable: true,
-          pricesIncludeIgv: true,
-        }}
+        sale={{ cents: 10_000, hasOrder: false, editable: true }}
         costCents={4_000}
         guide={{ totalCents: 20_000, paidCents: 5_000 }}
       />,
     );
-    expect(tile("Precio de venta")).toHaveTextContent("IGV incluido");
-    // 118.00 con IGV → 100.00 de base; menos 40.00 de costo.
+    expect(tile("Precio de venta")).not.toHaveTextContent(/IGV/i);
+    // 100.00 de precio menos 40.00 de costo.
     expect(within(tile("Margen")).getByText(/60\.00/)).toBeInTheDocument();
     expect(screen.getByTestId("saldo-guia")).toHaveTextContent("150.00");
   });
@@ -40,12 +35,7 @@ describe("PieceMoneyTiles", () => {
     render(
       <PieceMoneyTiles
         piece={piece}
-        sale={{
-          cents: null,
-          hasOrder: false,
-          editable: true,
-          pricesIncludeIgv: true,
-        }}
+        sale={{ cents: null, hasOrder: false, editable: true }}
         costCents={undefined}
         guide={null}
       />,

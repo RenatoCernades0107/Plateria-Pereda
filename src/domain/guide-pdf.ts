@@ -55,7 +55,6 @@ export type GuidePdfData = {
   pieces: GuidePdfPiece[];
   /** Solo para quien ve montos (admin y ventas, P42). */
   money: {
-    pricesIncludeIgv: boolean;
     totalCents: Cents;
     paidCents: Cents;
   } | null;
@@ -99,7 +98,10 @@ export type GuidePdfModel = {
   /** Versión para taller: la tabla lleva siempre la foto de cada pieza. */
   forWorkshop: boolean;
   rows: GuidePdfRow[];
-  /** Subtotal de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo). */
+  /**
+   * Suma de las piezas elegidas que se cobran (sin anuladas, rechazadas ni sin arreglo):
+   * "Total" si todas tienen precio; si falta alguna, "Subtotal".
+   */
   totals: GuidePdfTotal[];
   /** Aviso bajo el subtotal (p. ej. piezas por cotizar). */
   totalsNote: string | null;
@@ -144,9 +146,10 @@ export function guidePdfModel(
     const charged = pieces.filter((p) => !isClosedStatus(p.status));
     const priced = charged.filter((p) => p.priceCents !== null);
     const pending = charged.length - priced.length;
-    // Sin ninguna pieza con precio, el subtotal no es 0: está por definir.
+    // Con todas las piezas con precio es el total; si falta alguna, solo un subtotal.
+    // Sin ninguna pieza con precio no es 0: está por definir.
     totals.push({
-      label: "Subtotal",
+      label: priced.length && !pending ? "Total" : "Subtotal",
       value: priced.length
         ? formatCents(priced.reduce((sum, p) => sum + p.priceCents!, 0))
         : "Por definir",

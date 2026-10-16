@@ -50,7 +50,6 @@ import {
 } from "@/domain/money";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import {
-  igvChoice,
   pieceSchema,
   restorationEditSchema,
   type PieceFormInput,
@@ -63,7 +62,6 @@ import {
 } from "@/server/restorations/actions";
 import type { PieceDetail } from "@/server/restorations/queries";
 
-import { IgvField } from "./igv-field";
 import { EMPTY_PIECE } from "./restoration-form";
 import {
   PieceFields,
@@ -77,20 +75,14 @@ type RestorationValues = {
   contactId: string | null;
   paymentType: PaymentType;
   depositAmount: string;
-  pricesIncludeIgv: "si" | "no";
   notes: string;
 };
 
-/**
- * Edición de contacto, tipo y adelanto (en soles), IGV y notas generales (no tocan
- * Shopify, P12). Si
- * el precio incluye IGV solo se cambia antes de crear la orden (P13).
- */
+/** Edición de contacto, tipo y adelanto (en soles) y notas generales (no tocan Shopify, P12). */
 export function EditRestorationDialog({
   restorationId,
   initial,
   contacts,
-  hasOrder,
   hasPayments = false,
 }: {
   restorationId: string;
@@ -101,13 +93,10 @@ export function EditRestorationDialog({
     depositAmountCents: Cents | null;
     /** Total actual: con precios, el % del adelanto se calcula solo. */
     totalCents: Cents;
-    pricesIncludeIgv: boolean;
     notes: string;
   };
   /** Contactos de la empresa; null si el cliente es una persona. */
   contacts: ContactChoice[] | null;
-  /** La orden de Shopify ya existe: el IGV ya no se cambia. */
-  hasOrder: boolean;
   /** Con pagos registrados el tipo de pago ya no se cambia (P28). */
   hasPayments?: boolean;
 }) {
@@ -123,7 +112,6 @@ export function EditRestorationDialog({
         initial.depositAmountCents === null
           ? ""
           : toDecimalString(initial.depositAmountCents),
-      pricesIncludeIgv: igvChoice(initial.pricesIncludeIgv),
       notes: initial.notes,
     },
   });
@@ -263,16 +251,6 @@ export function EditRestorationDialog({
                 </div>
               ) : null}
             </div>
-            <IgvField
-              form={form}
-              name="pricesIncludeIgv"
-              disabled={hasOrder}
-              hint={
-                hasOrder
-                  ? "La orden de Shopify ya se creó con estos precios."
-                  : undefined
-              }
-            />
             <TextField
               form={form}
               name="notes"

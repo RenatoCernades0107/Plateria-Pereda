@@ -46,10 +46,7 @@ export type WhatsappQuoteDetail = {
   customerPhone: string;
   paymentType: PaymentType;
   depositPercent: number | null;
-  /** Si es false, cada pieza se cobra con el 18 % de IGV encima (P13). */
-  pricesIncludeIgv: boolean;
   notes: string;
-  /** Con IGV. */
   totalCents: Cents;
   discardedAt: string | null;
   discardReason: string | null;
@@ -137,7 +134,6 @@ export async function getWhatsappQuote(
     paymentType: q.payment_type,
     depositPercent:
       q.deposit_percent === null ? null : Number(q.deposit_percent),
-    pricesIncludeIgv: q.prices_include_igv,
     notes: q.notes,
     totalCents: toCents(Number(q.total)),
     discardedAt: q.discarded_at,

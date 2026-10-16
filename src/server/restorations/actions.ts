@@ -120,10 +120,7 @@ function editError(
   return ERRORS[error.code ?? ""] ?? fallback;
 }
 
-/**
- * Edita contacto, tipo y % de adelanto, IGV y notas (P12: no tocan Shopify). El IGV
- * solo cambia mientras no exista la orden (lo exige la BD).
- */
+/** Edita contacto, tipo y adelanto, y notas generales (P12: no tocan Shopify). */
 export async function updateRestoration(
   id: string,
   input: RestorationEditFormInput,
@@ -158,7 +155,6 @@ export async function updateRestoration(
       deposit_percent: null,
       deposit_amount:
         v.depositAmount === null ? null : toSoles(v.depositAmount),
-      prices_include_igv: v.pricesIncludeIgv,
       notes: v.notes,
     })
     .eq("id", id)

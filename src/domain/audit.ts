@@ -303,15 +303,20 @@ export function formatValue(value: unknown): string {
   return String(value);
 }
 
-/** Columnas técnicas que no dicen nada a quien lee el historial. */
-const HIDDEN_FIELDS = new Set(["id", "created_by", "created_at", "updated_at"]);
+/**
+ * Columnas técnicas que no dicen nada a quien lee el historial, y columnas que ya no
+ * existen pero siguen en cambios antiguos de la auditoría.
+ */
+const HIDDEN_FIELDS = new Set([
+  "id",
+  "created_by",
+  "created_at",
+  "updated_at",
+  "prices_include_igv",
+]);
 
 /** Columnas que comparten varias tablas (si la tabla no les da su propia etiqueta). */
 const COMMON_FIELDS: Record<string, FieldDef> = {
-  prices_include_igv: {
-    label: "Precio incluye IGV",
-    format: (value) => (value ? "Sí" : "No, se suma el IGV"),
-  },
   deposit_amount: {
     label: "Adelanto (S/)",
     format: (value) => formatMoney(Number(value)),

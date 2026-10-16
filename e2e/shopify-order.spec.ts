@@ -46,7 +46,7 @@ async function seedClient(request: APIRequestContext, name: string) {
   return data.id;
 }
 
-/** Restauración sin IGV incluido con dos piezas (S/ 100 y S/ 50). */
+/** Restauración con dos piezas (S/ 100 y S/ 50). */
 async function seedRestoration(clientId: string) {
   const admin = adminClient();
   const { data: r, error } = await admin
@@ -55,7 +55,6 @@ async function seedRestoration(clientId: string) {
       client_id: clientId,
       // Al crédito: sin adelanto al aprobar ni saldo que bloquee la entrega (11.2).
       payment_type: "credito",
-      prices_include_igv: false,
     })
     .select("id, code")
     .single();
@@ -118,12 +117,12 @@ test.describe("Orden de Shopify al aprobar", () => {
 
     const [order, ...others] = await fakeOrders(request, r.code);
     expect(others).toEqual([]);
-    // Sin IGV incluido (P13): cada pieza + 18 %.
+    // Sin IGV: cada línea lleva el precio de la pieza.
     expect(order!.lines.map((l) => [l.title, l.price])).toEqual([
-      [`Restauración ${r.code}-1`, "118.00"],
-      [`Restauración ${r.code}-2`, "59.00"],
+      [`Restauración ${r.code}-1`, "100.00"],
+      [`Restauración ${r.code}-2`, "50.00"],
     ]);
-    expect(order!.financials.total).toBe("177.00");
+    expect(order!.financials.total).toBe("150.00");
     expect(order!.tags).toEqual(["restauracion", r.code]);
     await expect(page.getByTestId("orden-shopify")).toHaveText(
       `Orden ${order!.name}`,
@@ -238,8 +237,8 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await expect(page.getByTestId("orden-shopify")).toBeVisible({
       timeout: 30_000,
     });
-    // Sin IGV incluido: 118.00 + 59.00.
-    expect(await orderTotal(request, r.code)).toBe("177.00");
+    // 100.00 + 50.00.
+    expect(await orderTotal(request, r.code)).toBe("150.00");
 
     const card = page.getByTestId(`pieza-${r.code}-2`);
     await pieceAction(page, `${r.code}-2`, "Anular");
@@ -249,7 +248,7 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await expect(card).toContainText("Anulado");
     await expect
       .poll(() => orderTotal(request, r.code), { timeout: 30_000 })
-      .toBe("118.00");
+      .toBe("100.00");
   });
 
   test("el admin cambia un precio con motivo y la orden se actualiza", async ({
@@ -286,10 +285,10 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
       .fill("Requiere soldadura adicional");
     await dialog.getByRole("button", { name: "Guardar precio" }).click();
     await expect(page.getByText("Precio cambiado")).toBeVisible();
-    // 120 + 18 % = 141.60, más la Jarra (59.00).
+    // 120.00, más la Jarra (50.00).
     await expect
       .poll(() => orderTotal(request, r.code), { timeout: 30_000 })
-      .toBe("200.60");
+      .toBe("170.00");
   });
 
   test("entregar una pieza la marca como preparada en Shopify (P44)", async ({

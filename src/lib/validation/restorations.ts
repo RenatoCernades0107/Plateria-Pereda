@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { igvTotals } from "@/domain/igv";
 import {
   DEPOSIT_NEGATIVE_ERROR,
   depositAmountError,
   MAX_CENTS,
   parseMoney,
   PAYMENT_TYPES,
+  sumCents,
 } from "@/domain/money";
 import type { PieceStatus } from "@/domain/piece-state-machine";
 
@@ -200,25 +200,23 @@ export function invalidInputMessage(error: z.ZodError): string {
 }
 
 /**
- * El adelanto no puede superar el total de las piezas con precio (con IGV). Corre
+ * El adelanto no puede superar el total de las piezas con precio. Corre
  * aunque otros campos tengan errores (`when`), así el aviso aparece de inmediato; por
  * eso lee los valores con cuidado (una pieza inválida cuenta 0).
  */
 function checkDepositAgainstPieces(
   v: {
     depositAmount: unknown;
-    pricesIncludeIgv: unknown;
     pieces: unknown;
   },
   ctx: z.RefinementCtx,
 ) {
   if (typeof v.depositAmount !== "number") return;
   const pieces = Array.isArray(v.pieces) ? v.pieces : [];
-  const { total } = igvTotals(
+  const total = sumCents(
     pieces.map((p: { priceCents?: unknown } | null) =>
       typeof p?.priceCents === "number" ? p.priceCents : 0,
     ),
-    v.pricesIncludeIgv === true || v.pricesIncludeIgv === "si",
   );
   const message = depositAmountError(v.depositAmount, total);
   if (message)
@@ -267,21 +265,8 @@ const depositMethodParams = {
     !payload.issues.some((i) => i.path?.[0] === "depositMethodId"),
 };
 
-/**
- * "¿El precio incluye IGV?" (P13): obligatorio. Los formularios nuevos parten de
- * "No" (D59); si no lo incluye, cada pieza se cobra con el 18 % encima.
- */
-export const pricesIncludeIgv = z
-  .enum(["si", "no"], { error: "Indica si el precio incluye IGV" })
-  .transform((v) => v === "si");
-
-/** Valor del formulario a partir de lo guardado. */
-export const igvChoice = (includes: boolean): "si" | "no" =>
-  includes ? "si" : "no";
-
 const restorationFields = {
   clientId: z.guid({ error: "Elige un cliente" }),
-  pricesIncludeIgv,
   contactId: optionalId,
   notes: notes(2000),
   pieces: z
@@ -369,7 +354,6 @@ export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
 
 const editFields = {
   contactId: restorationFields.contactId,
-  pricesIncludeIgv,
   notes: restorationFields.notes,
 };
 
@@ -401,7 +385,6 @@ const quoteFields = {
   contactId: optionalId,
   customerName: line(200),
   customerPhone: optionalPhone,
-  pricesIncludeIgv,
   notes: notes(2000),
   pieces: z
     .array(quotePieceSchema)

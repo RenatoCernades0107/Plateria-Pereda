@@ -51,7 +51,7 @@ const process_ = () =>
     batchSize: 50,
   });
 
-/** "A cuenta" 50 % con dos piezas que suman S/ 400 (IGV incluido). */
+/** "A cuenta" 50 % con dos piezas que suman S/ 400. */
 async function seed() {
   const { data: r, error } = await pricing
     .rpc("create_restoration", {
@@ -64,7 +64,6 @@ async function seed() {
         { description: "Fuente", price: "300.00" },
         { description: "Jarra", price: "100.00" },
       ],
-      p_prices_include_igv: true,
     })
     .single();
   if (error) throw error;

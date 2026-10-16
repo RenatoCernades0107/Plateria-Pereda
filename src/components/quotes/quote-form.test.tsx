@@ -60,7 +60,6 @@ const KEY_2 = "22222222-2222-4222-8222-222222222222";
 const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   client: ana,
   validityDays: "15",
-  pricesIncludeIgv: "si",
   notes: "",
   terms: "Pago al contado.",
   lines: [
@@ -101,8 +100,6 @@ describe("QuoteForm", () => {
     );
     expect(screen.getByTestId("descuentos")).toHaveTextContent("− S/ 40.00");
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 2,000.00");
-    // IGV incluido: 2000 − 2000 / 1.18
-    expect(screen.getByText(/IGV S\/ 305\.08/)).toBeInTheDocument();
 
     // Un valor inválido cuenta como 0 mientras se corrige.
     await user.clear(
@@ -111,20 +108,12 @@ describe("QuoteForm", () => {
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 500.00");
   });
 
-  it("pregunta si el precio incluye IGV y lo suma si no (P13)", async () => {
-    const user = userEvent.setup();
-    render(<QuoteForm initial={values({ pricesIncludeIgv: "" })} />);
-    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
-    expect(
-      screen.getByText("Indica si el precio incluye IGV"),
-    ).toBeInTheDocument();
-    expect(mocks.save).not.toHaveBeenCalled();
-
-    await user.click(screen.getByLabelText(/No, se suma el IGV/));
-    // 840.00 sin IGV: 300.00 → 354.00 y 540.00 → 637.20
-    expect(screen.getByTestId("igv")).toHaveTextContent("+ S/ 151.20");
-    expect(screen.getByTestId("total")).toHaveTextContent("S/ 991.20");
-    expect(screen.queryByText("Indica si el precio incluye IGV")).toBeNull();
+  it("no pregunta por el IGV ni lo suma al total", () => {
+    const { container } = render(<QuoteForm initial={values()} />);
+    expect(container).not.toHaveTextContent(/IGV/i);
+    expect(screen.queryByRole("radio")).toBeNull();
+    // 300.00 + 540.00, tal como se escribió.
+    expect(screen.getByTestId("total")).toHaveTextContent("S/ 840.00");
   });
 
   it("muestra la fecha de vencimiento según la vigencia", async () => {
