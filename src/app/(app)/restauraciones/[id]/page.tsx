@@ -429,7 +429,11 @@ export default async function RestauracionDetallePage({
                 />
               ) : null}
               {canExportPdf ? (
-                <GuidePdfButton data={pdfData} photos={photos} />
+                <GuidePdfButton
+                  data={pdfData}
+                  photos={photos}
+                  clientId={restoration.client?.id ?? null}
+                />
               ) : null}
               {canClose ? (
                 <CloseRestorationMenu
