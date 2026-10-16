@@ -397,14 +397,13 @@ test.describe("Estados de las piezas", () => {
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    await expect(bar).toContainText("2 piezas elegidas");
+    await expect(bar).toContainText("2 de 2 seleccionadas");
     // El taller lo asignan logística y el admin (D60).
     await expect(
       bar.getByRole("button", { name: "Asignar taller" }),
     ).toHaveCount(0);
-    await bar.getByLabel("Cambiar estado a…").click();
-    await page.getByRole("option", { name: "Anular" }).click();
-    await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
+    await bar.getByRole("button", { name: /^Cambiar estado/ }).click();
+    await page.getByRole("menuitem", { name: "Anular" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nota (obligatoria)").fill("Desistió");
     await dialog.getByRole("button", { name: "Confirmar: Anular" }).click();

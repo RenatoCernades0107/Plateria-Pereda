@@ -207,12 +207,13 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
       await dragWithMouse(
         page,
         card.getByText("Copa consulta"),
-        page.getByTestId("columna-observada"),
+        page.getByTestId("columna-en_restauracion"),
       );
       await expect(
-        page.getByText("No se puede pasar de «Registrada» a «Observación».", {
-          exact: true,
-        }),
+        page.getByText(
+          `${consultCode}: solo se envía al taller una pieza Aprobada u Observada que está en la tienda.`,
+          { exact: true },
+        ),
       ).toBeVisible();
       await expect(
         page

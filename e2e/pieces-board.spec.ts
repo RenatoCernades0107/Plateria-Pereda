@@ -99,7 +99,7 @@ test.describe("Vista de piezas", () => {
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    await expect(bar).toContainText("3 piezas elegidas");
+    await expect(bar).toContainText("3 de 3 seleccionadas");
     await bar.getByRole("button", { name: "Enviar al taller" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
@@ -168,7 +168,8 @@ test.describe("Vista de piezas", () => {
     test.skip(!isMobile, "Solo aplica al proyecto móvil");
     const { pieces } = await seedReceived(2, "Movil");
     await loginAs("logistica");
-    await page.goto(`/piezas?q=${clientName}&estado=aprobada`);
+    // Siguen Aprobadas al enviarlas: se filtra por ubicación para que salgan de la lista.
+    await page.goto(`/piezas?q=${clientName}&ubicacion=sin_enviar`);
     for (const piece of pieces)
       await page.getByLabel(`Elegir ${piece.code}`).check();
     const bar = page.getByRole("region", {
@@ -264,7 +265,7 @@ test.describe("Vista de piezas", () => {
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    await expect(bar).toContainText("2 piezas elegidas");
+    await expect(bar).toContainText("2 piezas seleccionadas");
     await bar.getByRole("button", { name: "Enviar al taller" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
