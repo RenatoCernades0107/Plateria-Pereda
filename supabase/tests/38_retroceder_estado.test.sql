@@ -85,24 +85,22 @@ select is(
   'tras volver a aprobar, el estado anterior es otra vez Registrada'
 );
 
--- Enviada al taller y retrocedida: las fechas del envío se limpian.
+-- En el taller el estado no se retrocede (ya no existe En restauración: ir al taller es
+-- una acción, no un estado).
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000038a3","role":"authenticated"}', true);
 select lives_ok(
-  $$ select * from public.change_piece_status(
-  array['00000000-0000-0000-0000-0000000038e1']::uuid[], 'enviada_taller', null,
-  '00000000-0000-0000-0000-0000000038b1') $$,
+  $$ select * from public.send_pieces_to_workshop(
+  array['00000000-0000-0000-0000-0000000038e1']::uuid[], '00000000-0000-0000-0000-0000000038b1') $$,
   'el admin envía la pieza al taller'
 );
-select results_eq(
-  $$ select status::text from public.undo_piece_status('00000000-0000-0000-0000-0000000038e1', 'Aún no sale') $$,
-  $$ values ('aprobada') $$,
-  'el admin retrocede En restauración a Aprobada'
+select throws_ok(
+  $$ select * from public.undo_piece_status('00000000-0000-0000-0000-0000000038e1', 'Aún no sale') $$,
+  '23514', null, 'en el taller no se retrocede el estado: primero se marca que volvió'
 );
-select results_eq(
-  $$ select first_sent_at is null, last_sent_at is null, approved_at is not null
-     from public.pieces where id = '00000000-0000-0000-0000-0000000038e1' $$,
-  $$ values (true, true, true) $$,
-  'las fechas del envío se limpian y la aprobación se conserva'
+select is(
+  public.piece_previous_status('00000000-0000-0000-0000-0000000038e1'),
+  null::public.piece_status,
+  'en el taller no se ofrece retroceder'
 );
 
 -- Anular y retroceder: la pieza se reactiva y vuelve a contar.

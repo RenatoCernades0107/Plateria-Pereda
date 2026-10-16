@@ -28,11 +28,13 @@ update public.restorations set status = 'completada' where id = '00000000-0000-0
 update public.pieces set status = 'entregada' where id = '00000000-0000-0000-0000-00000000ca43';
 
 -- Historial conocido: la fuente lleva 10 días en el taller.
-update public.pieces set status = 'enviada_taller' where id = '00000000-0000-0000-0000-00000000ca41';
+update public.pieces set status = 'aprobada', approved_at = now() - interval '11 days',
+  first_sent_at = now() - interval '10 days', last_sent_at = now() - interval '10 days'
+where id = '00000000-0000-0000-0000-00000000ca41';
 delete from public.piece_status_history where piece_id = '00000000-0000-0000-0000-00000000ca41';
-insert into public.piece_status_history (piece_id, restoration_id, from_status, to_status, occurred_at) values
-  ('00000000-0000-0000-0000-00000000ca41', '00000000-0000-0000-0000-00000000ca31', 'aprobada', 'enviada_taller', now() - interval '10 days'),
-  ('00000000-0000-0000-0000-00000000ca42', '00000000-0000-0000-0000-00000000ca32', 'enviada_taller', 'observada', now());
+insert into public.piece_status_history (piece_id, restoration_id, event, from_status, to_status, occurred_at) values
+  ('00000000-0000-0000-0000-00000000ca41', '00000000-0000-0000-0000-00000000ca31', 'envio_taller', 'aprobada', 'aprobada', now() - interval '10 days'),
+  ('00000000-0000-0000-0000-00000000ca42', '00000000-0000-0000-0000-00000000ca32', 'estado', 'aprobada', 'observada', now());
 -- Una urgente y una rechazada que sigue en la tienda (por devolver, P47).
 insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000ca22', 'persona', 'Otra', 'gid://shopify/Customer/ca22');

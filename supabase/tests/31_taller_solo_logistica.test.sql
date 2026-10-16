@@ -66,8 +66,8 @@ select is(
   1, 'logística asigna el taller'
 );
 select lives_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000ca42']::uuid[],
-       'enviada_taller', null, '00000000-0000-0000-0000-00000000ca11') $$,
+  $$ select * from public.send_pieces_to_workshop(array['00000000-0000-0000-0000-00000000ca42']::uuid[],
+       '00000000-0000-0000-0000-00000000ca11') $$,
   'logística envía al taller eligiendo otro taller'
 );
 reset role;
