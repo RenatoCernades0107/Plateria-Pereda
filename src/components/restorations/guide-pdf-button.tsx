@@ -1,10 +1,12 @@
 "use client";
 
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
+import { Notice } from "@/components/notice";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,15 +28,19 @@ import { loadPhotos, PDF_LOGO_URL, thumbnail } from "./pdf-images";
 
 /**
  * Botón "Exportar PDF" del detalle de la guía. El diálogo deja elegir qué piezas van
- * en el PDF (por defecto, todas) y si se incluye la foto "Antes" de cada una.
+ * en el PDF (por defecto, todas) y si se incluye la foto "Antes" de cada una. Sin el
+ * teléfono del cliente no se genera el PDF: el diálogo avisa y lleva a actualizarlo.
  */
 export function GuidePdfButton({
   data,
   photos = {},
+  clientId = null,
 }: {
   data: GuidePdfData;
   /** Primera foto "Antes" de cada pieza (por id). */
   photos?: Record<string, string>;
+  /** Cliente de la guía, para llevar a actualizar su teléfono. */
+  clientId?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,7 +62,10 @@ export function GuidePdfButton({
     });
   }
 
+  const missingPhone = !data.phone;
+
   async function exportPdf() {
+    if (missingPhone) return;
     if (selected.size === 0) {
       toast.error("Elige al menos una pieza para exportar.");
       return;
@@ -174,6 +183,22 @@ export function GuidePdfButton({
               </span>
             </span>
           </label>
+          {missingPhone ? (
+            <Notice tone="destructive" className="space-y-2">
+              <p className="flex items-start gap-2 font-medium">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                Esta guía no tiene el teléfono del cliente. Para generar el PDF
+                es obligatorio.
+              </p>
+              {clientId ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/clientes/${clientId}`}>
+                    Actualizar teléfono del cliente
+                  </Link>
+                </Button>
+              ) : null}
+            </Notice>
+          ) : null}
           <DialogFooter>
             <Button
               type="button"
@@ -186,7 +211,7 @@ export function GuidePdfButton({
             <Button
               type="button"
               onClick={exportPdf}
-              disabled={busy || selected.size === 0}
+              disabled={busy || selected.size === 0 || missingPhone}
             >
               {busy ? <Loader2 className="animate-spin" /> : <FileDown />}
               Exportar PDF
