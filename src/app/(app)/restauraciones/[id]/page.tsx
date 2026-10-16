@@ -233,8 +233,6 @@ export default async function RestauracionDetallePage({
   const pdfData = {
     company: {
       name: company.legalName || "Platería Pereda",
-      ruc: company.ruc,
-      address: company.address,
       phones: company.phones,
       email: company.email,
     },

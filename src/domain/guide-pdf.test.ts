@@ -26,8 +26,6 @@ const piece = (
 const data: GuidePdfData = {
   company: {
     name: "Platería Pereda",
-    ruc: "20100047218",
-    address: "Av. Larco 123, Miraflores",
     phones: "01 444 5555",
     email: "ventas@pereda.pe",
   },
@@ -67,12 +65,13 @@ describe("guidePdfModel", () => {
     expect(model.meta.map(([label]) => label)).toEqual(["Fecha", "Guía N°"]);
     expect(model.guide).toContainEqual(["Atendió", "María Quispe"]);
     expect(model.clause).toContain("30 días calendario");
+    // Membrete fijo de la oficina principal (no depende de Configuración).
     expect(model.companyLines).toEqual([
-      "Oficina",
-      "RUC 20100047218",
-      "Av. Larco 123, Miraflores",
-      "Teléfono: 01 444 5555",
-      "ventas@pereda.pe",
+      { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+      { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+      { text: "995 711 235", icon: "whatsapp" },
+      { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+      { text: "www.plateriapereda.com", icon: "web" },
     ]);
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
   });

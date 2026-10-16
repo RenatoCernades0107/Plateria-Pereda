@@ -33,11 +33,26 @@ export type GuidePdfPiece = {
 
 export type GuidePdfCompany = {
   name: string;
-  ruc: string | null;
-  address: string;
   phones: string;
   email: string;
 };
+
+/** Ícono que va a la izquierda de una línea del membrete (`components/restorations/pdf-icons.ts`). */
+export type GuidePdfIcon = "whatsapp" | "facebook" | "web";
+
+export type GuidePdfLetterheadLine = { text: string; icon?: GuidePdfIcon };
+
+/**
+ * Datos del encabezado de la guía, como en la guía impresa de la oficina principal.
+ * Son fijos (no salen de Configuración): la guía lleva siempre este membrete.
+ */
+export const GUIDE_LETTERHEAD: readonly GuidePdfLetterheadLine[] = [
+  { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+  { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+  { text: "995 711 235", icon: "whatsapp" },
+  { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+  { text: "www.plateriapereda.com", icon: "web" },
+];
 
 export type GuidePdfData = {
   company: GuidePdfCompany;
@@ -87,8 +102,8 @@ export type GuidePdfTotal = { label: string; value: string; strong?: boolean };
 export type GuidePdfModel = {
   title: string;
   code: string;
-  /** Datos de la empresa bajo el logo, una línea cada uno. */
-  companyLines: string[];
+  /** Membrete junto al logo (`GUIDE_LETTERHEAD`), una línea cada uno; la primera va en negrita. */
+  companyLines: GuidePdfLetterheadLine[];
   /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
   /** Vacío en la versión para taller (no se dibuja el bloque del cliente). */
@@ -170,15 +185,7 @@ export function guidePdfModel(
   return {
     title: "GUÍA DE RESTAURACIÓN",
     code: data.code,
-    companyLines: [
-      "Oficina",
-      company.ruc ? `RUC ${company.ruc}` : "",
-      company.address,
-      company.phones ? `Teléfono: ${company.phones}` : "",
-      company.email,
-    ]
-      .map((s) => s.trim())
-      .filter(Boolean),
+    companyLines: [...GUIDE_LETTERHEAD],
     meta: [
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],
