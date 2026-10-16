@@ -54,6 +54,11 @@ export const GUIDE_LETTERHEAD: readonly GuidePdfLetterheadLine[] = [
   { text: "www.plateriapereda.com", icon: "web" },
 ];
 
+/** Membrete de la versión para taller: sin datos de la empresa, solo el rótulo. */
+export const WORKSHOP_LETTERHEAD: readonly GuidePdfLetterheadLine[] = [
+  { text: "TALLER" },
+];
+
 export type GuidePdfData = {
   company: GuidePdfCompany;
   code: string;
@@ -185,7 +190,7 @@ export function guidePdfModel(
   return {
     title: "GUÍA DE RESTAURACIÓN",
     code: data.code,
-    companyLines: [...GUIDE_LETTERHEAD],
+    companyLines: [...(forWorkshop ? WORKSHOP_LETTERHEAD : GUIDE_LETTERHEAD)],
     meta: [
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],
