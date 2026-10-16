@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { PIECE_TRANSITIONS } from "@/domain/piece-state-machine";
+import { daysInWorkshop } from "@/domain/piece-days";
+import {
+  PIECE_TRANSITIONS,
+  type PieceEvent,
+  type PieceStatus,
+} from "@/domain/piece-state-machine";
 import {
   advanceRestorationStatus,
+  deriveLocation,
   deriveRestorationStatus,
   isReadyForShopifyOrder,
   RESTORATION_STATUSES,
@@ -74,6 +80,7 @@ describe("consistencia entre TypeScript y la BD", () => {
       returnedAt,
       reviewSentAt,
       reviewReturnedAt,
+      observedAt,
       expected,
     }) => {
       const { data } = await createAdminClient().rpc("derive_piece_location", {
@@ -85,8 +92,23 @@ describe("consistencia entre TypeScript y la BD", () => {
         p_returned_at: returnedAt as string,
         p_review_sent_at: reviewSentAt as string,
         p_review_returned_at: reviewReturnedAt as string,
+        p_observed_at: observedAt as string,
       });
       expect(data).toBe(expected);
+      const date = (value: string | null) => (value ? new Date(value) : null);
+      expect(
+        deriveLocation({
+          status: status as PieceStatus,
+          arrivedAt: date(arrivedAt),
+          firstSentAt: date(firstSentAt),
+          lastSentAt: date(lastSentAt),
+          lastReturnedAt: date(lastReturnedAt),
+          returnedAt: date(returnedAt),
+          reviewSentAt: date(reviewSentAt),
+          reviewReturnedAt: date(reviewReturnedAt),
+          observedAt: date(observedAt),
+        }),
+      ).toBe(expected);
     },
   );
 
@@ -97,6 +119,17 @@ describe("consistencia entre TypeScript y la BD", () => {
         .rpc("workshop_days", { p_history: history, p_now: now })
         .single();
       expect(data).toEqual(expected);
+      expect(
+        daysInWorkshop(
+          history.map((h) => ({
+            event: h.event as PieceEvent,
+            from: h.from as PieceStatus,
+            to: h.to as PieceStatus,
+            at: new Date(h.at),
+          })),
+          new Date(now),
+        ),
+      ).toEqual(expected);
     },
   );
 

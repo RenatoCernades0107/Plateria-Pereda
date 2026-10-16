@@ -190,6 +190,7 @@ describe("pieceToRpc", () => {
     expect(
       pieceToRpc({
         workshopId: null,
+        quantity: 6,
         description: "Fuente",
         measure: "",
         materials: ["m1", "m2"],
@@ -201,6 +202,7 @@ describe("pieceToRpc", () => {
       }),
     ).toEqual({
       workshop_id: null,
+      quantity: 6,
       description: "Fuente",
       measure: "",
       material_ids: ["m1", "m2"],
@@ -220,6 +222,7 @@ describe("pieceToRpc", () => {
     expect(
       pieceToRpc({
         workshopId: null,
+        quantity: 1,
         description: "Fuente",
         measure: "",
         materials: [],
@@ -236,6 +239,7 @@ describe("pieceToRpc", () => {
     expect(
       pieceToRpc({
         workshopId: null,
+        quantity: 1,
         description: "Fuente",
         measure: "",
         materials: [],
@@ -257,6 +261,7 @@ describe("pieceToRpc", () => {
 describe("withoutSalePrices (D58)", () => {
   const base = {
     workshopId: null,
+    quantity: 1,
     description: "Fuente",
     measure: "",
     materials: [],
@@ -285,6 +290,7 @@ describe("withoutSalePrices (D58)", () => {
 describe("withoutWorkshops (D60)", () => {
   it("quita el taller de las piezas", () => {
     const base = {
+      quantity: 1,
       description: "Fuente",
       measure: "",
       materials: [],

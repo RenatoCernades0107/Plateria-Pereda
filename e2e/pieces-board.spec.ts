@@ -105,7 +105,7 @@ test.describe("Vista de piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
     await expect(
       page.getByText("No encontramos resultados para tu búsqueda."),
@@ -130,8 +130,8 @@ test.describe("Vista de piezas", () => {
     await admin
       .from("pieces")
       .update({
-        status: "enviada_taller",
         workshop_id: workshopId,
+        first_sent_at: new Date(Date.now() - 9 * 86_400_000).toISOString(),
         last_sent_at: new Date(Date.now() - 9 * 86_400_000).toISOString(),
       } as never)
       .eq("id", pieces[0]!.id);
@@ -139,7 +139,8 @@ test.describe("Vista de piezas", () => {
       piece_id: pieces[0]!.id,
       restoration_id: restorationIds.at(-1)!,
       from_status: "aprobada",
-      to_status: "enviada_taller",
+      to_status: "aprobada",
+      event: "envio_taller",
       occurred_at: new Date(Date.now() - 9 * 86_400_000).toISOString(),
     } as never);
     // Quita los pasos con la fecha de hoy para que el viaje siga abierto desde hace 9 días.
@@ -147,7 +148,7 @@ test.describe("Vista de piezas", () => {
       .from("piece_status_history")
       .delete()
       .eq("piece_id", pieces[0]!.id)
-      .neq("to_status", "enviada_taller");
+      .neq("event", "envio_taller");
 
     await loginAs("logistica");
     await page.goto(`/piezas?q=Candelabro antiguo&dias=7`);
@@ -178,7 +179,7 @@ test.describe("Vista de piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
     await expect(
       page.getByText("No encontramos resultados para tu búsqueda."),
@@ -199,7 +200,6 @@ test.describe("Vista de piezas", () => {
     await admin
       .from("pieces")
       .update({
-        status: "enviada_taller",
         workshop_id: workshopId,
         first_sent_at: new Date().toISOString(),
         last_sent_at: new Date().toISOString(),
@@ -270,9 +270,10 @@ test.describe("Vista de piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    const sent = page.getByTestId("columna-enviada_taller");
+    // Siguen Aprobadas: la columna «En restauración» agrupa las que están en el taller.
+    const sent = page.getByTestId("columna-en_restauracion");
     for (const piece of pieces)
       await expect(sent.getByTestId(`tarjeta-${piece.code}`)).toContainText(
         workshopName,
@@ -281,7 +282,7 @@ test.describe("Vista de piezas", () => {
     await expect(page).toHaveURL(/vista=kanban/);
   });
 
-  test("en kanban arrastra una pieza de Aprobada a Interno eligiendo el taller", async ({
+  test("en kanban arrastra una pieza de Aprobada a En restauración eligiendo el taller", async ({
     page,
     loginAs,
   }) => {
@@ -294,10 +295,11 @@ test.describe("Vista de piezas", () => {
     const card = approved.getByTestId(`tarjeta-${code}`);
     await expect(card).toBeVisible();
 
+    // «En restauración» no es un estado: soltar ahí envía la pieza al taller.
     await dragWithMouse(
       page,
       card.getByText("Arrastre 1"),
-      page.getByTestId("columna-enviada_taller"),
+      page.getByTestId("columna-en_restauracion"),
       async () => {
         // Logística no aprueba ni anula: esas columnas se atenúan.
         await expect(page.getByTestId("columna-registrada")).toHaveAttribute(
@@ -313,14 +315,18 @@ test.describe("Vista de piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
     await expect(
-      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+      page
+        .getByTestId("columna-en_restauracion")
+        .getByTestId(`tarjeta-${code}`),
     ).toContainText(workshopName);
     await page.reload();
     await expect(
-      page.getByTestId("columna-enviada_taller").getByTestId(`tarjeta-${code}`),
+      page
+        .getByTestId("columna-en_restauracion")
+        .getByTestId(`tarjeta-${code}`),
     ).toBeVisible();
   });
   test("tabla tipo hoja: logística pone el costo, el admin el precio; filtra por guía y abre la pieza (P55)", async ({
@@ -483,9 +489,11 @@ test.describe("Vista de piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    await expect(row).toContainText("En restauración");
+    // El estado no cambia: sigue Aprobada, ahora En taller.
+    await expect(row).toContainText("Aprobada");
+    await expect(row).toContainText("En taller");
     await expect(row).toContainText(workshopName);
   });
 });

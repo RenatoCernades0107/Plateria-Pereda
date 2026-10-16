@@ -33,7 +33,6 @@ describe("vista de las piezas en el detalle de la restauración", () => {
       "en_consulta",
       "en_espera",
       "aprobada",
-      "enviada_taller",
       "observada",
     ]);
     expect(
@@ -43,7 +42,6 @@ describe("vista de las piezas en el detalle de la restauración", () => {
       "en_consulta",
       "en_espera",
       "aprobada",
-      "enviada_taller",
       "observada",
       "entregada",
       "anulada",

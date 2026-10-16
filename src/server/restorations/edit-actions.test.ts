@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
     error: null as { code: string; message?: string } | null,
   },
   insertError: null as { code: string; message?: string } | null,
-  total: { data: { total: 1000 } as object | null, error: null },
+  total: {
+    data: { total: 1000, kind: "normal" } as object | null,
+    error: null,
+  },
   revalidate: vi.fn(),
 }));
 
@@ -70,7 +73,7 @@ describe("edición de restauraciones", () => {
       fn.mockReset();
     mocks.result = { data: [{ id: "r1", restoration_id: "r1" }], error: null };
     mocks.insertError = null;
-    mocks.total = { data: { total: 1000 }, error: null };
+    mocks.total = { data: { total: 1000, kind: "normal" }, error: null };
   });
 
   it("updateRestoration guarda contacto, tipo, adelanto y notas; el adelanto solo en A cuenta", async () => {
@@ -123,13 +126,45 @@ describe("edición de restauraciones", () => {
     expect(mocks.update).not.toHaveBeenCalled();
 
     // Sin precios asignados (total 0) se guarda el monto en soles.
-    mocks.total = { data: { total: 0 }, error: null };
+    mocks.total = { data: { total: 0, kind: "normal" }, error: null };
     expect(
       await updateRestoration("r1", { ...edit, depositAmount: "5000" }),
     ).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ deposit_amount: 5000 }),
     );
+  });
+
+  it("updateRestoration en una guía interna u observada no guarda tipo de pago ni adelanto", async () => {
+    mocks.total = { data: { total: 0, kind: "interno" }, error: null };
+    expect(
+      await updateRestoration("r1", {
+        contactId: null,
+        paymentType: "a_cuenta",
+        depositAmount: "50",
+        notes: "",
+      }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_type: "sin_definir",
+        deposit_amount: null,
+      }),
+    );
+  });
+
+  it("updatePiece guarda la cantidad (vacía = 1) y la valida", async () => {
+    expect(await updatePiece("p1", { ...piece, quantity: "6" })).toEqual({
+      ok: true,
+    });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 6 }),
+    );
+    expect(await updatePiece("p1", piece)).toEqual({ ok: true });
+    expect(mocks.update.mock.calls[1]![0]).toMatchObject({ quantity: 1 });
+    expect(await updatePiece("p1", { ...piece, quantity: "0" })).toEqual({
+      error: "Revisa los datos de la pieza.",
+    });
   });
 
   it("updatePiece convierte el precio y muestra las reglas de la BD", async () => {

@@ -13,7 +13,6 @@ import {
   PackageSearch,
   Store,
   ThumbsDown,
-  Wrench,
   WrenchOff,
   Zap,
 } from "lucide-react";
@@ -98,12 +97,6 @@ export const PIECE_STATUS_STYLES: Record<
     dot: "bg-green-600 dark:bg-green-400",
     icon: CircleCheck,
   },
-  enviada_taller: {
-    className:
-      "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100",
-    dot: "bg-sky-600 dark:bg-sky-400",
-    icon: Wrench,
-  },
   observada: {
     className:
       "border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-100",
@@ -148,11 +141,20 @@ export function PieceStatusIcon({
   return <Icon aria-hidden className={className} />;
 }
 
+/**
+ * Con `wrap`, el texto se parte en dos líneas si no entra (en tablas de columnas
+ * angostas: "Espera respuesta cliente"); el resto de estados cabe en una.
+ */
+export const WRAP_BADGE_CLASS =
+  "h-auto max-w-[10rem] justify-start rounded-xl text-left leading-tight whitespace-normal";
+
 export function PieceStatusBadge({
   status,
+  wrap = false,
   className,
 }: {
   status: PieceStatus;
+  wrap?: boolean;
   className?: string;
 }) {
   const style = PIECE_STATUS_STYLES[status];
@@ -160,7 +162,8 @@ export function PieceStatusBadge({
     <Badge
       variant="outline"
       data-status={status}
-      className={cn(style.className, className)}
+      data-wrap={wrap || undefined}
+      className={cn(style.className, wrap && WRAP_BADGE_CLASS, className)}
     >
       <StatusDot className={style.dot} />
       {PIECE_STATUS_LABELS[status]}
@@ -379,13 +382,18 @@ export function StatusAge({
   piece: {
     status: PieceStatus;
     readyForDelivery?: boolean;
+    /** En el taller por trabajo (Aprobada u Observada): umbrales del taller. */
+    location?: PieceLocation;
     statusDays: number;
   };
   /** Solo "Hoy" o "N días", para una columna que ya dice "en el estado". */
   compact?: boolean;
   className?: string;
 }) {
-  const tone = statusAgeTone(piece, piece.statusDays);
+  const inWorkshop =
+    (piece.status === "aprobada" || piece.status === "observada") &&
+    piece.location === "en_taller";
+  const tone = statusAgeTone({ ...piece, inWorkshop }, piece.statusDays);
   const Icon = tone === "neutral" ? Clock : AlertTriangle;
   return (
     <span

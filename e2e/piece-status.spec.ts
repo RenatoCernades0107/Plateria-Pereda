@@ -22,7 +22,7 @@ type NewPiece = {
   arrived?: boolean;
   status?: string;
   workshop?: boolean;
-  /** En Interno y ya de vuelta del taller (ubicación "En tienda", P48). */
+  /** Enviada al taller (con `workshop`) y ya de vuelta (ubicación "En tienda", P48). */
   back?: boolean;
 };
 
@@ -110,7 +110,7 @@ test.describe("Estados de las piezas", () => {
     await admin.from("workshops").delete().eq("id", workshopId);
   });
 
-  test("flujo feliz: aprobada (Sin enviar) → Interno (En taller) → vuelta (En tienda) → entregada", async ({
+  test("flujo feliz: aprobada (Sin enviar) → enviada al taller (En taller) → vuelta (En tienda) → entregada", async ({
     page,
     loginAs,
   }) => {
@@ -142,9 +142,10 @@ test.describe("Estados de las piezas", () => {
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    await expect(card(page, code)).toContainText("En restauración");
+    // Ir al taller no cambia el estado: sigue Aprobada, ahora En taller.
+    await expect(card(page, code)).toContainText("Aprobada");
     await expect(card(page, code)).toContainText("En taller");
     await expect(card(page, code)).toContainText(workshopName);
     // Sin "En proceso" (P56): mientras está en el taller la guía sigue Aprobada.
@@ -152,7 +153,7 @@ test.describe("Estados de las piezas", () => {
 
     await pieceAction(page, code, "Recibir del taller");
     await expect(card(page, code)).toContainText("En tienda");
-    await expect(card(page, code)).toContainText("En restauración");
+    await expect(card(page, code)).toContainText("Aprobada");
     await expect(restorationStatus(page)).toHaveText("Lista");
 
     // La entrega la hace ventas: completada, logística ya no la ve (D24).
@@ -266,7 +267,7 @@ test.describe("Estados de las piezas", () => {
       {
         description: "Bandeja observada",
         arrived: true,
-        status: "enviada_taller",
+        status: "aprobada",
         workshop: true,
         back: true,
       },
@@ -288,10 +289,12 @@ test.describe("Estados de las piezas", () => {
     dialog = page.getByRole("dialog");
     // El taller ya asignado viene elegido.
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    await expect(card(page, code)).toContainText("En restauración");
+    // Reenviada sigue en Observación, ahora En taller; se entrega cuando vuelve.
+    await expect(card(page, code)).toContainText("Observación");
     await expect(card(page, code)).toContainText("En taller");
+    expect(await pieceActionNames(page, code)).not.toContain("Entregar");
   });
 
   test("la línea de tiempo muestra usuarios y notas en orden; logística ve solo días y observación", async ({
@@ -349,7 +352,7 @@ test.describe("Estados de las piezas", () => {
     await adminClient()
       .from("pieces")
       .update({
-        status: "enviada_taller",
+        status: "aprobada",
         arrived_at: new Date(Date.now() - 120_000).toISOString(),
         first_sent_at: new Date(Date.now() - 60_000).toISOString(),
         last_sent_at: new Date(Date.now() - 60_000).toISOString(),
@@ -420,17 +423,17 @@ test.describe("Estados de las piezas", () => {
     const bar = page.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    await bar.getByLabel("Cambiar estado a…").click();
-    await page.getByRole("option", { name: "Enviar al taller" }).click();
-    await bar.getByRole("button", { name: "Aplicar a 2 piezas" }).click();
+    // Ir al taller es una acción de la barra, no un cambio de estado.
+    await bar.getByRole("button", { name: "Enviar al taller" }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: Enviar al taller" })
+      .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    await expect(card(page, `${r.code}-1`)).toContainText("En restauración");
-    await expect(card(page, `${r.code}-2`)).toContainText("En restauración");
+    await expect(card(page, `${r.code}-1`)).toContainText("En taller");
+    await expect(card(page, `${r.code}-2`)).toContainText("En taller");
+    await expect(card(page, `${r.code}-1`)).toContainText("Aprobada");
   });
 
   test("cada rol ve solo sus acciones", async ({ page, loginAs }) => {
@@ -453,7 +456,7 @@ test.describe("Estados de las piezas", () => {
     expect(enTienda).not.toContain("Enviar al taller");
   });
 
-  test("rechazo, sin arreglo desde Interno y devolución al cliente (P47, P50)", async ({
+  test("rechazo, sin arreglo desde el taller y devolución al cliente (P47, P50)", async ({
     page,
     loginAs,
   }) => {
@@ -463,7 +466,7 @@ test.describe("Estados de las piezas", () => {
       {
         description: "Fuente sin arreglo",
         arrived: true,
-        status: "enviada_taller",
+        status: "aprobada",
         workshop: true,
       },
       { description: "Jarra que sí se hace", arrived: true },

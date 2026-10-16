@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   rpcError: null as { code?: string; message?: string } | null,
   missing: null as string | null,
   orderId: "gid://shopify/Order/1" as string | null,
+  kind: "normal" as string,
   scheduled: 0,
 }));
 
@@ -30,7 +31,7 @@ const client = {
     select: () => ({
       eq: () => ({
         maybeSingle: async () => ({
-          data: { shopify_order_id: mocks.orderId },
+          data: { shopify_order_id: mocks.orderId, kind: mocks.kind },
         }),
       }),
     }),
@@ -65,8 +66,31 @@ describe("acciones de pagos (11.2)", () => {
     mocks.rpcError = null;
     mocks.missing = null;
     mocks.orderId = "gid://shopify/Order/1";
+    mocks.kind = "normal";
     mocks.scheduled = 0;
   });
+
+  it.each(["interno", "observado"])(
+    "una guía %s no recibe pagos, reembolsos ni el adelanto al aprobar",
+    async (kind) => {
+      mocks.kind = kind;
+      const error = {
+        error:
+          "Esta guía es interna u observada: no se cobra, así que no recibe pagos ni reembolsos.",
+      };
+      expect(await registerPayment(R, pay)).toEqual(error);
+      expect(
+        await refundPayment(R, {
+          methodId: M,
+          amountCents: 100,
+          paidOn: "2026-10-12",
+          reason: "x",
+        }),
+      ).toEqual(error);
+      expect(await approveWithPayment(R, ["p1"], pay)).toEqual(error);
+      expect(mocks.calls).toEqual([]);
+    },
+  );
 
   it("registra un pago por método y procesa el outbox", async () => {
     expect(await registerPayment(R, pay)).toEqual({ ok: true });

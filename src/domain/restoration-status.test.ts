@@ -13,6 +13,8 @@ import {
   deriveRestorationStatus,
   isReadyForShopifyOrder,
   missingSalePrices,
+  RESTORATION_KIND_LABELS,
+  RESTORATION_KINDS,
   PIECE_LOCATION_LABELS,
   PIECE_LOCATIONS,
   RESTORATION_STATUS_LABELS,
@@ -70,6 +72,19 @@ describe("isReadyForShopifyOrder (escenarios compartidos con la BD)", () => {
     expect(isReadyForShopifyOrder([])).toBe(false);
   });
 
+  it("las guías internas u observadas nunca tienen orden", () => {
+    const pieces = [
+      {
+        status: "aprobada" as const,
+        approvedAt: new Date("2026-10-01T15:00:00Z"),
+        priceCents: 1000,
+      },
+    ];
+    expect(isReadyForShopifyOrder(pieces, "normal")).toBe(true);
+    expect(isReadyForShopifyOrder(pieces, "interno")).toBe(false);
+    expect(isReadyForShopifyOrder(pieces, "observado")).toBe(false);
+  });
+
   it("espera el precio de venta de cada pieza que se cobra (D58)", () => {
     const approvedAt = new Date("2026-10-01T15:00:00Z");
     expect(
@@ -99,7 +114,7 @@ describe("missingSalePrices (D58)", () => {
       missingSalePrices(
         [
           piece("RES-00001-1", "aprobada", 1000),
-          piece("RES-00001-2", "enviada_taller", null),
+          piece("RES-00001-2", "aprobada", null),
           piece("RES-00001-3", "anulada", null),
         ],
         false,
@@ -123,6 +138,16 @@ describe("missingSalePrices (D58)", () => {
     ).toBeNull();
     expect(
       missingSalePrices([piece("RES-00001-1", "aprobada", 0)], false),
+    ).toBeNull();
+  });
+
+  it("las guías que no se cobran no piden precio", () => {
+    expect(
+      missingSalePrices(
+        [piece("RES-00001-1", "aprobada", null)],
+        false,
+        "interno",
+      ),
     ).toBeNull();
   });
 
@@ -154,6 +179,7 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
       returnedAt,
       reviewSentAt,
       reviewReturnedAt,
+      observedAt,
       expected,
     }) => {
       expect(
@@ -166,6 +192,7 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
           returnedAt: date(returnedAt),
           reviewSentAt: date(reviewSentAt),
           reviewReturnedAt: date(reviewReturnedAt),
+          observedAt: date(observedAt),
         }),
       ).toBe(expected);
     },
@@ -178,6 +205,17 @@ describe("deriveLocation (escenarios compartidos con la BD)", () => {
     expect(new Set(scenarios.location.map((s) => s.expected))).toEqual(
       new Set(PIECE_LOCATIONS),
     );
+  });
+});
+
+describe("tipo de guía", () => {
+  it("tiene las etiquetas acordadas", () => {
+    expect(RESTORATION_KINDS).toEqual(["normal", "interno", "observado"]);
+    expect(RESTORATION_KIND_LABELS).toEqual({
+      normal: "Normal",
+      interno: "Interna",
+      observado: "Observada",
+    });
   });
 });
 
@@ -261,9 +299,9 @@ describe("partialProgress", () => {
   it("cuenta las listas (de vuelta o entregadas)", () => {
     expect(
       partialProgress("parcialmente_lista", [
-        p("enviada_taller", true, true),
+        p("aprobada", true, true),
         p("entregada", true),
-        p("enviada_taller", true),
+        p("aprobada", true),
       ]),
     ).toEqual({ done: 2, total: 3, label: "listas" });
   });
@@ -280,7 +318,7 @@ describe("observedProgress", () => {
     const progress = observedProgress([
       p("observada"),
       p("observada"),
-      p("enviada_taller"),
+      p("aprobada"),
       p("aprobada"),
       p("anulada"),
       p("rechazada"),

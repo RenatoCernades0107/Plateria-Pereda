@@ -69,6 +69,8 @@ export default async function NuevaRestauracionPage({
         defaultDepositPercent={settings.depositPercent}
         canSetPrice={can(user.role, "piezas.precio-venta")}
         canAssignWorkshop={can(user.role, "piezas.asignar-taller")}
+        // Guía interna u observada (punto 8): admin y ventas.
+        canSetKind={can(user.role, "restauraciones.editar")}
         workshops={workshops.data}
         materials={materials.map(({ id, name, price, active }) => ({
           id,

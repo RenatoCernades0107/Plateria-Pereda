@@ -15,10 +15,10 @@ describe("filtros de la vista de piezas", () => {
       location: null,
       status: null,
       workshopId: null,
+      noWorkshop: false,
       minDays: null,
       urgent: false,
       ready: false,
-      toReturn: false,
       page: 1,
       view: "tabla",
     });
@@ -41,10 +41,10 @@ describe("filtros de la vista de piezas", () => {
       location: "en_tienda",
       status: "rechazada",
       workshopId: "00000000-0000-0000-0000-0000000000aa",
+      noWorkshop: false,
       minDays: 10,
       urgent: true,
       ready: true,
-      toReturn: true,
       page: 2,
       view: "tabla",
     });
@@ -89,6 +89,25 @@ describe("filtros de la vista de piezas", () => {
       p_limit: 50,
       p_offset: 100,
     });
+  });
+
+  it("filtra las piezas sin taller (taller=sin)", () => {
+    const filters = parsePieceBoardFilters({ taller: "sin" });
+    expect([filters.noWorkshop, filters.workshopId]).toEqual([true, null]);
+    expect(pieceBoardHref(filters)).toBe("/piezas?taller=sin");
+    expect(listPiecesBoardArgs(filters)).toMatchObject({
+      p_no_workshop: true,
+      p_workshop_id: undefined,
+    });
+    expect(
+      pieceBoardHref(filters, { noWorkshop: false, workshopId: null }),
+    ).toBe("/piezas");
+  });
+
+  it("ya no lee el chip «Por devolver» (va dentro de «Listas»)", () => {
+    expect(parsePieceBoardFilters({ devolver: "1" })).not.toHaveProperty(
+      "toReturn",
+    );
   });
 
   it("filtra por número de guía", () => {

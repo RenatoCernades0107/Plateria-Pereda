@@ -19,9 +19,11 @@ type Column = {
     | "number"
     | "photo"
     | "code"
+    | "quantity"
     | "description"
     | "service"
     | "status"
+    | "location"
     | "price";
   title: string;
   width: number;
@@ -131,21 +133,24 @@ export async function drawGuidePdf(
 
   // --- Tabla de piezas. Para el taller, la foto va siempre (o "Sin foto").
   const withPhoto = images !== null || model.forWorkshop;
+  // La descripción toma el ancho que dejan las demás (la cantidad es angosta).
   const columns: Column[] = [
-    { key: "number", title: "N°", width: 9, align: "center" },
+    { key: "number", title: "N°", width: 8, align: "center" },
     ...(withPhoto
-      ? [{ key: "photo", title: "FOTO", width: 20 } as Column]
+      ? [{ key: "photo", title: "FOTO", width: 18 } as Column]
       : []),
-    { key: "code", title: "CÓDIGO", width: 27 },
+    { key: "code", title: "CÓDIGO", width: 24 },
+    { key: "quantity", title: "CANT.", width: 10, align: "center" },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
-    { key: "service", title: "SERVICIO", width: 28 },
-    { key: "status", title: "ESTADO", width: 27 },
+    { key: "service", title: "SERVICIO", width: 24 },
+    { key: "status", title: "ESTADO", width: 21 },
+    { key: "location", title: "UBICACIÓN", width: 19 },
     ...(model.showPrice
       ? [
           {
             key: "price",
             title: "IMPORTE",
-            width: 25,
+            width: 22,
             align: "right",
           } as Column,
         ]
@@ -193,11 +198,13 @@ export async function drawGuidePdf(
       : [];
     const service = pdf.splitTextToSize(row.service, textW("service"));
     const status = pdf.splitTextToSize(row.status, textW("status"));
+    const location = pdf.splitTextToSize(row.location, textW("location"));
     const code = pdf.splitTextToSize(row.code, textW("code"));
     const lines = Math.max(
       desc.length + detail.length + notes.length,
       service.length,
       status.length,
+      location.length,
       code.length,
     );
     const rowH = Math.max(lines * lineH + pad * 2, withPhoto ? 20 : 7);
@@ -263,9 +270,17 @@ export async function drawGuidePdf(
           font("normal", 8);
           pdf.text(service, x + pad, top);
           break;
+        case "quantity":
+          font("normal", 8.5);
+          pdf.text(row.quantity, x + c.width / 2, top, { align: "center" });
+          break;
         case "status":
           font("normal", 8);
           pdf.text(status, x + pad, top);
+          break;
+        case "location":
+          font("normal", 8);
+          pdf.text(location, x + pad, top);
           break;
         case "price":
           font("normal", 8.5);

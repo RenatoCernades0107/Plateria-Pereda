@@ -80,6 +80,7 @@ export function LogisticsPieceSummary({ info }: { info: LogisticsPieceInfo }) {
 /** Acciones que no cambian el estado (P47). */
 const EVENT_SUMMARY: Record<Exclude<PieceEvent, "estado">, string> = {
   llegada: "Llegó a la tienda",
+  envio_taller: "Enviada al taller",
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
   cambio_precio: "Cambio de precio",

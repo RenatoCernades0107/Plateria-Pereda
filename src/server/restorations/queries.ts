@@ -3,7 +3,11 @@ import "server-only";
 import type { PaymentType } from "@/domain/money";
 import { depositPercentOf, toCents, type Cents } from "@/domain/money";
 import { calendarDaysBetween } from "@/domain/piece-days";
-import type { PieceEvent, PieceStatus } from "@/domain/piece-state-machine";
+import {
+  toPieceStatus,
+  type PieceEvent,
+  type PieceStatus,
+} from "@/domain/piece-state-machine";
 import {
   observedProgress,
   partialProgress,
@@ -11,6 +15,7 @@ import {
   type ObservedProgress,
   type PartialProgress,
   type PieceLocation,
+  type RestorationKind,
   type RestorationOrigin,
   type RestorationStatus,
 } from "@/domain/restoration-status";
@@ -36,8 +41,10 @@ export type PieceDetail = {
   location: PieceLocation;
   /** Marca "Urgente" (P47). */
   urgent: boolean;
-  /** En En restauración y ya de vuelta del taller. */
+  /** Aprobada u Observada ya de vuelta del taller ("Lista para entregar"). */
   readyForDelivery: boolean;
+  /** Cantidad (informativa: el precio y el costo son de la pieza completa). */
+  quantity: number;
   description: string;
   measure: string;
   materialName: string;
@@ -57,6 +64,12 @@ export type PieceDetail = {
   /** Revisión en taller: último envío a revisar y última vuelta (sin dato: sin revisión). */
   reviewSentAt?: string | null;
   reviewReturnedAt?: string | null;
+  /** Última vez que entró a Observada. */
+  observedAt?: string | null;
+  /** Viajes al taller por trabajo: primer y último envío, y última vuelta. */
+  firstSentAt?: string | null;
+  lastSentAt?: string | null;
+  lastReturnedAt?: string | null;
   /** null si quien mira no ve montos (logística, P42) o si aún no tiene precio de venta (D58). */
   priceCents: Cents | null;
 };
@@ -79,6 +92,8 @@ export type RestorationDetail = {
   id: string;
   code: string;
   status: RestorationStatus;
+  /** Tipo de guía: las internas u observadas no se cobran (sin precio, pagos ni orden). */
+  kind: RestorationKind;
   paymentType: PaymentType;
   notes: string;
   shopifyOrderName: string | null;
@@ -194,6 +209,7 @@ export async function getRestorationDetail(
     id: r.id,
     code: r.code!,
     status: toRestorationStatus(r.status!),
+    kind: r.kind ?? "normal",
     paymentType: r.payment_type!,
     notes: r.notes ?? "",
     shopifyOrderName: r.shopify_order_name,
@@ -222,10 +238,11 @@ export async function getRestorationDetail(
       id: p.id!,
       number: p.number!,
       code: p.code!,
-      status: p.status!,
+      status: toPieceStatus(p.status!),
       location: p.location!,
       urgent: p.urgent ?? false,
       readyForDelivery: p.ready_for_delivery ?? false,
+      quantity: p.quantity ?? 1,
       description: p.description ?? "",
       measure: p.measure ?? "",
       materialName: p.material_name ?? "",
@@ -244,6 +261,10 @@ export async function getRestorationDetail(
       returnedAt: p.returned_at,
       reviewSentAt: p.review_sent_at,
       reviewReturnedAt: p.review_returned_at,
+      observedAt: p.observed_at,
+      firstSentAt: p.first_sent_at,
+      lastSentAt: p.last_sent_at,
+      lastReturnedAt: p.last_returned_at,
       priceCents: withMoney ? (priceOf.get(p.id!) ?? null) : null,
     })),
     money: money.data
@@ -299,8 +320,8 @@ export async function getStatusHistory(
     pieceId: h.piece_id,
     event: h.event,
     at: h.occurred_at,
-    fromStatus: h.from_status,
-    toStatus: h.to_status,
+    fromStatus: h.from_status ? toPieceStatus(h.from_status) : null,
+    toStatus: toPieceStatus(h.to_status),
     actorName: h.actor_name,
     note: h.note,
   }));
@@ -318,7 +339,7 @@ export async function getPreviousStatus(
     p_piece_id: pieceId,
   });
   if (error) throw error;
-  return data ?? null;
+  return data ? toPieceStatus(data) : null;
 }
 
 export type LogisticsPieceInfo = {
@@ -451,7 +472,7 @@ async function getObservedProgress(
     const progress = observedProgress(
       pieces.data
         .filter((p) => p.restoration_id === id && p.status)
-        .map((p) => ({ status: p.status! })),
+        .map((p) => ({ status: toPieceStatus(p.status!) })),
     );
     if (progress) result.set(id, progress);
   }
@@ -501,7 +522,7 @@ export async function getPartialProgress(
       data
         .filter((p) => p.restoration_id === r.id && p.status)
         .map((p) => ({
-          status: p.status!,
+          status: toPieceStatus(p.status!),
           approvedAt: p.approved_at ? new Date(p.approved_at) : null,
           firstSentAt: p.first_sent_at ? new Date(p.first_sent_at) : null,
           readyForDelivery: p.ready_for_delivery ?? false,
@@ -524,8 +545,22 @@ export type BoardPiece = {
   location: PieceLocation;
   urgent: boolean;
   readyForDelivery: boolean;
+  /** Rechazada o sin arreglo que sigue en la tienda (por devolver al cliente). */
+  toReturn: boolean;
+  /** Cantidad (informativa). */
+  quantity: number;
+  /** Desde cuándo está en su ubicación actual (ISO); null si no se sabe. */
+  locationSince: string | null;
+  /** Días calendario (Lima) en la ubicación actual. */
+  locationDays: number | null;
   /** Siempre null: las piezas ya devueltas al cliente no salen en la vista. */
   returnedAt: null;
+  /** Última vez que entró a Observada. */
+  observedAt?: string | null;
+  /** Viajes al taller por trabajo: primer y último envío, y última vuelta. */
+  firstSentAt?: string | null;
+  lastSentAt?: string | null;
+  lastReturnedAt?: string | null;
   /** Revisión en taller: último envío a revisar y última vuelta (sin dato: sin revisión). */
   reviewSentAt?: string | null;
   reviewReturnedAt?: string | null;
@@ -582,11 +617,21 @@ export async function listPiecesBoard(
       restorationCode: p.restoration_code,
       clientName: withClient ? (p.client_name ?? "") : "",
       description: p.description,
-      status: p.status,
+      status: toPieceStatus(p.status),
       location: p.location,
       urgent: p.urgent,
       readyForDelivery: p.ready_for_delivery,
+      toReturn: p.to_return ?? false,
+      quantity: p.quantity ?? 1,
+      locationSince: p.location_since ?? null,
+      locationDays: p.location_since
+        ? calendarDaysBetween(new Date(p.location_since), now)
+        : null,
       returnedAt: null,
+      observedAt: p.observed_at ?? null,
+      firstSentAt: p.first_sent_at ?? null,
+      lastSentAt: p.last_sent_at ?? null,
+      lastReturnedAt: p.last_returned_at ?? null,
       reviewSentAt: p.review_sent_at ?? null,
       reviewReturnedAt: p.review_returned_at ?? null,
       workshopId: p.workshop_id,

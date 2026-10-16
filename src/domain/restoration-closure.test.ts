@@ -77,7 +77,15 @@ describe("planRestorationClosure", () => {
   });
 
   it("una pieza en el taller solo la anula el administrador", () => {
-    const pieces = [piece("P1", "enviada_taller", { workshopId: "w" })];
+    const sent = new Date("2026-10-02T15:00:00Z");
+    const pieces = [
+      piece("P1", "aprobada", {
+        workshopId: "w",
+        arrivedAt: sent,
+        firstSentAt: sent,
+        lastSentAt: sent,
+      }),
+    ];
     expect(planRestorationClosure(pieces, "anulada", "admin", note).ok).toBe(
       true,
     );

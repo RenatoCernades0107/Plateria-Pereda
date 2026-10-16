@@ -1,6 +1,10 @@
 import { formatDate } from "@/lib/format";
 
 import { PIECE_STATUS_LABELS, type PieceStatus } from "./piece-state-machine";
+import {
+  PIECE_LOCATION_LABELS,
+  type PieceLocation,
+} from "./restoration-status";
 
 /**
  * Reporte para el proveedor (taller) de las piezas elegidas en la vista de piezas:
@@ -15,7 +19,10 @@ export type ProviderReportPiece = {
   guideCode: string;
   /** Pieza con su guía, p. ej. `RES-00004-1`. */
   code: string;
+  /** Unidades de la pieza (p. ej. 6 cucharitas). */
+  quantity: number;
   status: PieceStatus;
+  location: PieceLocation;
   description: string;
   /** Notas de la pieza: lo que se pide hacer (se muestra como "Servicio a realizar"). */
   notes: string;
@@ -31,7 +38,9 @@ export type ProviderReportRow = {
   /** Número de guía. */
   guide: string;
   code: string;
+  quantity: string;
   status: string;
+  location: string;
   description: string;
   /** Material, medidas y peso, en una línea. */
   detail: string;
@@ -71,7 +80,9 @@ export function providerReportModel(
       number: i + 1,
       guide: p.guideCode,
       code: p.code,
+      quantity: String(p.quantity),
       status: PIECE_STATUS_LABELS[p.status],
+      location: PIECE_LOCATION_LABELS[p.location],
       description: p.description.trim() || "—",
       detail: [
         p.materialName,

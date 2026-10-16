@@ -175,7 +175,7 @@ test.describe("Orden de Shopify al aprobar", () => {
   });
 });
 
-/** Pieza en Interno y ya de vuelta del taller: lista para entregar. */
+/** Pieza aprobada que ya fue al taller y volvió: lista para entregar. */
 async function seedReadyPiece(clientId: string) {
   const admin = adminClient();
   const { data: r, error } = await admin
@@ -198,7 +198,7 @@ async function seedReadyPiece(clientId: string) {
   await admin
     .from("pieces")
     .update({
-      status: "enviada_taller",
+      status: "aprobada",
       approved_at: new Date().toISOString(),
       first_sent_at: new Date(Date.now() - 60_000).toISOString(),
       last_sent_at: new Date(Date.now() - 60_000).toISOString(),

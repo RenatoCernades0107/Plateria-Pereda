@@ -662,6 +662,11 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D65 | Sin estado general "En proceso": con piezas en el taller la guía queda Aprobada o Parcialmente aprobada | P56, ajusta §7.3 |
 | D66 | Sin IGV en el sistema: no se pregunta "¿El precio incluye IGV?", no se muestra y nunca se suma al total (el IGV se maneja fuera). Reemplaza D54 y la parte de IGV de D59 | P13 (2026-10-16) |
 | D67 | Una restauración con alguna pieza en Observación muestra "2 de 4 piezas observadas" (sobre las piezas vivas) junto a su estado, en el color de las piezas observadas | Pedido del 2026-10-16 |
+| D68 | Sin estado de pieza "En restauración": enviar y recibir del taller son acciones que cambian la ubicación. En restauración = Aprobada (u Observación) + En taller; Lista para entregar = Aprobada (u Observación) + En tienda, ya vuelta del taller. Una Aprobada que nunca fue al taller no se entrega; una Observación reenviada sigue en Observación | Pedido del 2026-10-16, cambia P47 y D53 |
+| D69 | Cantidad por pieza (1–999), informativa: el precio y el costo son de la pieza completa y la orden de Shopify lleva cantidad 1. También en las cotizaciones de WhatsApp, en la tabla de piezas y en los PDF | Pedido del 2026-10-16 |
+| D70 | Tipo de guía Normal / Interna / Observada (excluyentes, admin y ventas, con confirmación). Interna: piezas Aprobadas sin precio, con costo, sin pagos ni Shopify. Observada: piezas en Observación sin precio ni costo, sin pagos ni Shopify. Se cambia después solo sin orden de Shopify, sin pagos y sin piezas que hayan ido al taller o se hayan entregado | Pedido del 2026-10-16 |
+| D71 | Una guía Rechazada, Anulada o Completada pasa al historial solo cuando ya no le quedan piezas por devolver en la tienda | Pedido del 2026-10-16 |
+| D72 | "Listas para entregar" (piezas) incluye las rechazadas o sin arreglo por devolver; se quita el chip "Por devolver". Filtro "Sin taller". La tabla de piezas no muestra la guía y lleva los días en este estado, en taller y en la ubicación dentro de sus celdas; los PDF llevan cantidad y ubicación | Pedido del 2026-10-16 |
 
 ---
 
@@ -670,6 +675,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | Fecha | Preguntas | Resumen |
 |---|---|---|
 | 2026-10-16 | P13 (se revierte) | Se quita todo lo del IGV: ni se pregunta, ni se muestra, ni se suma al total. |
+| 2026-10-16 | D68–D72 | Sin "En restauración" (ir al taller es una acción), cantidad por pieza, guías interna y observada, historial de guías con piezas por devolver, filtros y tabla de piezas. |
 | 2026-10-16 | D67 | "2 de 4 piezas observadas" junto al estado de la restauración, con el color de observada. |
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |

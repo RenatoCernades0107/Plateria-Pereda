@@ -15,9 +15,11 @@ type Column = {
     | "photo"
     | "guide"
     | "code"
+    | "quantity"
     | "description"
     | "service"
-    | "status";
+    | "status"
+    | "location";
   title: string;
   width: number;
   align?: "left" | "center";
@@ -26,7 +28,8 @@ type Column = {
 /**
  * Dibuja el reporte para el proveedor en un A4 vertical (mm), con la misma tabla que la
  * guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, guía, código,
- * descripción con material, medidas y peso, servicio a realizar, servicio y estado).
+ * cantidad, descripción con material, medidas y peso, servicio a realizar, servicio,
+ * estado y ubicación).
  * Sin precios, costos ni datos del cliente. `logo` y las fotos van como data URL.
  */
 export async function drawProviderReport(
@@ -69,14 +72,17 @@ export async function drawProviderReport(
   let y = top + 28 + 6;
 
   // --- Tabla de piezas.
+  // La descripción toma el ancho que dejan las demás (la cantidad es angosta).
   const columns: Column[] = [
-    { key: "number", title: "N°", width: 9, align: "center" },
-    { key: "photo", title: "FOTO", width: 20 },
-    { key: "guide", title: "N° GUÍA", width: 24 },
-    { key: "code", title: "CÓDIGO", width: 27 },
+    { key: "number", title: "N°", width: 8, align: "center" },
+    { key: "photo", title: "FOTO", width: 18 },
+    { key: "guide", title: "N° GUÍA", width: 21 },
+    { key: "code", title: "CÓDIGO", width: 24 },
+    { key: "quantity", title: "CANT.", width: 10, align: "center" },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
-    { key: "service", title: "SERVICIO", width: 30 },
-    { key: "status", title: "ESTADO", width: 27 },
+    { key: "service", title: "SERVICIO", width: 24 },
+    { key: "status", title: "ESTADO", width: 21 },
+    { key: "location", title: "UBICACIÓN", width: 19 },
   ];
   const description = columns.find((c) => c.key === "description")!;
   description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
@@ -118,12 +124,14 @@ export async function drawProviderReport(
       : [];
     const service = pdf.splitTextToSize(row.service, textW("service"));
     const status = pdf.splitTextToSize(row.status, textW("status"));
+    const location = pdf.splitTextToSize(row.location, textW("location"));
     const code = pdf.splitTextToSize(row.code, textW("code"));
     const guide = pdf.splitTextToSize(row.guide, textW("guide"));
     const lines = Math.max(
       desc.length + detail.length + task.length,
       service.length,
       status.length,
+      location.length,
       code.length,
       guide.length,
     );
@@ -194,9 +202,19 @@ export async function drawProviderReport(
           font("normal", 8);
           pdf.text(service, x + pad, textTop);
           break;
+        case "quantity":
+          font("normal", 8.5);
+          pdf.text(row.quantity, x + c.width / 2, textTop, {
+            align: "center",
+          });
+          break;
         case "status":
           font("normal", 8);
           pdf.text(status, x + pad, textTop);
+          break;
+        case "location":
+          font("normal", 8);
+          pdf.text(location, x + pad, textTop);
           break;
       }
     });

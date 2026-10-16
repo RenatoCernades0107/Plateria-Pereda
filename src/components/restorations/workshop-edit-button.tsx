@@ -25,12 +25,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { PieceStatus } from "@/domain/piece-state-machine";
+import type { PieceLocation } from "@/domain/restoration-status";
 import { cn } from "@/lib/utils";
 import { assignWorkshop } from "@/server/restorations/status-actions";
 
 import { EMPTY_VALUE_BUTTON_CLASS } from "./piece-money-cells";
 import type { WorkshopOption } from "./piece-fields";
-import { WORKSHOP_LOCKED } from "./pieces-bulk-bar";
+import { isWorkshopLocked } from "./pieces-bulk-bar";
 
 const NO_WORKSHOP = "ninguno";
 
@@ -163,7 +164,7 @@ export function WorkshopEditButton({
 /**
  * Campo "Taller" del detalle de la pieza: el nombre y, para logística y el admin, el
  * lápiz para asignarlo o cambiarlo, salvo si la pieza está en el taller, entregada o
- * en un estado final (`WORKSHOP_LOCKED`).
+ * en un estado final (`isWorkshopLocked`).
  */
 export function PieceWorkshopField({
   piece,
@@ -174,6 +175,8 @@ export function PieceWorkshopField({
     id: string;
     code: string;
     status: PieceStatus;
+    /** En taller (por trabajo o revisión): el taller no se cambia. */
+    location?: PieceLocation;
     workshopId: string | null;
     workshopName: string | null;
   };
@@ -184,7 +187,7 @@ export function PieceWorkshopField({
   const name = piece.workshopName ?? (
     <span className="text-muted-foreground">Sin taller</span>
   );
-  if (!canAssign || WORKSHOP_LOCKED.includes(piece.status)) return name;
+  if (!canAssign || isWorkshopLocked(piece)) return name;
   // Sin taller: solo el botón "Asignar taller" (el dato que falta se ve como acción).
   if (!piece.workshopId) {
     return (

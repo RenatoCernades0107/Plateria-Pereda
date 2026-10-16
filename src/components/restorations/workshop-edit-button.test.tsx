@@ -167,10 +167,15 @@ describe("PieceWorkshopField", () => {
   });
 
   it("no se cambia con la pieza en el taller o cerrada", () => {
-    for (const status of ["enviada_taller", "entregada", "anulada"] as const) {
+    for (const [status, location] of [
+      ["aprobada", "en_taller"],
+      ["en_espera", "en_taller"],
+      ["entregada", "entregada"],
+      ["anulada", "anulada"],
+    ] as const) {
       const { unmount } = render(
         <PieceWorkshopField
-          piece={{ ...piece, status }}
+          piece={{ ...piece, status, location }}
           workshops={workshops}
           canAssign
         />,

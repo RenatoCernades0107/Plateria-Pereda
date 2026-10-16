@@ -125,9 +125,11 @@ const at = (day: string) => `2026-10-${day}T15:00:00Z`;
 const EVENTS: TimelineEvent[] = [
   // Desordenados a propósito: el componente los ordena por fecha.
   {
+    // Ir al taller es una acción: el estado sigue Aprobada.
+    event: "envio_taller",
     at: at("05"),
     fromStatus: "aprobada",
-    toStatus: "enviada_taller",
+    toStatus: "aprobada",
     actorName: "Luis Logística",
     note: null,
   },
@@ -153,7 +155,7 @@ describe("Timeline", () => {
       <Timeline
         events={EVENTS}
         piece={{
-          status: "enviada_taller",
+          status: "aprobada",
           registeredAt: at("01"),
           deliveredAt: null,
         }}
@@ -169,7 +171,9 @@ describe("Timeline", () => {
     expect(items[1]).toHaveTextContent("desde Registrada");
     expect(items[1]).toHaveTextContent("Sistema");
     expect(items[1]).toHaveTextContent("¿Se puede soldar el asa?");
-    expect(within(items[2]!).getByText("En restauración")).toBeInTheDocument();
+    expect(
+      within(items[2]!).getByText("Enviada al taller"),
+    ).toBeInTheDocument();
     expect(items[2]).toHaveTextContent("Luis Logística");
   });
 
@@ -178,7 +182,7 @@ describe("Timeline", () => {
       <Timeline
         events={EVENTS}
         piece={{
-          status: "enviada_taller",
+          status: "aprobada",
           registeredAt: at("01"),
           deliveredAt: null,
         }}
@@ -199,14 +203,14 @@ describe("Timeline", () => {
       {
         event: "vuelta_taller",
         at: at("06"),
-        fromStatus: "enviada_taller",
-        toStatus: "enviada_taller",
+        fromStatus: "aprobada",
+        toStatus: "aprobada",
         actorName: "Luis Logística",
         note: null,
       },
       {
         at: at("09"),
-        fromStatus: "enviada_taller",
+        fromStatus: "aprobada",
         toStatus: "entregada",
         actorName: "Ana Ventas",
         note: null,

@@ -7,8 +7,10 @@ import {
 } from "@/domain/piece-state-machine";
 import { PERU_REGIONS } from "@/domain/regions";
 import {
+  RESTORATION_KIND_LABELS,
   RESTORATION_ORIGIN_LABELS,
   RESTORATION_STATUS_LABELS,
+  type RestorationKind,
   type RestorationOrigin,
   type RestorationStatus,
 } from "@/domain/restoration-status";
@@ -194,6 +196,12 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
           formatValue(value),
       },
       whatsapp_quote_id: { label: "Cotización de WhatsApp" },
+      kind: {
+        label: "Tipo de guía",
+        format: (value) =>
+          RESTORATION_KIND_LABELS[value as RestorationKind] ??
+          formatValue(value),
+      },
     },
   },
   whatsapp_quotes: {
@@ -234,6 +242,7 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       material_name: { label: "Material" },
       service_name: { label: "Servicio" },
       weight_grams: { label: "Peso (g)" },
+      quantity: { label: "Cantidad" },
       price: { label: "Precio", format: (value) => formatMoney(Number(value)) },
       notes: { label: "Notas" },
     },
@@ -257,6 +266,7 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       service_id: { label: "Servicio (catálogo)" },
       service_name: { label: "Servicio" },
       weight_grams: { label: "Peso (g)" },
+      quantity: { label: "Cantidad" },
       price: { label: "Precio", format: (value) => formatMoney(Number(value)) },
       notes: { label: "Notas" },
       arrived_at: { label: "Llegada a tienda" },
@@ -265,6 +275,7 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       first_sent_at: { label: "Primer envío al taller" },
       last_sent_at: { label: "Último envío al taller" },
       last_returned_at: { label: "Última vuelta del taller" },
+      observed_at: { label: "Observada" },
       delivered_at: { label: "Entregada" },
       returned_at: { label: "Devuelta al cliente" },
       returned_by: { label: "Devuelta por" },

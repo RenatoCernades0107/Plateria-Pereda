@@ -2,6 +2,7 @@ import "server-only";
 
 import { toCents, toDecimalString } from "@/domain/money";
 import type { SyncPayment } from "@/domain/payment-sync";
+import { toPieceStatus } from "@/domain/piece-state-machine";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { OrderWebhookRepository } from "./payment-webhooks";
@@ -14,7 +15,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
+        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -43,12 +44,13 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
       code: r.code,
       shopifyOrderId: r.shopify_order_id,
       shopifyOrderName: r.shopify_order_name,
+      restorationKind: r.kind,
       pieces: r.pieces.map((p) => ({
         id: p.id,
         code: p.code,
         number: p.number,
         priceCents: p.price === null ? null : toCents(Number(p.price)),
-        status: p.status,
+        status: toPieceStatus(p.status),
         approvedAt: p.approved_at,
       })),
       client: {

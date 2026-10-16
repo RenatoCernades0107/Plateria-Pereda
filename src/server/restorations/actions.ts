@@ -58,7 +58,9 @@ export async function createRestoration(
   // El precio de venta lo asigna solo el admin (D58) y el taller, logística y el
   // admin (D60): ventas registra sin precio ni taller.
   let pieces = parsed.data.pieces;
-  if (!can(user.role, "piezas.precio-venta"))
+  // La guía interna u observada no se cobra: sin precios (la BD también los ignora).
+  const charged = parsed.data.kind === "normal";
+  if (!charged || !can(user.role, "piezas.precio-venta"))
     pieces = withoutSalePrices(pieces);
   if (!can(user.role, "piezas.asignar-taller"))
     pieces = withoutWorkshops(pieces);
@@ -74,7 +76,12 @@ export async function createRestoration(
   }
   revalidatePath("/restauraciones");
   const { depositAmount, depositMethodId } = parsed.data;
-  if (depositAmount !== null && depositAmount > 0 && depositMethodId) {
+  if (
+    charged &&
+    depositAmount !== null &&
+    depositAmount > 0 &&
+    depositMethodId
+  ) {
     // La restauración ya quedó: si el pago falla, se avisa y se registra desde Pagos.
     const recorded = await recordInitialDeposit(
       supabase,
@@ -131,17 +138,22 @@ export async function updateRestoration(
   const v = parsed.data;
 
   const supabase = await createClient();
-  if (v.depositAmount !== null) {
+  // Una guía interna u observada no se cobra: su tipo de pago queda "Sin definir"
+  // y sin adelanto (la BD lo exige).
+  const current = await supabase
+    .from("restorations")
+    .select("total, kind")
+    .eq("id", id)
+    .maybeSingle();
+  if (current.error) return { error: "No se pudo guardar la restauración." };
+  if (!current.data) return { error: "La restauración no existe." };
+  const charged = current.data.kind === "normal";
+  const paymentType = charged ? v.paymentType : "sin_definir";
+  const depositAmount = charged ? v.depositAmount : null;
+  if (depositAmount !== null) {
     // El adelanto no puede superar el total ya asignado (sin precios, cualquier monto).
-    const current = await supabase
-      .from("restorations")
-      .select("total")
-      .eq("id", id)
-      .maybeSingle();
-    if (current.error) return { error: "No se pudo guardar la restauración." };
-    if (!current.data) return { error: "La restauración no existe." };
     const message = depositAmountError(
-      v.depositAmount,
+      depositAmount,
       toCents(Number(current.data.total)),
     );
     if (message) return { error: `${message}.` };
@@ -150,11 +162,10 @@ export async function updateRestoration(
     .from("restorations")
     .update({
       contact_id: v.contactId,
-      payment_type: v.paymentType,
+      payment_type: paymentType,
       // El adelanto se guarda en soles; el % antiguo deja de usarse al editar.
       deposit_percent: null,
-      deposit_amount:
-        v.depositAmount === null ? null : toSoles(v.depositAmount),
+      deposit_amount: depositAmount === null ? null : toSoles(depositAmount),
       notes: v.notes,
     })
     .eq("id", id)
@@ -182,6 +193,7 @@ function pieceColumns(
     piece: p,
     columns: {
       ...(withWorkshop && { workshop_id: p.workshopId }),
+      quantity: p.quantity,
       description: p.description,
       measure: p.measure,
       // El primer material y los nombres los deriva la BD.

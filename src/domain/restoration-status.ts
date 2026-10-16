@@ -1,6 +1,8 @@
 import {
   isClosedStatus,
   isInReview,
+  isInWorkshop,
+  isReadyForDelivery,
   type PieceStatus,
 } from "./piece-state-machine";
 
@@ -57,6 +59,27 @@ export const RESTORATION_ORIGIN_LABELS: Record<RestorationOrigin, string> = {
   whatsapp: "WhatsApp",
 };
 
+/**
+ * Tipo de guía (2026-10-17): la normal se cotiza, se cobra y crea su orden en Shopify;
+ * la interna (piezas de la tienda) y la observada (reclamo) no se cobran: sin precio de
+ * venta, sin pagos ni orden de Shopify.
+ */
+export const RESTORATION_KINDS = ["normal", "interno", "observado"] as const;
+export type RestorationKind = (typeof RESTORATION_KINDS)[number];
+
+export const RESTORATION_KIND_LABELS: Record<RestorationKind, string> = {
+  normal: "Normal",
+  interno: "Interna",
+  observado: "Observada",
+};
+
+/** La guía se cobra (precio de venta, pagos y orden de Shopify): solo la normal. */
+export function isChargedKind(
+  kind: RestorationKind | null | undefined,
+): boolean {
+  return (kind ?? "normal") === "normal";
+}
+
 /** Recorrido físico de la pieza (P48), más "Anulada" para las piezas anuladas. */
 export const PIECE_LOCATIONS = [
   "por_whatsapp",
@@ -88,23 +111,23 @@ export type PieceForLocation = {
   /** Revisión en taller: último envío a revisar y última vuelta. */
   reviewSentAt?: Date | null;
   reviewReturnedAt?: Date | null;
+  /** Última vez que entró a Observada. */
+  observedAt?: Date | null;
 };
 
-/** En En restauración y ya de vuelta del taller (la última vuelta es posterior al último envío). */
+/**
+ * Aprobada u Observada ya de vuelta del taller ("Lista para entregar"; igual que
+ * `ready_for_delivery` en la BD).
+ */
 export function isBackFromWorkshop(piece: PieceForLocation): boolean {
-  return (
-    piece.status === "enviada_taller" &&
-    !!piece.lastReturnedAt &&
-    !!piece.lastSentAt &&
-    piece.lastReturnedAt.getTime() >= piece.lastSentAt.getTime()
-  );
+  return isReadyForDelivery(piece);
 }
 
 /**
- * Ubicación física de la pieza (§7.2, P48), evaluada en este orden: Por WhatsApp
- * (aún no llega) → Sin enviar (en la tienda, por enviar al taller: nunca fue o está
- * en Observación y hay que reenviarla, P50) → En taller (también en revisión) → En
- * tienda (volvió del taller o de la revisión) → Entregada; Anulada aparte.
+ * Ubicación física de la pieza (§7.2, P48; igual que la columna `location` de la BD):
+ * Por WhatsApp (aún no llega) → En taller (revisión abierta o enviada sin volver) → En
+ * tienda (de vuelta del taller) → Sin enviar (Observada sin reenviar o Aprobada que aún
+ * no fue al taller) → Entregada; Anulada aparte.
  */
 export function deriveLocation(piece: PieceForLocation): PieceLocation {
   if (piece.status === "anulada") return "anulada";
@@ -115,7 +138,6 @@ export function deriveLocation(piece: PieceForLocation): PieceLocation {
   )
     return "entregada";
   if (!piece.arrivedAt) return "por_whatsapp";
-  if (piece.status === "observada") return "sin_enviar";
   // Revisión en taller: en Consulta, Espera o Aprobada, en el taller hasta que vuelve.
   if (
     isInReview(piece) &&
@@ -124,8 +146,10 @@ export function deriveLocation(piece: PieceForLocation): PieceLocation {
       piece.status === "aprobada")
   )
     return "en_taller";
-  if (piece.status === "enviada_taller" && !isBackFromWorkshop(piece))
-    return "en_taller";
+  if (isInWorkshop(piece)) return "en_taller";
+  if (isReadyForDelivery(piece)) return "en_tienda";
+  if (piece.status === "observada") return "sin_enviar";
+  if (piece.status === "aprobada" && !piece.firstSentAt) return "sin_enviar";
   return piece.firstSentAt || piece.reviewSentAt ? "en_tienda" : "sin_enviar";
 }
 
@@ -133,7 +157,7 @@ export type PieceForRestorationStatus = {
   status: PieceStatus;
   approvedAt: Date | null;
   firstSentAt: Date | null;
-  /** En En restauración y ya de vuelta del taller. */
+  /** Aprobada u Observada ya de vuelta del taller. */
   readyForDelivery: boolean;
 };
 
@@ -196,11 +220,14 @@ export type PieceForShopifyOrder = Pick<
 /**
  * La orden de Shopify se crea cuando todas las piezas que se cobran fueron aprobadas
  * y tienen precio de venta (y hay al menos una), sin importar el estado general
- * (§7.3, D58). Que la orden aún no exista lo revisa quien encola el trabajo.
+ * (§7.3, D58). Que la orden aún no exista lo revisa quien encola el trabajo. Las
+ * guías internas u observadas no se cobran: nunca tienen orden.
  */
 export function isReadyForShopifyOrder(
   pieces: readonly PieceForShopifyOrder[],
+  kind: RestorationKind = "normal",
 ): boolean {
+  if (!isChargedKind(kind)) return false;
   const active = pieces.filter((p) => !isClosedStatus(p.status));
   return (
     active.length > 0 &&
@@ -219,7 +246,7 @@ const BEFORE_APPROVAL: readonly PieceStatus[] = [
  * Aviso de precios de venta que faltan para Shopify (D58), o null si no falta nada:
  * sin orden, cuando todas las piezas que se cobran están aprobadas pero alguna no
  * tiene precio (la orden espera); con la orden, las piezas aprobadas sin precio (su
- * línea entra cuando se les asigne).
+ * línea entra cuando se les asigne). Las guías que no se cobran no llevan precio.
  */
 export function missingSalePrices(
   pieces: readonly {
@@ -228,7 +255,9 @@ export function missingSalePrices(
     priceCents: number | null;
   }[],
   hasOrder: boolean,
+  kind: RestorationKind = "normal",
 ): { codes: string[]; message: string } | null {
+  if (!isChargedKind(kind)) return null;
   const active = pieces.filter((p) => !isClosedStatus(p.status));
   const approved = active.filter((p) => !BEFORE_APPROVAL.includes(p.status));
   const codes = approved
