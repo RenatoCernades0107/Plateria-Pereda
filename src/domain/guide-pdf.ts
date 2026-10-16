@@ -37,17 +37,22 @@ export type GuidePdfCompany = {
   email: string;
 };
 
+/** Ícono que va a la izquierda de una línea del membrete (`components/restorations/pdf-icons.ts`). */
+export type GuidePdfIcon = "whatsapp" | "facebook" | "web";
+
+export type GuidePdfLetterheadLine = { text: string; icon?: GuidePdfIcon };
+
 /**
  * Datos del encabezado de la guía, como en la guía impresa de la oficina principal.
  * Son fijos (no salen de Configuración): la guía lleva siempre este membrete.
  */
-export const GUIDE_LETTERHEAD = [
-  "OFICINA PRINCIPAL MIRAFLORES:",
-  "Calle Coronel Inclán 928, Miraflores, Lima - Lima",
-  "Teléfono: 995 711 235",
-  "Facebook: Pereda.Plateria.Joyeria",
-  "Web: www.plateriapereda.com",
-] as const;
+export const GUIDE_LETTERHEAD: readonly GuidePdfLetterheadLine[] = [
+  { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+  { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+  { text: "995 711 235", icon: "whatsapp" },
+  { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+  { text: "www.plateriapereda.com", icon: "web" },
+];
 
 export type GuidePdfData = {
   company: GuidePdfCompany;
@@ -98,7 +103,7 @@ export type GuidePdfModel = {
   title: string;
   code: string;
   /** Membrete junto al logo (`GUIDE_LETTERHEAD`), una línea cada uno; la primera va en negrita. */
-  companyLines: string[];
+  companyLines: GuidePdfLetterheadLine[];
   /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
   /** Vacío en la versión para taller (no se dibuja el bloque del cliente). */

@@ -67,11 +67,11 @@ describe("guidePdfModel", () => {
     expect(model.clause).toContain("30 días calendario");
     // Membrete fijo de la oficina principal (no depende de Configuración).
     expect(model.companyLines).toEqual([
-      "OFICINA PRINCIPAL MIRAFLORES:",
-      "Calle Coronel Inclán 928, Miraflores, Lima - Lima",
-      "Teléfono: 995 711 235",
-      "Facebook: Pereda.Plateria.Joyeria",
-      "Web: www.plateriapereda.com",
+      { text: "OFICINA PRINCIPAL MIRAFLORES:" },
+      { text: "Calle Coronel Inclán 928, Miraflores, Lima - Lima" },
+      { text: "995 711 235", icon: "whatsapp" },
+      { text: "Pereda.Plateria.Joyeria", icon: "facebook" },
+      { text: "www.plateriapereda.com", icon: "web" },
     ]);
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
   });
