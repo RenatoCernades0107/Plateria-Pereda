@@ -204,8 +204,6 @@ export default async function PiezaDetallePage({
                         cents: piece.priceCents,
                         hasOrder: restoration.hasOrder,
                         editable: can(user.role, "piezas.precio-venta"),
-                        pricesIncludeIgv:
-                          restoration.money?.pricesIncludeIgv ?? null,
                       }
                     : null
                 }

@@ -10,7 +10,7 @@ export const DEPOSIT_NOT_RECORDED =
  * Registra el adelanto ("A cuenta") con que se registró la restauración como un pago
  * real, en la misma tabla que "Registrar pago" (Paso 11.2): así cuenta en lo pagado,
  * el estado de pago y la pestaña Pagos. El monto es el adelanto esperado que calcula
- * la BD (total con IGV × %); la BD valida el saldo, recalcula y, si ya hay orden de
+ * la BD (total × %); la BD valida el saldo, recalcula y, si ya hay orden de
  * Shopify, encola su conciliación. Sin adelanto (0) no registra nada.
  *
  * Devuelve true si quedó registrado (o no había nada que registrar).

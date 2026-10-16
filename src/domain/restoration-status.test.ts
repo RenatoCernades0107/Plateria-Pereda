@@ -5,7 +5,9 @@ import scenarios from "../../tests/fixtures/restorations/derivations.json";
 import { PIECE_STATUSES, type PieceStatus } from "./piece-state-machine";
 import {
   advanceRestorationStatus,
+  formatObservedProgress,
   formatPartialProgress,
+  observedProgress,
   partialProgress,
   deriveLocation,
   deriveRestorationStatus,
@@ -268,5 +270,42 @@ describe("partialProgress", () => {
 
   it("no aplica a los demás estados", () => {
     expect(partialProgress("aprobada", [p("aprobada", true)])).toBeNull();
+  });
+});
+
+describe("observedProgress", () => {
+  const p = (status: PieceStatus) => ({ status });
+
+  it("cuenta las piezas observadas sobre las piezas vivas", () => {
+    const progress = observedProgress([
+      p("observada"),
+      p("observada"),
+      p("enviada_taller"),
+      p("aprobada"),
+      p("anulada"),
+      p("rechazada"),
+      p("sin_arreglo"),
+    ]);
+    expect(progress).toEqual({ observed: 2, total: 4 });
+    expect(formatObservedProgress(progress!)).toBe("2 de 4 piezas observadas");
+  });
+
+  it("sin piezas observadas no hay nada que mostrar", () => {
+    expect(observedProgress([p("aprobada"), p("entregada")])).toBeNull();
+    expect(observedProgress([p("anulada")])).toBeNull();
+    expect(observedProgress([])).toBeNull();
+  });
+
+  it("una observada que luego se anula ya no cuenta", () => {
+    expect(observedProgress([p("anulada"), p("aprobada")])).toBeNull();
+  });
+
+  it("con una sola pieza viva va en singular", () => {
+    expect(formatObservedProgress({ observed: 1, total: 1 })).toBe(
+      "1 de 1 pieza observada",
+    );
+    expect(formatObservedProgress({ observed: 1, total: 3 })).toBe(
+      "1 de 3 piezas observadas",
+    );
   });
 });

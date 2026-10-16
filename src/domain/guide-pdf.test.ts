@@ -46,7 +46,7 @@ const data: GuidePdfData = {
     piece("2", { priceCents: null }),
     piece("3", { status: "anulada" }),
   ],
-  money: { pricesIncludeIgv: true, totalCents: 10000, paidCents: 4000 },
+  money: { totalCents: 10000, paidCents: 4000 },
 };
 
 describe("guidePdfModel", () => {

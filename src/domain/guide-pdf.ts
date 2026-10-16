@@ -55,7 +55,6 @@ export type GuidePdfData = {
   pieces: GuidePdfPiece[];
   /** Solo para quien ve montos (admin y ventas, P42). */
   money: {
-    pricesIncludeIgv: boolean;
     totalCents: Cents;
     paidCents: Cents;
   } | null;

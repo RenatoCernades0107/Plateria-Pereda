@@ -30,6 +30,7 @@ import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
 import { RestorationQuoteMessageButton } from "@/components/restorations/restoration-quote-message-button";
 import {
+  ObservedBadge,
   PaymentStatusBadge,
   RestorationStatusBadge,
 } from "@/components/restorations/status-badges";
@@ -44,7 +45,6 @@ import { SHOPIFY_BADGE_CLASS, ShopifyBadge } from "@/components/shopify-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
 import { can } from "@/domain/permissions";
-import { igvLabel, igvTotals } from "@/domain/igv";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
 import { editableFields, SALE_PRICE_HINT } from "@/domain/restoration-edit";
@@ -54,6 +54,7 @@ import {
 } from "@/domain/restoration-pieces-view";
 import {
   missingSalePrices,
+  observedProgress,
   RESTORATION_ORIGIN_LABELS,
 } from "@/domain/restoration-status";
 import { isClosedStatus } from "@/domain/piece-state-machine";
@@ -123,7 +124,6 @@ export default async function RestauracionDetallePage({
         code: restoration.code,
         clientName: restoration.client?.name ?? "",
         contactName: restoration.contact?.name ?? null,
-        pricesIncludeIgv: restoration.money?.pricesIncludeIgv ?? true,
         paymentType: restoration.paymentType,
         depositPercent: restoration.money?.depositPercent ?? 0,
         terms: settings.terms,
@@ -138,6 +138,8 @@ export default async function RestauracionDetallePage({
     priceCents: p.priceCents,
     status: p.status,
   }));
+  // "2 de 4 piezas observadas" junto al estado, si alguna pieza está en Observación.
+  const observed = observedProgress(restoration.pieces);
   // Cerrar la guía a mano (solo Anulada o Rechazada): quien anula o rechaza piezas.
   const canClose =
     can(user.role, "piezas.consultar-aprobar-anular") &&
@@ -260,7 +262,6 @@ export default async function RestauracionDetallePage({
     })),
     money: restoration.money
       ? {
-          pricesIncludeIgv: restoration.money.pricesIncludeIgv,
           totalCents: restoration.money.totalCents,
           paidCents: restoration.money.paidCents,
         }
@@ -330,6 +331,7 @@ export default async function RestauracionDetallePage({
                 <span data-testid="estado-restauracion" className="contents">
                   <RestorationStatusBadge status={restoration.status} />
                 </span>
+                {observed ? <ObservedBadge progress={observed} /> : null}
                 {restoration.money ? (
                   <PaymentStatusBadge
                     status={restoration.money.paymentStatus}
@@ -385,14 +387,6 @@ export default async function RestauracionDetallePage({
                       ? ` (${restoration.money.depositPercent} %)`
                       : ""}
                 </span>
-                {restoration.money ? (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span data-testid="igv">
-                      {igvLabel(restoration.money.pricesIncludeIgv)}
-                    </span>
-                  </>
-                ) : null}
                 <span aria-hidden>·</span>
                 <span
                   data-testid="origen"
@@ -430,12 +424,9 @@ export default async function RestauracionDetallePage({
                         ? restoration.money.expectedDepositCents
                         : null),
                     totalCents: restoration.money?.totalCents ?? 0,
-                    pricesIncludeIgv:
-                      restoration.money?.pricesIncludeIgv ?? true,
                     notes: restoration.notes,
                   }}
                   contacts={editing.contacts}
-                  hasOrder={restoration.hasOrder}
                   hasPayments={payments.length > 0}
                 />
               ) : null}
@@ -466,15 +457,6 @@ export default async function RestauracionDetallePage({
                 stackOnWide
                 totalCents={restoration.money.totalCents}
                 paidCents={restoration.money.paidCents}
-                igv={{
-                  ...igvTotals(
-                    restoration.pieces
-                      .filter((p) => !isClosedStatus(p.status))
-                      .map((p) => p.priceCents ?? 0),
-                    restoration.money.pricesIncludeIgv,
-                  ),
-                  included: restoration.money.pricesIncludeIgv,
-                }}
               />
               {restoration.money.expectedDepositCents > 0 ? (
                 <p className="text-muted-foreground text-sm">

@@ -20,9 +20,14 @@ import {
   type RestorationSort,
 } from "@/domain/restoration-filters";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { RestorationListItem } from "@/server/restorations/queries";
 
-import { PaymentStatusBadge, RestorationStatusBadge } from "./status-badges";
+import {
+  ObservedBadge,
+  PaymentStatusBadge,
+  RestorationStatusBadge,
+} from "./status-badges";
 
 function SortHeader({
   filters,
@@ -44,6 +49,22 @@ function SortHeader({
       {children}
       {active ? <Icon className="size-3.5" aria-hidden /> : null}
     </Link>
+  );
+}
+
+/** Estado de la restauración y, si hay piezas en Observación, cuántas son. */
+function Status({
+  item,
+  className,
+}: {
+  item: RestorationListItem;
+  className?: string;
+}) {
+  return (
+    <span className={cn("flex flex-wrap items-center gap-1.5", className)}>
+      <RestorationStatusBadge status={item.status} />
+      {item.observed ? <ObservedBadge progress={item.observed} /> : null}
+    </span>
   );
 }
 
@@ -155,7 +176,7 @@ export function RestorationsList({
                 </TableCell>
               ) : null}
               <TableCell>
-                <RestorationStatusBadge status={r.status} />
+                <Status item={r} />
               </TableCell>
               <TableCell>
                 <Payment item={r} />
@@ -200,7 +221,7 @@ export function RestorationsList({
                   <p className="truncate text-sm">{r.clientName}</p>
                 ) : null}
               </div>
-              <RestorationStatusBadge status={r.status} />
+              <Status item={r} className="justify-end" />
             </div>
             <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
               <span>{formatDate(r.createdAt)}</span>

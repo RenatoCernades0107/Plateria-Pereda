@@ -1,4 +1,3 @@
-import { igvBreakdown, IGV_PERCENT, priceWithIgv } from "@/domain/igv";
 import { formatCents, type Cents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +24,6 @@ export function PieceMoneyTiles({
     cents: Cents | null;
     hasOrder: boolean;
     editable: boolean;
-    pricesIncludeIgv: boolean | null;
   } | null;
   /** Costo de servicio; undefined si el rol no lo ve (null = por definir). */
   costCents: Cents | null | undefined;
@@ -34,12 +32,10 @@ export function PieceMoneyTiles({
   className?: string;
 }) {
   const showCost = costCents !== undefined;
-  // Margen: precio sin IGV menos el costo del taller (solo con ambos montos).
+  // Margen: precio de venta menos el costo del taller (solo con ambos montos).
   const margin =
     sale && sale.cents !== null && showCost && costCents !== null
-      ? (sale.pricesIncludeIgv === false
-          ? sale.cents
-          : igvBreakdown(sale.cents).taxableBase) - costCents
+      ? sale.cents - costCents
       : null;
   const balance = guide ? guide.totalCents - guide.paidCents : null;
 
@@ -58,15 +54,6 @@ export function PieceMoneyTiles({
             align="start"
             emptyAsButton
           />
-          {sale.cents !== null && sale.pricesIncludeIgv !== null ? (
-            <Hint>
-              {sale.pricesIncludeIgv
-                ? "IGV incluido"
-                : `Con IGV (${IGV_PERCENT} %): ${formatCents(
-                    priceWithIgv(sale.cents, false),
-                  )}`}
-            </Hint>
-          ) : null}
         </Tile>
       ) : null}
       {showCost ? (
@@ -86,7 +73,7 @@ export function PieceMoneyTiles({
           >
             {formatCents(margin)}
           </span>
-          <Hint>Precio sin IGV − costo</Hint>
+          <Hint>Precio de venta − costo</Hint>
         </Tile>
       ) : null}
       {guide && balance !== null ? (

@@ -4,7 +4,6 @@ import {
   addDays,
   canChangeQuoteStatus,
   formatQuoteDate,
-  igvBreakdown,
   isQuoteExpired,
   limaDateOf,
   lineDiscount,
@@ -70,7 +69,7 @@ describe("líneas de la cotización", () => {
 });
 
 describe("quoteTotals", () => {
-  it("suma subtotales, descuentos y total con el desglose del IGV", () => {
+  it("suma subtotales, descuentos y total", () => {
     expect(
       quoteTotals([
         { quantity: 2, unitPrice: 120_10 },
@@ -84,49 +83,24 @@ describe("quoteTotals", () => {
       subtotal: 340_19,
       discount: 10_00,
       total: 330_19,
-      taxableBase: 279_82,
-      igv: 50_37,
     });
   });
 
   it("sin líneas todo es 0", () => {
-    expect(quoteTotals([])).toEqual({
-      subtotal: 0,
-      discount: 0,
-      total: 0,
-      taxableBase: 0,
-      igv: 0,
-    });
+    expect(quoteTotals([])).toEqual({ subtotal: 0, discount: 0, total: 0 });
   });
 
-  it("sin IGV incluido suma el 18 % de cada línea con su descuento (P13)", () => {
+  it("nunca suma IGV: el total es lo que se escribió menos los descuentos", () => {
     expect(
-      quoteTotals(
-        [
-          { quantity: 2, unitPrice: 50_00 },
-          {
-            quantity: 1,
-            unitPrice: 100_00,
-            discount: { type: "porcentaje", percent: 10 },
-          },
-        ],
-        false,
-      ),
-    ).toEqual({
-      subtotal: 200_00,
-      discount: 10_00,
-      total: 224_20,
-      taxableBase: 190_00,
-      igv: 34_20,
-    });
-  });
-
-  it("el desglose del IGV siempre suma el total", () => {
-    for (const total of [1, 99, 118_00, 100_00, 333_33, 1_234_567_89]) {
-      const { taxableBase, igv } = igvBreakdown(total);
-      expect(taxableBase + igv).toBe(total);
-    }
-    expect(igvBreakdown(118_00)).toEqual({ taxableBase: 100_00, igv: 18_00 });
+      quoteTotals([
+        { quantity: 2, unitPrice: 50_00 },
+        {
+          quantity: 1,
+          unitPrice: 100_00,
+          discount: { type: "porcentaje", percent: 10 },
+        },
+      ]),
+    ).toEqual({ subtotal: 200_00, discount: 10_00, total: 190_00 });
   });
 });
 

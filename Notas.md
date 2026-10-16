@@ -151,6 +151,7 @@
   - **No incluye:** cada pieza (o línea) se cobra a su precio + 18 % redondeado a céntimos; el total, el adelanto, la orden de Shopify y el saldo usan ese monto. El mensaje de WhatsApp y el PDF muestran el subtotal sin IGV, el IGV y el total.
   - **Incluye:** el total es la suma de los precios; el desglose (op. gravada + IGV) solo se informa.
   - Se puede cambiar mientras no exista la orden de Shopify (restauración) o mientras la cotización se pueda editar.
+- **Respuesta (2026-10-16):** ✅ **Se quita todo lo relacionado con el IGV** (reemplaza las respuestas anteriores): el IGV se maneja fuera del sistema. No se pregunta si el precio lo incluye, no aparece en ninguna pantalla, mensaje ni PDF, y nunca se suma al total: el total de una restauración o cotización es la suma de los precios tal como se escriben (la orden de Shopify lleva esos mismos precios). Ver D66.
 
 ### P14 · ¿Cómo registramos a las empresas en Shopify?
 - **Contexto:** desde abril de 2026 el plan Grow incluye perfiles de empresa (Companies), con contactos y ubicaciones.
@@ -659,6 +660,8 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D63 | Arrastrar y soltar solo en los kanban de piezas, con las mismas reglas que los botones (máquina de estados por rol, nota, taller y pagos) y "Mover a…" como alternativa accesible. El kanban de guías no se arrastra: su estado se calcula de las piezas | Pedido del usuario (2026-10-13), Paso 12.5 |
 | D64 | Toda vista de lista se ve como una hoja de cálculo (tabla en escritorio; tarjetas solo en el celular donde ya las había). Las piezas de la guía van en tabla con un menú "Acciones" por fila; su línea de tiempo queda en el detalle de la pieza | Pedido del 2026-10-13 |
 | D65 | Sin estado general "En proceso": con piezas en el taller la guía queda Aprobada o Parcialmente aprobada | P56, ajusta §7.3 |
+| D66 | Sin IGV en el sistema: no se pregunta "¿El precio incluye IGV?", no se muestra y nunca se suma al total (el IGV se maneja fuera). Reemplaza D54 y la parte de IGV de D59 | P13 (2026-10-16) |
+| D67 | Una restauración con alguna pieza en Observación muestra "2 de 4 piezas observadas" (sobre las piezas vivas) junto a su estado, en el color de las piezas observadas | Pedido del 2026-10-16 |
 
 ---
 
@@ -666,6 +669,8 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 | Fecha | Preguntas | Resumen |
 |---|---|---|
+| 2026-10-16 | P13 (se revierte) | Se quita todo lo del IGV: ni se pregunta, ni se muestra, ni se suma al total. |
+| 2026-10-16 | D67 | "2 de 4 piezas observadas" junto al estado de la restauración, con el color de observada. |
 | 2026-09-30 | P02, P07, P09, P10, P11, P17, P18, P22, P30 | Planes gratuitos para desarrollo; Shopify Grow; pagos desde el admin (falta detalle de pagos a cuenta → N1); adelanto después de aprobar (confirmar → N2); líneas personalizadas; "Observada" solo tras el taller; taller con piezas en consulta permitido; listas + texto libre; logística sin precios. Nuevas: P40–P42, N1, N2. |
 | 2026-10-02 | N1, N2, P01, P08, P12, P40, P41, P42 | Pagos en POS y panel con efectivo, tarjeta, Yape y Plin; adelanto al aprobar (50 % u otro %) y saldo antes de entregar, en la misma orden; desde ahora, desde nuestro sistema. Cuentas a nombre del desarrollador y tienda de la Platería; producción en Pro. Sin rechazo en el sistema. Logística: sin métricas ni historial, solo fotos (por pieza y general). P12 en discusión. Hallazgos: pagos parciales solo Plus, apps en el Dev Dashboard, Companies en Grow. Nuevas: P43–P45. |
 | 2026-10-05 | P13, P19, P20, P25 | Preguntar siempre si el precio incluye IGV (falta el efecto si no lo incluye); el estado general solo avanza; las piezas suelen llegar al registrar (casilla marcada por defecto); P25: piden propuesta concreta. |

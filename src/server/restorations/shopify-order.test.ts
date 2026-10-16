@@ -24,7 +24,6 @@ const restoration = (
 ): OrderRestoration => ({
   id: "r1",
   code: "RES-00001",
-  pricesIncludeIgv: true,
   shopifyOrderId: null,
   shopifyOrderName: null,
   pieces: [
@@ -118,12 +117,9 @@ describe("buildOrderInput", () => {
     });
   });
 
-  it("sin IGV incluido, cada línea lleva el 18 % (P13)", () => {
-    const input = buildOrderInput(
-      restoration({ pricesIncludeIgv: false }),
-      APP_URL,
-    );
-    expect(input.lines.map((l) => l.price)).toEqual(["1416.59", "59.00"]);
+  it("cada línea lleva el precio de la pieza, sin IGV", () => {
+    const input = buildOrderInput(restoration(), APP_URL);
+    expect(input.lines.map((l) => l.price)).toEqual(["1200.50", "50.00"]);
   });
 });
 
@@ -379,14 +375,13 @@ describe("order.edit y order.fulfill (Pasos 9.2 y 9.3)", () => {
     ).resolves.toMatchObject({ unchanged: true });
   });
 
-  it("sin IGV incluido, el precio editado también lleva el 18 % (P13)", async () => {
-    data.pricesIncludeIgv = false;
+  it("el precio editado va a la orden tal cual, sin IGV", async () => {
     const { handlers } = await created();
     data.pieces[1]!.priceCents = 100_00;
     await handlers["order.edit"]!(jobOf("order.edit"), gateway);
     expect(
       order()?.lines.find((l) => l.title === "Restauración RES-00001-1")?.price,
-    ).toBe("118.00");
+    ).toBe("100.00");
   });
 
   it("una pieza agregada sin aprobar no entra a la orden", async () => {

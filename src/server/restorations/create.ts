@@ -68,7 +68,6 @@ export async function createRestorationRecord(
         input.depositAmount === null ? undefined : toSoles(input.depositAmount),
       p_notes: input.notes,
       p_pieces: input.pieces.map(pieceToRpc),
-      p_prices_include_igv: input.pricesIncludeIgv,
     })
     .single();
   if (error) throw error;

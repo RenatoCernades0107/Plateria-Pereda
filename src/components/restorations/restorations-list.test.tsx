@@ -17,6 +17,7 @@ const item: RestorationListItem = {
   paymentStatus: "parcial",
   paymentType: "a_cuenta",
   piecesCount: 2,
+  observed: null,
   totalCents: 123450,
   paidCents: 61725,
   balanceCents: 61725,
@@ -48,6 +49,39 @@ describe("RestorationsList", () => {
     expect(
       screen.getByTestId("restauracion-movil-RES-00001"),
     ).toHaveTextContent("2 piezas");
+  });
+
+  it("con piezas en observación muestra «2 de 4 piezas observadas» junto al estado, en amarillo", () => {
+    render(
+      <RestorationsList
+        items={[
+          { ...item, observed: { observed: 2, total: 4 } },
+          { ...item, id: "r2", code: "RES-00002", observed: null },
+        ]}
+        filters={parseRestorationFilters({})}
+        showMoney
+        emptyMessage="Vacío"
+      />,
+    );
+    const row = screen.getByTestId("restauracion-RES-00001");
+    const badge = within(row).getByText("2 de 4 piezas observadas");
+    expect(badge).toHaveAttribute("data-observed");
+    // El color es el de la insignia de la pieza observada.
+    expect(badge).toHaveClass("bg-yellow-50", "text-yellow-900");
+    // Está en la misma celda que el estado de la restauración.
+    expect(badge.closest("td")).toHaveTextContent("Parcialmente lista");
+    // En la tarjeta del celular también.
+    expect(
+      within(screen.getByTestId("restauracion-movil-RES-00001")).getByText(
+        "2 de 4 piezas observadas",
+      ),
+    ).toBeInTheDocument();
+    // Sin observadas no sale nada.
+    expect(
+      within(screen.getByTestId("restauracion-RES-00002")).queryByText(
+        /observada/,
+      ),
+    ).toBeNull();
   });
 
   it("para logística no muestra montos ni estado de pago", () => {

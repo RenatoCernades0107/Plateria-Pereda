@@ -1,4 +1,3 @@
-import { priceWithIgv } from "@/domain/igv";
 import { toDecimalString, type Cents } from "@/domain/money";
 import {
   orderCreatePayments,
@@ -31,7 +30,7 @@ import type { ShopifyJobHandler } from "@/server/shopify-sync/handlers";
 /**
  * Orden de venta en Shopify al aprobar la restauración (Paso 9.1). Una línea
  * personalizada por pieza que se cobra, con el título "Restauración RES-00001-1"
- * (D30) y su precio con IGV (P13); etiquetas `restauracion` y el código; nota con el
+ * (D30) y su precio; etiquetas `restauracion` y el código; nota con el
  * enlace al sistema. Los pagos registrados antes de la orden (el adelanto al aprobar)
  * van incluidos al crearla; los posteriores los concilia `payment.sync` (11.2).
  */
@@ -49,7 +48,6 @@ export type OrderPiece = {
 export type OrderRestoration = {
   id: string;
   code: string;
-  pricesIncludeIgv: boolean;
   shopifyOrderId: string | null;
   shopifyOrderName: string | null;
   pieces: OrderPiece[];
@@ -145,12 +143,9 @@ export function orderBuyer(
   };
 }
 
-/** Total que se cobra: las piezas que van a la orden, con IGV (P13). */
+/** Total que se cobra: las piezas que van a la orden. */
 export function chargedTotal(data: OrderRestoration): Cents {
-  return billablePieces(data.pieces).reduce(
-    (sum, p) => sum + priceWithIgv(p.priceCents, data.pricesIncludeIgv),
-    0,
-  );
+  return billablePieces(data.pieces).reduce((sum, p) => sum + p.priceCents, 0);
 }
 
 /** Datos de la orden a partir de la restauración, con los pagos ya registrados. */
@@ -163,9 +158,7 @@ export function buildOrderInput(
     ...orderBuyer(data),
     lines: billablePieces(data.pieces).map((piece) => ({
       title: lineTitle(piece.code),
-      price: toDecimalString(
-        priceWithIgv(piece.priceCents, data.pricesIncludeIgv),
-      ),
+      price: toDecimalString(piece.priceCents),
       quantity: 1,
     })),
     tags: ["restauracion", orderTag(data.code)],
@@ -282,17 +275,14 @@ export function lineIdsByPiece(
   );
 }
 
-/** Piezas para conciliar la orden (Pasos 9.2 y 9.3): precio cobrado, con IGV. */
+/** Piezas para conciliar la orden (Pasos 9.2 y 9.3): precio cobrado. */
 function domainPieces(data: OrderRestoration): DomainOrderPiece[] {
   return [...data.pieces]
     .sort((a, b) => a.number - b.number)
     .map((p) => ({
       id: p.id,
       code: p.code,
-      priceCents:
-        p.priceCents === null
-          ? null
-          : priceWithIgv(p.priceCents, data.pricesIncludeIgv),
+      priceCents: p.priceCents,
       status: p.status,
       approved: p.approvedAt !== null,
     }));

@@ -35,7 +35,6 @@ const restoration = {
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
   depositMethodId: YAPE,
-  pricesIncludeIgv: "si" as const,
   notes: "",
   pieces: [piece],
 };
@@ -214,20 +213,9 @@ describe("restorationSchema", () => {
       contactId: null,
       paymentType: "a_cuenta",
       depositAmount: 50000,
-      pricesIncludeIgv: true,
       notes: "",
     });
     expect(result.pieces).toHaveLength(1);
-  });
-
-  it("exige responder si el precio incluye IGV (P13)", () => {
-    expect(
-      errorsOf(restorationSchema, { ...restoration, pricesIncludeIgv: "" }),
-    ).toEqual({ pricesIncludeIgv: "Indica si el precio incluye IGV" });
-    expect(
-      restorationSchema.parse({ ...restoration, pricesIncludeIgv: "no" })
-        .pricesIncludeIgv,
-    ).toBe(false);
   });
 
   it("acepta el adelanto con hasta 2 decimales y con S/", () => {
@@ -261,21 +249,18 @@ describe("restorationSchema", () => {
     },
   );
 
-  it("rechaza un adelanto mayor que el total (con IGV)", () => {
+  it("rechaza un adelanto mayor que el total", () => {
     expect(
       errorsOf(restorationSchema, { ...restoration, depositAmount: "1250.51" }),
     ).toEqual({
       depositAmount:
         "El adelanto no puede ser mayor que el total (S/ 1,250.50)",
     });
-    // Sin IGV incluido el total es 1250.50 + 18 % = 1475.59.
+    // El total es la suma de los precios: el adelanto puede ser igual al total.
     expect(
-      restorationSchema.parse({
-        ...restoration,
-        pricesIncludeIgv: "no",
-        depositAmount: "1475.59",
-      }).depositAmount,
-    ).toBe(147559);
+      restorationSchema.parse({ ...restoration, depositAmount: "1250.50" })
+        .depositAmount,
+    ).toBe(125050);
   });
 
   it("sin precios asignados acepta cualquier adelanto en soles", () => {
@@ -423,7 +408,6 @@ describe("whatsappQuoteSchema (P46)", () => {
     customerPhone: "",
     paymentType: "contado" as const,
     depositPercent: "",
-    pricesIncludeIgv: "no" as const,
     notes: "",
     pieces: [piece],
   };
@@ -434,7 +418,6 @@ describe("whatsappQuoteSchema (P46)", () => {
       customerName: "Ana Pérez",
       customerPhone: "",
       depositPercent: null,
-      pricesIncludeIgv: false,
     });
     expect(
       whatsappQuoteSchema.parse({ ...quote, customerName: "" }).customerName,
