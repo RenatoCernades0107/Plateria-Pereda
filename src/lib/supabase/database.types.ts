@@ -2134,6 +2134,10 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      send_unpriced_to_consultation: {
+        Args: { p_piece_ids: string[] };
+        Returns: undefined;
+      };
       set_piece_service_cost: {
         Args: { p_cost: number; p_piece_id: string };
         Returns: undefined;

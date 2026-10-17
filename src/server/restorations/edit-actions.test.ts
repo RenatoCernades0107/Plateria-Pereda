@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
     error: null as { code: string; message?: string } | null,
   },
   insertError: null as { code: string; message?: string } | null,
+  rpc: vi.fn(),
+  rpcError: null as { code: string; message?: string } | null,
   total: {
     data: { total: 1000, kind: "normal" } as object | null,
     error: null,
@@ -41,11 +43,22 @@ vi.mock("@/lib/supabase/server", () => ({
         };
         return chain;
       },
-      insert: async (row: object) => {
+      insert: (row: object) => {
         mocks.insert(row);
-        return { error: mocks.insertError };
+        return {
+          select: () => ({
+            single: async () => ({
+              data: mocks.insertError ? null : { id: "p9" },
+              error: mocks.insertError,
+            }),
+          }),
+        };
       },
     }),
+    rpc: async (name: string, args: object) => {
+      mocks.rpc(name, args);
+      return { error: mocks.rpcError };
+    },
   }),
 }));
 vi.mock("./create", () => ({ createRestorationRecord: vi.fn() }));
@@ -69,10 +82,17 @@ describe("edición de restauraciones", () => {
   beforeEach(() => {
     mocks.forbidden = false;
     mocks.role = "admin";
-    for (const fn of [mocks.update, mocks.insert, mocks.eq, mocks.revalidate])
+    for (const fn of [
+      mocks.update,
+      mocks.insert,
+      mocks.eq,
+      mocks.revalidate,
+      mocks.rpc,
+    ])
       fn.mockReset();
     mocks.result = { data: [{ id: "r1", restoration_id: "r1" }], error: null };
     mocks.insertError = null;
+    mocks.rpcError = null;
     mocks.total = { data: { total: 1000, kind: "normal" }, error: null };
   });
 
@@ -199,6 +219,15 @@ describe("edición de restauraciones", () => {
       expect.objectContaining({ restoration_id: "r1", price: 1300 }),
     );
     expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("arrived_at");
+    // Sin precio pasa a Consulta como al registrar la guía (la BD decide si aplica).
+    expect(mocks.rpc).toHaveBeenCalledWith("send_unpriced_to_consultation", {
+      p_piece_ids: ["p9"],
+    });
+    mocks.rpcError = { code: "XX000" };
+    expect(await addPiece("r1", piece)).toEqual({
+      error: "La pieza se agregó, pero no pasó a Consulta por no tener precio.",
+    });
+    mocks.rpcError = null;
     mocks.insertError = {
       code: "23514",
       message: "No se agregan piezas a una restauración completada o anulada",

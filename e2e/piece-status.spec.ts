@@ -294,6 +294,10 @@ test.describe("Estados de las piezas", () => {
     // Reenviada sigue en Observación, ahora En taller; se entrega cuando vuelve.
     await expect(card(page, code)).toContainText("Observación");
     await expect(card(page, code)).toContainText("En taller");
+    // Las acciones salen de los datos guardados: se espera a que la página se refresque.
+    await expect
+      .poll(() => pieceActionNames(page, code))
+      .not.toContain("Enviar al taller");
     expect(await pieceActionNames(page, code)).not.toContain("Entregar");
   });
 

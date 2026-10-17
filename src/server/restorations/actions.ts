@@ -256,8 +256,24 @@ export async function addPiece(
     restoration_id: restorationId,
     ...parsed.columns,
   } as TablesInsert<"pieces">;
-  const { error } = await supabase.from("pieces").insert(row);
+  const { data, error } = await supabase
+    .from("pieces")
+    .insert(row)
+    .select("id")
+    .single();
   if (error) return { error: editError(error, "No se pudo agregar la pieza.") };
+  // Sin precio pasa a Consulta, igual que al registrar la guía (la BD decide si aplica).
+  const { error: consultError } = await supabase.rpc(
+    "send_unpriced_to_consultation",
+    { p_piece_ids: [data.id] },
+  );
   revalidatePath(`/restauraciones/${restorationId}`);
+  if (consultError)
+    return {
+      error: editError(
+        consultError,
+        "La pieza se agregó, pero no pasó a Consulta por no tener precio.",
+      ),
+    };
   return { ok: true };
 }
