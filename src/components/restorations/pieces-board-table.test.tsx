@@ -388,11 +388,14 @@ describe("PiecesBoardTable", () => {
         pieces={[{ ...base, status: "en_espera" }]}
       />,
     );
-    const badge = within(screen.getByTestId("pieza-RES-00001-1")).getByText(
+    const label = within(screen.getByTestId("pieza-RES-00001-1")).getByText(
       "Espera respuesta cliente",
     );
+    // Corte fijo en dos líneas, sin ancho máximo: la caja se ajusta al texto.
+    expect(label.querySelector("br")).not.toBeNull();
+    const badge = label.closest("[data-wrap]");
     expect(badge).toHaveAttribute("data-wrap", "true");
-    expect(badge).toHaveClass("whitespace-normal", "max-w-[10rem]");
+    expect(badge).not.toHaveClass("max-w-[10rem]");
   });
 
   it("muestra la cantidad junto al código cuando es más de una", () => {

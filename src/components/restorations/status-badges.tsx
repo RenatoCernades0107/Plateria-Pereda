@@ -142,11 +142,17 @@ export function PieceStatusIcon({
 }
 
 /**
- * Con `wrap`, el texto se parte en dos líneas si no entra (en tablas de columnas
- * angostas: "Espera respuesta cliente"); el resto de estados cabe en una.
+ * Con `wrap`, las etiquetas largas van en dos líneas (tablas de columnas angostas:
+ * "Espera respuesta cliente"); el resto de estados cabe en una. El corte es fijo y
+ * sin ancho máximo: un texto que se parte solo deja la caja al ancho máximo, con
+ * fondo de sobra a la derecha.
  */
 export const WRAP_BADGE_CLASS =
-  "h-auto max-w-[10rem] justify-start rounded-xl text-left leading-tight whitespace-normal";
+  "h-auto justify-start rounded-xl text-left leading-tight";
+
+const WRAPPED_LABELS: Partial<Record<PieceStatus, [string, string]>> = {
+  en_espera: ["Espera respuesta", "cliente"],
+};
 
 export function PieceStatusBadge({
   status,
@@ -158,6 +164,7 @@ export function PieceStatusBadge({
   className?: string;
 }) {
   const style = PIECE_STATUS_STYLES[status];
+  const lines = WRAPPED_LABELS[status];
   return (
     <Badge
       variant="outline"
@@ -166,7 +173,16 @@ export function PieceStatusBadge({
       className={cn(style.className, wrap && WRAP_BADGE_CLASS, className)}
     >
       <StatusDot className={style.dot} />
-      {PIECE_STATUS_LABELS[status]}
+      {wrap && lines ? (
+        <span>
+          {/* El espacio mantiene el texto completo para lectores y búsquedas. */}
+          {`${lines[0]} `}
+          <br />
+          {lines[1]}
+        </span>
+      ) : (
+        PIECE_STATUS_LABELS[status]
+      )}
     </Badge>
   );
 }
