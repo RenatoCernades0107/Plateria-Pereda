@@ -974,8 +974,6 @@ function MoreActionsMenu({
       >
         {corrections.length > 0 ? (
           <>
-            <DropdownMenuLabel>Corregir</DropdownMenuLabel>
-            <DropdownMenuSeparator />
             {corrections.map((a) => (
               <DropdownMenuItem
                 key={a.key}

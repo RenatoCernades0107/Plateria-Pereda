@@ -92,16 +92,17 @@ export async function drawGuidePdf(
   font("bold", 18).setTextColor(...BRAND);
   pdf.text(model.title, right, y + 7, { align: "right" });
   let metaY = y + 13;
-  const boxW = 34;
+  const boxW = 40;
+  const boxH = 7.4;
   for (const [label, value] of model.meta) {
-    font("normal", 8, 90);
-    pdf.text(label.toUpperCase(), right - boxW - 3, metaY + 3.6, {
+    font("bold", 11, 90);
+    pdf.text(label.toUpperCase(), right - boxW - 3, metaY + 5.1, {
       align: "right",
     });
-    pdf.setDrawColor(GRID).rect(right - boxW, metaY, boxW, 5.2);
-    font(label === "Guía N°" ? "bold" : "normal", 8.5);
-    pdf.text(value, right - boxW / 2, metaY + 3.7, { align: "center" });
-    metaY += 6.2;
+    pdf.setDrawColor(GRID).rect(right - boxW, metaY, boxW, boxH);
+    font(label === "Guía N°" ? "bold" : "normal", 12);
+    pdf.text(value, right - boxW / 2, metaY + 5.2, { align: "center" });
+    metaY += boxH + 1.4;
   }
   y = Math.max(y + (logo ? 28 : 0), companyY, metaY) + 5;
 
