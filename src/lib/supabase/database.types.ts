@@ -1708,13 +1708,6 @@ export type Database = {
           isSetofReturn: true;
         };
       };
-      create_catalog_option: {
-        Args: { p_kind: string; p_name: string };
-        Returns: {
-          id: string;
-          name: string;
-        }[];
-      };
       create_restoration: {
         Args: {
           p_client_id: string;

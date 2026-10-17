@@ -10,10 +10,10 @@ set local role authenticated;
 create temp table g as
 select * from public.create_restoration(
   (select id from public.clients where active limit 1), null, 'contado', null, '',
-  '[{"description": "Primera", "service_name": "Limpieza"}]'::jsonb);
+  '[{"description": "Primera", "service_name": "Limpieza y pulido"}]'::jsonb);
 
 insert into public.pieces (restoration_id, description, service_name)
-select id, 'Agregada', 'Limpieza' from g;
+select id, 'Agregada', 'Limpieza y pulido' from g;
 
 select public.send_unpriced_to_consultation(array(
   select p.id from public.pieces p join g on g.id = p.restoration_id
@@ -45,9 +45,9 @@ select is(
 create temp table gi as
 select * from public.create_restoration(
   (select id from public.clients where active limit 1), null, 'contado', null, '',
-  '[{"description": "Interna", "service_name": "Limpieza"}]'::jsonb, null, 'interno');
+  '[{"description": "Interna", "service_name": "Limpieza y pulido"}]'::jsonb, null, 'interno');
 insert into public.pieces (restoration_id, description, service_name)
-select id, 'Interna agregada', 'Limpieza' from gi;
+select id, 'Interna agregada', 'Limpieza y pulido' from gi;
 select public.send_unpriced_to_consultation(array(
   select p.id from public.pieces p join gi on gi.id = p.restoration_id));
 select is(

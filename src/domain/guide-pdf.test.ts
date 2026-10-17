@@ -151,6 +151,9 @@ describe("guidePdfModel", () => {
     expect(model.totals).toEqual([]);
     expect(model.clause).toBeNull();
     expect(model.signer).toBeNull();
+    // Sin datos de la empresa: el membrete dice solo «TALLER».
+    expect(model.companyLines).toEqual([{ text: "TALLER" }]);
+    expect(model.footer).toBe("");
   });
 
   it("sin montos (logística) no muestra precios ni totales", () => {

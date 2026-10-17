@@ -58,4 +58,21 @@ describe("drawGuidePdf", () => {
     for (const text of ["CANT.", "6", "En taller"])
       expect(raw).toContain(`(${text})`);
   });
+
+  it("en la versión para taller el membrete dice solo TALLER, sin datos de la empresa", async () => {
+    const pdf = await drawGuidePdf(
+      guidePdfModel(data, new Set(["1"]), { forWorkshop: true }),
+    );
+    const raw = pdf.output();
+    expect(raw).toContain("(TALLER)");
+    for (const text of [
+      "OFICINA PRINCIPAL MIRAFLORES:",
+      "995 711 235",
+      "Pereda.Plateria.Joyeria",
+      "www.plateriapereda.com",
+    ])
+      expect(raw).not.toContain(text);
+    // Sin íconos del membrete.
+    expect(raw.match(/\/Subtype \/Image/g)).toBeNull();
+  });
 });

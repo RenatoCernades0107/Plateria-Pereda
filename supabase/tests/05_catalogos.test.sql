@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(15);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000e1', 'admin@catalogos.test', '{"role":"admin"}', '{"full_name":"Ana Admin"}'),
@@ -33,9 +33,13 @@ select throws_ok(
   '23505', null, 'los nombres son únicos sin distinguir mayúsculas'
 );
 update public.services set active = false where name = 'Limpieza prueba';
-select throws_ok(
-  $$ delete from public.materials where name = 'Plata 950 prueba' $$,
-  '42501', null, 'los ítems no se borran, solo se desactivan'
+-- Un material o servicio sin uso se borra; el que se usa solo se desactiva (40_borrar_catalogos).
+insert into public.materials (name) values ('Cobre sin uso');
+delete from public.materials where name = 'Cobre sin uso';
+select is(
+  (select count(*)::int from public.materials where name = 'Cobre sin uso'),
+  0,
+  'el admin borra un material sin uso'
 );
 
 -- Ventas lee todo pero no gestiona
@@ -49,6 +53,8 @@ select throws_ok(
   $$ insert into public.materials (name) values ('Oro de ventas') $$,
   '42501', null, 'ventas no crea ítems'
 );
+delete from public.materials where name = 'Plata 950 prueba';
+delete from public.services where name = 'Limpieza prueba';
 update public.payment_methods set name = 'Cambiado' where name = 'Yape';
 
 -- Logística solo lee materiales
@@ -64,12 +70,18 @@ select throws_ok(
   $$ insert into public.materials (name) values ('Oro de logística') $$,
   '42501', null, 'logística no crea ítems'
 );
+delete from public.materials where name = 'Plata 950 prueba';
 
 reset role;
 select is(
   (select count(*)::int from public.payment_methods where name = 'Yape'),
   1,
   'ventas no edita los catálogos'
+);
+select ok(
+  exists (select 1 from public.materials where name = 'Plata 950 prueba')
+  and exists (select 1 from public.services where name = 'Limpieza prueba'),
+  'ventas y logística no borran materiales ni servicios'
 );
 select results_eq(
   $$ select actor_name, action, changes from public.audit_log

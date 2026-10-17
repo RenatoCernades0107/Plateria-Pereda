@@ -9,6 +9,7 @@ insert into public.clients (id, kind, first_name)
   values ('00000000-0000-0000-0000-00000000ba20', 'persona', 'Ana');
 insert into public.restorations (id, client_id, payment_type)
   values ('00000000-0000-0000-0000-00000000ba30', '00000000-0000-0000-0000-00000000ba20', 'contado');
+insert into public.services (name) values ('Limpieza') on conflict do nothing;
 insert into public.pieces (id, restoration_id, description, service_name, price) values
   ('00000000-0000-0000-0000-00000000ba41', '00000000-0000-0000-0000-00000000ba30', 'Fuente', 'Limpieza', 100),
   ('00000000-0000-0000-0000-00000000ba42', '00000000-0000-0000-0000-00000000ba30', 'Bandeja', 'Limpieza', 50),

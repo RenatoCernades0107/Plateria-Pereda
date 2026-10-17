@@ -76,6 +76,10 @@ test.describe("Listado de restauraciones", () => {
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("button", { name: "Limpiar selección" }).click();
     await page.keyboard.press("Escape");
+    // Se espera a que la lista se recargue sin el filtro: si la recarga llega con el
+    // siguiente filtro abierto, su menú se vuelve a dibujar y el clic se pierde.
+    await expect(page).not.toHaveURL(/estado=/);
+    await expect(page.getByTestId(`restauracion-${codes[1]}`)).toBeVisible();
     await page.getByLabel("Estado de pago").click();
     await page.getByRole("option", { name: "Pagado" }).click();
     await page.keyboard.press("Escape");

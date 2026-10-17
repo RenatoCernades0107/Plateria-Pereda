@@ -36,7 +36,7 @@ const data: GuidePdfData = {
   paymentType: "contado",
   clientName: "Ana",
   contactName: null,
-  phone: null,
+  phone: "+51 994 000 111",
   shopifyOrderName: null,
   attendedBy: null,
   notes: "",
@@ -68,5 +68,30 @@ describe("GuidePdfButton", () => {
       name: "Exportar PDF",
     });
     expect(exportButtons.at(-1)).toBeDisabled();
+  });
+
+  it("sin teléfono del cliente avisa, bloquea el PDF y lleva a actualizarlo", async () => {
+    const user = userEvent.setup();
+    render(
+      <GuidePdfButton data={{ ...data, phone: null }} clientId="client-1" />,
+    );
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "no tiene el teléfono del cliente",
+    );
+    expect(
+      screen.getByRole("link", { name: "Actualizar teléfono del cliente" }),
+    ).toHaveAttribute("href", "/clientes/client-1");
+    expect(
+      screen.getAllByRole("button", { name: "Exportar PDF" }).at(-1),
+    ).toBeDisabled();
+  });
+
+  it("con teléfono no muestra el aviso", async () => {
+    const user = userEvent.setup();
+    render(<GuidePdfButton data={data} clientId="client-1" />);
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

@@ -1,18 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CatalogCombobox } from "./catalog-combobox";
-
-const mocks = vi.hoisted(() => ({
-  create: vi.fn(),
-  toastError: vi.fn(),
-}));
-
-vi.mock("@/server/catalogs-actions", () => ({
-  createCatalogOption: (...a: unknown[]) => mocks.create(...a),
-}));
-vi.mock("sonner", () => ({ toast: { error: mocks.toastError } }));
 
 const SERVICES = [
   { id: "s1", name: "Limpieza", price: 40 },
@@ -34,11 +24,6 @@ function renderCombobox(value: string[] = [], onChange = vi.fn()) {
   return onChange;
 }
 
-beforeEach(() => {
-  mocks.create.mockReset();
-  mocks.toastError.mockReset();
-});
-
 describe("CatalogCombobox", () => {
   it("busca y elige un servicio; se cierra al elegir", async () => {
     const user = userEvent.setup();
@@ -47,11 +32,11 @@ describe("CatalogCombobox", () => {
       "Selecciona un servicio",
     );
     await user.click(screen.getByLabelText("Servicio"));
-    await user.type(screen.getByPlaceholderText("Buscar o crear…"), "pul");
+    await user.type(screen.getByPlaceholderText("Buscar…"), "pul");
     expect(screen.queryByRole("option", { name: "Limpieza" })).toBeNull();
     await user.click(screen.getByRole("option", { name: "Pulido" }));
     expect(onChange).toHaveBeenCalledWith([{ id: "s2", name: "Pulido" }]);
-    expect(screen.queryByPlaceholderText("Buscar o crear…")).toBeNull();
+    expect(screen.queryByPlaceholderText("Buscar…")).toBeNull();
   });
 
   it("muestra el ítem desactivado solo si ya está elegido", async () => {
@@ -66,22 +51,45 @@ describe("CatalogCombobox", () => {
     ).toBeInTheDocument();
   });
 
-  it("no ofrece crear lo que ya existe y muestra el error al crear", async () => {
+  it("solo elige: lo que no existe no se puede crear y se indica al administrador", async () => {
     const user = userEvent.setup();
     const onChange = renderCombobox();
     await user.click(screen.getByLabelText("Servicio"));
-    const search = screen.getByPlaceholderText("Buscar o crear…");
-    await user.type(search, "limpieza");
-    expect(screen.queryByRole("option", { name: /Crear/ })).toBeNull();
-
-    mocks.create.mockResolvedValue({ error: "No se pudo crear el ítem." });
-    await user.clear(search);
-    await user.type(search, "  Dorado   al fuego ");
-    await user.click(
-      screen.getByRole("option", { name: "Crear «Dorado al fuego»" }),
-    );
-    expect(mocks.create).toHaveBeenCalledWith("services", "Dorado al fuego");
-    expect(mocks.toastError).toHaveBeenCalledWith("No se pudo crear el ítem.");
+    await user.type(screen.getByPlaceholderText("Buscar…"), "Dorado al fuego");
+    expect(screen.queryByRole("option")).toBeNull();
+    expect(screen.queryByText(/Crear/)).toBeNull();
+    expect(
+      screen.getByText(
+        "No existe ese servicio. El administrador puede agregarlo en Configuración.",
+      ),
+    ).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("los materiales se eligen de a varios y se quitan todos juntos", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <CatalogCombobox
+        kind="materials"
+        options={[
+          { id: "m1", name: "Plata", price: null },
+          { id: "m2", name: "Alpaca", price: null },
+        ]}
+        value={["m1"]}
+        onChange={onChange}
+        multiple
+        placeholder="Selecciona materiales"
+        aria-label="Material"
+      />,
+    );
+    await user.click(screen.getByLabelText("Material"));
+    await user.click(screen.getByRole("option", { name: "Alpaca" }));
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "m1", name: "Plata" },
+      { id: "m2", name: "Alpaca" },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Quitar todos" }));
+    expect(onChange).toHaveBeenLastCalledWith([]);
   });
 });

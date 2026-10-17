@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 
 import { CATALOGS, isCatalogKind, type CatalogKind } from "@/domain/catalogs";
 import { createClient } from "@/lib/supabase/server";
@@ -95,36 +95,35 @@ export async function setCatalogItemActive(
   return { ok: true };
 }
 
-/** Materiales y servicios: los que se crean desde el formulario de la pieza. */
-export type PieceCatalogKind = "materials" | "services";
-
-export type CatalogOptionResult =
-  { ok: true; option: { id: string; name: string } } | { error: string };
-
 /**
- * Crea un material o servicio desde el buscador de la pieza (admin y ventas, quienes
- * registran y editan piezas). Si ya existe, aunque esté desactivado, se reutiliza. El
- * precio sugerido del servicio lo pone el admin en Configuración.
+ * Borra un material o servicio. Solo si ninguna pieza ni cotización lo usa (lo garantiza
+ * un trigger de la BD, que avisa con el 23503 y un mensaje listo para mostrar); si está
+ * en uso, se desactiva. Los métodos de pago solo se desactivan.
  */
-export async function createCatalogOption(
-  kind: PieceCatalogKind,
-  name: string,
-): Promise<CatalogOptionResult> {
-  await requirePermission("restauraciones.editar");
-  if (kind !== "materials" && kind !== "services") {
-    return { error: "Catálogo inválido." };
+export async function deleteCatalogItem(
+  kind: CatalogKind,
+  id: string,
+): Promise<CatalogActionResult> {
+  await requirePermission("configuracion.gestionar");
+  if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
+  if (!CATALOGS[kind].canDelete) {
+    return { error: "Los métodos de pago solo se desactivan." };
   }
-  const parsed = catalogItemSchema.shape.name.safeParse(name);
-  if (!parsed.success)
-    return { error: "Escribe un nombre de hasta 100 caracteres." };
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .rpc("create_catalog_option", { p_kind: kind, p_name: parsed.data })
-    .single();
-  if (error || !data) return { error: "No se pudo crear el ítem." };
+    .from(kind)
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) {
+    return {
+      error:
+        error.code === "23503" ? error.message : "No se pudo eliminar el ítem.",
+    };
+  }
+  // Sin permiso (RLS) o ya borrado: el delete no falla, solo no toca filas.
+  if (data.length === 0) return { error: "No se pudo eliminar el ítem." };
   revalidatePath(CATALOGS[kind].href);
-  // Los demás buscadores de la página (otras piezas) también lo ofrecen.
-  refresh();
-  return { ok: true, option: { id: data.id, name: data.name } };
+  return { ok: true };
 }

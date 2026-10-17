@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createCatalogItem: vi.fn(),
   updateCatalogItem: vi.fn(),
   setCatalogItemActive: vi.fn(),
+  deleteCatalogItem: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -16,10 +17,13 @@ vi.mock("@/server/catalogs-actions", () => ({
   createCatalogItem: (...a: unknown[]) => mocks.createCatalogItem(...a),
   updateCatalogItem: (...a: unknown[]) => mocks.updateCatalogItem(...a),
   setCatalogItemActive: (...a: unknown[]) => mocks.setCatalogItemActive(...a),
+  deleteCatalogItem: (...a: unknown[]) => mocks.deleteCatalogItem(...a),
 }));
 vi.mock("sonner", () => ({
   toast: { success: mocks.success, error: mocks.error },
 }));
+
+const materials = [{ id: "m1", name: "Alpaca", price: null, active: true }];
 
 const services = [
   { id: "s1", name: "Limpieza", price: 35, active: true },
@@ -33,6 +37,7 @@ describe("CatalogManager", () => {
       mocks.createCatalogItem,
       mocks.updateCatalogItem,
       mocks.setCatalogItemActive,
+      mocks.deleteCatalogItem,
     ])
       fn.mockResolvedValue({ ok: true });
   });
@@ -132,5 +137,63 @@ describe("CatalogManager", () => {
       false,
     );
     expect(mocks.success).toHaveBeenCalledWith('"Limpieza" fue desactivado.');
+  });
+
+  it("elimina un ítem después de confirmar", async () => {
+    const user = userEvent.setup();
+    render(<CatalogManager kind="materials" items={materials} />);
+    await user.click(
+      within(screen.getByTestId("catalogo-Alpaca")).getByRole("button", {
+        name: "Eliminar Alpaca",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Eliminar material");
+    expect(dialog).toHaveTextContent('¿Eliminar "Alpaca"?');
+    // Hasta confirmar no se borra nada.
+    expect(mocks.deleteCatalogItem).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+    expect(mocks.deleteCatalogItem).toHaveBeenCalledWith("materials", "m1");
+    expect(mocks.success).toHaveBeenCalledWith('"Alpaca" fue eliminado.');
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("si el ítem está en uso muestra el aviso y deja abierto el diálogo", async () => {
+    mocks.deleteCatalogItem.mockResolvedValue({
+      error: "“Alpaca” está en uso en 2 piezas. Desactívalo en su lugar.",
+    });
+    const user = userEvent.setup();
+    render(<CatalogManager kind="materials" items={materials} />);
+    await user.click(
+      within(screen.getByTestId("catalogo-Alpaca")).getByRole("button", {
+        name: "Eliminar Alpaca",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "“Alpaca” está en uso en 2 piezas. Desactívalo en su lugar.",
+    );
+    expect(mocks.success).not.toHaveBeenCalled();
+    // Cancelar cierra sin borrar nada más.
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mocks.deleteCatalogItem).toHaveBeenCalledTimes(1);
+  });
+
+  it("los métodos de pago no se pueden eliminar, solo desactivar", () => {
+    render(
+      <CatalogManager
+        kind="payment_methods"
+        items={[{ id: "p1", name: "Yape", price: null, active: true }]}
+      />,
+    );
+    const row = screen.getByTestId("catalogo-Yape");
+    expect(
+      within(row).getByRole("button", { name: "Desactivar" }),
+    ).toBeVisible();
+    expect(
+      within(row).queryByRole("button", { name: /Eliminar/ }),
+    ).not.toBeInTheDocument();
   });
 });

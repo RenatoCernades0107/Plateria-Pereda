@@ -1,4 +1,7 @@
-/** Catálogos simples que gestiona el admin desde Configuración (P22, N1). */
+/**
+ * Catálogos simples que gestiona el admin desde Configuración (P22, N1). `canDelete`: se
+ * pueden borrar mientras ninguna pieza ni cotización los use; si no, solo se desactivan.
+ */
 export const CATALOGS = {
   materials: {
     title: "Materiales",
@@ -6,8 +9,9 @@ export const CATALOGS = {
     href: "/configuracion/materiales",
     hasPrice: false,
     hasShopifyName: false,
+    canDelete: true,
     description:
-      "Se eligen en cada pieza (uno o varios). Si falta uno, admin y ventas lo crean desde el buscador de la pieza.",
+      "Se eligen en cada pieza (uno o varios). Si falta uno, se agrega aquí. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
   services: {
     title: "Servicios",
@@ -15,8 +19,9 @@ export const CATALOGS = {
     href: "/configuracion/servicios",
     hasPrice: true,
     hasShopifyName: false,
+    canDelete: true,
     description:
-      "Se eligen en cada pieza. Si falta uno, admin y ventas lo crean desde el buscador de la pieza (sin precio sugerido; se agrega aquí).",
+      "Se eligen en cada pieza. Si falta uno, se agrega aquí, con su precio sugerido. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
   payment_methods: {
     title: "Métodos de pago",
@@ -24,11 +29,15 @@ export const CATALOGS = {
     href: "/configuracion/metodos-de-pago",
     hasPrice: false,
     hasShopifyName: true,
+    canDelete: false,
     description: "Se eligen al registrar un pago; se envían a Shopify.",
   },
 } as const;
 
 export type CatalogKind = keyof typeof CATALOGS;
+
+/** Materiales y servicios: los catálogos que se eligen en cada pieza. */
+export type PieceCatalogKind = "materials" | "services";
 
 export const CATALOG_KINDS = Object.keys(CATALOGS) as CatalogKind[];
 
