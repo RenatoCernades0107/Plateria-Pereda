@@ -1,6 +1,27 @@
 "use client";
 
-import { Loader2, MoreHorizontal } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  Check,
+  CircleX,
+  Eye,
+  Handshake,
+  History,
+  Hourglass,
+  Loader2,
+  type LucideIcon,
+  MessageCircleQuestion,
+  MoreHorizontal,
+  PackageOpen,
+  RotateCcw,
+  Search,
+  SearchCheck,
+  Store,
+  ThumbsDown,
+  Truck,
+  Undo2,
+} from "lucide-react";
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -887,6 +908,31 @@ export function arrangeActions(actions: readonly PieceAction[]) {
   };
 }
 
+/** Ícono de cada acción (por su `key`: la acción o el estado al que lleva). */
+export const ACTION_ICONS: Record<string, LucideIcon> = {
+  llegada: Store,
+  enviar_taller: Truck,
+  recibir: PackageOpen,
+  vuelta_revision: SearchCheck,
+  revision: Search,
+  devolver: Undo2,
+  registrada: RotateCcw,
+  en_consulta: MessageCircleQuestion,
+  en_espera: Hourglass,
+  aprobada: Check,
+  observada: Eye,
+  entregada: Handshake,
+  rechazada: ThumbsDown,
+  sin_arreglo: CircleX,
+  anulada: Ban,
+  retroceso: History,
+};
+
+export function ActionIcon({ action }: { action: PieceAction }) {
+  const Icon = ACTION_ICONS[action.key] ?? ArrowRight;
+  return <Icon aria-hidden />;
+}
+
 /** Insignias del detalle de la pieza: más grandes que en tablas y tarjetas. */
 const LARGE_BADGE_CLASS = "px-2.5 py-1 text-sm [&>svg]:size-3.5";
 
@@ -938,6 +984,7 @@ function MoreActionsMenu({
                   chosen.current = a.onSelect;
                 }}
               >
+                <ActionIcon action={a} />
                 {a.label}
               </DropdownMenuItem>
             ))}
@@ -959,6 +1006,7 @@ function MoreActionsMenu({
                   chosen.current = a.onSelect;
                 }}
               >
+                <ActionIcon action={a} />
                 {a.label}
               </DropdownMenuItem>
             ))}
@@ -1032,6 +1080,7 @@ function PieceActionBar({
       >
         {primary ? (
           <Button disabled={primary.disabled} onClick={primary.onSelect}>
+            <ActionIcon action={primary} />
             {primary.label}
           </Button>
         ) : null}
@@ -1042,6 +1091,7 @@ function PieceActionBar({
             disabled={a.disabled}
             onClick={a.onSelect}
           >
+            <ActionIcon action={a} />
             {a.label}
           </Button>
         ))}
@@ -1053,6 +1103,7 @@ function PieceActionBar({
             disabled={a.disabled}
             onClick={a.onSelect}
           >
+            <ActionIcon action={a} />
             {a.label}
           </Button>
         ))}

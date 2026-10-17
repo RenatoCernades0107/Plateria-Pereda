@@ -1,29 +1,12 @@
 "use client";
 
 import {
-  ArrowRight,
-  Ban,
-  Check,
   ChevronDown,
   ChevronRight,
-  CircleX,
-  Eye,
-  Handshake,
-  Hourglass,
   Loader2,
-  type LucideIcon,
-  MessageCircleQuestion,
   MoreHorizontal,
-  PackageOpen,
   Pencil,
-  RotateCcw,
-  Search,
-  SearchCheck,
-  Store,
   Tag,
-  ThumbsDown,
-  Truck,
-  Undo2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -58,8 +41,8 @@ import { SalePriceCell } from "./piece-money-cells";
 import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import {
+  ActionIcon,
   arrangeActions,
-  type PieceAction,
   usePieceActions,
 } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
@@ -86,30 +69,6 @@ const PRE_APPROVAL: readonly PieceDetail["status"][] = [
 const HEAD = "px-2 py-2 text-left font-medium whitespace-nowrap";
 const CELL = cn(RT.cell, "md:px-2");
 const LABELED = cn(CELL, RT.labeled);
-
-/** Ícono de cada acción (por su `key`: la acción o el estado al que lleva). */
-const ACTION_ICONS: Record<string, LucideIcon> = {
-  llegada: Store,
-  enviar_taller: Truck,
-  recibir: PackageOpen,
-  vuelta_revision: SearchCheck,
-  revision: Search,
-  devolver: Undo2,
-  registrada: RotateCcw,
-  en_consulta: MessageCircleQuestion,
-  en_espera: Hourglass,
-  aprobada: Check,
-  observada: Eye,
-  entregada: Handshake,
-  rechazada: ThumbsDown,
-  sin_arreglo: CircleX,
-  anulada: Ban,
-};
-
-function ActionIcon({ action }: { action: PieceAction }) {
-  const Icon = ACTION_ICONS[action.key] ?? ArrowRight;
-  return <Icon aria-hidden />;
-}
 
 type RowProps = {
   restorationId: string;
