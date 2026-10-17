@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Copy, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Info, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -49,6 +55,10 @@ import {
 } from "@/domain/money";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { PIECE_FREE_FIELDS, SALE_PRICE_HINT } from "@/domain/restoration-edit";
+import {
+  RESTORATION_KIND_LABELS,
+  type RestorationKind,
+} from "@/domain/restoration-status";
 import { cn } from "@/lib/utils";
 import {
   COPY_INITIAL_STATUSES,
@@ -73,10 +83,16 @@ import {
 
 import { GUIDE_SURFACE_CLASS, PIECE_ACCENT_CLASS } from "./guide-labels";
 import { PieceFields, type CatalogOption } from "./piece-fields";
+import {
+  KIND_SHORT_DESCRIPTIONS,
+  RestorationKindConfirmDialog,
+} from "./restoration-kind-dialog";
 
 export type { CatalogOption };
 
 type FormValues = {
+  /** Tipo de guía (punto 8): interna u observada no se cobran. */
+  kind: RestorationKind;
   clientId: string;
   contactId: string | null;
   /** Solo cotización de WhatsApp sin cliente (P46). */
@@ -97,6 +113,7 @@ const NONE = "ninguno";
 
 export const EMPTY_PIECE: PieceFormInput = {
   workshopId: null,
+  quantity: "1",
   description: "",
   measure: "",
   materials: [],
@@ -133,6 +150,7 @@ function PieceCard({
   showInitialStatus,
   canSetPrice,
   canAssignWorkshop,
+  guideKind,
   onDuplicate,
   onRemove,
 }: {
@@ -150,14 +168,18 @@ function PieceCard({
   canSetPrice: boolean;
   /** Puede elegir el taller (logística y admin, D60). */
   canAssignWorkshop: boolean;
+  /** Interna u observada: la pieza no lleva precio y nace Aprobada u Observada. */
+  guideKind: RestorationKind;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(true);
   const piece = useWatch({ control: form.control, name: `pieces.${index}` });
   const errors = form.formState.errors.pieces?.[index];
-  const price = parseMoney(piece?.price ?? "");
+  const charged = guideKind === "normal";
+  const price = charged ? parseMoney(piece?.price ?? "") : null;
   const title = piece?.description?.trim() || "Nueva pieza";
+  const quantity = Number(String(piece?.quantity ?? "").trim());
 
   return (
     <li
@@ -189,8 +211,27 @@ function PieceCard({
             </span>
             <span className="text-heading block truncate font-medium">
               {title}
+              {Number.isInteger(quantity) && quantity > 1 ? (
+                <span
+                  className="text-muted-foreground font-normal tabular-nums"
+                  data-testid="cantidad-pieza"
+                >
+                  {" "}
+                  ×{quantity}
+                </span>
+              ) : null}
             </span>
-            {showInitialStatus && (piece?.initialStatus || price === null) ? (
+            {!charged ? (
+              <span className="text-muted-foreground block text-xs">
+                Pasa a{" "}
+                {
+                  PIECE_STATUS_LABELS[
+                    guideKind === "interno" ? "aprobada" : "observada"
+                  ]
+                }
+              </span>
+            ) : showInitialStatus &&
+              (piece?.initialStatus || price === null) ? (
               <span className="text-muted-foreground block text-xs">
                 Pasa a{" "}
                 {
@@ -213,10 +254,10 @@ function PieceCard({
           )}
           data-testid="precio-pieza"
         >
-          {price !== null
-            ? formatCents(price)
-            : quoteOnly
-              ? "Por definir"
+          {!charged
+            ? "Sin cobro"
+            : price !== null
+              ? formatCents(price)
               : "Por definir"}
         </span>
         <Button
@@ -257,6 +298,7 @@ function PieceCard({
           editable={quoteOnly || canSetPrice ? undefined : PIECE_FREE_FIELDS}
           priceHint={SALE_PRICE_HINT}
           pricePlaceholder={"Por definir"}
+          showPrice={charged}
         />
       </div>
     </li>
@@ -391,6 +433,7 @@ const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
 function defaultsFor(mode: RestorationFormMode): FormValues {
   if (mode.kind === "nueva") {
     return {
+      kind: "normal",
       clientId: "",
       contactId: null,
       customerName: "",
@@ -405,6 +448,7 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
   }
   const q = mode.quote;
   return {
+    kind: "normal",
     clientId: q.client?.clientId ?? "",
     contactId: q.contactId,
     customerName: q.customerName,
@@ -432,6 +476,45 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
  * cliente, tipo de pago, piezas y total en vivo. Al guardar abre el detalle con el
  * mensaje de cotización para WhatsApp.
  */
+/** Casilla de una línea con su explicación en un tooltip (ícono de información). */
+function OptionCheckbox({
+  checked,
+  onChange,
+  info,
+  children,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  info: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          className="accent-primary size-4"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        {children}
+      </label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={info}
+            className="text-muted-foreground hover:text-foreground rounded-full"
+          >
+            <Info aria-hidden className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{info}</TooltipContent>
+      </Tooltip>
+    </span>
+  );
+}
+
 export function RestorationForm({
   defaultDepositPercent,
   workshops,
@@ -440,6 +523,7 @@ export function RestorationForm({
   mode = { kind: "nueva" },
   canSetPrice = false,
   canAssignWorkshop = false,
+  canSetKind = false,
   paymentMethods = [],
 }: {
   defaultDepositPercent: number;
@@ -453,6 +537,8 @@ export function RestorationForm({
   canSetPrice?: boolean;
   /** Puede elegir el taller de las piezas (logística y admin, D60). */
   canAssignWorkshop?: boolean;
+  /** Puede marcar la guía como interna u observada (admin y ventas, punto 8). */
+  canSetKind?: boolean;
 }) {
   const router = useRouter();
   const quote = mode.kind === "nueva" ? null : mode.quote;
@@ -486,8 +572,16 @@ export function RestorationForm({
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
-  const total = liveTotal(values.pieces ?? []);
-  const paymentType = values.paymentType ?? "sin_definir";
+  const guideKind: RestorationKind = viaWhatsapp
+    ? "normal"
+    : (values.kind ?? "normal");
+  const charged = guideKind === "normal";
+  // Tipo por confirmar en el diálogo (al marcar una casilla).
+  const [pendingKind, setPendingKind] = useState<RestorationKind | null>(null);
+  const total = charged ? liveTotal(values.pieces ?? []) : 0;
+  const paymentType = charged
+    ? (values.paymentType ?? "sin_definir")
+    : "sin_definir";
   const depositText = (values.depositAmount ?? "").trim();
   // "A cuenta": el adelanto se escribe en soles (vacío = sin adelanto).
   const deposit =
@@ -563,12 +657,31 @@ export function RestorationForm({
     quoteMode.current = on;
     setViaWhatsapp(on);
     form.clearErrors();
+    // La cotización siempre es normal.
+    if (on) form.setValue("kind", "normal");
     // Sin permiso, la restauración no lleva el precio cotizado (D58).
     if (!on && !canSetPrice) {
       (form.getValues("pieces") ?? []).forEach((_, i) =>
         form.setValue(`pieces.${i}.price`, ""),
       );
     }
+  };
+
+  /**
+   * Interna u observada (confirmado en el diálogo): sin cobro, así que se limpian el
+   * tipo de pago, el adelanto y los precios.
+   */
+  const applyKind = (kind: RestorationKind) => {
+    form.setValue("kind", kind, { shouldDirty: true });
+    if (kind !== "normal") {
+      form.setValue("paymentType", "sin_definir");
+      form.setValue("depositAmount", "");
+      form.setValue("depositMethodId", "");
+      (form.getValues("pieces") ?? []).forEach((_, i) =>
+        form.setValue(`pieces.${i}.price`, ""),
+      );
+    }
+    form.clearErrors();
   };
 
   /** Elegir o quitar una pieza cotizada en la copia. */
@@ -589,6 +702,14 @@ export function RestorationForm({
       input.paymentType = "sin_definir";
       input.depositAmount = "";
       input.depositPercent = "";
+      input.kind = "normal";
+    }
+    // Interna u observada: sin cobro ni precios (la BD también los ignora).
+    if (input.kind !== "normal") {
+      input.paymentType = "sin_definir";
+      input.depositAmount = "";
+      input.depositMethodId = "";
+      input.pieces = input.pieces.map((p) => ({ ...p, price: "" }));
     }
     startTransition(async () => {
       if (mode.kind === "copia") {
@@ -652,24 +773,45 @@ export function RestorationForm({
         {error ? <FormAlert>{error}</FormAlert> : null}
 
         {mode.kind === "nueva" ? (
-          <label className="flex items-start gap-3 rounded-lg border p-3">
-            <input
-              type="checkbox"
-              className="accent-primary mt-0.5 size-4"
-              checked={viaWhatsapp}
-              onChange={(e) => toggleWhatsapp(e.target.checked)}
-            />
-            <span className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-sm font-medium">
+          // Opciones de registro en una sola fila; la explicación va en el ícono (i).
+          <TooltipProvider>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border px-3 py-2">
+              <OptionCheckbox
+                checked={viaWhatsapp}
+                onChange={toggleWhatsapp}
+                info="Se registra como cotización (sin cliente obligatorio). Cuando el cliente confirme qué piezas quiere, se crea la restauración."
+              >
                 <WhatsAppIcon className="text-whatsapp-strong size-4" />
                 El pedido vino por WhatsApp
-              </span>
-              <span className="text-muted-foreground block text-sm">
-                Se registra como cotización (sin cliente obligatorio). Cuando el
-                cliente confirme qué piezas quiere, se crea la restauración.
-              </span>
-            </span>
-          </label>
+              </OptionCheckbox>
+              {!viaWhatsapp && canSetKind ? (
+                <fieldset className="contents" data-testid="tipo-de-guia">
+                  <legend className="sr-only">Tipo de guía</legend>
+                  {(["interno", "observado"] as const).map((k) => (
+                    <OptionCheckbox
+                      key={k}
+                      checked={guideKind === k}
+                      // Excluyentes: marcar una desmarca la otra (con confirmación).
+                      onChange={(on) =>
+                        on ? setPendingKind(k) : applyKind("normal")
+                      }
+                      info={KIND_SHORT_DESCRIPTIONS[k]}
+                    >
+                      Guía {RESTORATION_KIND_LABELS[k].toLowerCase()}
+                    </OptionCheckbox>
+                  ))}
+                </fieldset>
+              ) : null}
+            </div>
+            <RestorationKindConfirmDialog
+              kind={pendingKind}
+              onCancel={() => setPendingKind(null)}
+              onConfirm={() => {
+                if (pendingKind) applyKind(pendingKind);
+                setPendingKind(null);
+              }}
+            />
+          </TooltipProvider>
         ) : null}
 
         <section className="space-y-4" aria-labelledby="datos-cliente">
@@ -833,6 +975,7 @@ export function RestorationForm({
                 showInitialStatus={mode.kind === "copia"}
                 canSetPrice={canSetPrice}
                 canAssignWorkshop={canAssignWorkshop}
+                guideKind={guideKind}
                 onDuplicate={() => {
                   const copy = structuredClone(
                     form.getValues(`pieces.${index}`),
@@ -865,7 +1008,7 @@ export function RestorationForm({
           </Button>
         </section>
 
-        {viaWhatsapp ? (
+        {viaWhatsapp || !charged ? (
           <section className="space-y-4" aria-labelledby="notas">
             <h2 id="notas" className="sr-only">
               Notas generales
@@ -974,16 +1117,27 @@ export function RestorationForm({
 
         <div className="bg-background sticky bottom-0 -mx-4 flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 sm:mx-0 sm:rounded-lg sm:border">
           <dl className="flex flex-wrap gap-x-6 gap-y-2">
-            <div>
-              <dt className="text-muted-foreground text-xs">Total</dt>
-              <dd
-                className="text-heading font-semibold tabular-nums"
-                data-testid="total-en-vivo"
-              >
-                {formatCents(total)}
-              </dd>
-            </div>
-            {viaWhatsapp ? null : (
+            {!charged ? (
+              <div>
+                <dt className="text-muted-foreground text-xs">
+                  Guía {RESTORATION_KIND_LABELS[guideKind].toLowerCase()}
+                </dt>
+                <dd className="font-semibold" data-testid="sin-cobro">
+                  Sin cobro
+                </dd>
+              </div>
+            ) : (
+              <div>
+                <dt className="text-muted-foreground text-xs">Total</dt>
+                <dd
+                  className="text-heading font-semibold tabular-nums"
+                  data-testid="total-en-vivo"
+                >
+                  {formatCents(total)}
+                </dd>
+              </div>
+            )}
+            {viaWhatsapp || !charged ? null : (
               <div>
                 <dt className="text-muted-foreground text-xs">Adelanto</dt>
                 <dd className="tabular-nums" data-testid="adelanto-en-vivo">

@@ -6,7 +6,7 @@ import {
   PIECES_HISTORY_PAGE_SIZE,
   type PieceHistoryFilters,
 } from "@/domain/piece-history-filters";
-import type { PieceStatus } from "@/domain/piece-state-machine";
+import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import type { PieceLocation } from "@/domain/restoration-status";
 import { createClient } from "@/lib/supabase/server";
 import { signedPhotoUrls } from "@/server/files/queries";
@@ -19,6 +19,8 @@ export type HistoryPiece = {
   /** Vacío si quien mira no ve clientes (logística). */
   clientName: string;
   description: string;
+  /** Cantidad (informativa). */
+  quantity: number;
   status: PieceStatus;
   location: PieceLocation;
   urgent: boolean;
@@ -69,7 +71,8 @@ export async function listPiecesHistory(
       restorationCode: p.restoration_code,
       clientName: withClient ? (p.client_name ?? "") : "",
       description: p.description,
-      status: p.status,
+      quantity: p.quantity ?? 1,
+      status: toPieceStatus(p.status),
       location: p.location,
       urgent: p.urgent,
       workshopId: p.workshop_id,

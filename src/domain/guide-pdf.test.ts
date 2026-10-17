@@ -12,12 +12,14 @@ const piece = (
 ): GuidePdfData["pieces"][number] => ({
   id,
   code: `RES-00012-${id}`,
+  quantity: 1,
   description: `Pieza ${id}`,
   materialName: "Plata 950",
   serviceName: "Limpieza",
   measure: "",
   weightGrams: 120,
   status: "aprobada",
+  location: "en_taller",
   notes: "",
   priceCents: 10000,
   ...over,
@@ -32,6 +34,7 @@ const data: GuidePdfData = {
   code: "RES-00012",
   createdAt: "2026-10-01T15:00:00Z",
   status: "aprobada",
+  kind: "normal",
   paymentType: "a_cuenta",
   clientName: "Ana Torres",
   contactName: null,
@@ -75,6 +78,35 @@ describe("guidePdfModel", () => {
     ]);
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
   });
+
+  it("lleva la cantidad y la ubicación de cada pieza", () => {
+    const model = guidePdfModel(
+      {
+        ...data,
+        pieces: [piece("1", { quantity: 6, location: "en_tienda" })],
+      },
+      new Set(["1"]),
+    );
+    expect(model.rows[0]).toMatchObject({
+      quantity: "6",
+      location: "En tienda",
+    });
+  });
+
+  it.each(["interno", "observado"] as const)(
+    "la guía %s no se cobra: sin importes ni total",
+    (kind) => {
+      const model = guidePdfModel({ ...data, kind }, new Set(["1", "2"]));
+      expect(model.showPrice).toBe(false);
+      expect(model.rows.every((r) => r.price === null)).toBe(true);
+      expect(model.totals).toEqual([]);
+      expect(model.totalsNote).toBeNull();
+      expect(model.guide).toContainEqual([
+        "Tipo",
+        kind === "interno" ? "Guía interna" : "Guía observada",
+      ]);
+    },
+  );
 
   it("muestra el subtotal de las piezas con precio y cuántas faltan por cotizar", () => {
     const all = guidePdfModel(data, new Set(["1", "2", "3"]));

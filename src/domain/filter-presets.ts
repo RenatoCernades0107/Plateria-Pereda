@@ -59,14 +59,6 @@ export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
     isActive: (f) => f.ready,
   },
   {
-    key: "devolver",
-    tone: "info",
-    label: "Por devolver",
-    on: { toReturn: true },
-    off: { toReturn: false },
-    isActive: (f) => f.toReturn,
-  },
-  {
     key: "taller",
     label: `En taller ${WORKSHOP_DAYS_ALERT}+ días`,
     tone: "alert",

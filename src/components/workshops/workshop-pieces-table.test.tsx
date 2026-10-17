@@ -23,7 +23,7 @@ const base: WorkshopPiece = {
   id: "p1",
   restorationId: "r1",
   restorationCode: "RES-00001",
-  status: "enviada_taller",
+  status: "aprobada",
   code: "RES-00001-1",
   description: "Fuente con abolladuras",
   serviceName: "Pulido",

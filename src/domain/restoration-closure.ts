@@ -51,6 +51,9 @@ export type ClosurePiece = Pick<
   | "returnedAt"
   | "reviewSentAt"
   | "reviewReturnedAt"
+  | "observedAt"
+  | "lastSentAt"
+  | "lastReturnedAt"
 > & {
   id: string;
   code: string;
@@ -98,7 +101,8 @@ export function planRestorationClosure(
   for (const p of open) {
     const r = applyTransition(p, { to, role, note, now });
     if (r.ok) continue;
-    if (r.error === "rol_no_permitido") roleBlocked = true;
+    if (r.error === "rol_no_permitido" || r.error === "en_taller_solo_admin")
+      roleBlocked = true;
     blocked.push(
       `${p.code} (${PIECE_STATUS_LABELS[p.status]}${
         r.error === "transicion_invalida"

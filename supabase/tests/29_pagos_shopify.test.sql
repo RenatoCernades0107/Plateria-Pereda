@@ -17,11 +17,11 @@ insert into public.pieces (id, restoration_id, description, price, approved_at, 
     first_sent_at, last_sent_at, last_returned_at) values
   ('00000000-0000-0000-0000-00000000ee31', '00000000-0000-0000-0000-00000000ee30', 'Fuente', 100, now(), 'aprobada',
     now(), null, null, null),
-  ('00000000-0000-0000-0000-00000000ee41', '00000000-0000-0000-0000-00000000ee40', 'Copa', 100, now(), 'enviada_taller',
+  ('00000000-0000-0000-0000-00000000ee41', '00000000-0000-0000-0000-00000000ee40', 'Copa', 100, now(), 'aprobada',
     now(), now() - interval '2 days', now() - interval '2 days', now() - interval '1 day'),
-  ('00000000-0000-0000-0000-00000000ee42', '00000000-0000-0000-0000-00000000ee40', 'Jarra', 50, now(), 'enviada_taller',
+  ('00000000-0000-0000-0000-00000000ee42', '00000000-0000-0000-0000-00000000ee40', 'Jarra', 50, now(), 'aprobada',
     now(), now() - interval '2 days', now() - interval '2 days', now() - interval '1 day'),
-  ('00000000-0000-0000-0000-00000000ee51', '00000000-0000-0000-0000-00000000ee50', 'Bandeja', 80, now(), 'enviada_taller',
+  ('00000000-0000-0000-0000-00000000ee51', '00000000-0000-0000-0000-00000000ee50', 'Bandeja', 80, now(), 'aprobada',
     now(), now() - interval '2 days', now() - interval '2 days', now() - interval '1 day');
 update public.restorations set shopify_order_id = 'gid://shopify/Order/ee40', shopify_order_name = '#1001'
 where id = '00000000-0000-0000-0000-00000000ee40';

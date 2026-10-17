@@ -7,13 +7,18 @@ describe("días en el estado actual (C5)", () => {
     expect(statusAgeTone({ status: "en_espera" }, 2)).toBe("neutral");
     expect(statusAgeTone({ status: "en_espera" }, 3)).toBe("attention");
     expect(statusAgeTone({ status: "en_espera" }, 7)).toBe("critical");
-    expect(statusAgeTone({ status: "enviada_taller" }, 7)).toBe("attention");
-    expect(statusAgeTone({ status: "enviada_taller" }, 15)).toBe("critical");
+    expect(statusAgeTone({ status: "aprobada" }, 7)).toBe("critical");
+    expect(statusAgeTone({ status: "aprobada", inWorkshop: true }, 7)).toBe(
+      "attention",
+    );
+    expect(statusAgeTone({ status: "aprobada", inWorkshop: true }, 15)).toBe(
+      "critical",
+    );
   });
 
   it("Lista para entregar tiene sus umbrales; los finales no alertan", () => {
     expect(
-      statusAgeTone({ status: "enviada_taller", readyForDelivery: true }, 14),
+      statusAgeTone({ status: "aprobada", readyForDelivery: true }, 14),
     ).toBe("attention");
     expect(statusAgeTone({ status: "entregada" }, 100)).toBe("neutral");
     expect(statusAgeTone({ status: "anulada" }, 100)).toBe("neutral");

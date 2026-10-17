@@ -56,6 +56,7 @@ const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
   deliveredAt: null,
   returnedAt: null,
   priceCents: null,
+  quantity: 1,
   ...patch,
 });
 
@@ -111,9 +112,9 @@ const openMenu = async (
 };
 
 describe("PiecesBoard: cambio de estado masivo", () => {
-  it("empieza con todas las piezas elegidas y el selector de estado visible", () => {
+  it("empieza con todas las piezas elegidas y «Cambiar estado» a la vista", () => {
     renderBoard();
-    expect(bar()).toHaveTextContent("3 piezas elegidas");
+    expect(bar()).toHaveTextContent("3 de 3 seleccionadas");
     expect(screen.getByLabelText("Elegir RES-00001-1")).toBeChecked();
     expect(screen.getByLabelText("Elegir RES-00001-3")).toBeChecked();
     expect(screen.getByLabelText("Elegir todas las piezas")).toBeChecked();
@@ -122,25 +123,36 @@ describe("PiecesBoard: cambio de estado masivo", () => {
       "id",
       "pieza-p2",
     );
-    expect(within(bar()).getByLabelText("Cambiar estado a…")).toBeEnabled();
     expect(
-      within(bar()).getByRole("button", { name: "Aplicar a 3 piezas" }),
-    ).toBeDisabled();
+      within(bar()).getByRole("button", { name: "Cambiar estado de 3 piezas" }),
+    ).toBeEnabled();
   });
 
   it("desmarcar una pieza actualiza el conteo y 'todas' la vuelve a marcar", async () => {
     const user = userEvent.setup();
     renderBoard();
     await user.click(screen.getByLabelText("Elegir RES-00001-2"));
-    expect(bar()).toHaveTextContent("2 piezas elegidas");
+    expect(bar()).toHaveTextContent("2 de 3 seleccionadas");
     expect(screen.getByLabelText("Elegir todas las piezas")).not.toBeChecked();
 
     await user.click(screen.getByLabelText("Elegir todas las piezas"));
-    expect(bar()).toHaveTextContent("3 piezas elegidas");
+    expect(bar()).toHaveTextContent("3 de 3 seleccionadas");
 
     await user.click(screen.getByLabelText("Elegir todas las piezas"));
-    expect(bar()).toHaveTextContent("0 piezas elegidas");
-    expect(within(bar()).getByLabelText("Cambiar estado a…")).toBeDisabled();
+    expect(bar()).toHaveTextContent("0 de 3 seleccionadas");
+    expect(
+      within(bar()).getByRole("button", { name: "Cambiar estado" }),
+    ).toBeDisabled();
+  });
+
+  it("«Quitar selección» desmarca todas (no las vuelve a elegir)", async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await user.click(
+      within(bar()).getByRole("button", { name: "Quitar selección" }),
+    );
+    expect(bar()).toHaveTextContent("0 de 3 seleccionadas");
+    expect(screen.getByLabelText("Elegir RES-00001-1")).not.toBeChecked();
   });
 });
 
@@ -329,6 +341,33 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     ).toHaveTextContent("Por definir");
     expect(
       screen.queryByLabelText("Precio de venta de RES-00001-2"),
+    ).toBeNull();
+  });
+
+  it("una guía interna u observada no muestra la columna de precio", () => {
+    render(
+      <PiecesBoard
+        restorationId="r1"
+        role="admin"
+        workshops={[]}
+        editing={null}
+        pieces={pieces}
+        guideKind="interno"
+      />,
+    );
+    expect(
+      screen.queryByRole("columnheader", { name: "Precio venta" }),
+    ).toBeNull();
+    expect(screen.queryByText("Por definir")).toBeNull();
+  });
+
+  it("muestra la cantidad junto al código cuando es más de una", () => {
+    renderBoard([piece(1), piece(2, { quantity: 4 })]);
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-2")).getByTestId("cantidad"),
+    ).toHaveTextContent("×4");
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-1")).queryByTestId("cantidad"),
     ).toBeNull();
   });
 

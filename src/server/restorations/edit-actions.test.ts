@@ -11,7 +11,12 @@ const mocks = vi.hoisted(() => ({
     error: null as { code: string; message?: string } | null,
   },
   insertError: null as { code: string; message?: string } | null,
-  total: { data: { total: 1000 } as object | null, error: null },
+  rpc: vi.fn(),
+  rpcError: null as { code: string; message?: string } | null,
+  total: {
+    data: { total: 1000, kind: "normal" } as object | null,
+    error: null,
+  },
   revalidate: vi.fn(),
 }));
 
@@ -38,11 +43,22 @@ vi.mock("@/lib/supabase/server", () => ({
         };
         return chain;
       },
-      insert: async (row: object) => {
+      insert: (row: object) => {
         mocks.insert(row);
-        return { error: mocks.insertError };
+        return {
+          select: () => ({
+            single: async () => ({
+              data: mocks.insertError ? null : { id: "p9" },
+              error: mocks.insertError,
+            }),
+          }),
+        };
       },
     }),
+    rpc: async (name: string, args: object) => {
+      mocks.rpc(name, args);
+      return { error: mocks.rpcError };
+    },
   }),
 }));
 vi.mock("./create", () => ({ createRestorationRecord: vi.fn() }));
@@ -66,11 +82,18 @@ describe("edición de restauraciones", () => {
   beforeEach(() => {
     mocks.forbidden = false;
     mocks.role = "admin";
-    for (const fn of [mocks.update, mocks.insert, mocks.eq, mocks.revalidate])
+    for (const fn of [
+      mocks.update,
+      mocks.insert,
+      mocks.eq,
+      mocks.revalidate,
+      mocks.rpc,
+    ])
       fn.mockReset();
     mocks.result = { data: [{ id: "r1", restoration_id: "r1" }], error: null };
     mocks.insertError = null;
-    mocks.total = { data: { total: 1000 }, error: null };
+    mocks.rpcError = null;
+    mocks.total = { data: { total: 1000, kind: "normal" }, error: null };
   });
 
   it("updateRestoration guarda contacto, tipo, adelanto y notas; el adelanto solo en A cuenta", async () => {
@@ -123,13 +146,45 @@ describe("edición de restauraciones", () => {
     expect(mocks.update).not.toHaveBeenCalled();
 
     // Sin precios asignados (total 0) se guarda el monto en soles.
-    mocks.total = { data: { total: 0 }, error: null };
+    mocks.total = { data: { total: 0, kind: "normal" }, error: null };
     expect(
       await updateRestoration("r1", { ...edit, depositAmount: "5000" }),
     ).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ deposit_amount: 5000 }),
     );
+  });
+
+  it("updateRestoration en una guía interna u observada no guarda tipo de pago ni adelanto", async () => {
+    mocks.total = { data: { total: 0, kind: "interno" }, error: null };
+    expect(
+      await updateRestoration("r1", {
+        contactId: null,
+        paymentType: "a_cuenta",
+        depositAmount: "50",
+        notes: "",
+      }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payment_type: "sin_definir",
+        deposit_amount: null,
+      }),
+    );
+  });
+
+  it("updatePiece guarda la cantidad (vacía = 1) y la valida", async () => {
+    expect(await updatePiece("p1", { ...piece, quantity: "6" })).toEqual({
+      ok: true,
+    });
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 6 }),
+    );
+    expect(await updatePiece("p1", piece)).toEqual({ ok: true });
+    expect(mocks.update.mock.calls[1]![0]).toMatchObject({ quantity: 1 });
+    expect(await updatePiece("p1", { ...piece, quantity: "0" })).toEqual({
+      error: "Revisa los datos de la pieza.",
+    });
   });
 
   it("updatePiece convierte el precio y muestra las reglas de la BD", async () => {
@@ -164,6 +219,15 @@ describe("edición de restauraciones", () => {
       expect.objectContaining({ restoration_id: "r1", price: 1300 }),
     );
     expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("arrived_at");
+    // Sin precio pasa a Consulta como al registrar la guía (la BD decide si aplica).
+    expect(mocks.rpc).toHaveBeenCalledWith("send_unpriced_to_consultation", {
+      p_piece_ids: ["p9"],
+    });
+    mocks.rpcError = { code: "XX000" };
+    expect(await addPiece("r1", piece)).toEqual({
+      error: "La pieza se agregó, pero no pasó a Consulta por no tener precio.",
+    });
+    mocks.rpcError = null;
     mocks.insertError = {
       code: "23514",
       message: "No se agregan piezas a una restauración completada o anulada",

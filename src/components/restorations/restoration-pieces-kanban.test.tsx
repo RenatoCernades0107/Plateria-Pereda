@@ -6,8 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { formatCents } from "@/domain/money";
 import type { AppRole } from "@/lib/roles";
 import type { PieceDetail } from "@/server/restorations/queries";
-import { changePieceStatus } from "@/server/restorations/status-actions";
+import {
+  changePieceStatus,
+  receiveFromWorkshop,
+} from "@/server/restorations/status-actions";
 
+import type { StatusPiece } from "./piece-status-actions";
 import { RestorationPiecesKanban } from "./restoration-pieces-kanban";
 
 vi.mock("@/server/payments/actions", () => ({
@@ -20,34 +24,42 @@ vi.mock("@/server/restorations/status-actions", () => ({
   receiveFromWorkshop: vi.fn(),
   returnPiecesToClient: vi.fn(),
   assignWorkshop: vi.fn(),
+  sendPiecesToWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
-  id: `p${n}`,
-  number: n,
-  code: `RES-00012-${n}`,
-  status: "registrada",
-  location: "sin_enviar",
-  urgent: false,
-  readyForDelivery: false,
-  description: `Pieza ${n}`,
-  measure: "",
-  materialName: "",
-  serviceName: "",
-  weightGrams: null,
-  workshopId: null,
-  workshopName: null,
-  materialIds: [],
-  serviceId: null,
-  notes: "",
-  arrivedAt: null,
-  createdAt: "2026-10-01T15:00:00Z",
-  deliveredAt: null,
-  returnedAt: null,
-  priceCents: null,
-  ...patch,
-});
+// Las fechas de ida y vuelta del taller las trae la consulta (`StatusPiece`).
+const piece = (
+  n: number,
+  patch: Partial<PieceDetail & StatusPiece> = {},
+): PieceDetail =>
+  ({
+    id: `p${n}`,
+    number: n,
+    code: `RES-00012-${n}`,
+    status: "registrada",
+    location: "sin_enviar",
+    urgent: false,
+    readyForDelivery: false,
+    description: `Pieza ${n}`,
+    measure: "",
+    materialName: "",
+    serviceName: "",
+    weightGrams: null,
+    workshopId: null,
+    workshopName: null,
+    materialIds: [],
+    serviceId: null,
+    notes: "",
+    arrivedAt: null,
+    createdAt: "2026-10-01T15:00:00Z",
+    deliveredAt: null,
+    returnedAt: null,
+    priceCents: null,
+    ...patch,
+  }) as PieceDetail;
+
+const SENT = "2026-10-03T15:00:00Z";
 
 const pieces = [
   piece(1, {
@@ -56,11 +68,14 @@ const pieces = [
     serviceName: "Limpieza",
     priceCents: 12_000,
     arrivedAt: "2026-10-02T15:00:00Z",
-    location: "en_tienda",
+    location: "sin_enviar",
   }),
   piece(2, {
-    status: "enviada_taller",
+    status: "aprobada",
     location: "en_taller",
+    arrivedAt: "2026-10-02T15:00:00Z",
+    firstSentAt: SENT,
+    lastSentAt: SENT,
     workshopId: "w1",
     workshopName: "Taller Norte",
     priceCents: 5_000,
@@ -95,6 +110,7 @@ describe("RestorationPiecesKanban", () => {
       "Espera respuesta cliente",
       "Aprobada",
       "En restauración",
+      "Lista para entregar",
       "Observación",
       "Anulado",
     ]);
@@ -115,13 +131,14 @@ describe("RestorationPiecesKanban", () => {
     expect(card).toHaveTextContent("Pieza 1");
     expect(card).toHaveTextContent("Servicio: Limpieza");
     expect(card).toHaveTextContent("Urgente");
-    expect(card).toHaveTextContent("En tienda");
+    expect(card).toHaveTextContent("Sin enviar");
     expect(card).toHaveTextContent("Sin taller");
     // Acento de pieza, como en la lista: es hija de la guía.
     expect(card).toHaveClass("border-l-4");
 
+    // "En restauración" no es un estado: Aprobada que está en el taller.
     const sent = within(
-      screen.getByTestId("columna-enviada_taller"),
+      screen.getByTestId("columna-en_restauracion"),
     ).getByTestId("tarjeta-RES-00012-2");
     expect(sent).toHaveTextContent("Taller Norte");
     expect(sent).not.toHaveTextContent("Urgente");
@@ -140,6 +157,19 @@ describe("RestorationPiecesKanban", () => {
     ).toHaveTextContent("Por definir");
   });
 
+  it("una guía observada no muestra precios", () => {
+    render(
+      <RestorationPiecesKanban
+        restorationId="r1"
+        pieces={pieces}
+        role="ventas"
+        workshops={[]}
+        guideKind="observado"
+      />,
+    );
+    expect(screen.queryAllByTestId("precio")).toHaveLength(0);
+  });
+
   it("no muestra precios a logística", () => {
     renderKanban("logistica");
     expect(screen.queryAllByTestId("precio")).toHaveLength(0);
@@ -151,7 +181,7 @@ describe("RestorationPiecesKanban", () => {
     renderKanban("ventas");
     expect(bar()).toBeNull();
     await user.click(screen.getByLabelText("Elegir RES-00012-4"));
-    expect(bar()).toHaveTextContent("1 pieza elegida");
+    expect(bar()).toHaveTextContent("1 pieza seleccionada");
     await user.click(
       within(bar()!).getByRole("button", { name: "Quitar selección" }),
     );
@@ -237,20 +267,35 @@ describe("RestorationPiecesKanban: mover de estado", () => {
     );
   });
 
-  it("logística solo ve los cambios de su rol (enviar al taller, con taller)", async () => {
+  it("logística envía al taller desde el menú (acción de ubicación, con taller)", async () => {
     const user = userEvent.setup();
     renderKanban("logistica");
     expect(
       screen.queryByRole("button", { name: "Mover RES-00012-4 a…" }),
     ).toBeNull();
     const menu = await openMenu(user, "RES-00012-1");
+    // Ya no es un estado al que mover: va en «Ubicación».
+    expect(
+      within(menu).queryByRole("menuitem", { name: "En restauración" }),
+    ).toBeNull();
     await user.click(
-      within(menu).getByRole("menuitem", { name: "En restauración" }),
+      within(menu).getByRole("menuitem", { name: "Enviar al taller" }),
     );
     const dialog = await screen.findByRole("dialog", {
       name: "Enviar al taller: RES-00012-1",
     });
     expect(within(dialog).getByLabelText("Taller")).toBeVisible();
+  });
+
+  it("la pieza en el taller se recibe desde «Recibir del taller»", async () => {
+    vi.mocked(receiveFromWorkshop).mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderKanban("logistica");
+    const menu = await openMenu(user, "RES-00012-2");
+    await user.click(
+      within(menu).getByRole("menuitem", { name: "Recibir del taller" }),
+    );
+    expect(receiveFromWorkshop).toHaveBeenCalledWith("r1", ["p2"]);
   });
 
   it("aprobar la última pieza ofrece registrar el adelanto, como en la lista", async () => {

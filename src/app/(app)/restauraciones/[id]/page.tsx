@@ -28,6 +28,10 @@ import {
 } from "@/components/restorations/guide-labels";
 import { PiecesBoard } from "@/components/restorations/pieces-board";
 import { RestorationPiecesKanban } from "@/components/restorations/restoration-pieces-kanban";
+import {
+  ChangeRestorationKindButton,
+  RestorationKindBadge,
+} from "@/components/restorations/restoration-kind-dialog";
 import { RestorationQuoteMessageButton } from "@/components/restorations/restoration-quote-message-button";
 import {
   ObservedBadge,
@@ -53,8 +57,10 @@ import {
   restorationPiecesHref,
 } from "@/domain/restoration-pieces-view";
 import {
+  isChargedKind,
   missingSalePrices,
   observedProgress,
+  RESTORATION_KIND_LABELS,
   RESTORATION_ORIGIN_LABELS,
 } from "@/domain/restoration-status";
 import { isClosedStatus } from "@/domain/piece-state-machine";
@@ -101,6 +107,13 @@ export default async function RestauracionDetallePage({
   });
   if (!restoration) notFound();
 
+  // Guía interna u observada (punto 8): no se cobra. Sin precios, pagos ni Shopify.
+  const kind = restoration.kind;
+  const charged = isChargedKind(kind);
+  const kindNotice = charged
+    ? null
+    : `Guía ${RESTORATION_KIND_LABELS[kind].toLowerCase()}: sin cobro`;
+
   const query = await searchParams;
   const justCreated = query.registrada === "1";
   // Se registró, pero el adelanto no quedó como pago (se registra desde Pagos).
@@ -109,7 +122,9 @@ export default async function RestauracionDetallePage({
   const piecesView = parseRestorationPiecesView(query);
   // Pestaña abierta (`?pestana=pagos`): sobrevive a recargas y se puede enlazar.
   const tabs = canSeeMoney
-    ? ["piezas", "pagos", "archivos", "historial"]
+    ? charged
+      ? ["piezas", "pagos", "archivos", "historial"]
+      : ["piezas", "archivos", "historial"]
     : ["piezas", "archivos"];
   const tab =
     typeof query.pestana === "string" && tabs.includes(query.pestana)
@@ -119,20 +134,22 @@ export default async function RestauracionDetallePage({
   const company = await getSettings();
   const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
-  const quoteData = settings
-    ? {
-        code: restoration.code,
-        clientName: restoration.client?.name ?? "",
-        contactName: restoration.contact?.name ?? null,
-        paymentType: restoration.paymentType,
-        depositPercent: restoration.money?.depositPercent ?? 0,
-        terms: settings.terms,
-      }
-    : null;
+  const quoteData =
+    settings && charged
+      ? {
+          code: restoration.code,
+          clientName: restoration.client?.name ?? "",
+          contactName: restoration.contact?.name ?? null,
+          paymentType: restoration.paymentType,
+          depositPercent: restoration.money?.depositPercent ?? 0,
+          terms: settings.terms,
+        }
+      : null;
   const quotePieces = restoration.pieces.map((p) => ({
     id: p.id,
     code: p.code,
     description: p.description,
+    quantity: p.quantity,
     service: p.serviceName || null,
     // Sin precio de venta (D58) el mensaje dice "por definir".
     priceCents: p.priceCents,
@@ -158,7 +175,9 @@ export default async function RestauracionDetallePage({
     : undefined;
   // Un envío "ok" sin orden fue omitido (la restauración dejó de estar lista): no se muestra.
   const sync =
-    lastSync && (lastSync.status !== "ok" || restoration.shopifyOrderName)
+    charged &&
+    lastSync &&
+    (lastSync.status !== "ok" || restoration.shopifyOrderName)
       ? lastSync
       : undefined;
   // Cotización de la que salió (P46): solo un enlace, y solo para quien ve cotizaciones.
@@ -174,6 +193,9 @@ export default async function RestauracionDetallePage({
       : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
+  // En una guía que no se cobra, la pieza no lleva precio de venta (la BD lo rechaza).
+  const withoutPriceIfFree = <T extends string>(fields: readonly T[]) =>
+    charged ? fields : fields.filter((f) => f !== "price");
 
   // Historial de estados (8.5, admin y ventas). La línea de tiempo de cada pieza está
   // en su detalle (/piezas/[id]).
@@ -200,13 +222,14 @@ export default async function RestauracionDetallePage({
   const paymentMethods = methods.map((m) => ({ id: m.id, name: m.name }));
   // Precios de venta que faltan para la orden de Shopify (D58).
   const missingPrices = canSeeMoney
-    ? missingSalePrices(restoration.pieces, restoration.hasOrder)
+    ? missingSalePrices(restoration.pieces, restoration.hasOrder, kind)
     : null;
   // Sin todos los precios el adelanto aún no se conoce (ni se crea la orden al aprobar).
   const unpricedPieces = restoration.pieces.some(
     (p) => p.priceCents === null && !isClosedStatus(p.status),
   );
   const approvalPayment =
+    charged &&
     money &&
     suggested &&
     !restoration.hasOrder &&
@@ -239,6 +262,7 @@ export default async function RestauracionDetallePage({
     code: restoration.code,
     createdAt: restoration.createdAt,
     status: restoration.status,
+    kind,
     paymentType: restoration.paymentType,
     clientName: restoration.client?.name ?? "",
     contactName: restoration.contact?.name ?? null,
@@ -249,12 +273,14 @@ export default async function RestauracionDetallePage({
     pieces: restoration.pieces.map((p) => ({
       id: p.id,
       code: p.code,
+      quantity: p.quantity,
       description: p.description,
       materialName: p.materialName,
       serviceName: p.serviceName,
       measure: p.measure,
       weightGrams: p.weightGrams,
       status: p.status,
+      location: p.location,
       notes: p.notes,
       priceCents: p.priceCents,
     })),
@@ -329,14 +355,15 @@ export default async function RestauracionDetallePage({
                 <span data-testid="estado-restauracion" className="contents">
                   <RestorationStatusBadge status={restoration.status} />
                 </span>
+                <RestorationKindBadge kind={kind} />
                 {observed ? <ObservedBadge progress={observed} /> : null}
-                {restoration.money ? (
+                {restoration.money && charged ? (
                   <PaymentStatusBadge
                     status={restoration.money.paymentStatus}
                     data-testid="estado-pago"
                   />
                 ) : null}
-                {restoration.shopifyOrderName ? (
+                {restoration.shopifyOrderName && charged ? (
                   // Con el logotipo y el verde de Shopify; con enlace al admin se ve
                   // como enlace (ícono de pestaña nueva y subrayado al pasar).
                   orderUrl ? (
@@ -373,17 +400,19 @@ export default async function RestauracionDetallePage({
               </div>
               {/* Datos de la guía en texto: las insignias quedan para los estados. */}
               <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <span>
-                  {PAYMENT_TYPE_LABELS[restoration.paymentType]}
-                  {restoration.money?.depositAmountCents != null
-                    ? ` (${formatCents(restoration.money.depositAmountCents)}${
-                        restoration.money.depositPercent === null
-                          ? ""
-                          : ` · ${restoration.money.depositPercent} %`
-                      })`
-                    : restoration.money?.depositPercent
-                      ? ` (${restoration.money.depositPercent} %)`
-                      : ""}
+                <span data-testid="tipo-pago">
+                  {kindNotice ?? PAYMENT_TYPE_LABELS[restoration.paymentType]}
+                  {!charged
+                    ? ""
+                    : restoration.money?.depositAmountCents != null
+                      ? ` (${formatCents(restoration.money.depositAmountCents)}${
+                          restoration.money.depositPercent === null
+                            ? ""
+                            : ` · ${restoration.money.depositPercent} %`
+                        })`
+                      : restoration.money?.depositPercent
+                        ? ` (${restoration.money.depositPercent} %)`
+                        : ""}
                 </span>
                 <span aria-hidden>·</span>
                 <span
@@ -426,6 +455,13 @@ export default async function RestauracionDetallePage({
                   }}
                   contacts={editing.contacts}
                   hasPayments={payments.length > 0}
+                  kind={kind}
+                />
+              ) : null}
+              {editing ? (
+                <ChangeRestorationKindButton
+                  restorationId={restoration.id}
+                  kind={kind}
                 />
               ) : null}
               {canExportPdf ? (
@@ -453,7 +489,16 @@ export default async function RestauracionDetallePage({
             </div>
           </header>
 
-          {restoration.money ? (
+          {restoration.money && !charged ? (
+            <p className="border-t pt-4 text-sm" data-testid="sin-cobro">
+              <span className="font-medium">Sin cobro</span>
+              <span className="text-muted-foreground">
+                {" "}
+                · {kindNotice?.replace(/: sin cobro$/, "")} sin precios, pagos
+                ni orden de Shopify.
+              </span>
+            </p>
+          ) : restoration.money ? (
             <div className="space-y-1 border-t pt-4">
               <MoneySummary
                 stackOnWide
@@ -515,7 +560,7 @@ export default async function RestauracionDetallePage({
               <TabsTrigger value="piezas">
                 Piezas ({restoration.pieces.length})
               </TabsTrigger>
-              {canSeeMoney ? (
+              {canSeeMoney && charged ? (
                 <TabsTrigger value="pagos">Pagos</TabsTrigger>
               ) : null}
               <TabsTrigger value="archivos">
@@ -538,7 +583,8 @@ export default async function RestauracionDetallePage({
                   {editing && editableFields(ctx).canAddPieces ? (
                     <PieceDialog
                       restorationId={restoration.id}
-                      editable={editableFields(ctx).piece}
+                      guideKind={kind}
+                      editable={withoutPriceIfFree(editableFields(ctx).piece)}
                       priceHint={SALE_PRICE_HINT}
                       workshops={workshops}
                       materials={editing.materials}
@@ -555,6 +601,7 @@ export default async function RestauracionDetallePage({
                   workshops={workshops}
                   approvalPayment={approvalPayment}
                   balanceDue={balanceDue}
+                  guideKind={restoration.kind}
                 />
               ) : (
                 <PiecesBoard
@@ -565,17 +612,21 @@ export default async function RestauracionDetallePage({
                   photos={photos}
                   approvalPayment={approvalPayment}
                   balanceDue={balanceDue}
+                  guideKind={restoration.kind}
                   editing={
                     editing
                       ? {
                           editable: Object.fromEntries(
                             restoration.pieces.map((piece) => [
                               piece.id,
-                              editableFields(ctx, piece).piece,
+                              withoutPriceIfFree(
+                                editableFields(ctx, piece).piece,
+                              ),
                             ]),
                           ),
-                          priceHint:
-                            user.role === "admin"
+                          priceHint: !charged
+                            ? `${kindNotice}: la pieza no lleva precio de venta.`
+                            : user.role === "admin"
                               ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
                               : SALE_PRICE_HINT,
                           priceChange: Object.fromEntries(
@@ -592,7 +643,7 @@ export default async function RestauracionDetallePage({
                 />
               )}
             </TabsContent>
-            {canSeeMoney ? (
+            {canSeeMoney && charged ? (
               <TabsContent value="pagos" className="space-y-4">
                 {money ? (
                   <div className="flex flex-wrap gap-2">

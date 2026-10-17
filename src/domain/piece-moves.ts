@@ -3,11 +3,11 @@ import type { AppRole } from "@/lib/roles";
 import {
   availableTransitions,
   blockedBy,
+  type BlockSnapshot,
   findTransition,
   PIECE_STATUS_LABELS,
   PIECE_STATUSES,
   TRANSITION_ERROR_MESSAGES,
-  type PieceSnapshot,
   type PieceStatus,
   type PieceTransition,
 } from "./piece-state-machine";
@@ -16,14 +16,7 @@ import {
  * Mover piezas entre columnas de los kanban de piezas (Paso 12.5): arrastrando o con
  * "Mover a…". Usa la misma máquina de estados que los botones de la pieza.
  */
-type MoveSnapshot = Pick<
-  PieceSnapshot,
-  | "status"
-  | "arrivedAt"
-  | "readyForDelivery"
-  | "reviewSentAt"
-  | "reviewReturnedAt"
->;
+type MoveSnapshot = BlockSnapshot;
 
 /** Estados a los que el rol puede mover la pieza ahora. */
 export function moveTargets(piece: MoveSnapshot, role: AppRole): PieceStatus[] {
@@ -55,7 +48,7 @@ export function checkMove(
       ok: false,
       reason: `Tu rol no puede pasar piezas de «${from}» a «${target}».`,
     };
-  const blocked = blockedBy(piece, to);
+  const blocked = blockedBy(piece, to, role);
   return {
     ok: false,
     reason: blocked

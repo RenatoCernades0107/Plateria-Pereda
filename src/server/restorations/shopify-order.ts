@@ -9,7 +9,10 @@ import {
   externalPayments,
   type ImportedPayment,
 } from "@/domain/shopify-transactions";
-import { isReadyForShopifyOrder } from "@/domain/restoration-status";
+import {
+  isReadyForShopifyOrder,
+  type RestorationKind,
+} from "@/domain/restoration-status";
 import {
   linesToFulfill,
   orderLinesChange,
@@ -50,6 +53,8 @@ export type OrderRestoration = {
   code: string;
   shopifyOrderId: string | null;
   shopifyOrderName: string | null;
+  /** Tipo de guía (sin dato: normal). Las internas u observadas no tienen orden. */
+  restorationKind?: RestorationKind;
   pieces: OrderPiece[];
   client: {
     kind: "persona" | "empresa";
@@ -355,13 +360,14 @@ export function restorationOrderHandlers(
       }
       // Cambió desde que se encoló (p. ej., se agregó una pieza): la BD vuelve a
       // encolar la orden cuando todas las piezas que se cobran estén aprobadas y con
-      // precio (D58).
+      // precio (D58). Una guía interna u observada no se cobra: nunca tiene orden.
       const ready = isReadyForShopifyOrder(
         data.pieces.map((p) => ({
           status: p.status,
           approvedAt: p.approvedAt ? new Date(p.approvedAt) : null,
           priceCents: p.priceCents,
         })),
+        data.restorationKind ?? "normal",
       );
       if (!ready) {
         return { skipped: true } satisfies Json;

@@ -17,7 +17,7 @@ import { PieceStatusBadge } from "./status-badges";
 
 /**
  * Línea de tiempo horizontal de una pieza (Pasos 8.5 y 8.6): cada cambio de estado, y las
- * acciones que no lo cambian (llegada, vuelta del taller, devolución), con fecha,
+ * acciones que no lo cambian (llegada, ida y vuelta del taller, devolución), con fecha,
  * usuario y nota, más los días en taller y de cumplimiento. Logística no la ve
  * (P42): para ella la página muestra solo el estado actual, los días en taller y
  * la nota de la última observación.
@@ -26,6 +26,7 @@ import { PieceStatusBadge } from "./status-badges";
 /** Acciones que no cambian el estado (P47). */
 const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
   llegada: "Llegó a la tienda",
+  envio_taller: "Enviada al taller",
   vuelta_taller: "Volvió del taller",
   devolucion_cliente: "Devuelta al cliente",
   cambio_precio: "Cambio de precio",

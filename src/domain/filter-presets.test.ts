@@ -17,12 +17,11 @@ describe("filtros de un clic (K12)", () => {
     expect(chips.map((c) => c.label)).toEqual([
       "Urgentes",
       "Listas para entregar",
-      "Por devolver",
       "En taller 7+ días",
     ]);
     expect(chips.every((c) => !c.active)).toBe(true);
     expect(chips[0]!.href).toBe("/piezas?q=fuente&urgentes=1");
-    expect(chips[3]!.href).toBe("/piezas?q=fuente&dias=7");
+    expect(chips[2]!.href).toBe("/piezas?q=fuente&dias=7");
   });
 
   it("piezas: un chip activo se quita con otro clic", () => {
@@ -62,7 +61,6 @@ describe("filtros de un clic (K12)", () => {
     expect(chips.map((c) => [c.key, c.tone, c.count])).toEqual([
       ["urgentes", "alert", 3],
       ["listas", "success", 5],
-      ["devolver", "info", undefined],
       ["taller", "alert", undefined],
     ]);
   });
@@ -76,7 +74,7 @@ describe("filtros de un clic (K12)", () => {
       active: false,
       filters: { q: "fuente", urgent: true, ready: true, page: 1 },
     });
-    expect(sets[3]!.filters.minDays).toBe(7);
+    expect(sets[2]!.filters.minDays).toBe(7);
     expect(
       restorationChipCountFilters(parseRestorationFilters({}), {
         showMoney: false,

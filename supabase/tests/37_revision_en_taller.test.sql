@@ -199,15 +199,15 @@ select is(
 );
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000037a2","role":"authenticated"}', true);
 select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-0000000037e7']::uuid[],
-       'enviada_taller', null, '00000000-0000-0000-0000-0000000037b2') $$,
-  '23514', null, 'desde la revisión no pasa a En restauración en otro taller'
+  $$ select * from public.send_pieces_to_workshop(array['00000000-0000-0000-0000-0000000037e7']::uuid[],
+       '00000000-0000-0000-0000-0000000037b2') $$,
+  '23514', null, 'desde la revisión no se envía por trabajo a otro taller'
 );
 select results_eq(
-  $$ select status::text from public.change_piece_status(
-       array['00000000-0000-0000-0000-0000000037e6']::uuid[], 'enviada_taller') $$,
-  $$ values ('enviada_taller') $$,
-  'desde la revisión pasa a En restauración sin traerla de vuelta'
+  $$ select status::text from public.send_pieces_to_workshop(
+       array['00000000-0000-0000-0000-0000000037e6']::uuid[]) $$,
+  $$ values ('aprobada') $$,
+  'desde la revisión se envía por trabajo sin traerla de vuelta: sigue Aprobada'
 );
 select results_eq(
   $$ select location::text, workshop_id, review_returned_at >= review_sent_at from public.pieces_operational
@@ -263,7 +263,7 @@ select is(
   (select count(*)::int from public.pieces p
    where p.location is distinct from public.derive_piece_location(
      p.status, p.arrived_at, p.first_sent_at, p.last_sent_at, p.last_returned_at, p.returned_at,
-     p.review_sent_at, p.review_returned_at)),
+     p.review_sent_at, p.review_returned_at, p.observed_at)),
   0, 'la columna generada de ubicación coincide con derive_piece_location()'
 );
 

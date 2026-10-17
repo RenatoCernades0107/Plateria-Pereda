@@ -9,6 +9,7 @@ import {
   sumCents,
 } from "@/domain/money";
 import type { PieceStatus } from "@/domain/piece-state-machine";
+import { RESTORATION_KINDS } from "@/domain/restoration-status";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
@@ -109,8 +110,29 @@ const weight = z
   .transform((v) => (v === "" ? null : Number(v.replace(",", "."))))
   .refine((v) => v === null || v > 0, "El peso debe ser mayor que 0");
 
+/**
+ * Cantidad de unidades de la pieza (p. ej. "6 cucharitas"): entero de 1 a 999,
+ * vacío = 1. Es informativa: el precio y el costo son de la pieza completa.
+ */
+export const MAX_QUANTITY = 999;
+const QUANTITY_ERROR = `La cantidad debe ser un número entero entre 1 y ${MAX_QUANTITY}`;
+export const quantity = z
+  .union([z.string(), z.number()])
+  .optional()
+  .transform((v, ctx) => {
+    const text = v == null ? "" : String(v).trim();
+    if (text === "") return 1;
+    const n = Number(text);
+    if (!/^\d+$/.test(text) || n < 1 || n > MAX_QUANTITY) {
+      ctx.addIssue({ code: "custom", message: QUANTITY_ERROR });
+      return z.NEVER;
+    }
+    return n;
+  });
+
 const pieceFields = {
   workshopId: optionalId,
+  quantity,
   description: line(300).pipe(
     z.string().min(1, "Describe la pieza (qué es y cómo está)"),
   ),
@@ -267,6 +289,8 @@ const depositMethodParams = {
 
 const restorationFields = {
   clientId: z.guid({ error: "Elige un cliente" }),
+  /** Tipo de guía: interna u observada no se cobran (la BD ignora el pago). */
+  kind: z.enum(RESTORATION_KINDS).default("normal"),
   contactId: optionalId,
   notes: notes(2000),
   pieces: z

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { toDecimalString, toSoles } from "@/domain/money";
+import type { RestorationKind } from "@/domain/restoration-status";
 import type { Database } from "@/lib/supabase/database.types";
 import type {
   PieceInput,
@@ -13,6 +14,8 @@ export type CreatedRestoration = { id: string; code: string };
 export function pieceToRpc(piece: PieceInput) {
   return {
     workshop_id: piece.workshopId,
+    // Informativa: el precio y el costo son de la pieza completa.
+    quantity: piece.quantity,
     description: piece.description,
     measure: piece.measure,
     // El primer material y los nombres los deriva la BD (trigger pieces_catalogs_link).
@@ -55,19 +58,24 @@ export function withoutWorkshops<T extends PieceInput>(
 /** Registra la restauración y sus piezas en una sola transacción (RPC). */
 export async function createRestorationRecord(
   supabase: SupabaseClient<Database>,
-  input: RestorationInput,
+  input: Omit<RestorationInput, "kind"> & { kind?: RestorationKind },
 ): Promise<CreatedRestoration> {
+  const kind = input.kind ?? "normal";
   const { data, error } = await supabase
     .rpc("create_restoration", {
       p_client_id: input.clientId,
       p_contact_id: input.contactId as string,
-      p_payment_type: input.paymentType,
+      p_payment_type: kind === "normal" ? input.paymentType : "sin_definir",
       // El adelanto se escribe en soles; el % antiguo ya no se usa en lo nuevo.
       p_deposit_percent: null as unknown as number,
       p_deposit_amount:
-        input.depositAmount === null ? undefined : toSoles(input.depositAmount),
+        input.depositAmount === null || kind !== "normal"
+          ? undefined
+          : toSoles(input.depositAmount),
       p_notes: input.notes,
       p_pieces: input.pieces.map(pieceToRpc),
+      // Interna u observada: la BD ignora precio, tipo de pago y adelanto.
+      p_kind: kind,
     })
     .single();
   if (error) throw error;

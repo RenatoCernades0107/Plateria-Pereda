@@ -6,15 +6,18 @@ import { useState } from "react";
 
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import { BOARD_STATUSES, isLongInWorkshop } from "@/domain/piece-board-filters";
-import { pieceKanbanColumns } from "@/domain/piece-moves";
-import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { can } from "@/domain/permissions";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import type { WorkshopOption } from "./piece-fields";
-import { MoveToMenu, usePieceMoves } from "./piece-moves";
+import {
+  MoveToMenu,
+  pieceBoardColumns,
+  pieceColumnOf,
+  usePieceMoves,
+} from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, StatusAge, UrgentBadge } from "./status-badges";
 
@@ -57,11 +60,11 @@ export function PiecesKanban({
       <KanbanColumns
         label="Piezas por estado"
         emptyText="Sin piezas"
-        columns={pieceKanbanColumns(BOARD_STATUSES).map(
-          ({ status, dropOnly }) => ({
-            key: status,
-            label: PIECE_STATUS_LABELS[status],
-            items: moves.pieces.filter((p) => p.status === status),
+        columns={pieceBoardColumns(BOARD_STATUSES).map(
+          ({ key, label, dropOnly }) => ({
+            key,
+            label,
+            items: moves.pieces.filter((p) => pieceColumnOf(p) === key),
             dropOnly,
           }),
         )}

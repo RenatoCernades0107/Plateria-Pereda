@@ -30,6 +30,7 @@ import {
   WORKSHOP_HINT,
   type PieceEditableField,
 } from "@/domain/restoration-edit";
+import { cn } from "@/lib/utils";
 
 export type { CatalogOption };
 export type WorkshopOption = { id: string; name: string };
@@ -126,7 +127,7 @@ function MaterialsField({
  * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
  * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: primero
  * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
- * materiales, peso, medida y precio (opcionales) en una sola fila y al final taller y
+ * cantidad, materiales, peso, medida y precio (opcionales) en una sola fila y al final taller y
  * urgente. Servicio y materiales se eligen con un buscador del catálogo (los
  * materiales, uno o más) y si no existen se crean ahí mismo. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
  * precio de venta no sale del servicio: es opcional ("Por definir") y solo lo asigna el
@@ -145,6 +146,7 @@ export function PieceFields({
   priceHint,
   pricePlaceholder,
   workshopName,
+  showPrice = true,
 }: {
   form: AnyForm;
   prefix?: string;
@@ -161,6 +163,8 @@ export function PieceFields({
   pricePlaceholder?: string;
   /** Nombre del taller ya asignado (puede estar desactivado y no venir en `workshops`). */
   workshopName?: string | null;
+  /** Guía interna u observada: no se cobra, la pieza no lleva precio. */
+  showPrice?: boolean;
 }) {
   const off = (field: PieceEditableField) =>
     editable ? !editable.includes(field) : false;
@@ -200,9 +204,26 @@ export function PieceFields({
         disabled={off("service")}
       />
       <div className="space-y-2">
-        {/* Los cuatro datos cortos en una fila (2 en tablet, 1 en móvil); `items-start`
-            mantiene las etiquetas alineadas aunque un campo muestre su error. */}
-        <div className="grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Los datos cortos en una fila (2 en tablet, 1 en móvil); `items-start`
+            mantiene las etiquetas alineadas aunque un campo muestre su error. La
+            cantidad es angosta. */}
+        <div
+          className={cn(
+            "grid items-start gap-3 sm:grid-cols-2",
+            showPrice
+              ? "lg:grid-cols-[5rem_minmax(0,2fr)_repeat(3,minmax(0,1fr))]"
+              : "lg:grid-cols-[5rem_minmax(0,2fr)_repeat(2,minmax(0,1fr))]",
+          )}
+        >
+          <TextField
+            form={form}
+            name={path("quantity")}
+            label="Cant."
+            inputMode="numeric"
+            placeholder="1"
+            // Mismas reglas que la descripción (la BD las bloquea juntas).
+            disabled={off("description")}
+          />
           <MaterialsField
             form={form}
             prefix={prefix}
@@ -222,17 +243,19 @@ export function PieceFields({
             label="Medida"
             disabled={off("measure")}
           />
-          <TextField
-            form={form}
-            name={path("price")}
-            label="Precio (S/)"
-            inputMode="numeric"
-            disabled={off("price")}
-            placeholder={pricePlaceholder}
-          />
+          {showPrice ? (
+            <TextField
+              form={form}
+              name={path("price")}
+              label="Precio (S/)"
+              inputMode="numeric"
+              disabled={off("price")}
+              placeholder={pricePlaceholder}
+            />
+          ) : null}
         </div>
         {/* Debajo de la fila completa para no desalinear los campos. */}
-        {off("price") && priceHint ? (
+        {showPrice && off("price") && priceHint ? (
           <p className="text-muted-foreground text-sm">{priceHint}</p>
         ) : null}
       </div>

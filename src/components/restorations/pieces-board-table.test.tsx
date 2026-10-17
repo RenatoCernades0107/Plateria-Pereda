@@ -12,6 +12,7 @@ vi.mock("@/server/restorations/status-actions", () => ({
   receiveFromWorkshop: vi.fn(),
   returnPiecesToClient: vi.fn(),
   assignWorkshop: vi.fn(),
+  sendPiecesToWorkshop: vi.fn(),
 }));
 vi.mock("@/server/service-cost-actions", () => ({
   setPieceServiceCost: vi.fn(async () => ({ ok: true })),
@@ -33,7 +34,7 @@ const base: BoardPiece = {
   clientName: "Ana Pérez",
   description: "Fuente",
   status: "aprobada",
-  location: "en_tienda",
+  location: "sin_enviar",
   urgent: false,
   readyForDelivery: false,
   returnedAt: null,
@@ -52,7 +53,28 @@ const base: BoardPiece = {
   hasOrder: false,
   photoUrl: "https://example.test/antes.jpg",
   statusDays: 2,
+  quantity: 1,
+  locationSince: "2026-10-01T15:00:00Z",
+  locationDays: 2,
+  toReturn: false,
 };
+
+const SENT = "2026-10-05T15:00:00Z";
+/**
+ * Aprobada en el taller: las fechas de ida y vuelta las da la consulta (por si el
+ * tipo aún no las nombra, se arma con `as`).
+ */
+const inWorkshop = (changes: Partial<BoardPiece>) =>
+  ({
+    ...base,
+    location: "en_taller",
+    workshopId: "w1",
+    workshopName: "Taller Central",
+    firstSentAt: SENT,
+    lastSentAt: SENT,
+    lastReturnedAt: null,
+    ...changes,
+  }) as BoardPiece;
 
 describe("PiecesBoardTable", () => {
   it("resalta las piezas con muchos días en el taller y muestra la última observación", () => {
@@ -62,18 +84,14 @@ describe("PiecesBoardTable", () => {
         workshops={[]}
         pieces={[
           base,
-          {
-            ...base,
+          inWorkshop({
             id: "p2",
             code: "RES-00001-2",
-            status: "enviada_taller",
-            location: "en_taller",
-            workshopName: "Taller Central",
             workshopDays: 9,
             workshopOngoing: true,
             urgent: true,
             lastObservation: "Falta pulir",
-          },
+          }),
         ]}
       />,
     );
@@ -89,14 +107,12 @@ describe("PiecesBoardTable", () => {
         "Muchos días en el taller",
       ),
     ).toBeNull();
-    // La pieza lleva a su detalle y la guía a la restauración (P55).
+    // La pieza lleva a su detalle (el código ya dice la guía; sin columna «Guía»).
     expect(screen.getByRole("link", { name: "RES-00001-1" })).toHaveAttribute(
       "href",
       "/piezas/p1",
     );
-    expect(
-      screen.getAllByRole("link", { name: "Ver guía RES-00001" })[0],
-    ).toHaveAttribute("href", "/restauraciones/r1");
+    expect(screen.queryByRole("link", { name: /Ver guía/ })).toBeNull();
   });
 
   it("muestra primero la foto de antes y los datos de la pieza", () => {
@@ -113,14 +129,15 @@ describe("PiecesBoardTable", () => {
     const headers = screen
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
-    // Pieza, guía y cliente en columnas propias, para escanearlas rápido.
-    expect(headers.slice(1, 6)).toEqual([
+    // Pieza y cliente en columnas propias, para escanearlas rápido; el código ya
+    // dice la guía.
+    expect(headers.slice(1, 5)).toEqual([
       "Foto",
       "Pieza",
-      "Guía",
       "Cliente",
       "Descripción",
     ]);
+    expect(headers).not.toContain("Guía");
     expect(
       screen.getByRole("img", { name: "Foto de antes de RES-00001-1" }),
     ).toHaveAttribute("src", "https://example.test/antes.jpg");
@@ -278,12 +295,7 @@ describe("PiecesBoardTable", () => {
             workshopId: "w1",
             workshopName: "Taller Central",
           },
-          {
-            ...base,
-            id: "p3",
-            code: "RES-00001-3",
-            status: "enviada_taller",
-          },
+          inWorkshop({ id: "p3", code: "RES-00001-3" }),
         ]}
       />,
     );
@@ -320,24 +332,21 @@ describe("PiecesBoardTable", () => {
     expect(assignWorkshop).toHaveBeenCalledWith(null, ["p1"], "w1");
   });
 
-  it("muestra estado, ubicación, días en el estado, taller y días en taller en columnas separadas", () => {
+  it("los días van dentro de las celdas de estado, ubicación y taller", () => {
     render(
       <PiecesBoardTable
         role="ventas"
         workshops={[]}
         pieces={[
           base,
-          {
-            ...base,
+          inWorkshop({
             id: "p2",
             code: "RES-00001-2",
-            status: "enviada_taller",
-            location: "en_taller",
-            workshopName: "Taller Central",
             workshopDays: 3,
             workshopOngoing: true,
             statusDays: 0,
-          },
+            locationDays: 3,
+          }),
         ]}
       />,
     );
@@ -345,30 +354,64 @@ describe("PiecesBoardTable", () => {
       .getAllByRole("columnheader")
       .map((h) => h.textContent);
     // Estado y taller van antes que los montos, para verlos sin desplazarse.
-    expect(headers.slice(6, 11)).toEqual([
-      "Estado",
-      "Ubicación",
-      "En este estado",
-      "Taller",
-      "Total en taller",
-    ]);
-    const cells = within(screen.getByTestId("pieza-RES-00001-2"))
+    expect(headers.slice(5, 8)).toEqual(["Estado", "Ubicación", "Taller"]);
+    expect(headers).not.toContain("En este estado");
+    expect(headers).not.toContain("Total en taller");
+    const row = screen.getByTestId("pieza-RES-00001-2");
+    const cells = within(row)
       .getAllByRole("cell")
-      .slice(6, 11)
+      .slice(5, 8)
       .map((c) => c.textContent);
     expect(cells).toEqual([
-      "En restauración",
-      "En taller",
-      "Hoy",
-      "Taller Central",
-      "3 días (en curso)",
+      "AprobadaHoy",
+      "En taller3 días",
+      "Taller Central3 días (en curso)",
     ]);
     // Sin pasar por el taller no se muestran "0 días".
     expect(
-      within(screen.getByTestId("pieza-RES-00001-1")).getByTestId(
+      within(screen.getByTestId("pieza-RES-00001-1")).queryByTestId(
         "dias-en-taller",
       ),
-    ).toHaveTextContent("—");
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-1")).getByTestId(
+        "dias-en-ubicacion",
+      ),
+    ).toHaveTextContent("2 días");
+  });
+
+  it("el estado se parte en dos líneas solo si no entra (ancho acotado)", () => {
+    render(
+      <PiecesBoardTable
+        role="ventas"
+        workshops={[]}
+        pieces={[{ ...base, status: "en_espera" }]}
+      />,
+    );
+    const label = within(screen.getByTestId("pieza-RES-00001-1")).getByText(
+      "Espera respuesta cliente",
+    );
+    // Corte fijo en dos líneas, sin ancho máximo: la caja se ajusta al texto.
+    expect(label.querySelector("br")).not.toBeNull();
+    const badge = label.closest("[data-wrap]");
+    expect(badge).toHaveAttribute("data-wrap", "true");
+    expect(badge).not.toHaveClass("max-w-[10rem]");
+  });
+
+  it("muestra la cantidad junto al código cuando es más de una", () => {
+    render(
+      <PiecesBoardTable
+        role="ventas"
+        workshops={[]}
+        pieces={[base, { ...base, id: "p2", code: "RES-00001-2", quantity: 3 }]}
+      />,
+    );
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-1")).queryByTestId("cantidad"),
+    ).toBeNull();
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-2")).getByTestId("cantidad"),
+    ).toHaveTextContent("×3");
   });
 
   it("no hay botones de edición en bloque en la barra de la tabla", () => {
@@ -408,7 +451,7 @@ describe("PiecesBoardTable", () => {
       name: "Acciones para las piezas elegidas",
     });
     expect(
-      within(bar).queryByRole("button", { name: "Asignar taller" }),
+      within(bar).queryByRole("button", { name: /Asignar taller/ }),
     ).toBeNull();
   });
 
@@ -444,7 +487,7 @@ describe("PiecesBoardTable", () => {
     const bar = screen.getByRole("region", {
       name: "Acciones para las piezas elegidas",
     });
-    expect(bar).toHaveTextContent("2 piezas elegidas");
+    expect(bar).toHaveTextContent("2 de 2 seleccionadas");
     expect(
       within(bar).getByRole("button", { name: "Enviar al taller" }),
     ).toBeInTheDocument();
@@ -485,7 +528,7 @@ describe("PiecesBoardTable", () => {
       );
     });
 
-    it("lo que pide datos abre su diálogo (taller para enviar)", async () => {
+    it("«Enviar al taller» no es un cambio de estado: abre el diálogo del taller", async () => {
       const { changePieceStatus } =
         await import("@/server/restorations/status-actions");
       vi.mocked(changePieceStatus).mockClear();
@@ -507,6 +550,20 @@ describe("PiecesBoardTable", () => {
         name: "Enviar al taller: RES-00001-1",
       });
       expect(within(dialog).getByLabelText("Taller")).toBeInTheDocument();
+      await user.click(
+        within(dialog).getByRole("combobox", { name: "Taller" }),
+      );
+      await user.click(
+        await screen.findByRole("option", { name: "Taller Central" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: "Confirmar: enviar al taller",
+        }),
+      );
+      const { sendPiecesToWorkshop } =
+        await import("@/server/restorations/status-actions");
+      expect(sendPiecesToWorkshop).toHaveBeenCalledWith(["p1"], "w1");
       expect(changePieceStatus).not.toHaveBeenCalled();
     });
 
@@ -534,12 +591,11 @@ describe("PiecesBoardTable", () => {
           workshops={[]}
           balanceDue={["r1"]}
           pieces={[
-            {
-              ...base,
-              status: "enviada_taller",
+            inWorkshop({
               location: "en_tienda",
               readyForDelivery: true,
-            },
+              lastReturnedAt: "2026-10-08T15:00:00Z",
+            }),
           ]}
         />,
       );

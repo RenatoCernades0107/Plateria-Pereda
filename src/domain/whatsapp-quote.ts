@@ -16,11 +16,14 @@ import {
 /**
  * Mensaje de cotización por WhatsApp (Todo.md §8 Paso 7.5). P25 sigue pendiente:
  * se usa su propuesta (una línea numerada por pieza "descripción – servicio:
- * S/ precio" y una línea de forma de pago con el adelanto).
+ * S/ precio" y una línea de forma de pago con el adelanto). Con cantidad mayor que 1
+ * la descripción lleva "x2"; el precio es de la pieza completa (no se multiplica).
  */
 
 export type QuotePiece = {
   description: string;
+  /** Unidades (informativa): con más de una, el mensaje dice "x2". El precio es de la pieza completa. */
+  quantity?: number;
   /** Nombre del servicio (del catálogo o texto libre); puede faltar. */
   service: string | null;
   /** null: precio de venta sin asignar (D58); el mensaje dice "por definir" y suma 0. */
@@ -118,9 +121,9 @@ export function quoteValues(
   const { totalCents, depositCents } = quoteAmounts(data);
   const lines = chargedPieces(data).map((p, i) => {
     const service = p.service?.trim();
-    const name = service
-      ? `${p.description.trim()} – ${service}`
-      : p.description.trim();
+    const quantity = p.quantity && p.quantity > 1 ? ` x${p.quantity}` : "";
+    const description = `${p.description.trim()}${quantity}`;
+    const name = service ? `${description} – ${service}` : description;
     return p.priceCents === null
       ? `${i + 1}. ${name}: precio por definir`
       : `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;

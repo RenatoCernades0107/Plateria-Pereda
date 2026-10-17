@@ -20,9 +20,9 @@ describe("campos obligatorios por estado (K10)", () => {
     expect(missingFields("aprobada", piece({ hasPrice: false }))).toEqual([
       "precio",
     ]);
-    expect(
-      missingFields("enviada_taller", piece({ workshopId: null })),
-    ).toEqual(["taller"]);
+    expect(missingFields("enviar_taller", piece({ workshopId: null }))).toEqual(
+      ["taller"],
+    );
     expect(
       missingFields("recibir_taller", piece({ hasServiceCost: false })),
     ).toEqual([]);
@@ -31,9 +31,32 @@ describe("campos obligatorios por estado (K10)", () => {
     );
   });
 
+  it("las guías internas u observadas aprueban sin precio", () => {
+    expect(
+      missingFields(
+        "aprobada",
+        piece({ hasPrice: false, restorationKind: "interno" }),
+      ),
+    ).toEqual([]);
+    expect(
+      missingFields(
+        "aprobada",
+        piece({ hasPrice: false, restorationKind: "normal" }),
+      ),
+    ).toEqual(["precio"]);
+  });
+
+  it("al enviar al taller nombra la acción", () => {
+    expect(
+      requirementsError("enviar_taller", [piece({ workshopId: null })]),
+    ).toBe(
+      "Falta el taller de RES-00001-1 para enviarla al taller. Complétalo en el detalle de la pieza.",
+    );
+  });
+
   it("el taller elegido en el diálogo cuenta", () => {
     expect(
-      missingFields("enviada_taller", piece({ workshopId: null }), "w2"),
+      missingFields("enviar_taller", piece({ workshopId: null }), "w2"),
     ).toEqual([]);
   });
 

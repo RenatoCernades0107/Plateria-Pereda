@@ -14,6 +14,11 @@ import { can, type Permission } from "./permissions";
  * Revisión en taller (2026-10-15): una pieza en Consulta o esperando la respuesta del
  * cliente se lleva al taller a revisar sin cambiar de estado ("Llevar al taller a
  * revisar" y "Volvió de revisión").
+ *
+ * Sin estado de taller (2026-10-17): ir al taller es una acción ("Enviar al taller",
+ * evento `envio_taller`) que cambia la ubicación de una pieza Aprobada u Observada. En
+ * restauración = Aprobada + En taller; Lista para entregar = Aprobada (u Observación)
+ * de vuelta del taller.
  */
 
 export const PIECE_STATUSES = [
@@ -21,7 +26,6 @@ export const PIECE_STATUSES = [
   "en_consulta",
   "en_espera",
   "aprobada",
-  "enviada_taller",
   "observada",
   "entregada",
   "rechazada",
@@ -30,12 +34,22 @@ export const PIECE_STATUSES = [
 ] as const;
 export type PieceStatus = (typeof PIECE_STATUSES)[number];
 
+/**
+ * Estado leído de la BD. El valor retirado del ex estado de taller (2026-10-17) queda
+ * en el enum de Postgres sin uso (un check impide guardarlo); si llegara, se muestra
+ * como Aprobada.
+ */
+export function toPieceStatus(value: string): PieceStatus {
+  return (PIECE_STATUSES as readonly string[]).includes(value)
+    ? (value as PieceStatus)
+    : "aprobada";
+}
+
 export const PIECE_STATUS_LABELS: Record<PieceStatus, string> = {
   registrada: "Registrada",
   en_consulta: "Consulta",
   en_espera: "Espera respuesta cliente",
   aprobada: "Aprobada",
-  enviada_taller: "En restauración",
   observada: "Observación",
   entregada: "Entregada",
   rechazada: "Rechazado (cliente)",
@@ -72,8 +86,6 @@ const TALLER = rolesWith("piezas.enviar-recibir-taller");
 const ENTREGAR_OBSERVAR = rolesWith("piezas.entregar-observar");
 /** Devolver al cliente: igual que marcar llegada, todos los roles (P47). */
 const DEVOLVER = MARCAR_LLEGADA;
-/** P41 (d): una pieza que está en el taller solo la anula el administrador. */
-const SOLO_ADMIN: readonly AppRole[] = ["admin"];
 
 const transition = (
   from: PieceStatus,
@@ -94,7 +106,6 @@ const CANCELLABLE_FROM: readonly PieceStatus[] = [
   "en_consulta",
   "en_espera",
   "aprobada",
-  "enviada_taller",
   "observada",
 ];
 
@@ -117,22 +128,15 @@ export const PIECE_TRANSITIONS: readonly PieceTransition[] = [
   transition("en_consulta", "sin_arreglo", CONSULTAR_APROBAR_ANULAR, {
     note: true,
   }),
-  transition("aprobada", "enviada_taller", TALLER, { workshop: true }),
-  transition("enviada_taller", "sin_arreglo", ENTREGAR_OBSERVAR, {
-    note: true,
-  }),
-  transition("enviada_taller", "entregada", ENTREGAR_OBSERVAR),
-  transition("enviada_taller", "observada", ENTREGAR_OBSERVAR, { note: true }),
+  // Desde Aprobada se entrega u observa lo que ya volvió del taller, y queda Sin
+  // arreglo lo que ya fue (lo verifica `blockedBy`).
+  transition("aprobada", "entregada", ENTREGAR_OBSERVAR),
+  transition("aprobada", "observada", ENTREGAR_OBSERVAR, { note: true }),
+  transition("aprobada", "sin_arreglo", ENTREGAR_OBSERVAR, { note: true }),
   transition("entregada", "observada", ENTREGAR_OBSERVAR, { note: true }),
-  transition("observada", "enviada_taller", TALLER, { workshop: true }),
   transition("observada", "entregada", ENTREGAR_OBSERVAR),
   ...CANCELLABLE_FROM.map((from) =>
-    transition(
-      from,
-      "anulada",
-      from === "enviada_taller" ? SOLO_ADMIN : CONSULTAR_APROBAR_ANULAR,
-      { note: true },
-    ),
+    transition(from, "anulada", CONSULTAR_APROBAR_ANULAR, { note: true }),
   ),
 ];
 
@@ -149,14 +153,20 @@ export type PieceSnapshot = {
   arrivedAt: Date | null;
   workshopId: string | null;
   firstSentAt: Date | null;
-  /** En En restauración y ya de vuelta del taller ("Lista para entregar"). */
+  /** Aprobada u Observada ya de vuelta del taller ("Lista para entregar"). */
   readyForDelivery: boolean;
   /** Devuelta al cliente (rechazada o sin arreglo). */
   returnedAt: Date | null;
   /** Último "Llevar al taller a revisar" (revisión en taller). */
   reviewSentAt?: Date | null;
-  /** Último "Volvió de revisión" (o el paso directo a En restauración). */
+  /** Último "Volvió de revisión" (o el envío al taller desde la revisión). */
   reviewReturnedAt?: Date | null;
+  /** Última vez que entró a Observada. */
+  observedAt?: Date | null;
+  /** Último "Enviar al taller". */
+  lastSentAt?: Date | null;
+  /** Último "Recibir del taller". */
+  lastReturnedAt?: Date | null;
 };
 
 type ReviewDates = Pick<PieceSnapshot, "reviewSentAt" | "reviewReturnedAt">;
@@ -173,29 +183,88 @@ export function isInReview(piece: ReviewDates): boolean {
   );
 }
 
-type BlockSnapshot = Pick<
+type WorkshopDates = Pick<
+  PieceSnapshot,
+  "status" | "observedAt" | "lastSentAt" | "lastReturnedAt"
+>;
+
+/**
+ * Una Observada cuenta el envío al taller solo si fue después de observarse; una
+ * Aprobada, cualquier envío (igual que la BD).
+ */
+function sentForCurrentStatus(piece: WorkshopDates): boolean {
+  if (piece.status !== "aprobada" && piece.status !== "observada") return false;
+  if (!piece.lastSentAt) return false;
+  return (
+    piece.status === "aprobada" ||
+    !piece.observedAt ||
+    piece.lastSentAt.getTime() > piece.observedAt.getTime()
+  );
+}
+
+/**
+ * La pieza está en el taller por trabajo: Aprobada u Observada enviada y aún sin volver
+ * (igual que `private.piece_in_workshop` en la BD).
+ */
+export function isInWorkshop(piece: WorkshopDates): boolean {
+  return (
+    sentForCurrentStatus(piece) &&
+    (!piece.lastReturnedAt ||
+      piece.lastReturnedAt.getTime() < piece.lastSentAt!.getTime())
+  );
+}
+
+/**
+ * Lista para entregar: Aprobada u Observada que ya volvió del taller (igual que la
+ * columna `ready_for_delivery` de la BD).
+ */
+export function isReadyForDelivery(piece: WorkshopDates): boolean {
+  return (
+    sentForCurrentStatus(piece) &&
+    !!piece.lastReturnedAt &&
+    piece.lastReturnedAt.getTime() >= piece.lastSentAt!.getTime()
+  );
+}
+
+/** Lo que las reglas físicas de las transiciones necesitan saber de la pieza. */
+export type BlockSnapshot = Pick<
   PieceSnapshot,
   "status" | "arrivedAt" | "readyForDelivery"
 > &
-  ReviewDates;
+  Partial<Pick<PieceSnapshot, "firstSentAt">> &
+  ReviewDates &
+  Partial<WorkshopDates>;
 
 /**
- * Condición física de la transición (P47): al taller solo va lo que está en la
- * tienda, y desde En restauración solo se entrega u observa lo que ya volvió del taller.
- * En revisión en taller no se cierra la pieza hasta marcar que volvió.
+ * Condición física de la transición (P47, igual que `change_piece_status`):
+ *   * Aprobada → Entregada / Observada: solo lo que ya volvió del taller.
+ *   * Aprobada → Sin arreglo: solo lo que ya fue al taller.
+ *   * Observada → Entregada: no mientras se reenvió al taller.
+ *   * Anular lo que está en el taller: solo el administrador (sin rol no se revisa).
+ *   * En revisión en taller no se cierra la pieza hasta marcar que volvió.
  */
 export function blockedBy(
   piece: BlockSnapshot,
   to: PieceStatus,
+  role?: AppRole,
 ): TransitionError | null {
-  if (to === "enviada_taller" && !piece.arrivedAt) return "no_llego";
+  const review = isInReview(piece);
+  const inWorkshop = isInWorkshop(piece);
   if (
-    piece.status === "enviada_taller" &&
+    piece.status === "aprobada" &&
     (to === "entregada" || to === "observada") &&
     !piece.readyForDelivery
   )
+    return review || inWorkshop || piece.firstSentAt
+      ? "sigue_en_taller"
+      : "no_paso_taller";
+  if (piece.status === "aprobada" && to === "sin_arreglo" && !piece.firstSentAt)
+    return "no_paso_taller";
+  if (piece.status === "observada" && to === "entregada" && inWorkshop)
     return "sigue_en_taller";
-  if (isClosedStatus(to) && isInReview(piece)) return "en_revision";
+  if (to === "anulada" && inWorkshop && role && role !== "admin")
+    return "en_taller_solo_admin";
+  if (isClosedStatus(to) && review) return "en_revision";
   return null;
 }
 
@@ -208,7 +277,7 @@ export function availableTransitions(
     (t) =>
       t.from === piece.status &&
       t.roles.includes(role) &&
-      !blockedBy(piece, t.to),
+      !blockedBy(piece, t.to, role),
   );
 }
 
@@ -223,6 +292,7 @@ export type PieceChanges = {
   lastReturnedAt?: Date;
   reviewSentAt?: Date;
   reviewReturnedAt?: Date;
+  observedAt?: Date;
   deliveredAt?: Date;
   returnedAt?: Date;
   cancelledAt?: Date;
@@ -232,6 +302,8 @@ export type PieceChanges = {
 export type PieceEvent =
   | "estado"
   | "llegada"
+  /** "Enviar al taller" (Aprobada u Observada): guarda el taller. */
+  | "envio_taller"
   | "vuelta_taller"
   | "devolucion_cliente"
   /** Cambio de precio con la orden de Shopify creada (Paso 9.2): la nota es el motivo. */
@@ -257,6 +329,9 @@ export type TransitionError =
   | "taller_requerido"
   | "no_llego"
   | "sigue_en_taller"
+  | "no_paso_taller"
+  | "en_taller_solo_admin"
+  | "ya_en_taller"
   | "en_revision"
   | "revision_otro_taller";
 
@@ -267,6 +342,10 @@ export const TRANSITION_ERROR_MESSAGES: Record<TransitionError, string> = {
   taller_requerido: "Elige el taller al que se envía la pieza.",
   no_llego: "La pieza aún no llegó a la tienda.",
   sigue_en_taller: "La pieza sigue en el taller.",
+  no_paso_taller: "La pieza aún no pasó por el taller.",
+  en_taller_solo_admin:
+    "La pieza está en el taller: solo el administrador la anula.",
+  ya_en_taller: "La pieza ya está en el taller.",
   en_revision:
     "La pieza está en el taller por revisión; marca primero que volvió.",
   revision_otro_taller:
@@ -291,18 +370,12 @@ export type TransitionInput = {
 };
 
 /** Fecha que fija cada estado al entrar en él (§7.4). */
-function datesFor(
-  to: PieceStatus,
-  now: Date,
-  firstSentAt: Date | null,
-): Partial<PieceChanges> {
+function datesFor(to: PieceStatus, now: Date): Partial<PieceChanges> {
   switch (to) {
     case "aprobada":
       return { approvedAt: now };
-    case "enviada_taller":
-      return firstSentAt
-        ? { lastSentAt: now }
-        : { firstSentAt: now, lastSentAt: now };
+    case "observada":
+      return { observedAt: now };
     case "entregada":
       return { deliveredAt: now };
     case "rechazada":
@@ -327,13 +400,8 @@ export function applyTransition(
   const note = input.note?.trim() || null;
   if (t.requiresNote && !note) return { ok: false, error: "nota_requerida" };
 
-  const blocked = blockedBy(piece, t.to);
+  const blocked = blockedBy(piece, t.to, input.role);
   if (blocked) return { ok: false, error: blocked };
-
-  // Desde la revisión pasa a En restauración en el mismo taller y la revisión se cierra.
-  const fromReview = t.to === "enviada_taller" && isInReview(piece);
-  if (fromReview && input.workshopId && input.workshopId !== piece.workshopId)
-    return { ok: false, error: "revision_otro_taller" };
 
   const workshopId = input.workshopId ?? piece.workshopId;
   if (t.requiresWorkshop && !workshopId)
@@ -341,11 +409,10 @@ export function applyTransition(
 
   const changes: PieceChanges = {
     status: t.to,
-    ...datesFor(t.to, input.now, piece.firstSentAt),
+    ...datesFor(t.to, input.now),
   };
   if (t.requiresWorkshop && input.workshopId)
     changes.workshopId = input.workshopId;
-  if (fromReview) changes.reviewReturnedAt = input.now;
 
   return {
     ok: true,
@@ -358,14 +425,16 @@ export function applyTransition(
 /**
  * "Retroceder estado" (2026-10-15): la pieza vuelve al estado anterior de su historial
  * (`previous`, que calcula la BD). Lo puede hacer quien podía hacer el avance; sin esa
- * transición en la tabla, solo el admin. Una pieza ya devuelta al cliente no se reactiva.
+ * transición en la tabla, solo el admin. Una pieza ya devuelta al cliente no se reactiva,
+ * y la que está en el taller por trabajo no retrocede hasta marcar que volvió.
  */
 export function canUndoStatus(
-  piece: Pick<PieceSnapshot, "status" | "returnedAt">,
+  piece: Pick<PieceSnapshot, "status" | "returnedAt"> & Partial<WorkshopDates>,
   previous: PieceStatus | null,
   role: AppRole,
 ): boolean {
   if (!previous) return false;
+  if (isInWorkshop(piece)) return false;
   if (isClosedStatus(piece.status) && piece.returnedAt) return false;
   const t = findTransition(previous, piece.status);
   return t ? t.roles.includes(role) : role === "admin";
@@ -423,16 +492,60 @@ export function markArrived(
   );
 }
 
-/** "Recibir del taller": la pieza sigue en En restauración, ya en la tienda (P47). */
-export function canReceiveFromWorkshop(
-  piece: Pick<PieceSnapshot, "status" | "readyForDelivery">,
+/** Estados desde los que la pieza va al taller por trabajo ("Enviar al taller"). */
+const WORKSHOP_STATUSES: readonly PieceStatus[] = ["aprobada", "observada"];
+
+/**
+ * "Enviar al taller" (admin y logística): pieza Aprobada u Observada que está en la
+ * tienda y no está ya en el taller. El estado no cambia; la ubicación pasa a En taller.
+ */
+export function canSendToWorkshop(
+  piece: Pick<PieceSnapshot, "status" | "arrivedAt"> & Partial<WorkshopDates>,
   role: AppRole,
 ): boolean {
   return (
-    piece.status === "enviada_taller" &&
-    !piece.readyForDelivery &&
-    TALLER.includes(role)
+    TALLER.includes(role) &&
+    WORKSHOP_STATUSES.includes(piece.status) &&
+    !!piece.arrivedAt &&
+    !isInWorkshop(piece)
   );
+}
+
+/**
+ * Envía la pieza al taller elegido (o al que ya tiene). Si estaba en revisión en el
+ * mismo taller, la revisión se cierra y sigue ahí por trabajo (igual que
+ * `send_pieces_to_workshop`).
+ */
+export function sendToWorkshop(
+  piece: PieceSnapshot,
+  role: AppRole,
+  workshopId: string | null,
+  now: Date,
+): TransitionResult {
+  if (!TALLER.includes(role)) return { ok: false, error: "rol_no_permitido" };
+  if (!WORKSHOP_STATUSES.includes(piece.status))
+    return { ok: false, error: "transicion_invalida" };
+  if (!piece.arrivedAt) return { ok: false, error: "no_llego" };
+  if (isInWorkshop(piece)) return { ok: false, error: "ya_en_taller" };
+  const review = isInReview(piece);
+  if (review && workshopId && workshopId !== piece.workshopId)
+    return { ok: false, error: "revision_otro_taller" };
+  const target = workshopId ?? piece.workshopId;
+  if (!target) return { ok: false, error: "taller_requerido" };
+  return action(piece, true, true, "envio_taller", {
+    workshopId: target,
+    ...(piece.firstSentAt ? {} : { firstSentAt: now }),
+    lastSentAt: now,
+    ...(review ? { reviewReturnedAt: now } : {}),
+  });
+}
+
+/** "Recibir del taller": la pieza vuelve a la tienda en el mismo estado (P47). */
+export function canReceiveFromWorkshop(
+  piece: WorkshopDates,
+  role: AppRole,
+): boolean {
+  return isInWorkshop(piece) && TALLER.includes(role);
 }
 
 export function receiveFromWorkshop(
@@ -442,7 +555,7 @@ export function receiveFromWorkshop(
 ): TransitionResult {
   return action(
     piece,
-    piece.status === "enviada_taller" && !piece.readyForDelivery,
+    isInWorkshop(piece),
     TALLER.includes(role),
     "vuelta_taller",
     { lastReturnedAt: now },

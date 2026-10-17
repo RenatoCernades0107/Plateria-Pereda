@@ -47,19 +47,23 @@ export type StatusHistoryEntry = {
   at: Date;
 };
 
+/** Cambios de estado (o retrocesos) que sacan la pieza del flujo y cierran el viaje. */
+const TRIP_CLOSING_STATUSES: readonly PieceStatus[] = [
+  "registrada",
+  "entregada",
+  "anulada",
+  "rechazada",
+  "sin_arreglo",
+];
+
 /**
- * Suma de los viajes al taller: de cada envío (En restauración) hasta su "Recibir del
- * taller", o hasta un cambio de estado fuera de En restauración (p. ej. "No tiene arreglo");
- * incluye reenvíos por observación (P47). Si la pieza sigue en el taller, el último
- * viaje se cuenta hasta `now`.
- *
- * Revisión en taller: el viaje empieza al llevarla a revisar y termina con "Volvió de
- * revisión"; mientras sigue abierta, pasar a Espera o Aprobada no lo corta y pasar a
- * En restauración lo continúa (mismo viaje). Igual que `workshop_days` en la BD.
- *
- * Un retroceso de estado cuenta como un cambio de estado que saca la pieza del taller
- * (o la deja en revisión), pero nunca abre un viaje: volver a En restauración no dice
- * si la pieza sigue en el taller.
+ * Suma de los viajes al taller (igual que `workshop_days` en la BD). Un viaje empieza
+ * con "Enviar al taller" (`envio_taller`) o "Llevar a revisar" (`envio_revision`); si
+ * ya hay uno abierto, conserva su inicio (enviar al taller desde la revisión es el
+ * mismo viaje). Termina con "Recibir del taller", "Volvió de revisión" o un cambio de
+ * estado (o retroceso) a Registrada, Entregada, Anulada, Rechazada o Sin arreglo.
+ * Incluye los reenvíos por observación (P47). Si la pieza sigue en el taller, el
+ * último viaje se cuenta hasta `now`.
  */
 export function daysInWorkshop(
   history: readonly StatusHistoryEntry[],
@@ -68,31 +72,19 @@ export function daysInWorkshop(
   const ordered = [...history].sort((a, b) => a.at.getTime() - b.at.getTime());
   let days = 0;
   let sentAt: Date | null = null;
-  let review = false;
   for (const entry of ordered) {
     const event = entry.event ?? "estado";
-    if (event === "envio_revision") {
+    if (event === "envio_taller" || event === "envio_revision") {
       sentAt ??= entry.at;
-      review = true;
-    } else if (event === "estado" && entry.to === "enviada_taller") {
-      sentAt ??= entry.at;
-      review = false;
-    } else if (
-      review &&
-      (event === "estado" || event === "retroceso") &&
-      (entry.to === "en_espera" || entry.to === "aprobada")
-    ) {
-      // Sigue en el taller por la revisión.
     } else if (
       sentAt &&
       (event === "vuelta_taller" ||
         event === "vuelta_revision" ||
         ((event === "estado" || event === "retroceso") &&
-          entry.to !== "enviada_taller"))
+          TRIP_CLOSING_STATUSES.includes(entry.to)))
     ) {
       days += calendarDaysBetween(sentAt, entry.at);
       sentAt = null;
-      review = false;
     }
   }
   return sentAt

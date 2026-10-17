@@ -1,29 +1,12 @@
 "use client";
 
 import {
-  ArrowRight,
-  Ban,
-  Check,
   ChevronDown,
   ChevronRight,
-  CircleX,
-  Eye,
-  Handshake,
-  Hourglass,
   Loader2,
-  type LucideIcon,
-  MessageCircleQuestion,
   MoreHorizontal,
-  PackageOpen,
   Pencil,
-  RotateCcw,
-  Search,
-  SearchCheck,
-  Store,
   Tag,
-  ThumbsDown,
-  Truck,
-  Undo2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -43,6 +26,10 @@ import {
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import type { PieceEditableField } from "@/domain/restoration-edit";
+import {
+  isChargedKind,
+  type RestorationKind,
+} from "@/domain/restoration-status";
 import { pieceAnchor, pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -54,8 +41,8 @@ import { SalePriceCell } from "./piece-money-cells";
 import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import {
+  ActionIcon,
   arrangeActions,
-  type PieceAction,
   usePieceActions,
 } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
@@ -83,30 +70,6 @@ const HEAD = "px-2 py-2 text-left font-medium whitespace-nowrap";
 const CELL = cn(RT.cell, "md:px-2");
 const LABELED = cn(CELL, RT.labeled);
 
-/** Ícono de cada acción (por su `key`: la acción o el estado al que lleva). */
-const ACTION_ICONS: Record<string, LucideIcon> = {
-  llegada: Store,
-  recibir: PackageOpen,
-  vuelta_revision: SearchCheck,
-  revision: Search,
-  devolver: Undo2,
-  registrada: RotateCcw,
-  en_consulta: MessageCircleQuestion,
-  en_espera: Hourglass,
-  aprobada: Check,
-  enviada_taller: Truck,
-  observada: Eye,
-  entregada: Handshake,
-  rechazada: ThumbsDown,
-  sin_arreglo: CircleX,
-  anulada: Ban,
-};
-
-function ActionIcon({ action }: { action: PieceAction }) {
-  const Icon = ACTION_ICONS[action.key] ?? ArrowRight;
-  return <Icon aria-hidden />;
-}
-
 type RowProps = {
   restorationId: string;
   piece: PieceDetail;
@@ -118,6 +81,8 @@ type RowProps = {
   balanceDue: boolean;
   /** Casilla para elegirla (null si la pieza no admite acciones). */
   checkbox: React.ReactNode;
+  /** Tipo de guía: interna u observada no llevan precio de venta. */
+  guideKind: RestorationKind;
 };
 
 /** Una fila de la tabla: datos de la pieza, su paso siguiente y su menú «Acciones». */
@@ -131,6 +96,7 @@ function PieceRow({
   approvalPayment,
   balanceDue,
   checkbox,
+  guideKind,
 }: RowProps) {
   const {
     piece: live,
@@ -157,7 +123,7 @@ function PieceRow({
   const editable = editing?.editable[piece.id] ?? [];
   const canEdit = editing !== null && editable.length > 0;
   const priceChange = Boolean(editing?.priceChange?.[piece.id]);
-  const showPrice = can(role, "dinero.ver");
+  const showPrice = can(role, "dinero.ver") && isChargedKind(guideKind);
   const editPrice =
     can(role, "piezas.precio-venta") &&
     (editable.includes("price") || priceChange);
@@ -184,6 +150,16 @@ function PieceRow({
           >
             {piece.code}
           </Link>
+          {piece.quantity > 1 ? (
+            <span
+              className="text-muted-foreground text-xs font-medium tabular-nums"
+              data-testid="cantidad"
+              title={`Cantidad: ${piece.quantity}`}
+            >
+              <span aria-hidden>×{piece.quantity}</span>
+              <span className="sr-only">Cantidad: {piece.quantity}</span>
+            </span>
+          ) : null}
           {live.urgent ? <UrgentIcon /> : null}
         </span>
       </td>
@@ -385,6 +361,7 @@ function PieceRow({
             editable={editable}
             priceHint={editing.priceHint}
             workshops={workshops}
+            guideKind={guideKind}
             materials={editing.materials}
             services={editing.services}
           />
@@ -419,6 +396,7 @@ export function PiecesBoard({
   photos = {},
   approvalPayment = null,
   balanceDue = false,
+  guideKind = "normal",
 }: {
   restorationId: string;
   pieces: PieceDetail[];
@@ -431,6 +409,8 @@ export function PiecesBoard({
   approvalPayment?: ApprovalPayment | null;
   /** Falta cobrar el saldo para entregar (P45). */
   balanceDue?: boolean;
+  /** Tipo de guía: interna u observada no muestran precios. */
+  guideKind?: RestorationKind;
 }) {
   // Por defecto están elegidas todas las piezas que admiten acciones: se guardan las
   // que la persona desmarca, así lo elegido sigue válido tras refrescar la página.
@@ -443,7 +423,7 @@ export function PiecesBoard({
   // La última pieza por aprobar crea la orden: ahí se ofrece registrar el adelanto.
   const toApprove = pieces.filter((p) => PRE_APPROVAL.includes(p.status));
   const lastToApprove = toApprove.length === 1 ? toApprove[0]!.id : null;
-  const showPrice = can(role, "dinero.ver");
+  const showPrice = can(role, "dinero.ver") && isChargedKind(guideKind);
 
   if (pieces.length === 0) {
     return <EmptyState>La guía aún no tiene piezas.</EmptyState>;
@@ -457,7 +437,8 @@ export function PiecesBoard({
         role={role}
         workshops={workshops}
         onDone={() => setUnchecked([])}
-        statusPicker
+        onClear={() => setUnchecked(selectable.map((p) => p.id))}
+        alwaysVisible
         total={selectable.length}
       />
 
@@ -527,6 +508,7 @@ export function PiecesBoard({
                   piece.id === lastToApprove ? approvalPayment : null
                 }
                 balanceDue={balanceDue}
+                guideKind={guideKind}
                 checkbox={
                   isSelectable(piece, role) ? (
                     <input

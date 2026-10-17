@@ -42,12 +42,14 @@ function renderForm(
   mode?: RestorationFormMode,
   canSetPrice = true,
   canAssignWorkshop = canSetPrice,
+  canSetKind = false,
 ) {
   return render(
     <RestorationForm
       mode={mode}
       canSetPrice={canSetPrice}
       canAssignWorkshop={canAssignWorkshop}
+      canSetKind={canSetKind}
       defaultDepositPercent={50}
       workshops={[{ id: "w1", name: "Taller Central" }]}
       materials={[]}
@@ -144,13 +146,14 @@ describe("RestorationForm", () => {
     const card = within(screen.getByTestId("pieza-1"));
     const labels = card
       .getAllByText(
-        /^(Servicio|Material|Peso \(g\)|Medida|Precio \(S\/\)|Descripción|Notas de la pieza|Taller|Urgente)$/,
+        /^(Servicio|Cant\.|Material|Peso \(g\)|Medida|Precio \(S\/\)|Descripción|Notas de la pieza|Taller|Urgente)$/,
       )
       .map((el) => el.textContent);
     expect(labels).toEqual([
       "Descripción",
       "Notas de la pieza",
       "Servicio",
+      "Cant.",
       "Material",
       "Peso (g)",
       "Medida",
@@ -166,6 +169,18 @@ describe("RestorationForm", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByLabelText("Notas generales")).toBeInTheDocument();
+  });
+
+  it("la cantidad vale 1 por defecto y el encabezado muestra ×N cuando es mayor", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const card = within(screen.getByTestId("pieza-1"));
+    const quantity = card.getByLabelText("Cant.");
+    expect(quantity).toHaveValue("1");
+    expect(card.queryByTestId("cantidad-pieza")).toBeNull();
+    await user.clear(quantity);
+    await user.type(quantity, "6");
+    expect(card.getByTestId("cantidad-pieza")).toHaveTextContent("×6");
   });
 
   it("no pregunta si la pieza ya está en tienda: en oficina siempre lo está (P48)", () => {
@@ -412,6 +427,64 @@ const QUOTE: QuoteForForm = {
     ),
   ],
 };
+
+describe("RestorationForm · tipo de guía (punto 8)", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(mocks)) fn.mockReset();
+  });
+
+  it("sin permiso no muestra las casillas", () => {
+    renderForm(undefined, true, true, false);
+    expect(screen.queryByLabelText(/Guía interna/)).toBeNull();
+    expect(screen.queryByLabelText(/Guía observada/)).toBeNull();
+  });
+
+  it("marcar «Guía interna» pide confirmación y quita precio y pago", async () => {
+    const user = userEvent.setup();
+    renderForm(undefined, true, true, true);
+    const card = within(screen.getByTestId("pieza-1"));
+    await user.type(card.getByLabelText("Precio (S/)"), "100");
+
+    // Cancelar deja la guía normal.
+    await user.click(screen.getByLabelText(/Guía interna/));
+    let dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByTestId("consecuencias-tipo")).toHaveTextContent(
+      "Aprobadas sin precio de venta",
+    );
+    await user.click(dialog.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByLabelText(/Guía interna/)).not.toBeChecked();
+    expect(screen.getByLabelText("Tipo de pago")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/Guía interna/));
+    dialog = within(screen.getByRole("dialog"));
+    await user.click(dialog.getByRole("button", { name: "Sí, guía interna" }));
+    expect(screen.getByLabelText(/Guía interna/)).toBeChecked();
+    expect(card.queryByLabelText("Precio (S/)")).toBeNull();
+    expect(card.getByTestId("precio-pieza")).toHaveTextContent("Sin cobro");
+    expect(card.getByText("Pasa a Aprobada")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Tipo de pago")).toBeNull();
+    expect(screen.queryByTestId("total-en-vivo")).toBeNull();
+    expect(screen.getByTestId("sin-cobro")).toHaveTextContent("Sin cobro");
+
+    // Excluyentes: marcar la observada desmarca la interna.
+    await user.click(screen.getByLabelText(/Guía observada/));
+    dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByTestId("consecuencias-tipo")).toHaveTextContent(
+      "sin precio de venta ni costo de servicio",
+    );
+    await user.click(
+      dialog.getByRole("button", { name: "Sí, guía observada" }),
+    );
+    expect(screen.getByLabelText(/Guía observada/)).toBeChecked();
+    expect(screen.getByLabelText(/Guía interna/)).not.toBeChecked();
+    expect(card.getByText("Pasa a Observación")).toBeInTheDocument();
+
+    // Desmarcar vuelve a la guía normal (con precio y pago).
+    await user.click(screen.getByLabelText(/Guía observada/));
+    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+    expect(screen.getByLabelText("Tipo de pago")).toBeInTheDocument();
+  });
+});
 
 describe("RestorationForm · cotización por WhatsApp (P46)", () => {
   beforeEach(() => {
