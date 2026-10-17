@@ -4,10 +4,7 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 import { createClient } from "@/lib/supabase/server";
 
 /** Estados desde los que una pieza se puede entregar. */
-const DELIVERABLE_FROM: readonly PieceStatus[] = [
-  "enviada_taller",
-  "observada",
-];
+const DELIVERABLE_FROM: readonly PieceStatus[] = ["aprobada", "observada"];
 
 /**
  * Restauraciones de la vista de piezas a las que les falta cobrar el saldo (P45), para

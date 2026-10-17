@@ -83,7 +83,7 @@ async function markReady(pieceId: string) {
   await adminClient()
     .from("pieces")
     .update({
-      status: "enviada_taller",
+      status: "aprobada",
       approved_at: new Date().toISOString(),
       first_sent_at: new Date(Date.now() - 60_000).toISOString(),
       last_sent_at: new Date(Date.now() - 60_000).toISOString(),

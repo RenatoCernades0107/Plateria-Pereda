@@ -448,7 +448,9 @@ export type Database = {
           measure: string;
           notes: string;
           number: number;
+          observed_at: string | null;
           price: number | null;
+          quantity: number;
           ready_for_delivery: boolean | null;
           restoration_id: string;
           returned_at: string | null;
@@ -486,7 +488,9 @@ export type Database = {
           measure?: string;
           notes?: string;
           number: number;
+          observed_at?: string | null;
           price?: number | null;
+          quantity?: number;
           ready_for_delivery?: never;
           restoration_id: string;
           returned_at?: string | null;
@@ -524,7 +528,9 @@ export type Database = {
           measure?: string;
           notes?: string;
           number?: number;
+          observed_at?: string | null;
           price?: number | null;
+          quantity?: number;
           ready_for_delivery?: never;
           restoration_id?: string;
           returned_at?: string | null;
@@ -924,6 +930,7 @@ export type Database = {
           deposit_percent: number | null;
           expected_deposit: number | null;
           id: string;
+          kind: Database["public"]["Enums"]["restoration_kind"];
           notes: string;
           origin: Database["public"]["Enums"]["restoration_origin"];
           paid: number;
@@ -947,6 +954,7 @@ export type Database = {
           deposit_percent?: number | null;
           expected_deposit?: never;
           id?: string;
+          kind?: Database["public"]["Enums"]["restoration_kind"];
           notes?: string;
           origin?: Database["public"]["Enums"]["restoration_origin"];
           paid?: number;
@@ -970,6 +978,7 @@ export type Database = {
           deposit_percent?: number | null;
           expected_deposit?: never;
           id?: string;
+          kind?: Database["public"]["Enums"]["restoration_kind"];
           notes?: string;
           origin?: Database["public"]["Enums"]["restoration_origin"];
           paid?: number;
@@ -1256,6 +1265,7 @@ export type Database = {
           notes: string;
           number: number;
           price: number | null;
+          quantity: number;
           quote_id: string;
           service_id: string | null;
           service_name: string;
@@ -1273,6 +1283,7 @@ export type Database = {
           notes?: string;
           number: number;
           price?: number | null;
+          quantity?: number;
           quote_id: string;
           service_id?: string | null;
           service_name?: string;
@@ -1290,6 +1301,7 @@ export type Database = {
           notes?: string;
           number?: number;
           price?: number | null;
+          quantity?: number;
           quote_id?: string;
           service_id?: string | null;
           service_name?: string;
@@ -1485,6 +1497,8 @@ export type Database = {
           measure: string | null;
           notes: string | null;
           number: number | null;
+          observed_at: string | null;
+          quantity: number | null;
           ready_for_delivery: boolean | null;
           restoration_id: string | null;
           returned_at: string | null;
@@ -1544,6 +1558,7 @@ export type Database = {
           created_at: string | null;
           created_by: string | null;
           id: string | null;
+          kind: Database["public"]["Enums"]["restoration_kind"] | null;
           notes: string | null;
           origin: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type: Database["public"]["Enums"]["payment_type"] | null;
@@ -1559,6 +1574,7 @@ export type Database = {
           created_at?: string | null;
           created_by?: string | null;
           id?: string | null;
+          kind?: Database["public"]["Enums"]["restoration_kind"] | null;
           notes?: string | null;
           origin?: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type?: Database["public"]["Enums"]["payment_type"] | null;
@@ -1574,6 +1590,7 @@ export type Database = {
           created_at?: string | null;
           created_by?: string | null;
           id?: string | null;
+          kind?: Database["public"]["Enums"]["restoration_kind"] | null;
           notes?: string | null;
           origin?: Database["public"]["Enums"]["restoration_origin"] | null;
           payment_type?: Database["public"]["Enums"]["payment_type"] | null;
@@ -1697,6 +1714,7 @@ export type Database = {
           p_contact_id: string;
           p_deposit_amount?: number;
           p_deposit_percent: number;
+          p_kind?: Database["public"]["Enums"]["restoration_kind"];
           p_notes: string;
           p_payment_type: Database["public"]["Enums"]["payment_type"];
           p_pieces: Json;
@@ -1751,6 +1769,7 @@ export type Database = {
           p_first_sent_at?: string;
           p_last_returned_at?: string;
           p_last_sent_at?: string;
+          p_observed_at?: string;
           p_returned_at?: string;
           p_review_returned_at?: string;
           p_review_sent_at?: string;
@@ -1841,6 +1860,7 @@ export type Database = {
           p_limit?: number;
           p_location?: Database["public"]["Enums"]["piece_location"];
           p_min_workshop_days?: number;
+          p_no_workshop?: boolean;
           p_offset?: number;
           p_query?: string;
           p_ready?: boolean;
@@ -1855,14 +1875,20 @@ export type Database = {
           client_name: string;
           code: string;
           description: string;
+          first_sent_at: string;
           has_order: boolean;
           id: string;
           last_observation: string;
+          last_returned_at: string;
+          last_sent_at: string;
           location: Database["public"]["Enums"]["piece_location"];
+          location_since: string;
           material_name: string;
           measure: string;
+          observed_at: string;
           photo_path: string;
           price: number;
+          quantity: number;
           ready_for_delivery: boolean;
           restoration_code: string;
           restoration_id: string;
@@ -1871,6 +1897,7 @@ export type Database = {
           service_cost: number;
           service_name: string;
           status: Database["public"]["Enums"]["piece_status"];
+          to_return: boolean;
           total_count: number;
           urgent: boolean;
           weight_grams: number;
@@ -1902,6 +1929,7 @@ export type Database = {
           measure: string;
           photo_path: string;
           price: number;
+          quantity: number;
           restoration_code: string;
           restoration_id: string;
           service_cost: number;
@@ -2001,6 +2029,23 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      piece_location_since: {
+        Args: {
+          p_arrived_at?: string;
+          p_cancelled_at?: string;
+          p_created_at: string;
+          p_delivered_at?: string;
+          p_last_returned_at?: string;
+          p_last_sent_at?: string;
+          p_location: Database["public"]["Enums"]["piece_location"];
+          p_observed_at?: string;
+          p_returned_at?: string;
+          p_review_returned_at?: string;
+          p_review_sent_at?: string;
+          p_status: Database["public"]["Enums"]["piece_status"];
+        };
+        Returns: string;
+      };
       piece_logistics_info: {
         Args: { p_restoration_id: string };
         Returns: {
@@ -2075,9 +2120,27 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      send_pieces_to_workshop: {
+        Args: { p_piece_ids: string[]; p_workshop_id?: string };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
+        }[];
+      };
+      send_unpriced_to_consultation: {
+        Args: { p_piece_ids: string[] };
+        Returns: undefined;
+      };
       set_piece_service_cost: {
         Args: { p_cost: number; p_piece_id: string };
         Returns: undefined;
+      };
+      set_restoration_kind: {
+        Args: {
+          p_kind: Database["public"]["Enums"]["restoration_kind"];
+          p_restoration_id: string;
+        };
+        Returns: Database["public"]["Enums"]["restoration_kind"];
       };
       shopify_sync_status: {
         Args: { p_entity_ids: string[]; p_entity_table: string };
@@ -2143,7 +2206,8 @@ export type Database = {
         | "cambio_precio"
         | "envio_revision"
         | "vuelta_revision"
-        | "retroceso";
+        | "retroceso"
+        | "envio_taller";
       piece_location:
         | "por_whatsapp"
         | "sin_enviar"
@@ -2163,6 +2227,7 @@ export type Database = {
         | "sin_arreglo"
         | "anulada";
       quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
+      restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
         | "registrada"
@@ -2320,6 +2385,7 @@ export const Constants = {
         "envio_revision",
         "vuelta_revision",
         "retroceso",
+        "envio_taller",
       ],
       piece_location: [
         "por_whatsapp",
@@ -2342,6 +2408,7 @@ export const Constants = {
         "anulada",
       ],
       quote_status: ["borrador", "emitida", "aceptada", "rechazada"],
+      restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [
         "registrada",

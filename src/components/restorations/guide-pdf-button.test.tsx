@@ -11,12 +11,14 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 const piece = (id: string): GuidePdfData["pieces"][number] => ({
   id,
   code: `RES-00001-${id}`,
+  quantity: 1,
   description: `Pieza ${id}`,
   materialName: "",
   serviceName: "",
   measure: "",
   weightGrams: null,
   status: "registrada",
+  location: "sin_enviar",
   notes: "",
   priceCents: null,
 });
@@ -30,6 +32,7 @@ const data: GuidePdfData = {
   code: "RES-00001",
   createdAt: "2026-10-01T15:00:00Z",
   status: "registrada",
+  kind: "normal",
   paymentType: "contado",
   clientName: "Ana",
   contactName: null,

@@ -37,6 +37,7 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
       orderedIn: item.order?.restorationCode ?? null,
       piece: {
         workshopId: null,
+        quantity: String(item.quantity),
         description: item.description,
         measure: item.measure,
         materials: item.materialIds,

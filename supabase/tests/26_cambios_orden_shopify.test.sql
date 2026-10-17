@@ -28,7 +28,7 @@ insert into public.pieces (id, restoration_id, description, price, approved_at, 
     now(), null, null, null),
   ('00000000-0000-0000-0000-00000000bb42', '00000000-0000-0000-0000-00000000bb40', 'Bandeja', 80, now(), 'aprobada',
     now(), null, null, null),
-  ('00000000-0000-0000-0000-00000000bb43', '00000000-0000-0000-0000-00000000bb40', 'Copa', 30, now(), 'enviada_taller',
+  ('00000000-0000-0000-0000-00000000bb43', '00000000-0000-0000-0000-00000000bb40', 'Copa', 30, now(), 'aprobada',
     now(), now() - interval '2 days', now() - interval '2 days', now() - interval '1 day');
 -- La orden se crea con las piezas ya aprobadas (lo hace el handler de order.create).
 update public.restorations set shopify_order_id = 'gid://shopify/Order/bb40', shopify_order_name = '#1001'

@@ -91,7 +91,10 @@ begin
     last_returned_at = case when last_returned_at >= v_desde then p_en else last_returned_at end,
     delivered_at = case when delivered_at >= v_desde then p_en else delivered_at end,
     cancelled_at = case when cancelled_at >= v_desde then p_en else cancelled_at end,
-    returned_at = case when returned_at >= v_desde then p_en else returned_at end
+    returned_at = case when returned_at >= v_desde then p_en else returned_at end,
+    observed_at = case when observed_at >= v_desde then p_en else observed_at end,
+    review_sent_at = case when review_sent_at >= v_desde then p_en else review_sent_at end,
+    review_returned_at = case when review_returned_at >= v_desde then p_en else review_returned_at end
   where updated_at >= v_desde;
   update public.piece_status_history set occurred_at = p_en where occurred_at >= v_desde;
   update public.payments set created_at = p_en, paid_on = (p_en at time zone 'America/Lima')::date
@@ -229,10 +232,10 @@ select pg_temp.retrodatar(pg_temp.lima(11, '12:15'));
 set role authenticated;
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}', false);
 
-select public.change_piece_status(
+select public.send_pieces_to_workshop(
   array['40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002',
         '40000000-0000-0000-0000-000000000003', '40000000-0000-0000-0000-000000000004']::uuid[],
-  'enviada_taller', null, '20000000-0000-0000-0000-000000000001');
+  '20000000-0000-0000-0000-000000000001');
 select public.set_piece_service_cost('40000000-0000-0000-0000-000000000001', 60);
 select public.set_piece_service_cost('40000000-0000-0000-0000-000000000002', 90);
 select public.set_piece_service_cost('40000000-0000-0000-0000-000000000003', 140);
@@ -283,8 +286,9 @@ select public.change_piece_status(
   'aprobada');
 
 select set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}', false);
-select public.change_piece_status(array['40000000-0000-0000-0000-000000000005']::uuid[],
-  'enviada_taller', null, '20000000-0000-0000-0000-000000000002');
+select public.send_pieces_to_workshop(
+  array['40000000-0000-0000-0000-000000000005']::uuid[],
+  '20000000-0000-0000-0000-000000000002');
 select public.set_piece_service_cost('40000000-0000-0000-0000-000000000005', 280);
 
 reset role;
@@ -301,8 +305,9 @@ select public.receive_from_workshop(
 select pg_temp.registrar_fotos('30000000-0000-0000-0000-000000000001',
   array['40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002',
         '40000000-0000-0000-0000-000000000004']::uuid[], 'despues');
-select public.change_piece_status(array['40000000-0000-0000-0000-000000000006']::uuid[],
-  'enviada_taller', null, '20000000-0000-0000-0000-000000000001');
+select public.send_pieces_to_workshop(
+  array['40000000-0000-0000-0000-000000000006']::uuid[],
+  '20000000-0000-0000-0000-000000000001');
 select public.set_piece_service_cost('40000000-0000-0000-0000-000000000006', 50);
 
 reset role;

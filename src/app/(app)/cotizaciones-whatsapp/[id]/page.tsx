@@ -100,6 +100,7 @@ export default async function CotizacionWhatsappPage({
     clientName: name,
     pieces: quote.items.map((i) => ({
       description: i.description,
+      quantity: i.quantity,
       service: i.serviceName || null,
       priceCents: i.priceCents,
       status: "registrada",
@@ -227,6 +228,7 @@ export default async function CotizacionWhatsappPage({
             <TableHeader className="bg-muted/60">
               <TableRow>
                 <TableHead className="w-10">N.º</TableHead>
+                <TableHead className="w-14 text-right">Cant.</TableHead>
                 <TableHead>Descripción</TableHead>
                 <TableHead>Servicio</TableHead>
                 <TableHead>Material</TableHead>
@@ -239,6 +241,9 @@ export default async function CotizacionWhatsappPage({
               {quote.items.map((item) => (
                 <TableRow key={item.id} data-testid={`item-${item.number}`}>
                   <TableCell className="tabular-nums">{item.number}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {item.quantity}
+                  </TableCell>
                   <TableCell className="max-w-80 min-w-48 break-words whitespace-normal">
                     {item.description}
                   </TableCell>
@@ -256,7 +261,7 @@ export default async function CotizacionWhatsappPage({
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={6} className="text-right font-medium">
+                <TableCell colSpan={7} className="text-right font-medium">
                   Total
                 </TableCell>
                 <TableCell
@@ -282,6 +287,12 @@ export default async function CotizacionWhatsappPage({
               <div className="min-w-0 flex-1 space-y-0.5">
                 <p className="break-words">
                   {item.number}. {item.description}
+                  {item.quantity > 1 ? (
+                    <span className="text-muted-foreground tabular-nums">
+                      {" "}
+                      ×{item.quantity}
+                    </span>
+                  ) : null}
                 </p>
                 <p className="text-muted-foreground text-sm">
                   {[

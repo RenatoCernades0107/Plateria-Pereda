@@ -22,15 +22,20 @@ import {
 import { checkMove, isLastToApprove, moveTargets } from "@/domain/piece-moves";
 import {
   canReceiveFromReview,
+  canReceiveFromWorkshop,
   canSendForReview,
+  canSendToWorkshop,
   PIECE_STATUS_LABELS,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
+import type { PieceLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 import {
   changePieceStatus,
+  receiveFromWorkshop,
   receivePiecesFromReview,
   sendPiecesForReview,
+  sendPiecesToWorkshop,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -42,14 +47,87 @@ import {
   ReviewDialog,
   snapshotOf,
   StatusChangeDialog,
+  WORKSHOP_LABELS,
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
 
 type Optimistic = Pick<StatusPiece, "id" | "status" | "location"> &
   Partial<
-    Pick<StatusPiece, "workshopId" | "reviewSentAt" | "reviewReturnedAt">
+    Pick<
+      StatusPiece,
+      | "workshopId"
+      | "reviewSentAt"
+      | "reviewReturnedAt"
+      | "readyForDelivery"
+      | "firstSentAt"
+      | "lastSentAt"
+      | "lastReturnedAt"
+    >
   >;
+
+/**
+ * Columnas de los kanban de piezas. "En restauración" y "Lista para entregar" ya no
+ * son estados (2026-10-17): agrupan las Aprobadas u Observadas por su ubicación (en
+ * el taller, o ya de vuelta en la tienda). Soltar una pieza en ellas la envía al
+ * taller o la recibe de vuelta.
+ */
+export const IN_WORKSHOP_COLUMN = "en_restauracion";
+export const READY_COLUMN = "lista_entregar";
+export type PieceColumnKey =
+  PieceStatus | typeof IN_WORKSHOP_COLUMN | typeof READY_COLUMN;
+
+const WORKSHOP_STATUSES: readonly PieceStatus[] = ["aprobada", "observada"];
+
+const COLUMN_ORDER: readonly PieceColumnKey[] = [
+  "registrada",
+  "en_consulta",
+  "en_espera",
+  "aprobada",
+  IN_WORKSHOP_COLUMN,
+  READY_COLUMN,
+  "observada",
+  "entregada",
+  "rechazada",
+  "sin_arreglo",
+  "anulada",
+];
+
+export const PIECE_COLUMN_LABELS: Record<PieceColumnKey, string> = {
+  ...PIECE_STATUS_LABELS,
+  [IN_WORKSHOP_COLUMN]: "En restauración",
+  [READY_COLUMN]: "Lista para entregar",
+};
+
+/** Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. */
+export function pieceColumnOf(piece: {
+  status: PieceStatus;
+  location: PieceLocation;
+  readyForDelivery: boolean;
+}): PieceColumnKey {
+  if (!WORKSHOP_STATUSES.includes(piece.status)) return piece.status;
+  if (piece.location === "en_taller") return IN_WORKSHOP_COLUMN;
+  if (piece.readyForDelivery) return READY_COLUMN;
+  return piece.status;
+}
+
+/**
+ * Columnas del tablero: las de los estados visibles (más las dos de ubicación si se
+ * ven Aprobada u Observada) y, solo mientras se arrastra, las demás como destino.
+ */
+export function pieceBoardColumns(
+  visible: readonly PieceStatus[],
+): { key: PieceColumnKey; label: string; dropOnly: boolean }[] {
+  const withWorkshop = WORKSHOP_STATUSES.some((s) => visible.includes(s));
+  return COLUMN_ORDER.map((key) => ({
+    key,
+    label: PIECE_COLUMN_LABELS[key],
+    dropOnly:
+      key === IN_WORKSHOP_COLUMN || key === READY_COLUMN
+        ? !withWorkshop
+        : !visible.includes(key),
+  }));
+}
 
 /** Acción de ubicación en el menú de la tarjeta (revisión en taller). */
 export type CardAction = { key: string; label: string; onSelect: () => void };
@@ -82,7 +160,7 @@ export function usePieceMoves<P extends StatusPiece>({
     pieces,
     (state, change: Optimistic) =>
       state.map((p) =>
-        p.id === change.id ? { ...p, ...change, readyForDelivery: false } : p,
+        p.id === change.id ? { ...p, readyForDelivery: false, ...change } : p,
       ),
   );
   const [, startTransition] = useTransition();
@@ -95,6 +173,7 @@ export function usePieceMoves<P extends StatusPiece>({
     piece: P;
   } | null>(null);
   const [review, setReview] = useState<P | null>(null);
+  const [sending, setSending] = useState<P | null>(null);
   const canConfirmBalance = role === "admin" || role === "ventas";
 
   const run = (
@@ -165,10 +244,59 @@ export function usePieceMoves<P extends StatusPiece>({
       else toast.success(`${piece.code}: volvió de revisión.`);
     });
 
-  /** Acciones de ubicación de la tarjeta (revisión en taller). */
+  /** "Enviar al taller" (con el taller elegido) y "Recibir del taller". */
+  const sendToWorkshop = (piece: P, workshopId: string) =>
+    new Promise<string | null>((resolve) => {
+      startTransition(async () => {
+        const now = new Date().toISOString();
+        setOptimistic({
+          id: piece.id,
+          status: piece.status,
+          location: "en_taller",
+          workshopId,
+          firstSentAt: piece.firstSentAt ?? now,
+          lastSentAt: now,
+        });
+        const result = await sendPiecesToWorkshop([piece.id], workshopId);
+        if ("error" in result) {
+          toast.error(`${piece.code}: ${result.error}`);
+          resolve(result.error);
+        } else {
+          toast.success(`${piece.code}: enviada al taller.`);
+          resolve(null);
+        }
+      });
+    });
+  const backFromWorkshop = (piece: P) =>
+    startTransition(async () => {
+      setOptimistic({
+        id: piece.id,
+        status: piece.status,
+        location: "en_tienda",
+        readyForDelivery: true,
+        lastReturnedAt: new Date().toISOString(),
+      });
+      const result = await receiveFromWorkshop(restorationId, [piece.id]);
+      if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
+      else toast.success(`${piece.code}: volvió del taller.`);
+    });
+
+  /** Acciones de ubicación de la tarjeta (taller y revisión en taller). */
   const actions = (piece: P): CardAction[] => {
     const snapshot = snapshotOf(piece);
     const list: CardAction[] = [];
+    if (canReceiveFromWorkshop(snapshot, role))
+      list.push({
+        key: "recibir",
+        label: WORKSHOP_LABELS.back,
+        onSelect: () => backFromWorkshop(piece),
+      });
+    if (canSendToWorkshop(snapshot, role))
+      list.push({
+        key: "enviar_taller",
+        label: WORKSHOP_LABELS.send,
+        onSelect: () => setSending(piece),
+      });
     if (canReceiveFromReview(snapshot, role))
       list.push({
         key: "vuelta_revision",
@@ -214,11 +342,37 @@ export function usePieceMoves<P extends StatusPiece>({
     void run(piece, change);
   };
 
+  /** Soltar en una columna: de ubicación (enviar o recibir) o de estado. */
+  const drop = (piece: P, column: string) => {
+    const snapshot = snapshotOf(piece);
+    if (column === IN_WORKSHOP_COLUMN) {
+      if (canSendToWorkshop(snapshot, role)) return setSending(piece);
+      return void toast.error(
+        `${piece.code}: solo se envía al taller una pieza Aprobada u Observada que está en la tienda.`,
+      );
+    }
+    if (column === READY_COLUMN) {
+      if (canReceiveFromWorkshop(snapshot, role))
+        return backFromWorkshop(piece);
+      return void toast.error(
+        `${piece.code}: solo pasa a «Lista para entregar» al recibirla del taller.`,
+      );
+    }
+    move(piece, column as PieceStatus);
+  };
+
   const drag: KanbanDrag<P> = {
     getId: (piece) => piece.id,
     getLabel: (piece) => piece.code,
-    canDrop: (piece, column) => targets(piece).includes(column as PieceStatus),
-    onMove: (piece, column) => move(piece, column as PieceStatus),
+    canDrop: (piece, column) => {
+      const snapshot = snapshotOf(piece);
+      if (column === IN_WORKSHOP_COLUMN)
+        return canSendToWorkshop(snapshot, role);
+      if (column === READY_COLUMN)
+        return canReceiveFromWorkshop(snapshot, role);
+      return targets(piece).includes(column as PieceStatus);
+    },
+    onMove: drop,
   };
 
   const dialogs = (
@@ -233,6 +387,15 @@ export function usePieceMoves<P extends StatusPiece>({
         pieces={dialog ? [dialog.piece] : []}
         workshops={workshops}
         onConfirm={(extra) => run(dialog!.piece, dialog!.change, extra)}
+      />
+      <ReviewDialog
+        key={sending ? `envio-${sending.id}` : "envio-cerrado"}
+        kind="envio"
+        open={sending !== null}
+        onOpenChange={(open) => !open && setSending(null)}
+        pieces={sending ? [sending] : []}
+        workshops={workshops}
+        onConfirm={(workshopId) => sendToWorkshop(sending!, workshopId)}
       />
       <ReviewDialog
         key={review ? `revision-${review.id}` : "revision-cerrada"}
@@ -273,7 +436,7 @@ export function usePieceMoves<P extends StatusPiece>({
 
 /**
  * Alternativa a arrastrar: menú con los estados a los que puede pasar la pieza y,
- * aparte, las acciones que solo cambian su ubicación (revisión en taller).
+ * aparte, las acciones que solo cambian su ubicación (taller y revisión en taller).
  */
 export function MoveToMenu({
   code,

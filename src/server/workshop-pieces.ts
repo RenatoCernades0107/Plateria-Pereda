@@ -1,7 +1,7 @@
 import "server-only";
 
 import { toCents, type Cents } from "@/domain/money";
-import type { PieceStatus } from "@/domain/piece-state-machine";
+import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import {
   WORKSHOP_PIECES_ALL_LIMIT,
   WORKSHOP_PIECES_PAGE_SIZE,
@@ -54,7 +54,7 @@ export async function listWorkshopPieces(
       id: p.id,
       restorationId: p.restoration_id,
       restorationCode: p.restoration_code,
-      status: p.status,
+      status: toPieceStatus(p.status),
       code: p.code,
       description: p.description,
       serviceName: p.service_name,

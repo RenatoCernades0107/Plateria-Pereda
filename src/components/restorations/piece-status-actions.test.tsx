@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   receive: vi.fn(),
   giveBack: vi.fn(),
   sendReview: vi.fn(),
+  sendWorkshop: vi.fn(),
   backFromReview: vi.fn(),
   undo: vi.fn(),
   success: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("@/server/restorations/status-actions", () => ({
   receiveFromWorkshop: (...a: unknown[]) => mocks.receive(...a),
   returnPiecesToClient: (...a: unknown[]) => mocks.giveBack(...a),
   sendPiecesForReview: (...a: unknown[]) => mocks.sendReview(...a),
+  sendPiecesToWorkshop: (...a: unknown[]) => mocks.sendWorkshop(...a),
   receivePiecesFromReview: (...a: unknown[]) => mocks.backFromReview(...a),
   undoPieceStatus: (...a: unknown[]) => mocks.undo(...a),
   assignWorkshop: vi.fn(),
@@ -40,6 +42,8 @@ const workshops = [
 ];
 
 const ARRIVED = "2026-10-04T10:00:00Z";
+const SENT_AT = "2026-10-05T10:00:00Z";
+const BACK_AT = "2026-10-06T10:00:00Z";
 
 function renderPanel(
   status: PieceStatus,
@@ -47,6 +51,9 @@ function renderPanel(
   extra: {
     arrivedAt?: string | null;
     workshopId?: string | null;
+    /** Enviada al taller y aún allá. */
+    inWorkshop?: boolean;
+    /** Enviada al taller y ya de vuelta ("Lista para entregar"). */
     readyForDelivery?: boolean;
     urgent?: boolean;
     reviewSentAt?: string | null;
@@ -56,6 +63,8 @@ function renderPanel(
   const arrivedAt = extra.arrivedAt ?? null;
   const readyForDelivery = extra.readyForDelivery ?? false;
   const reviewSentAt = extra.reviewSentAt ?? null;
+  const sent = extra.inWorkshop || readyForDelivery ? SENT_AT : null;
+  const back = readyForDelivery ? BACK_AT : null;
   return render(
     <PieceStatusPanel
       restorationId="r1"
@@ -66,14 +75,9 @@ function renderPanel(
         location: deriveLocation({
           status,
           arrivedAt: arrivedAt ? new Date(arrivedAt) : null,
-          firstSentAt:
-            status === "enviada_taller"
-              ? new Date("2026-10-05T10:00:00Z")
-              : null,
-          lastSentAt: new Date("2026-10-05T10:00:00Z"),
-          lastReturnedAt: readyForDelivery
-            ? new Date("2026-10-06T10:00:00Z")
-            : null,
+          firstSentAt: sent ? new Date(sent) : null,
+          lastSentAt: sent ? new Date(sent) : null,
+          lastReturnedAt: back ? new Date(back) : null,
           reviewSentAt: reviewSentAt ? new Date(reviewSentAt) : null,
         }),
         arrivedAt,
@@ -83,6 +87,9 @@ function renderPanel(
         urgent: extra.urgent ?? false,
         reviewSentAt,
         reviewReturnedAt: null,
+        firstSentAt: sent,
+        lastSentAt: sent,
+        lastReturnedAt: back,
       }}
       role={role}
       workshops={workshops}
@@ -109,6 +116,7 @@ beforeEach(() => {
   mocks.receive.mockResolvedValue({ ok: true });
   mocks.giveBack.mockResolvedValue({ ok: true });
   mocks.sendReview.mockResolvedValue({ ok: true });
+  mocks.sendWorkshop.mockResolvedValue({ ok: true });
   mocks.backFromReview.mockResolvedValue({ ok: true });
   mocks.undo.mockResolvedValue({ ok: true });
 });
@@ -157,19 +165,23 @@ describe("PieceStatusPanel", () => {
   });
 
   it("solo el admin anula una pieza que está en el taller", () => {
-    const { unmount } = renderPanel("enviada_taller", "ventas", {
+    const { unmount } = renderPanel("aprobada", "ventas", {
       arrivedAt: ARRIVED,
+      inWorkshop: true,
     });
     expect(buttons()).toEqual(["No tiene arreglo"]);
     unmount();
-    renderPanel("enviada_taller", "admin", { arrivedAt: ARRIVED });
+    renderPanel("aprobada", "admin", { arrivedAt: ARRIVED, inWorkshop: true });
     expect(buttons()).toEqual(["Recibir del taller", "Más acciones"]);
     expect(screen.getByText("En taller")).toBeInTheDocument();
   });
 
-  it("recibe la pieza del taller: sigue en En restauración, lista para entregar", async () => {
+  it("recibe la pieza del taller: sigue Aprobada, lista para entregar", async () => {
     const user = userEvent.setup();
-    renderPanel("enviada_taller", "logistica", { arrivedAt: ARRIVED });
+    renderPanel("aprobada", "logistica", {
+      arrivedAt: ARRIVED,
+      inWorkshop: true,
+    });
     await user.click(
       screen.getByRole("button", { name: "Recibir del taller" }),
     );
@@ -181,14 +193,20 @@ describe("PieceStatusPanel", () => {
   });
 
   it("de vuelta del taller se entrega u observa", () => {
-    renderPanel("enviada_taller", "logistica", {
+    renderPanel("aprobada", "logistica", {
       arrivedAt: ARRIVED,
       readyForDelivery: true,
     });
-    expect(buttons()).toEqual(["Entregar", "Observar", "Más acciones"]);
+    // Entregar es lo principal; también se puede reenviar al taller.
+    expect(buttons()).toEqual([
+      "Entregar",
+      "Enviar al taller",
+      "Observar",
+      "Más acciones",
+    ]);
     // "En tienda" = volvió del taller (P48).
     expect(screen.getByText("En tienda")).toBeInTheDocument();
-    expect(screen.getByText("En restauración")).toBeInTheDocument();
+    expect(screen.getByText("Aprobada")).toBeInTheDocument();
   });
 
   it("devuelve al cliente una pieza rechazada que está en la tienda", async () => {
@@ -271,7 +289,7 @@ describe("PieceStatusPanel", () => {
     );
   });
 
-  it("el diálogo exige el taller al enviar y propone el ya asignado", async () => {
+  it("«Enviar al taller» es una acción: exige el taller y propone el ya asignado", async () => {
     const user = userEvent.setup();
     const { unmount } = renderPanel("aprobada", "logistica", {
       arrivedAt: ARRIVED,
@@ -280,7 +298,7 @@ describe("PieceStatusPanel", () => {
     let dialog = screen.getByRole("dialog");
     await user.click(
       within(dialog).getByRole("button", {
-        name: "Confirmar: Enviar al taller",
+        name: "Confirmar: enviar al taller",
       }),
     );
     expect(
@@ -299,15 +317,13 @@ describe("PieceStatusPanel", () => {
     );
     await user.click(
       within(dialog).getByRole("button", {
-        name: "Confirmar: Enviar al taller",
+        name: "Confirmar: enviar al taller",
       }),
     );
-    expect(mocks.change).toHaveBeenCalledWith(
-      "r1",
-      ["p1"],
-      "enviada_taller",
-      null,
-      workshops[0]!.id,
+    expect(mocks.sendWorkshop).toHaveBeenCalledWith(["p1"], workshops[0]!.id);
+    expect(mocks.change).not.toHaveBeenCalled();
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1: enviada al taller.",
     );
   });
 
@@ -402,7 +418,7 @@ describe("revisión en taller", () => {
     );
   });
 
-  it("aprobada en revisión pasa a En restauración en el mismo taller", () => {
+  it("aprobada en revisión se envía al taller por trabajo", () => {
     renderPanel("aprobada", "logistica", {
       arrivedAt: ARRIVED,
       workshopId: workshops[0]!.id,
@@ -420,11 +436,21 @@ describe("commonTransitions", () => {
       readyForDelivery: false,
       returnedAt: null,
     });
+    // Enviar al taller ya no es un cambio de estado; una Aprobada sin pasar por el
+    // taller no se entrega.
     expect(
-      commonTransitions([p("aprobada"), p("observada")], "logistica").map(
-        (c) => c.to,
-      ),
-    ).toEqual(["enviada_taller"]);
+      commonTransitions([p("aprobada"), p("observada")], "logistica"),
+    ).toEqual([]);
+    const ready = {
+      ...p("aprobada"),
+      readyForDelivery: true,
+      firstSentAt: SENT_AT,
+      lastSentAt: SENT_AT,
+      lastReturnedAt: BACK_AT,
+    };
+    expect(
+      commonTransitions([ready, p("observada")], "logistica").map((c) => c.to),
+    ).toEqual(["entregada"]);
     const anular = commonTransitions(
       [p("registrada"), p("aprobada")],
       "ventas",
@@ -442,12 +468,13 @@ describe("Retroceder estado", () => {
     renderPanel("aprobada", "ventas");
     expect(await moreActions(user)).toEqual(["Anular"]);
     cleanup();
-    // aprobada → enviada_taller no es de ventas: no puede deshacerla.
-    renderPanel("enviada_taller", "ventas", {
+    // En el taller no se retrocede hasta recibirla.
+    renderPanel("aprobada", "admin", {
       arrivedAt: ARRIVED,
-      previousStatus: "aprobada",
+      inWorkshop: true,
+      previousStatus: "en_espera",
     });
-    expect(screen.queryByRole("button", { name: "Más acciones" })).toBeNull();
+    expect(await moreActions(user)).toEqual(["No tiene arreglo", "Anular"]);
   });
 
   it("va en «Más acciones», aparte de los cierres", async () => {

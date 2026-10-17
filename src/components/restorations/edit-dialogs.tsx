@@ -50,6 +50,10 @@ import {
 } from "@/domain/money";
 import type { PieceEditableField } from "@/domain/restoration-edit";
 import {
+  RESTORATION_KIND_LABELS,
+  type RestorationKind,
+} from "@/domain/restoration-status";
+import {
   pieceSchema,
   restorationEditSchema,
   type PieceFormInput,
@@ -84,6 +88,7 @@ export function EditRestorationDialog({
   initial,
   contacts,
   hasPayments = false,
+  kind = "normal",
 }: {
   restorationId: string;
   initial: {
@@ -99,6 +104,8 @@ export function EditRestorationDialog({
   contacts: ContactChoice[] | null;
   /** Con pagos registrados el tipo de pago ya no se cambia (P28). */
   hasPayments?: boolean;
+  /** Guía interna u observada: no se cobra, el tipo de pago queda "Sin definir". */
+  kind?: RestorationKind;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,7 +193,19 @@ export function EditRestorationDialog({
                 )}
               />
             ) : null}
-            <div className="grid gap-4 sm:grid-cols-2">
+            {kind !== "normal" ? (
+              <p
+                className="text-muted-foreground text-sm"
+                data-testid="pago-bloqueado"
+              >
+                Guía {RESTORATION_KIND_LABELS[kind].toLowerCase()}: no se cobra,
+                el tipo de pago queda «Sin definir».
+              </p>
+            ) : null}
+            <div
+              className="grid gap-4 sm:grid-cols-2"
+              hidden={kind !== "normal"}
+            >
               <FormField
                 control={form.control}
                 name="paymentType"
@@ -196,7 +215,7 @@ export function EditRestorationDialog({
                     <Select
                       value={field.value}
                       onValueChange={field.onChange}
-                      disabled={hasPayments}
+                      disabled={hasPayments || kind !== "normal"}
                     >
                       <FormControl>
                         <SelectTrigger className="w-full">
@@ -272,6 +291,7 @@ export function EditRestorationDialog({
 function pieceDefaults(piece: PieceDetail): PieceFormInput {
   return {
     workshopId: piece.workshopId,
+    quantity: String(piece.quantity),
     description: piece.description,
     measure: piece.measure,
     materials: piece.materialIds,
@@ -292,6 +312,7 @@ export function PieceDialog({
   workshops,
   materials,
   services,
+  guideKind = "normal",
   open: controlledOpen,
   onOpenChange,
 }: {
@@ -303,6 +324,8 @@ export function PieceDialog({
   workshops: WorkshopOption[];
   materials: CatalogOption[];
   services: CatalogOption[];
+  /** Guía interna u observada: la pieza no lleva precio de venta. */
+  guideKind?: RestorationKind;
   /** Abierto desde fuera (p. ej. el menú «Acciones» de la tabla): sin botón propio. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -364,7 +387,11 @@ export function PieceDialog({
           <DialogDescription>
             {piece
               ? "Los cambios quedan en el historial."
-              : "La pieza nueva entra como Registrada; llega a Shopify cuando se aprueba."}
+              : guideKind === "interno"
+                ? "Guía interna: la pieza nueva entra Aprobada, sin precio de venta."
+                : guideKind === "observado"
+                  ? "Guía observada: la pieza nueva entra en Observación, sin precio ni costo."
+                  : "La pieza nueva entra como Registrada; llega a Shopify cuando se aprueba."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -378,6 +405,7 @@ export function PieceDialog({
               editable={editable}
               priceHint={priceHint}
               pricePlaceholder="Por definir"
+              showPrice={guideKind === "normal"}
               // Ventas no elige taller al agregar una pieza y lo ve al editarla (D60).
               showWorkshop={
                 Boolean(piece) || !editable || editable.includes("workshopId")

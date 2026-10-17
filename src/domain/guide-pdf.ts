@@ -7,7 +7,11 @@ import {
   type PieceStatus,
 } from "./piece-state-machine";
 import {
+  PIECE_LOCATION_LABELS,
+  RESTORATION_KIND_LABELS,
   RESTORATION_STATUS_LABELS,
+  type PieceLocation,
+  type RestorationKind,
   type RestorationStatus,
 } from "./restoration-status";
 
@@ -20,12 +24,15 @@ import {
 export type GuidePdfPiece = {
   id: string;
   code: string;
+  /** Unidades (informativa: el precio es de la pieza completa). */
+  quantity: number;
   description: string;
   materialName: string;
   serviceName: string;
   measure: string;
   weightGrams: number | null;
   status: PieceStatus;
+  location: PieceLocation;
   notes: string;
   /** null si no tiene precio de venta o si quien exporta no ve montos (P42). */
   priceCents: Cents | null;
@@ -64,6 +71,8 @@ export type GuidePdfData = {
   code: string;
   createdAt: string;
   status: RestorationStatus;
+  /** Interna u observada: no se cobra, el PDF va sin importes ni total. */
+  kind: RestorationKind;
   paymentType: PaymentType;
   clientName: string;
   contactName: string | null;
@@ -93,11 +102,13 @@ export type GuidePdfRow = {
   id: string;
   number: number;
   code: string;
+  quantity: string;
   description: string;
   /** Material, medida y peso. */
   detail: string;
   service: string;
   status: string;
+  location: string;
   price: string | null;
   notes: string;
 };
@@ -156,8 +167,9 @@ export function guidePdfModel(
   { forWorkshop = false }: GuidePdfOptions = {},
 ): GuidePdfModel {
   const pieces = data.pieces.filter((p) => selectedIds.has(p.id));
-  // El taller no ve precios de venta.
-  const showPrice = data.money !== null && !forWorkshop;
+  // El taller no ve precios de venta; la guía interna u observada no se cobra.
+  const showPrice =
+    data.money !== null && !forWorkshop && data.kind === "normal";
   const { company } = data;
 
   const totals: GuidePdfTotal[] = [];
@@ -204,6 +216,14 @@ export function guidePdfModel(
         ].filter(Boolean),
     guide: [
       ["Estado", RESTORATION_STATUS_LABELS[data.status]],
+      ...(data.kind !== "normal"
+        ? ([
+            [
+              "Tipo",
+              `Guía ${RESTORATION_KIND_LABELS[data.kind].toLowerCase()}`,
+            ],
+          ] as [string, string][])
+        : []),
       ...(data.attendedBy
         ? ([["Atendió", data.attendedBy]] as [string, string][])
         : []),
@@ -218,10 +238,12 @@ export function guidePdfModel(
       id: p.id,
       number: i + 1,
       code: p.code,
+      quantity: String(p.quantity),
       description: p.description,
       detail: pieceDetail(p),
       service: p.serviceName.trim() || "—",
       status: PIECE_STATUS_LABELS[p.status],
+      location: PIECE_LOCATION_LABELS[p.location],
       price: !showPrice
         ? null
         : isClosedStatus(p.status)

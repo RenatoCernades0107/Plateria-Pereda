@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { MAX_CENTS, toDecimalString } from "@/domain/money";
+import { isChargedKind } from "@/domain/restoration-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
@@ -40,6 +41,23 @@ function refresh(restorationId: string) {
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+/** Las guías internas u observadas no se cobran (la BD también lo rechaza). */
+const UNCHARGED_KIND_ERROR =
+  "Esta guía es interna u observada: no se cobra, así que no recibe pagos ni reembolsos.";
+
+/** Mensaje si la guía no se cobra; null si es normal (o no se pudo leer: decide la BD). */
+async function unchargedKindError(
+  supabase: Supabase,
+  restorationId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("restorations_operational")
+    .select("kind")
+    .eq("id", restorationId)
+    .maybeSingle();
+  return data && !isChargedKind(data.kind) ? UNCHARGED_KIND_ERROR : null;
+}
+
 /** Inserta los pagos (uno por método); la BD valida el saldo y recalcula. */
 async function insertPayments(
   supabase: Supabase,
@@ -71,6 +89,8 @@ export async function registerPayment(
   if (!parsed.success || !z.guid().safeParse(restorationId).success)
     return { error: "Revisa el monto, el método y la fecha." };
   const supabase = await createClient();
+  const uncharged = await unchargedKindError(supabase, restorationId);
+  if (uncharged) return { error: uncharged };
   const { error } = await insertPayments(supabase, restorationId, parsed.data);
   if (error) return fail(error, "No se pudo registrar el pago.");
   scheduleShopifySync();
@@ -80,7 +100,8 @@ export async function registerPayment(
 
 /**
  * Aprueba la última pieza y registra el adelanto en el mismo paso (Paso 11.2, P43):
- * el pago queda antes de que se procese la orden, que se crea con él incluido.
+ * el pago queda antes de que se procese la orden, que se crea con él incluido. No
+ * aplica a las guías internas u observadas (no se cobran).
  */
 export async function approveWithPayment(
   restorationId: string,
@@ -92,6 +113,10 @@ export async function approveWithPayment(
   if (parsed && !parsed.success)
     return { error: "Revisa el monto, el método y la fecha." };
   const supabase = await createClient();
+  if (parsed) {
+    const uncharged = await unchargedKindError(supabase, restorationId);
+    if (uncharged) return { error: uncharged };
+  }
   const missing = await checkRequirements(supabase, "aprobada", pieceIds);
   if (missing) return { error: missing };
   const { error } = await supabase.rpc("change_piece_status", {
@@ -138,6 +163,8 @@ export async function refundPayment(
   if (!parsed.success)
     return { error: "Revisa el monto, el método, la fecha y el motivo." };
   const supabase = await createClient();
+  const uncharged = await unchargedKindError(supabase, restorationId);
+  if (uncharged) return { error: uncharged };
   const { error } = await supabase.from("payments").insert({
     restoration_id: restorationId,
     kind: "reembolso",

@@ -10,7 +10,12 @@ import { PIECE_STATUSES, type PieceStatus } from "./piece-state-machine";
 
 const piece = (
   status: PieceStatus,
-  patch: { arrivedAt?: Date | null; readyForDelivery?: boolean } = {},
+  patch: {
+    arrivedAt?: Date | null;
+    readyForDelivery?: boolean;
+    firstSentAt?: Date | null;
+    lastSentAt?: Date | null;
+  } = {},
 ) => ({
   status,
   arrivedAt: null,
@@ -29,13 +34,11 @@ describe("moveTargets", () => {
     expect(moveTargets(piece("registrada"), "logistica")).toEqual([]);
   });
 
-  it("respetan la condición física: al taller solo lo que llegó", () => {
-    expect(moveTargets(piece("aprobada"), "admin")).not.toContain(
-      "enviada_taller",
-    );
+  it("respetan la condición física: se entrega solo lo que volvió del taller", () => {
+    expect(moveTargets(piece("aprobada"), "admin")).not.toContain("entregada");
     expect(
-      moveTargets(piece("aprobada", { arrivedAt: new Date() }), "admin"),
-    ).toContain("enviada_taller");
+      moveTargets(piece("aprobada", { readyForDelivery: true }), "admin"),
+    ).toContain("entregada");
   });
 });
 
@@ -63,13 +66,27 @@ describe("checkMove", () => {
   });
 
   it("explica la condición física que lo impide", () => {
-    expect(checkMove(piece("aprobada"), "enviada_taller", "admin")).toEqual({
+    expect(checkMove(piece("aprobada"), "entregada", "admin")).toEqual({
       ok: false,
-      reason: "La pieza aún no llegó a la tienda.",
+      reason: "La pieza aún no pasó por el taller.",
     });
-    expect(checkMove(piece("enviada_taller"), "entregada", "admin")).toEqual({
+    const sent = new Date("2026-10-02T15:00:00Z");
+    expect(
+      checkMove(
+        piece("aprobada", { firstSentAt: sent, lastSentAt: sent }),
+        "entregada",
+        "admin",
+      ),
+    ).toEqual({ ok: false, reason: "La pieza sigue en el taller." });
+    expect(
+      checkMove(
+        piece("aprobada", { firstSentAt: sent, lastSentAt: sent }),
+        "anulada",
+        "ventas",
+      ),
+    ).toEqual({
       ok: false,
-      reason: "La pieza sigue en el taller.",
+      reason: "La pieza está en el taller: solo el administrador la anula.",
     });
   });
 });

@@ -16,7 +16,6 @@ export const STATUS_AGE_THRESHOLDS: Partial<
   en_consulta: [3, 7],
   en_espera: [3, 7],
   aprobada: [3, 7],
-  enviada_taller: [7, 15],
   observada: [3, 7],
   rechazada: [7, 15],
   sin_arreglo: [7, 15],
@@ -25,13 +24,22 @@ export const STATUS_AGE_THRESHOLDS: Partial<
 /** "Lista para entregar" (ya volvió del taller) tiene sus propios umbrales. */
 export const READY_AGE_THRESHOLDS = [7, 15] as const;
 
+/** En el taller por trabajo (Aprobada u Observada enviada): lo que tarda el taller. */
+export const IN_WORKSHOP_AGE_THRESHOLDS = [7, 15] as const;
+
 export function statusAgeTone(
-  piece: { status: PieceStatus; readyForDelivery?: boolean },
+  piece: {
+    status: PieceStatus;
+    readyForDelivery?: boolean;
+    inWorkshop?: boolean;
+  },
   days: number,
 ): AgeTone {
   const limits = piece.readyForDelivery
     ? READY_AGE_THRESHOLDS
-    : STATUS_AGE_THRESHOLDS[piece.status];
+    : piece.inWorkshop
+      ? IN_WORKSHOP_AGE_THRESHOLDS
+      : STATUS_AGE_THRESHOLDS[piece.status];
   if (!limits) return "neutral";
   if (days >= limits[1]) return "critical";
   if (days >= limits[0]) return "attention";

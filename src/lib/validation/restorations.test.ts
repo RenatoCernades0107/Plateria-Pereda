@@ -60,6 +60,7 @@ describe("pieceSchema", () => {
   it("normaliza los textos y convierte precio y peso", () => {
     expect(pieceSchema.parse(piece)).toEqual({
       workshopId: null,
+      quantity: 1,
       description: "Bandeja ovalada con asas",
       measure: "40 × 30 cm",
       materials: [SILVER],
@@ -69,6 +70,17 @@ describe("pieceSchema", () => {
       urgent: false,
       notes: "",
     });
+  });
+
+  it("cantidad: entero de 1 a 999; vacía = 1", () => {
+    expect(pieceSchema.parse({ ...piece, quantity: " 6 " }).quantity).toBe(6);
+    expect(pieceSchema.parse({ ...piece, quantity: "" }).quantity).toBe(1);
+    expect(pieceSchema.parse({ ...piece, quantity: 999 }).quantity).toBe(999);
+    for (const quantity of ["0", "1000", "2.5", "-1", "dos"]) {
+      expect(errorsOf(pieceSchema, { ...piece, quantity })).toEqual({
+        quantity: "La cantidad debe ser un número entero entre 1 y 999",
+      });
+    }
   });
 
   it("el precio de venta puede quedar sin asignar (D58)", () => {
@@ -90,6 +102,7 @@ describe("pieceSchema", () => {
       }),
     ).toEqual({
       workshopId: null,
+      quantity: 1,
       description: "Cáliz",
       measure: "",
       materials: [],
@@ -390,6 +403,20 @@ describe("restorationSchema", () => {
       restorationSchema.parse({ ...restoration, paymentType: "credito" })
         .depositMethodId,
     ).toBeNull();
+  });
+
+  it("tipo de guía: normal por defecto; interno u observado", () => {
+    expect(restorationSchema.parse(restoration).kind).toBe("normal");
+    expect(
+      restorationSchema.parse({
+        ...restoration,
+        kind: "interno",
+        paymentType: "sin_definir",
+      }).kind,
+    ).toBe("interno");
+    expect(
+      errorsOf(restorationSchema, { ...restoration, kind: "otro" }),
+    ).toHaveProperty("kind");
   });
 
   it("rechaza un tipo de pago desconocido", () => {

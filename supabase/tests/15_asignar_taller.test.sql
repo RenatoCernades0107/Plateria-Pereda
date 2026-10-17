@@ -14,7 +14,10 @@ insert into public.restorations (id, client_id, payment_type)
 insert into public.pieces (id, restoration_id, description, price) values
   ('00000000-0000-0000-0000-00000000ba41', '00000000-0000-0000-0000-00000000ba30', 'Fuente', 100),
   ('00000000-0000-0000-0000-00000000ba42', '00000000-0000-0000-0000-00000000ba30', 'Bandeja', 50);
-update public.pieces set status = 'enviada_taller' where id = '00000000-0000-0000-0000-00000000ba42';
+-- En el taller: Aprobada, enviada y aún sin volver.
+update public.pieces set status = 'aprobada', approved_at = now(), workshop_id = '00000000-0000-0000-0000-00000000ba10',
+  first_sent_at = now(), last_sent_at = now()
+where id = '00000000-0000-0000-0000-00000000ba42';
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ba2","role":"authenticated"}', true);

@@ -15,6 +15,8 @@ import {
   findTransition,
   isClosedStatus,
   isInReview,
+  isInWorkshop,
+  isReadyForDelivery,
   markArrived,
   PIECE_STATUS_LABELS,
   PIECE_STATUSES,
@@ -23,6 +25,8 @@ import {
   receiveFromWorkshop,
   returnToClient,
   sendForReview,
+  canSendToWorkshop,
+  sendToWorkshop,
   TRANSITION_ERROR_MESSAGES,
   type PieceSnapshot,
   type PieceStatus,
@@ -31,6 +35,7 @@ import {
 // Tabla esperada (§7.1 + P41 + P42 + P47), escrita aparte del código: si alguien
 // cambia una transición o sus roles, este test lo detecta.
 // Roles: A = admin, V = ventas, L = logística. N = nota obligatoria, T = taller obligatorio.
+// Sin estado de taller (2026-10-17): ir al taller es una acción, no una transición.
 const ESPERADO: Record<string, { roles: string; requires?: "N" | "T" }> = {
   "registrada→en_consulta": { roles: "AV", requires: "N" },
   "registrada→aprobada": { roles: "AV" },
@@ -38,18 +43,15 @@ const ESPERADO: Record<string, { roles: string; requires?: "N" | "T" }> = {
   "en_espera→aprobada": { roles: "AV" },
   "en_espera→rechazada": { roles: "AV", requires: "N" },
   "en_consulta→sin_arreglo": { roles: "AV", requires: "N" },
-  "aprobada→enviada_taller": { roles: "AL", requires: "T" },
-  "enviada_taller→sin_arreglo": { roles: "AVL", requires: "N" },
-  "enviada_taller→entregada": { roles: "AVL" },
-  "enviada_taller→observada": { roles: "AVL", requires: "N" },
+  "aprobada→entregada": { roles: "AVL" },
+  "aprobada→observada": { roles: "AVL", requires: "N" },
+  "aprobada→sin_arreglo": { roles: "AVL", requires: "N" },
   "entregada→observada": { roles: "AVL", requires: "N" },
-  "observada→enviada_taller": { roles: "AL", requires: "T" },
   "observada→entregada": { roles: "AVL" },
   "registrada→anulada": { roles: "AV", requires: "N" },
   "en_consulta→anulada": { roles: "AV", requires: "N" },
   "en_espera→anulada": { roles: "AV", requires: "N" },
   "aprobada→anulada": { roles: "AV", requires: "N" },
-  "enviada_taller→anulada": { roles: "A", requires: "N" },
   "observada→anulada": { roles: "AV", requires: "N" },
 };
 
@@ -62,6 +64,8 @@ const ROLES: AppRole[] = ["admin", "ventas", "logistica"];
 
 const NOW = new Date("2026-10-04T15:00:00Z");
 const BEFORE = new Date("2026-10-01T15:00:00Z");
+const SENT_AT = new Date("2026-10-02T15:00:00Z");
+const BACK_AT = new Date("2026-10-03T15:00:00Z");
 
 const piece = (
   status: PieceStatus,
@@ -76,14 +80,34 @@ const piece = (
   ...overrides,
 });
 
-/** Pieza en la tienda y, si está en En restauración, ya de vuelta del taller. */
+/** Pieza en la tienda y, si está Aprobada, ya de vuelta del taller (lista). */
 const enTienda = (
   status: PieceStatus,
   overrides: Partial<PieceSnapshot> = {},
 ) =>
   piece(status, {
     arrivedAt: BEFORE,
-    readyForDelivery: status === "enviada_taller",
+    ...(status === "aprobada"
+      ? {
+          readyForDelivery: true,
+          firstSentAt: SENT_AT,
+          lastSentAt: SENT_AT,
+          lastReturnedAt: BACK_AT,
+        }
+      : {}),
+    ...overrides,
+  });
+
+/** Aprobada (u Observada) enviada al taller y aún sin volver. */
+const enTaller = (
+  status: PieceStatus = "aprobada",
+  overrides: Partial<PieceSnapshot> = {},
+) =>
+  piece(status, {
+    arrivedAt: BEFORE,
+    workshopId: "w1",
+    firstSentAt: SENT_AT,
+    lastSentAt: SENT_AT,
     ...overrides,
   });
 
@@ -113,7 +137,7 @@ describe("tabla de transiciones", () => {
   it("usa los nombres de la Platería (P47)", () => {
     expect(PIECE_STATUS_LABELS.en_consulta).toBe("Consulta");
     expect(PIECE_STATUS_LABELS.en_espera).toBe("Espera respuesta cliente");
-    expect(PIECE_STATUS_LABELS.enviada_taller).toBe("En restauración");
+    expect(PIECE_STATUSES).toHaveLength(9);
     expect(PIECE_STATUS_LABELS.observada).toBe("Observación");
     expect(PIECE_STATUS_LABELS.rechazada).toBe("Rechazado (cliente)");
     expect(PIECE_STATUS_LABELS.sin_arreglo).toBe("No tiene arreglo");
@@ -179,33 +203,41 @@ describe("availableTransitions", () => {
       "sin_arreglo",
       "anulada",
     ]);
-    expect(destinos("aprobada", "logistica")).toEqual(["enviada_taller"]);
-    expect(destinos("aprobada", "ventas")).toEqual(["anulada"]);
-    expect(destinos("enviada_taller", "admin")).toEqual([
-      "sin_arreglo",
+    expect(destinos("aprobada", "logistica")).toEqual([
       "entregada",
       "observada",
+      "sin_arreglo",
+    ]);
+    expect(destinos("aprobada", "ventas")).toEqual([
+      "entregada",
+      "observada",
+      "sin_arreglo",
       "anulada",
     ]);
-    expect(destinos("observada", "logistica")).toEqual([
-      "enviada_taller",
-      "entregada",
-    ]);
+    expect(destinos("observada", "logistica")).toEqual(["entregada"]);
   });
 
-  it("no ofrece enviar al taller una pieza que no llegó a la tienda", () => {
+  it("una Aprobada que nunca fue al taller solo se anula", () => {
     expect(
-      availableTransitions(piece("aprobada"), "logistica").map((t) => t.to),
-    ).toEqual([]);
+      availableTransitions(
+        piece("aprobada", { arrivedAt: BEFORE }),
+        "admin",
+      ).map((t) => t.to),
+    ).toEqual(["anulada"]);
   });
 
   it("mientras la pieza sigue en el taller no se entrega ni se observa", () => {
     expect(
-      availableTransitions(
-        piece("enviada_taller", { arrivedAt: BEFORE }),
-        "logistica",
-      ).map((t) => t.to),
+      availableTransitions(enTaller(), "logistica").map((t) => t.to),
     ).toEqual(["sin_arreglo"]);
+    // Ventas no la anula: solo el administrador (P41 d).
+    expect(availableTransitions(enTaller(), "ventas").map((t) => t.to)).toEqual(
+      ["sin_arreglo"],
+    );
+    expect(availableTransitions(enTaller(), "admin").map((t) => t.to)).toEqual([
+      "sin_arreglo",
+      "anulada",
+    ]);
   });
 
   it("logística no consulta, aprueba, rechaza ni anula", () => {
@@ -243,8 +275,8 @@ describe("applyTransition", () => {
     ["registrada", "anulada"],
     ["en_espera", "rechazada"],
     ["en_consulta", "sin_arreglo"],
-    ["enviada_taller", "sin_arreglo"],
-    ["enviada_taller", "observada"],
+    ["aprobada", "sin_arreglo"],
+    ["aprobada", "observada"],
     ["entregada", "observada"],
   ] as const)("%s → %s exige nota", (from, to) => {
     for (const note of [undefined, null, "", "   "]) {
@@ -272,100 +304,111 @@ describe("applyTransition", () => {
     ).toMatchObject({ ok: true, note: null });
   });
 
-  describe("envío al taller (En restauración)", () => {
-    it("exige que la pieza esté en la tienda", () => {
-      expect(
-        applyTransition(piece("aprobada", { workshopId: "taller-a" }), {
-          to: "enviada_taller",
-          role: "logistica",
-          now: NOW,
-        }),
-      ).toEqual({ ok: false, error: "no_llego" });
-    });
-
-    it("exige un taller", () => {
-      expect(
-        applyTransition(enTienda("aprobada"), {
-          to: "enviada_taller",
-          role: "logistica",
-          now: NOW,
-        }),
-      ).toEqual({ ok: false, error: "taller_requerido" });
-    });
-
-    it("usa el taller ya asignado y fija el primer y el último envío", () => {
-      expect(
-        applyTransition(enTienda("aprobada", { workshopId: "taller-a" }), {
-          to: "enviada_taller",
-          role: "logistica",
-          now: NOW,
-        }),
-      ).toEqual({
-        ok: true,
-        changes: {
-          status: "enviada_taller",
-          firstSentAt: NOW,
-          lastSentAt: NOW,
-        },
-        steps: [{ from: "aprobada", to: "enviada_taller", event: "estado" }],
-        note: null,
-      });
-    });
-
-    it("cambia el taller si se elige otro", () => {
-      expect(
-        applyTransition(enTienda("aprobada", { workshopId: "taller-a" }), {
-          to: "enviada_taller",
-          role: "admin",
-          workshopId: "taller-b",
-          now: NOW,
-        }),
-      ).toMatchObject({ ok: true, changes: { workshopId: "taller-b" } });
-    });
-
-    it("el reenvío tras una observación conserva la primera fecha de envío", () => {
-      expect(
-        applyTransition(
-          enTienda("observada", {
-            workshopId: "taller-a",
-            firstSentAt: BEFORE,
+  describe("reglas físicas desde Aprobada (ir al taller es una acción)", () => {
+    it("no se entrega ni se observa lo que nunca fue al taller", () => {
+      for (const to of ["entregada", "observada"] as const) {
+        expect(
+          applyTransition(piece("aprobada", { arrivedAt: BEFORE }), {
+            to,
+            role: "admin",
+            note: "x",
+            now: NOW,
           }),
-          { to: "enviada_taller", role: "logistica", now: NOW },
-        ),
+        ).toEqual({ ok: false, error: "no_paso_taller" });
+      }
+      expect(TRANSITION_ERROR_MESSAGES.no_paso_taller).toBe(
+        "La pieza aún no pasó por el taller.",
+      );
+    });
+
+    it("no se entrega ni se observa lo que sigue en el taller (o en revisión)", () => {
+      for (const p of [
+        enTaller(),
+        piece("aprobada", {
+          arrivedAt: BEFORE,
+          workshopId: "w1",
+          reviewSentAt: SENT_AT,
+        }),
+      ]) {
+        expect(
+          applyTransition(p, { to: "entregada", role: "admin", now: NOW }),
+        ).toEqual({ ok: false, error: "sigue_en_taller" });
+      }
+    });
+
+    it("Sin arreglo solo si ya fue al taller (aunque siga allá)", () => {
+      expect(
+        applyTransition(piece("aprobada", { arrivedAt: BEFORE }), {
+          to: "sin_arreglo",
+          role: "logistica",
+          note: "x",
+          now: NOW,
+        }),
+      ).toEqual({ ok: false, error: "no_paso_taller" });
+      expect(
+        applyTransition(enTaller(), {
+          to: "sin_arreglo",
+          role: "logistica",
+          note: "El taller dice que no tiene arreglo",
+          now: NOW,
+        }),
       ).toMatchObject({
         ok: true,
-        changes: { status: "enviada_taller", lastSentAt: NOW },
+        changes: { status: "sin_arreglo", cancelledAt: NOW },
       });
     });
-  });
 
-  it("desde En restauración solo se entrega u observa lo que volvió del taller", () => {
-    const enTaller = piece("enviada_taller", { arrivedAt: BEFORE });
-    for (const to of ["entregada", "observada"] as const) {
+    it("anular una pieza en el taller: solo el administrador", () => {
       expect(
-        applyTransition(enTaller, { to, role: "admin", note: "x", now: NOW }),
+        applyTransition(enTaller(), {
+          to: "anulada",
+          role: "ventas",
+          note: "x",
+          now: NOW,
+        }),
+      ).toEqual({ ok: false, error: "en_taller_solo_admin" });
+      expect(
+        applyTransition(enTaller(), {
+          to: "anulada",
+          role: "admin",
+          note: "x",
+          now: NOW,
+        }).ok,
+      ).toBe(true);
+    });
+
+    it("una Observada reenviada al taller no se entrega hasta que vuelve", () => {
+      const reenviada = enTaller("observada", {
+        observedAt: BACK_AT,
+        lastSentAt: NOW,
+        lastReturnedAt: BACK_AT,
+      });
+      expect(
+        applyTransition(reenviada, {
+          to: "entregada",
+          role: "admin",
+          now: NOW,
+        }),
       ).toEqual({ ok: false, error: "sigue_en_taller" });
-    }
-    expect(
-      applyTransition(enTaller, {
-        to: "sin_arreglo",
-        role: "logistica",
-        note: "El taller dice que no tiene arreglo",
-        now: NOW,
-      }),
-    ).toMatchObject({
-      ok: true,
-      changes: { status: "sin_arreglo", cancelledAt: NOW },
+      // Sin reenviar se entrega desde la tienda.
+      expect(
+        applyTransition(enTienda("observada", { observedAt: BACK_AT }), {
+          to: "entregada",
+          role: "admin",
+          now: NOW,
+        }).ok,
+      ).toBe(true);
     });
   });
 
   it.each([
-    ["enviada_taller", "entregada", { deliveredAt: NOW }],
+    ["aprobada", "entregada", { deliveredAt: NOW }],
+    ["aprobada", "observada", { observedAt: NOW }],
     ["observada", "entregada", { deliveredAt: NOW }],
     ["registrada", "anulada", { cancelledAt: NOW }],
     ["en_espera", "rechazada", { cancelledAt: NOW }],
     ["en_consulta", "sin_arreglo", { cancelledAt: NOW }],
-    ["entregada", "observada", {}],
+    ["entregada", "observada", { observedAt: NOW }],
     ["registrada", "en_consulta", {}],
   ] as const)("%s → %s fija sus fechas", (from, to, fechas) => {
     expect(
@@ -419,16 +462,16 @@ describe("applyTransition", () => {
     expect(origenes).toEqual(["en_espera"]);
   });
 
-  it("una pieza de vuelta del taller vuelve a ir solo pasando por Observación (P41 f)", () => {
-    expect(findTransition("enviada_taller", "enviada_taller")).toBeUndefined();
-    expect(findTransition("observada", "enviada_taller")).toBeDefined();
+  it("ninguna transición exige taller: ir al taller es una acción", () => {
+    expect(PIECE_TRANSITIONS.some((t) => t.requiresWorkshop)).toBe(false);
+    expect(findTransition("aprobada", "observada")).toBeDefined();
   });
 
   it("solo una pieza que estuvo en el taller puede quedar en Observación (P17 a)", () => {
     const origenes = PIECE_TRANSITIONS.filter((t) => t.to === "observada").map(
       (t) => t.from,
     );
-    expect(origenes.sort()).toEqual(["entregada", "enviada_taller"]);
+    expect(origenes.sort()).toEqual(["aprobada", "entregada"]);
   });
 
   it("los errores tienen un mensaje", () => {
@@ -467,7 +510,6 @@ describe("marcar llegada a tienda", () => {
   });
 
   it.each([
-    "enviada_taller",
     "observada",
     "entregada",
     "rechazada",
@@ -478,33 +520,157 @@ describe("marcar llegada a tienda", () => {
   });
 });
 
-describe("recibir del taller", () => {
-  const enTaller = piece("enviada_taller", { arrivedAt: BEFORE });
+describe("enviar al taller", () => {
+  it("lo hacen admin y logística con una Aprobada u Observada en la tienda", () => {
+    for (const status of ["aprobada", "observada"] as const) {
+      const p = piece(status, { arrivedAt: BEFORE });
+      expect(canSendToWorkshop(p, "admin")).toBe(true);
+      expect(canSendToWorkshop(p, "logistica")).toBe(true);
+      expect(canSendToWorkshop(p, "ventas")).toBe(false);
+    }
+    expect(canSendToWorkshop(piece("aprobada"), "admin")).toBe(false);
+    expect(canSendToWorkshop(enTienda("en_consulta"), "admin")).toBe(false);
+    expect(canSendToWorkshop(enTaller(), "admin")).toBe(false);
+    // Una Aprobada ya de vuelta se puede reenviar (arreglo).
+    expect(canSendToWorkshop(enTienda("aprobada"), "admin")).toBe(true);
+  });
 
-  it("lo hacen logística y admin; la pieza sigue en En restauración", () => {
-    expect(canReceiveFromWorkshop(enTaller, "logistica")).toBe(true);
-    expect(canReceiveFromWorkshop(enTaller, "admin")).toBe(true);
-    expect(canReceiveFromWorkshop(enTaller, "ventas")).toBe(false);
-    expect(receiveFromWorkshop(enTaller, "logistica", NOW)).toEqual({
+  it("guarda el taller y fija el primer y el último envío; el estado no cambia", () => {
+    expect(
+      sendToWorkshop(
+        piece("aprobada", { arrivedAt: BEFORE, workshopId: "w1" }),
+        "logistica",
+        null,
+        NOW,
+      ),
+    ).toEqual({
       ok: true,
-      changes: { status: "enviada_taller", lastReturnedAt: NOW },
-      steps: [
-        {
-          from: "enviada_taller",
-          to: "enviada_taller",
-          event: "vuelta_taller",
-        },
-      ],
+      changes: {
+        status: "aprobada",
+        workshopId: "w1",
+        firstSentAt: NOW,
+        lastSentAt: NOW,
+      },
+      steps: [{ from: "aprobada", to: "aprobada", event: "envio_taller" }],
       note: null,
     });
-    expect(receiveFromWorkshop(enTaller, "ventas", NOW)).toEqual({
+  });
+
+  it("el reenvío de una Observada conserva la primera fecha de envío", () => {
+    expect(
+      sendToWorkshop(
+        enTienda("observada", {
+          workshopId: "w1",
+          firstSentAt: SENT_AT,
+          lastSentAt: SENT_AT,
+          lastReturnedAt: BACK_AT,
+          observedAt: BACK_AT,
+        }),
+        "admin",
+        "w2",
+        NOW,
+      ),
+    ).toEqual({
+      ok: true,
+      changes: { status: "observada", workshopId: "w2", lastSentAt: NOW },
+      steps: [{ from: "observada", to: "observada", event: "envio_taller" }],
+      note: null,
+    });
+  });
+
+  it("valida rol, estado, llegada, taller y que no esté ya allá", () => {
+    const enTiendaSinTaller = piece("aprobada", { arrivedAt: BEFORE });
+    expect(sendToWorkshop(enTiendaSinTaller, "ventas", "w1", NOW)).toEqual({
+      ok: false,
+      error: "rol_no_permitido",
+    });
+    expect(sendToWorkshop(enTienda("en_espera"), "admin", "w1", NOW)).toEqual({
+      ok: false,
+      error: "transicion_invalida",
+    });
+    expect(sendToWorkshop(piece("aprobada"), "admin", "w1", NOW)).toEqual({
+      ok: false,
+      error: "no_llego",
+    });
+    expect(sendToWorkshop(enTiendaSinTaller, "admin", null, NOW)).toEqual({
+      ok: false,
+      error: "taller_requerido",
+    });
+    expect(sendToWorkshop(enTaller(), "admin", "w1", NOW)).toEqual({
+      ok: false,
+      error: "ya_en_taller",
+    });
+  });
+
+  it("desde la revisión sigue en el mismo taller y cierra la revisión", () => {
+    const enRevision = piece("aprobada", {
+      arrivedAt: BEFORE,
+      workshopId: "w1",
+      reviewSentAt: SENT_AT,
+    });
+    expect(sendToWorkshop(enRevision, "logistica", null, NOW)).toMatchObject({
+      ok: true,
+      changes: { lastSentAt: NOW, reviewReturnedAt: NOW, workshopId: "w1" },
+    });
+    expect(sendToWorkshop(enRevision, "logistica", "w2", NOW)).toEqual({
+      ok: false,
+      error: "revision_otro_taller",
+    });
+  });
+});
+
+describe("isInWorkshop / isReadyForDelivery", () => {
+  it("una Aprobada enviada está en el taller hasta que vuelve; luego está lista", () => {
+    expect(isInWorkshop(enTaller())).toBe(true);
+    expect(isReadyForDelivery(enTaller())).toBe(false);
+    const deVuelta = enTaller("aprobada", { lastReturnedAt: BACK_AT });
+    expect(isInWorkshop(deVuelta)).toBe(false);
+    expect(isReadyForDelivery(deVuelta)).toBe(true);
+  });
+
+  it("una Observada cuenta solo el envío posterior a la observación", () => {
+    const observada = enTaller("observada", {
+      lastReturnedAt: BACK_AT,
+      observedAt: NOW,
+    });
+    expect(isInWorkshop(observada)).toBe(false);
+    expect(isReadyForDelivery(observada)).toBe(false);
+    const reenviada = enTaller("observada", {
+      observedAt: BACK_AT,
+      lastSentAt: NOW,
+      lastReturnedAt: BACK_AT,
+    });
+    expect(isInWorkshop(reenviada)).toBe(true);
+  });
+
+  it("otros estados nunca están en el taller por trabajo", () => {
+    expect(isInWorkshop(enTaller("entregada"))).toBe(false);
+    expect(isInWorkshop(enTaller("sin_arreglo"))).toBe(false);
+  });
+});
+
+describe("recibir del taller", () => {
+  it("lo hacen logística y admin; el estado no cambia", () => {
+    expect(canReceiveFromWorkshop(enTaller(), "logistica")).toBe(true);
+    expect(canReceiveFromWorkshop(enTaller(), "admin")).toBe(true);
+    expect(canReceiveFromWorkshop(enTaller(), "ventas")).toBe(false);
+    expect(receiveFromWorkshop(enTaller(), "logistica", NOW)).toEqual({
+      ok: true,
+      changes: { status: "aprobada", lastReturnedAt: NOW },
+      steps: [{ from: "aprobada", to: "aprobada", event: "vuelta_taller" }],
+      note: null,
+    });
+    expect(
+      receiveFromWorkshop(enTaller("observada"), "admin", NOW),
+    ).toMatchObject({ ok: true, changes: { status: "observada" } });
+    expect(receiveFromWorkshop(enTaller(), "ventas", NOW)).toEqual({
       ok: false,
       error: "rol_no_permitido",
     });
   });
 
-  it("no se recibe dos veces ni fuera de En restauración", () => {
-    const deVuelta = piece("enviada_taller", { readyForDelivery: true });
+  it("no se recibe dos veces ni lo que no está en el taller", () => {
+    const deVuelta = enTienda("aprobada");
     expect(canReceiveFromWorkshop(deVuelta, "admin")).toBe(false);
     expect(receiveFromWorkshop(deVuelta, "admin", NOW)).toEqual({
       ok: false,
@@ -668,34 +834,6 @@ describe("revisión en taller", () => {
       }).ok,
     ).toBe(true);
   });
-
-  it("aprobada en revisión pasa a En restauración en el mismo taller y cierra la revisión", () => {
-    expect(
-      applyTransition(enRevision("aprobada"), {
-        to: "enviada_taller",
-        role: "logistica",
-        now: NOW,
-      }),
-    ).toEqual({
-      ok: true,
-      changes: {
-        status: "enviada_taller",
-        firstSentAt: NOW,
-        lastSentAt: NOW,
-        reviewReturnedAt: NOW,
-      },
-      steps: [{ from: "aprobada", to: "enviada_taller", event: "estado" }],
-      note: null,
-    });
-    expect(
-      applyTransition(enRevision("aprobada"), {
-        to: "enviada_taller",
-        role: "logistica",
-        workshopId: "w2",
-        now: NOW,
-      }),
-    ).toEqual({ ok: false, error: "revision_otro_taller" });
-  });
 });
 
 describe("canUndoStatus (retroceder estado)", () => {
@@ -715,22 +853,26 @@ describe("canUndoStatus (retroceder estado)", () => {
     expect(canUndoStatus(piece("aprobada"), "registrada", "logistica")).toBe(
       false,
     );
-    // aprobada → enviada_taller: admin y logística; ventas no.
-    expect(
-      canUndoStatus(piece("enviada_taller"), "aprobada", "logistica"),
-    ).toBe(true);
-    expect(canUndoStatus(piece("enviada_taller"), "aprobada", "ventas")).toBe(
-      false,
+    // aprobada → entregada: los tres roles.
+    expect(canUndoStatus(piece("entregada"), "aprobada", "logistica")).toBe(
+      true,
     );
   });
 
-  it("anular una pieza que estaba en el taller solo lo deshace el admin (P41 d)", () => {
-    expect(canUndoStatus(piece("anulada"), "enviada_taller", "admin")).toBe(
-      true,
-    );
-    expect(canUndoStatus(piece("anulada"), "enviada_taller", "ventas")).toBe(
-      false,
-    );
+  it("no retrocede una pieza que está en el taller por trabajo", () => {
+    const enTaller = {
+      ...piece("observada"),
+      lastSentAt: new Date("2026-10-05T10:00:00Z"),
+      observedAt: new Date("2026-10-04T10:00:00Z"),
+    };
+    expect(canUndoStatus(enTaller, "entregada", "admin")).toBe(false);
+    expect(
+      canUndoStatus(
+        { ...enTaller, lastReturnedAt: new Date("2026-10-06T10:00:00Z") },
+        "entregada",
+        "admin",
+      ),
+    ).toBe(true);
   });
 
   it("sin esa transición en la tabla, solo el admin", () => {

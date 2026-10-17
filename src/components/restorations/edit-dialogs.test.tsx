@@ -41,6 +41,7 @@ const piece: PieceDetail = {
   id: "p1",
   number: 1,
   code: "RES-00001-1",
+  quantity: 3,
   status: "aprobada",
   location: "en_tienda",
   urgent: false,
@@ -132,7 +133,47 @@ describe("PieceDialog", () => {
         service: { id: S1, name: "Limpieza" },
         price: "1200.50",
         weight: "820.5",
+        quantity: "3",
       }),
+    );
+  });
+
+  it("la cantidad se edita con la descripción; en una guía interna no hay precio", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={piece}
+        guideKind="interno"
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).queryByLabelText("Precio (S/)")).toBeNull();
+    const quantity = within(dialog).getByLabelText("Cant.");
+    expect(quantity).toHaveValue("3");
+    await user.clear(quantity);
+    await user.type(quantity, "0");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "La cantidad debe ser un número entero entre 1 y 999",
+      ),
+    ).toBeVisible();
+    expect(mocks.updatePiece).not.toHaveBeenCalled();
+    await user.clear(quantity);
+    await user.type(quantity, "6");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ quantity: "6" }),
     );
   });
 
@@ -145,6 +186,7 @@ describe("PieceDialog", () => {
       "Descripción",
       "Notas de la pieza",
       "Servicio",
+      "Cant.",
       "Material",
       "Peso (g)",
       "Medida",
@@ -277,6 +319,30 @@ describe("PieceDialog: precio de venta sin asignar (D58)", () => {
 });
 
 describe("EditRestorationDialog", () => {
+  it("en una guía interna no deja elegir tipo de pago ni adelanto", async () => {
+    const user = userEvent.setup();
+    render(
+      <EditRestorationDialog
+        restorationId="r1"
+        kind="interno"
+        initial={{
+          contactId: null,
+          paymentType: "sin_definir",
+          depositAmountCents: null,
+          totalCents: 0,
+          notes: "",
+        }}
+        contacts={null}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByTestId("pago-bloqueado")).toHaveTextContent(
+      "Guía interna: no se cobra",
+    );
+    expect(within(dialog).queryByLabelText("Tipo de pago")).not.toBeVisible();
+  });
+
   it("cambia el tipo de pago y oculta el adelanto fuera de A cuenta", async () => {
     const user = userEvent.setup();
     render(

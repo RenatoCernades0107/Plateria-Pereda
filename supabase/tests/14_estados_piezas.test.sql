@@ -83,8 +83,8 @@ select is(
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[],
-       'enviada_taller', null, '00000000-0000-0000-0000-00000000aa10') $$,
+  $$ select * from public.send_pieces_to_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[],
+       '00000000-0000-0000-0000-00000000aa10') $$,
   '23514', null, 'al taller solo va lo que está en la tienda (no Por WhatsApp)'
 );
 select results_eq(
@@ -106,15 +106,15 @@ select throws_ok(
   '23514', null, 'no se marca dos veces la llegada'
 );
 select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'enviada_taller') $$,
+  $$ select * from public.send_pieces_to_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
   '23514', 'Elige el taller al que se envía la pieza.', 'enviar al taller exige taller'
 );
 select results_eq(
-  $$ select status::text from public.change_piece_status(
+  $$ select status::text from public.send_pieces_to_workshop(
        array['00000000-0000-0000-0000-00000000aa41', '00000000-0000-0000-0000-00000000aa42']::uuid[],
-       'enviada_taller', null, '00000000-0000-0000-0000-00000000aa10') order by piece_id $$,
-  $$ values ('enviada_taller'), ('enviada_taller') $$,
-  'logística envía en bloque al taller (Interno)'
+       '00000000-0000-0000-0000-00000000aa10') order by piece_id $$,
+  $$ values ('aprobada'), ('aprobada') $$,
+  'logística envía en bloque al taller: siguen Aprobadas (ya no hay En restauración)'
 );
 
 reset role;
@@ -144,8 +144,8 @@ select throws_ok(
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select results_eq(
   $$ select status::text from public.receive_from_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
-  $$ values ('enviada_taller') $$,
-  'logística recibe la pieza del taller: sigue en Interno'
+  $$ values ('aprobada') $$,
+  'logística recibe la pieza del taller: sigue Aprobada'
 );
 reset role;
 select results_eq(
@@ -200,17 +200,23 @@ select is(
 select is(
   (select location from public.pieces where id = '00000000-0000-0000-0000-00000000aa41'),
   (select public.derive_piece_location(p.status, p.arrived_at, p.first_sent_at, p.last_sent_at,
-     p.last_returned_at, p.returned_at) from public.pieces p where p.id = '00000000-0000-0000-0000-00000000aa41'),
+     p.last_returned_at, p.returned_at, p.review_sent_at, p.review_returned_at, p.observed_at)
+   from public.pieces p where p.id = '00000000-0000-0000-0000-00000000aa41'),
   'la columna y la función coinciden para una pieza observada'
 );
--- Todo el test corre en una transacción (now() fijo): la vuelta del taller se fecha antes.
-update public.pieces set last_returned_at = last_returned_at - interval '1 hour'
+-- Todo el test corre en una transacción (now() fijo): el envío, la vuelta y la
+-- observación se fechan antes, en ese orden.
+update public.pieces set
+  first_sent_at = first_sent_at - interval '3 hours',
+  last_sent_at = last_sent_at - interval '3 hours',
+  last_returned_at = last_returned_at - interval '2 hours',
+  observed_at = observed_at - interval '1 hour'
 where id = '00000000-0000-0000-0000-00000000aa41';
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000aa2","role":"authenticated"}', true);
 select lives_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-00000000aa41']::uuid[], 'enviada_taller') $$,
-  'logística reenvía al taller la pieza observada'
+  $$ select * from public.send_pieces_to_workshop(array['00000000-0000-0000-0000-00000000aa41']::uuid[]) $$,
+  'logística reenvía al taller la pieza observada (al mismo taller)'
 );
 reset role;
 select is(
@@ -362,12 +368,12 @@ insert into public.pieces (id, restoration_id, description, price, created_at)
   values ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'Jarra', 10, '2026-10-01T15:00:00Z');
 delete from public.piece_status_history where piece_id = '00000000-0000-0000-0000-00000000aa43';
 insert into public.piece_status_history (piece_id, restoration_id, event, from_status, to_status, occurred_at) values
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'aprobada', 'enviada_taller', '2026-10-02T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'enviada_taller', 'enviada_taller', '2026-10-05T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'enviada_taller', 'observada', '2026-10-06T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'observada', 'enviada_taller', '2026-10-07T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'enviada_taller', 'enviada_taller', '2026-10-09T15:00:00Z'),
-  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'enviada_taller', 'entregada', '2026-10-10T15:00:00Z');
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'envio_taller', 'aprobada', 'aprobada', '2026-10-02T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'aprobada', 'aprobada', '2026-10-05T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'aprobada', 'observada', '2026-10-06T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'envio_taller', 'observada', 'observada', '2026-10-07T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'vuelta_taller', 'observada', 'observada', '2026-10-09T15:00:00Z'),
+  ('00000000-0000-0000-0000-00000000aa43', '00000000-0000-0000-0000-00000000aa31', 'estado', 'observada', 'entregada', '2026-10-10T15:00:00Z');
 update public.pieces set status = 'entregada', delivered_at = '2026-10-10T15:00:00Z'
   where id = '00000000-0000-0000-0000-00000000aa43';
 select results_eq(
@@ -380,7 +386,7 @@ select is(
   (select count(*)::int from public.pieces p
    where p.location is distinct from public.derive_piece_location(
      p.status, p.arrived_at, p.first_sent_at, p.last_sent_at, p.last_returned_at, p.returned_at,
-     p.review_sent_at, p.review_returned_at)),
+     p.review_sent_at, p.review_returned_at, p.observed_at)),
   0, 'la columna generada de ubicación coincide con derive_piece_location()'
 );
 

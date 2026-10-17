@@ -32,7 +32,7 @@ const restoration = (
       code: "RES-00001-2",
       number: 2,
       priceCents: 50_00,
-      status: "enviada_taller",
+      status: "aprobada",
       approvedAt: APPROVED,
     },
     {
@@ -304,6 +304,20 @@ describe("order.create", () => {
     ).toEqual({ skipped: true });
     expect(fakeShopify.snapshot().orders).toEqual([]);
   });
+
+  it.each(["interno", "observado"] as const)(
+    "una guía %s no se cobra: no crea la orden",
+    async (restorationKind) => {
+      const { repo } = memoryRepo({ ...withCustomer(), restorationKind });
+      expect(
+        await restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
+          job,
+          gateway,
+        ),
+      ).toEqual({ skipped: true });
+      expect(fakeShopify.snapshot().orders).toEqual([]);
+    },
+  );
 
   it("si la restauración no existe falla sin reintentos", async () => {
     const { repo } = memoryRepo(null);

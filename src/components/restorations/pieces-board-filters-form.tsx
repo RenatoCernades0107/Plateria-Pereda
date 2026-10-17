@@ -14,6 +14,7 @@ import {
 import {
   BOARD_LOCATIONS,
   BOARD_STATUSES,
+  NO_WORKSHOP,
   parsePieceBoardFilters,
   pieceBoardHref,
   type PieceBoardFilters,
@@ -25,7 +26,7 @@ const ALL = "todos";
 
 /**
  * Filtros de la vista de piezas (se guardan en la URL). Urgentes, listas para
- * entregar, por devolver y muchos días en el taller van en los atajos de un clic
+ * entregar y muchos días en el taller van en los atajos de un clic
  * ("Mostrar solo", `FilterChips`), no aquí, para no repetir filtros. Se aplican
  * solos al escribir o elegir y conservan los atajos activos; "Limpiar" quita todo.
  */
@@ -129,14 +130,20 @@ export function PiecesBoardFiltersForm({
       <div className="space-y-1.5">
         <Label htmlFor="filtro-taller">Taller</Label>
         <Select
-          value={state.workshopId ?? ALL}
-          onValueChange={(v) => set({ workshopId: v === ALL ? null : v })}
+          value={state.noWorkshop ? NO_WORKSHOP : (state.workshopId ?? ALL)}
+          onValueChange={(v) =>
+            set({
+              noWorkshop: v === NO_WORKSHOP,
+              workshopId: v === ALL || v === NO_WORKSHOP ? null : v,
+            })
+          }
         >
           <SelectTrigger id="filtro-taller" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todos</SelectItem>
+            <SelectItem value={NO_WORKSHOP}>Sin taller</SelectItem>
             {workshops.map((w) => (
               <SelectItem key={w.id} value={w.id}>
                 {w.name}

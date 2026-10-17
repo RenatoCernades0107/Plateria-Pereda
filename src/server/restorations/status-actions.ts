@@ -2,12 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { PieceStatus } from "@/domain/piece-state-machine";
+import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import {
   isRestorationCloseTarget,
   planRestorationClosure,
   type RestorationCloseTarget,
 } from "@/domain/restoration-closure";
+import {
+  RESTORATION_KINDS,
+  type RestorationKind,
+} from "@/domain/restoration-status";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
@@ -134,7 +138,39 @@ export async function markPiecesArrived(
   return { ok: true };
 }
 
-/** "Recibir del taller" (admin y logística): la pieza sigue en En restauración, ya en la tienda. */
+/**
+ * "Enviar al taller" (admin y logística): piezas Aprobadas u Observadas que están en la
+ * tienda van al taller elegido (o al que ya tienen) sin cambiar de estado (RPC
+ * `send_pieces_to_workshop`).
+ */
+export async function sendPiecesToWorkshop(
+  pieceIds: string[],
+  workshopId: string | null,
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.enviar-recibir-taller");
+  if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  const supabase = await createClient();
+  const missing = await checkRequirements(
+    supabase,
+    "enviar_taller",
+    pieceIds,
+    workshopId,
+  );
+  if (missing) return { error: missing };
+  const { error } = await supabase.rpc("send_pieces_to_workshop", {
+    p_piece_ids: pieceIds,
+    p_workshop_id: workshopId ?? undefined,
+  });
+  if (error) return fail(error, "No se pudo enviar la pieza al taller.");
+  // El estado general puede cambiar (p. ej. una pieza lista vuelve al taller).
+  scheduleShopifySync();
+  // Las piezas pueden ser de varias guías: se refrescan todos los detalles.
+  revalidatePath("/restauraciones/[id]", "page");
+  refresh(null);
+  return { ok: true };
+}
+
+/** "Recibir del taller" (admin y logística): la pieza vuelve a la tienda, mismo estado. */
 export async function receiveFromWorkshop(
   restorationId: string | null,
   pieceIds: string[],
@@ -223,6 +259,29 @@ export async function assignWorkshop(
   return { ok: true };
 }
 
+/**
+ * Cambia el tipo de guía (admin y ventas; RPC `set_restoration_kind`): la BD revisa
+ * que no tenga orden de Shopify, pagos ni piezas que hayan ido al taller o se hayan
+ * entregado, y ajusta estados, precios y tipo de pago.
+ */
+export async function setRestorationKind(
+  restorationId: string,
+  kind: RestorationKind,
+): Promise<StatusActionResult> {
+  await requirePermission("restauraciones.editar");
+  if (!RESTORATION_KINDS.includes(kind))
+    return { error: "Elige el tipo de guía." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_restoration_kind", {
+    p_restoration_id: restorationId,
+    p_kind: kind,
+  });
+  if (error) return fail(error, "No se pudo cambiar el tipo de guía.");
+  refresh(restorationId);
+  revalidatePath("/restauraciones");
+  return { ok: true };
+}
+
 const dateOrNull = (value: string | null) => (value ? new Date(value) : null);
 
 /**
@@ -246,7 +305,7 @@ export async function closeRestoration(
   const { data, error } = await supabase
     .from("pieces_operational")
     .select(
-      "id, code, status, arrived_at, workshop_id, first_sent_at, ready_for_delivery, returned_at, approved_at, review_sent_at, review_returned_at",
+      "id, code, status, arrived_at, workshop_id, first_sent_at, last_sent_at, last_returned_at, observed_at, ready_for_delivery, returned_at, approved_at, review_sent_at, review_returned_at",
     )
     .eq("restoration_id", restorationId);
   if (error) return fail(error, "No se pudieron leer las piezas.");
@@ -254,7 +313,7 @@ export async function closeRestoration(
     data.map((p) => ({
       id: p.id!,
       code: p.code ?? "",
-      status: p.status!,
+      status: toPieceStatus(p.status!),
       arrivedAt: dateOrNull(p.arrived_at),
       workshopId: p.workshop_id,
       firstSentAt: dateOrNull(p.first_sent_at),
@@ -263,6 +322,9 @@ export async function closeRestoration(
       approvedAt: dateOrNull(p.approved_at),
       reviewSentAt: dateOrNull(p.review_sent_at),
       reviewReturnedAt: dateOrNull(p.review_returned_at),
+      lastSentAt: dateOrNull(p.last_sent_at),
+      lastReturnedAt: dateOrNull(p.last_returned_at),
+      observedAt: dateOrNull(p.observed_at),
     })),
     to,
     user.role,

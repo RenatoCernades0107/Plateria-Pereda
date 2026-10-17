@@ -30,8 +30,8 @@ import { materialSummary, PiecePhoto } from "./piece-photo";
 import { BoardSalePriceCell, BoardServiceCostCell } from "./piece-money-cells";
 import {
   isSelectable,
+  isWorkshopLocked,
   PiecesBulkBar,
-  WORKSHOP_LOCKED,
 } from "./pieces-bulk-bar";
 import { ProviderReportButton } from "./provider-report-button";
 import { usePieceActions, type PieceAction } from "./piece-status-actions";
@@ -51,13 +51,8 @@ import { WorkshopEditButton } from "./workshop-edit-button";
  * resalta la fila). "—" si la pieza nunca fue al taller.
  */
 function Days({ piece }: { piece: BoardPiece }) {
-  if (piece.workshopDays === 0 && !piece.workshopOngoing) {
-    return (
-      <span className="text-muted-foreground" data-testid="dias-en-taller">
-        —
-      </span>
-    );
-  }
+  // Nunca fue al taller: nada debajo del nombre.
+  if (piece.workshopDays === 0 && !piece.workshopOngoing) return null;
   const long = isLongInWorkshop(piece);
   const label = `${piece.workshopDays} ${piece.workshopDays === 1 ? "día" : "días"}`;
   return (
@@ -68,6 +63,7 @@ function Days({ piece }: { piece: BoardPiece }) {
       )}
       data-testid="dias-en-taller"
       data-long={long || undefined}
+      title={`Días en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
     >
       {long ? (
         <Hammer
@@ -84,9 +80,9 @@ function Days({ piece }: { piece: BoardPiece }) {
 }
 
 /**
- * Taller de una fila: el nombre como texto. Solo si la pieza aún no tiene taller,
- * logística y el admin (P55) ven el lápiz para asignarlo; un taller ya asignado se
- * cambia desde el detalle de la pieza.
+ * Taller de una fila: el nombre como texto y, debajo, el total de días en el taller.
+ * Solo si la pieza aún no tiene taller, logística y el admin (P55) ven el lápiz para
+ * asignarlo; un taller ya asignado se cambia desde el detalle de la pieza.
  */
 function WorkshopCell({
   piece,
@@ -97,18 +93,37 @@ function WorkshopCell({
   workshops: WorkshopOption[];
   editable: boolean;
 }) {
-  if (piece.workshopId || !editable) {
-    return piece.workshopName ? (
-      <span>{piece.workshopName}</span>
+  const name =
+    piece.workshopId || !editable ? (
+      piece.workshopName ? (
+        <span>{piece.workshopName}</span>
+      ) : (
+        <span className="text-muted-foreground">Sin taller</span>
+      )
     ) : (
-      <span className="text-muted-foreground">Sin taller</span>
+      <div className="flex items-center gap-1 whitespace-nowrap">
+        <span className="text-muted-foreground">Sin taller</span>
+        <WorkshopEditButton piece={piece} workshops={workshops} />
+      </div>
     );
-  }
   return (
-    <div className="flex items-center gap-1 whitespace-nowrap">
-      <span className="text-muted-foreground">Sin taller</span>
-      <WorkshopEditButton piece={piece} workshops={workshops} />
+    <div className="flex flex-col items-start gap-0.5">
+      {name}
+      <Days piece={piece} />
     </div>
+  );
+}
+
+/** Días en la ubicación actual, debajo de su insignia ("Hoy", "1 día", "N días"). */
+function LocationDays({ days }: { days: number | null }) {
+  if (days === null) return null;
+  return (
+    <span
+      className="text-muted-foreground text-xs whitespace-nowrap"
+      data-testid="dias-en-ubicacion"
+    >
+      {days === 0 ? "Hoy" : `${days} ${days === 1 ? "día" : "días"}`}
+    </span>
   );
 }
 
@@ -246,26 +261,29 @@ function BoardRow({
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
         <td className={cn(cell, "max-md:min-w-0 max-md:flex-1")}>
-          {/* Urgente: solo el rayo, al costado del código. */}
+          {/* Urgente: solo el rayo, al costado del código; la cantidad, si es más
+              de una. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
             <Link
               href={pieceHref(piece)}
               data-primary-link
               className="text-heading font-medium whitespace-nowrap underline-offset-4 hover:underline"
+              title={`Guía ${piece.restorationCode}`}
             >
               {piece.code}
             </Link>
+            {piece.quantity > 1 ? (
+              <span
+                className="text-muted-foreground text-xs font-medium whitespace-nowrap tabular-nums"
+                data-testid="cantidad"
+                title={`Cantidad: ${piece.quantity}`}
+              >
+                <span aria-hidden>×{piece.quantity}</span>
+                <span className="sr-only">Cantidad: {piece.quantity}</span>
+              </span>
+            ) : null}
             {piece.urgent ? <UrgentIcon /> : null}
           </span>
-        </td>
-        <td className={labeled} data-label="Guía">
-          <Link
-            href={`/restauraciones/${piece.restorationId}`}
-            className="text-muted-foreground hover:text-foreground whitespace-nowrap underline-offset-4 hover:underline"
-            aria-label={`Ver guía ${piece.restorationCode}`}
-          >
-            {piece.restorationCode}
-          </Link>
         </td>
         {showClient ? (
           <td className={cn(labeled, "max-w-40")} data-label="Cliente">
@@ -289,8 +307,8 @@ function BoardRow({
           ) : null}
         </td>
         <td className={labeled} data-label="Estado">
-          <div className="flex items-center gap-1">
-            <PieceStatusBadge status={live.status} />
+          <div className="flex items-start gap-1">
+            <PieceStatusBadge status={live.status} wrap />
             <PieceActionsMenu code={piece.code} actions={actions} />
             {pending ? (
               <Loader2
@@ -299,6 +317,14 @@ function BoardRow({
               />
             ) : null}
           </div>
+          <StatusAge
+            // Recién cambiado (optimista): cuenta desde hoy.
+            piece={
+              live.status === piece.status ? piece : { ...live, statusDays: 0 }
+            }
+            compact
+            className="mt-1"
+          />
           {balanceWarning ? (
             <p className="text-destructive mt-1 text-xs">
               Falta cobrar el saldo
@@ -306,26 +332,20 @@ function BoardRow({
           ) : null}
         </td>
         <td className={labeled} data-label="Ubicación">
-          <LocationBadge location={live.location} />
-        </td>
-        <td className={labeled} data-label="En este estado">
-          <StatusAge
-            // Recién cambiado (optimista): cuenta desde hoy.
-            piece={
-              live.status === piece.status ? piece : { ...live, statusDays: 0 }
-            }
-            compact
-          />
+          <div className="flex flex-col items-start gap-1">
+            <LocationBadge location={live.location} />
+            {/* Recién movida (optimista): cuenta desde hoy. */}
+            <LocationDays
+              days={live.location === piece.location ? piece.locationDays : 0}
+            />
+          </div>
         </td>
         <td className={labeled} data-label="Taller" data-row-click="ignore">
           <WorkshopCell
             piece={piece}
             workshops={workshops}
-            editable={assignTaller && !WORKSHOP_LOCKED.includes(live.status)}
+            editable={assignTaller && !isWorkshopLocked(live)}
           />
-        </td>
-        <td className={labeled} data-label="Total en taller">
-          <Days piece={piece} />
         </td>
         {showCost ? (
           <td
@@ -406,6 +426,7 @@ export function PiecesBoardTable({
         role={role}
         workshops={workshops}
         onDone={() => setSelected([])}
+        total={selectable.length}
         workshopPicker={false}
       >
         <ProviderReportButton pieces={chosen} />
@@ -439,9 +460,6 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Pieza
               </th>
-              <th scope="col" className={head}>
-                Guía
-              </th>
               {showClient ? (
                 <th scope="col" className={head}>
                   Cliente
@@ -450,28 +468,26 @@ export function PiecesBoardTable({
               <th scope="col" className={head}>
                 Descripción
               </th>
-              <th scope="col" className={head}>
+              <th
+                scope="col"
+                className={cn(head, "w-48")}
+                title="Debajo, los días desde el último cambio de estado: ámbar o rojo según lo que se espera para ese estado."
+              >
                 Estado
               </th>
-              <th scope="col" className={head}>
+              <th
+                scope="col"
+                className={head}
+                title="Debajo, los días que lleva en esa ubicación."
+              >
                 Ubicación
               </th>
               <th
                 scope="col"
                 className={head}
-                title="Días desde el último cambio de estado. Ámbar o rojo según lo que se espera para ese estado."
+                title={`Debajo, los días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
               >
-                En este estado
-              </th>
-              <th scope="col" className={head}>
                 Taller
-              </th>
-              <th
-                scope="col"
-                className={head}
-                title={`Días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
-              >
-                Total en taller
               </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>

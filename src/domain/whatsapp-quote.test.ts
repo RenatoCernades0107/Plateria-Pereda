@@ -58,6 +58,19 @@ describe("mensaje de cotización", () => {
     `);
   });
 
+  it("con cantidad mayor que 1 dice x2; el precio es de la pieza completa", () => {
+    const pieces = data().pieces.map((p, i) =>
+      i === 0 ? { ...p, quantity: 6 } : { ...p, quantity: 1 },
+    );
+    const text = buildQuoteMessage(
+      DEFAULT_WHATSAPP_TEMPLATE,
+      data({ paymentType: "contado", pieces }),
+    );
+    expect(text).toContain("1. Fuente de plata x6 – Pulido: S/ 1,200.50");
+    expect(text).toContain("2. Candelabro: S/ 350.00");
+    expect(text).toContain("*Total: S/ 1,550.50*");
+  });
+
   it("a cuenta", () => {
     expect(
       buildQuoteMessage(

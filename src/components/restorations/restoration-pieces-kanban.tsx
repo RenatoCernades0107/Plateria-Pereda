@@ -7,8 +7,10 @@ import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
-import { pieceKanbanColumns } from "@/domain/piece-moves";
-import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
+import {
+  isChargedKind,
+  type RestorationKind,
+} from "@/domain/restoration-status";
 import {
   pieceHref,
   restorationKanbanStatuses,
@@ -18,7 +20,12 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PIECE_ACCENT_CLASS } from "./guide-labels";
 import type { WorkshopOption } from "./piece-fields";
-import { MoveToMenu, usePieceMoves } from "./piece-moves";
+import {
+  MoveToMenu,
+  pieceBoardColumns,
+  pieceColumnOf,
+  usePieceMoves,
+} from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, UrgentBadge } from "./status-badges";
 
@@ -36,6 +43,7 @@ export function RestorationPiecesKanban({
   workshops,
   approvalPayment = null,
   balanceDue = false,
+  guideKind = "normal",
 }: {
   restorationId: string;
   pieces: PieceDetail[];
@@ -45,12 +53,14 @@ export function RestorationPiecesKanban({
   approvalPayment?: ApprovalPayment | null;
   /** Falta cobrar el saldo: entregar pide confirmarlo (P45). */
   balanceDue?: boolean;
+  /** Tipo de guía: interna u observada no muestran precios. */
+  guideKind?: RestorationKind;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const chosen = pieces.filter((p) => selected.includes(p.id));
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
-  const showMoney = can(role, "dinero.ver");
+  const showMoney = can(role, "dinero.ver") && isChargedKind(guideKind);
   const moves = usePieceMoves({
     restorationId,
     pieces,
@@ -74,12 +84,14 @@ export function RestorationPiecesKanban({
       <KanbanColumns
         label="Piezas por estado"
         emptyText="Sin piezas"
-        columns={pieceKanbanColumns(statuses).map(({ status, dropOnly }) => ({
-          key: status,
-          label: PIECE_STATUS_LABELS[status],
-          items: shown.filter((p) => p.status === status),
-          dropOnly,
-        }))}
+        columns={pieceBoardColumns(statuses).map(
+          ({ key, label, dropOnly }) => ({
+            key,
+            label,
+            items: shown.filter((p) => pieceColumnOf(p) === key),
+            dropOnly,
+          }),
+        )}
         drag={moves.drag}
         renderCard={(piece, drag) => (
           <KanbanCard

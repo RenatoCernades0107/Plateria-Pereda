@@ -79,6 +79,7 @@ describe("createRestorationFromQuote · piezas sin precio", () => {
           p_pieces: [
             expect.objectContaining({
               description: "Bandeja",
+              quantity: 1,
               price: null,
               quote_item_id: ITEM_ID,
               status: "en_consulta",

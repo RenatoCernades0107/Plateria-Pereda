@@ -239,6 +239,7 @@ export default async function PiezaDetallePage({
                     id: piece.id,
                     code: piece.code,
                     status: piece.status,
+                    location: piece.location,
                     workshopId: piece.workshopId,
                     workshopName: piece.workshopName,
                   }}

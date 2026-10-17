@@ -1,4 +1,5 @@
 import { PIECE_STATUS_LABELS, type PieceStatus } from "./piece-state-machine";
+import { isChargedKind, type RestorationKind } from "./restoration-status";
 
 /**
  * Campos obligatorios por estado (K10 de MejorasUI.md): la pieza no pasa a un estado
@@ -12,6 +13,8 @@ export type RequirementFacts = {
   hasServiceCost: boolean;
   workshopId: string | null;
   hasAfterPhoto: boolean;
+  /** Tipo de guía: las que no se cobran (interna u observada) no piden precio. */
+  restorationKind?: RestorationKind;
 };
 
 export type RequiredField = "precio" | "taller" | "costo" | "foto_despues";
@@ -24,15 +27,15 @@ export const REQUIRED_FIELD_LABELS: Record<RequiredField, string> = {
   foto_despues: "la foto «Después»",
 };
 
-/** Paso que se valida: un cambio de estado o "Recibir del taller". */
-export type RequirementStep = PieceStatus | "recibir_taller";
+/** Paso que se valida: un cambio de estado, "Enviar al taller" o "Recibir del taller". */
+export type RequirementStep = PieceStatus | "enviar_taller" | "recibir_taller";
 
 /** Campos obligatorios de cada paso (los que no figuran no exigen nada). */
 export const REQUIRED_FIELDS: Partial<
   Record<RequirementStep, readonly RequiredField[]>
 > = {
   aprobada: ["precio"],
-  enviada_taller: ["taller"],
+  enviar_taller: ["taller"],
 };
 
 const has = (
@@ -42,7 +45,7 @@ const has = (
 ) => {
   switch (field) {
     case "precio":
-      return facts.hasPrice;
+      return facts.hasPrice || !isChargedKind(facts.restorationKind);
     case "taller":
       return Boolean(workshopId ?? facts.workshopId);
     case "costo":
@@ -65,9 +68,9 @@ export function missingFields(
 
 const stepLabel = (step: RequirementStep, plural = false) => {
   const them = plural ? "las" : "la";
-  return step === "recibir_taller"
-    ? `recibir${them} del taller`
-    : `pasar${them} a «${PIECE_STATUS_LABELS[step]}»`;
+  if (step === "recibir_taller") return `recibir${them} del taller`;
+  if (step === "enviar_taller") return `enviar${them} al taller`;
+  return `pasar${them} a «${PIECE_STATUS_LABELS[step]}»`;
 };
 
 const joinEs = (items: string[]) =>

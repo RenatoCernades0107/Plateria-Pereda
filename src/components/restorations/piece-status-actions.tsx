@@ -1,6 +1,27 @@
 "use client";
 
-import { Loader2, MoreHorizontal } from "lucide-react";
+import {
+  ArrowRight,
+  Ban,
+  Check,
+  CircleX,
+  Eye,
+  Handshake,
+  History,
+  Hourglass,
+  Loader2,
+  type LucideIcon,
+  MessageCircleQuestion,
+  MoreHorizontal,
+  PackageOpen,
+  RotateCcw,
+  Search,
+  SearchCheck,
+  Store,
+  ThumbsDown,
+  Truck,
+  Undo2,
+} from "lucide-react";
 import { useOptimistic, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -43,6 +64,7 @@ import {
   canReceiveFromWorkshop,
   canReturnToClient,
   canSendForReview,
+  canSendToWorkshop,
   canUndoStatus,
   isClosedStatus,
   PIECE_STATUS_LABELS,
@@ -59,6 +81,7 @@ import {
   receivePiecesFromReview,
   returnPiecesToClient,
   sendPiecesForReview,
+  sendPiecesToWorkshop,
   undoPieceStatus,
 } from "@/server/restorations/status-actions";
 
@@ -71,7 +94,6 @@ export const ACTION_LABELS: Record<PieceStatus, string> = {
   en_consulta: "Poner en consulta",
   en_espera: "Esperar respuesta",
   aprobada: "Aprobar",
-  enviada_taller: "Enviar al taller",
   observada: "Observar",
   entregada: "Entregar",
   rechazada: "Rechazar",
@@ -86,13 +108,21 @@ export type StatusPiece = {
   location: PieceLocation;
   arrivedAt: string | null;
   workshopId: string | null;
-  /** En En restauración y ya de vuelta del taller (P47). */
+  /** Aprobada u Observada ya de vuelta del taller ("Lista para entregar", P47). */
   readyForDelivery: boolean;
   returnedAt: string | null;
   urgent: boolean;
   /** Revisión en taller: último envío a revisar y última vuelta. */
   reviewSentAt?: string | null;
   reviewReturnedAt?: string | null;
+  /**
+   * Idas y vueltas del taller por trabajo y la última observación: con ellas se sabe
+   * si la pieza está en el taller (Recibir del taller) o puede ir (Enviar al taller).
+   */
+  firstSentAt?: string | null;
+  lastSentAt?: string | null;
+  lastReturnedAt?: string | null;
+  observedAt?: string | null;
 };
 
 const dateOrNull = (value: string | null | undefined) =>
@@ -102,10 +132,15 @@ const dateOrNull = (value: string | null | undefined) =>
 export const snapshotOf = (piece: StatusPiece) => ({
   status: piece.status,
   arrivedAt: dateOrNull(piece.arrivedAt),
+  workshopId: piece.workshopId,
   readyForDelivery: piece.readyForDelivery,
   returnedAt: dateOrNull(piece.returnedAt),
   reviewSentAt: dateOrNull(piece.reviewSentAt),
   reviewReturnedAt: dateOrNull(piece.reviewReturnedAt),
+  firstSentAt: dateOrNull(piece.firstSentAt),
+  lastSentAt: dateOrNull(piece.lastSentAt),
+  lastReturnedAt: dateOrNull(piece.lastReturnedAt),
+  observedAt: dateOrNull(piece.observedAt),
 });
 
 export type PendingChange = {
@@ -136,8 +171,6 @@ export function locationAfter(
   location: PieceLocation,
 ): PieceLocation {
   switch (to) {
-    case "enviada_taller":
-      return "en_taller";
     case "entregada":
       return "entregada";
     case "anulada":
@@ -296,9 +329,23 @@ export const REVIEW_LABELS = {
   back: "Volvió de revisión",
 } as const;
 
+/** Textos de la ida y vuelta al taller por trabajo (sin cambiar el estado). */
+export const WORKSHOP_LABELS = {
+  send: "Enviar al taller",
+  back: "Recibir del taller",
+} as const;
+
+/** El taller que comparten todas las piezas (para proponerlo en el diálogo). */
+const sharedWorkshop = (pieces: readonly StatusPiece[]) => {
+  const first = pieces[0]?.workshopId ?? null;
+  return pieces.every((p) => p.workshopId === first) ? first : null;
+};
+
 /**
- * "Llevar al taller a revisar": se elige el taller (revisión en taller). La pieza
- * no cambia de estado; su ubicación pasa a En taller hasta que se marca que volvió.
+ * Elegir el taller y llevar ahí las piezas, sin cambiar su estado: a revisar
+ * (`kind="revision"`, «Llevar al taller a revisar») o a restaurar (`kind="envio"`,
+ * «Enviar al taller»). La ubicación pasa a En taller hasta que se marca que volvió.
+ * Propone el taller que ya tienen asignado.
  */
 export function ReviewDialog({
   open,
@@ -306,15 +353,17 @@ export function ReviewDialog({
   pieces,
   workshops,
   onConfirm,
+  kind = "revision",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pieces: StatusPiece[];
   workshops: WorkshopOption[];
   onConfirm: (workshopId: string) => Promise<string | null>;
+  kind?: "revision" | "envio";
 }) {
   const [workshopId, setWorkshopId] = useState<string | null>(
-    pieces.length === 1 ? pieces[0]!.workshopId : null,
+    sharedWorkshop(pieces),
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -324,7 +373,11 @@ export function ReviewDialog({
     pieces.length === 1 ? pieces[0]!.code : `${pieces.length} piezas`;
   const submit = () => {
     if (!workshopId) {
-      setError("Elige el taller al que se lleva la pieza.");
+      setError(
+        kind === "envio"
+          ? "Elige el taller al que se envía la pieza."
+          : "Elige el taller al que se lleva la pieza.",
+      );
       return;
     }
     setError(null);
@@ -343,18 +396,19 @@ export function ReviewDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {REVIEW_LABELS.send}: {subject}
+            {kind === "envio" ? WORKSHOP_LABELS.send : REVIEW_LABELS.send}:{" "}
+            {subject}
           </DialogTitle>
           <DialogDescription>
-            Sigue en «{PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En
-            taller» hasta que marques que volvió. Si el cliente aprueba, pasa a
-            En restauración en el mismo taller.
+            {kind === "envio"
+              ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» (en restauración) hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
+              : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que marques que volvió. Si el cliente aprueba, se envía a restaurar al mismo taller.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {error ? <FormAlert>{error}</FormAlert> : null}
           <WorkshopSelect
-            id="revision-taller"
+            id={kind === "envio" ? "envio-taller" : "revision-taller"}
             value={workshopId}
             onChange={setWorkshopId}
             workshops={workshops}
@@ -362,7 +416,11 @@ export function ReviewDialog({
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>
-            {pending ? "Guardando…" : "Confirmar: llevar al taller"}
+            {pending
+              ? "Guardando…"
+              : kind === "envio"
+                ? "Confirmar: enviar al taller"
+                : "Confirmar: llevar al taller"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -477,8 +535,8 @@ export type PieceActionsInput = {
 /**
  * Acciones que el rol puede hacer sobre una pieza y sus diálogos (Pasos 8.4 y 8.6).
  * El cambio se ve al instante (optimista) y vuelve atrás si la BD lo rechaza.
- * Llegada, vuelta del taller, devolución y la revisión en taller no cambian el
- * estado: solo la ubicación (P47). Lo usan el panel del detalle de la pieza y el menú de la tabla de la guía.
+ * Llegada, envío y vuelta del taller, devolución y la revisión en taller no cambian
+ * el estado: solo la ubicación (P47). Lo usan el panel del detalle de la pieza y el menú de la tabla de la guía.
  */
 export function usePieceActions({
   restorationId,
@@ -496,6 +554,7 @@ export function usePieceActions({
   const [pending, startTransition] = useTransition();
   const [dialog, setDialog] = useState<PendingChange | null>(null);
   const [reviewDialog, setReviewDialog] = useState(false);
+  const [sendDialog, setSendDialog] = useState(false);
   const [undoDialog, setUndoDialog] = useState(false);
   const [paymentDialog, setPaymentDialog] = useState<
     "aprobar" | "entregar" | null
@@ -505,6 +564,7 @@ export function usePieceActions({
   const snapshot = snapshotOf(piece);
   const transitions = availableTransitions(snapshot, role);
   const arrival = canMarkArrived(snapshot, role);
+  const send = canSendToWorkshop(snapshot, role);
   const receive = canReceiveFromWorkshop(snapshot, role);
   const giveBack = canReturnToClient(snapshot, role);
   const toReview = canSendForReview(snapshot, role);
@@ -577,6 +637,29 @@ export function usePieceActions({
       });
     });
 
+  /** "Enviar al taller" desde su diálogo: el mensaje de error o null. */
+  const sendToWorkshop = (workshopId: string) =>
+    new Promise<string | null>((resolve) => {
+      startTransition(async () => {
+        const now = new Date().toISOString();
+        setOptimistic({
+          location: "en_taller",
+          workshopId,
+          readyForDelivery: false,
+          lastSentAt: now,
+          firstSentAt: piece.firstSentAt ?? now,
+        });
+        const result = await sendPiecesToWorkshop([piece.id], workshopId);
+        if ("error" in result) {
+          toast.error(result.error);
+          resolve(result.error);
+        } else {
+          toast.success(`${piece.code}: enviada al taller.`);
+          resolve(null);
+        }
+      });
+    });
+
   /** «Retroceder estado» desde su diálogo: el mensaje de error o null. */
   const undoStatus = (reason: string) =>
     new Promise<string | null>((resolve) => {
@@ -607,15 +690,28 @@ export function usePieceActions({
         ),
     });
   }
+  if (send) {
+    actions.push({
+      key: "enviar_taller",
+      label: WORKSHOP_LABELS.send,
+      disabled: pending,
+      destructive: false,
+      onSelect: () => setSendDialog(true),
+    });
+  }
   if (receive) {
     actions.push({
       key: "recibir",
-      label: "Recibir del taller",
+      label: WORKSHOP_LABELS.back,
       disabled: pending,
       destructive: false,
       onSelect: () =>
         act(
-          { readyForDelivery: true, location: "en_tienda" },
+          {
+            readyForDelivery: true,
+            location: "en_tienda",
+            lastReturnedAt: new Date().toISOString(),
+          },
           () => receiveFromWorkshop(restorationId, [piece.id]),
           "volvió del taller.",
         ),
@@ -738,6 +834,15 @@ export function usePieceActions({
         workshops={workshops}
         onConfirm={sendToReview}
       />
+      <ReviewDialog
+        key={sendDialog ? "envio-abierto" : "envio-cerrado"}
+        kind="envio"
+        open={sendDialog}
+        onOpenChange={setSendDialog}
+        pieces={[piece]}
+        workshops={workshops}
+        onConfirm={sendToWorkshop}
+      />
       <UndoStatusDialog
         key={undoDialog ? "retroceso-abierto" : "retroceso-cerrado"}
         open={undoDialog}
@@ -770,7 +875,7 @@ const PRIMARY_ORDER = [
   "vuelta_revision",
   "devolver",
   "aprobada",
-  "enviada_taller",
+  "enviar_taller",
   "llegada",
   "en_espera",
   "en_consulta",
@@ -801,6 +906,31 @@ export function arrangeActions(actions: readonly PieceAction[]) {
     /** Cierres como botones (si son las únicas acciones). */
     inlineClosing: regular.length > 0 ? [] : closing,
   };
+}
+
+/** Ícono de cada acción (por su `key`: la acción o el estado al que lleva). */
+export const ACTION_ICONS: Record<string, LucideIcon> = {
+  llegada: Store,
+  enviar_taller: Truck,
+  recibir: PackageOpen,
+  vuelta_revision: SearchCheck,
+  revision: Search,
+  devolver: Undo2,
+  registrada: RotateCcw,
+  en_consulta: MessageCircleQuestion,
+  en_espera: Hourglass,
+  aprobada: Check,
+  observada: Eye,
+  entregada: Handshake,
+  rechazada: ThumbsDown,
+  sin_arreglo: CircleX,
+  anulada: Ban,
+  retroceso: History,
+};
+
+export function ActionIcon({ action }: { action: PieceAction }) {
+  const Icon = ACTION_ICONS[action.key] ?? ArrowRight;
+  return <Icon aria-hidden />;
 }
 
 /** Insignias del detalle de la pieza: más grandes que en tablas y tarjetas. */
@@ -852,6 +982,7 @@ function MoreActionsMenu({
                   chosen.current = a.onSelect;
                 }}
               >
+                <ActionIcon action={a} />
                 {a.label}
               </DropdownMenuItem>
             ))}
@@ -873,6 +1004,7 @@ function MoreActionsMenu({
                   chosen.current = a.onSelect;
                 }}
               >
+                <ActionIcon action={a} />
                 {a.label}
               </DropdownMenuItem>
             ))}
@@ -946,6 +1078,7 @@ function PieceActionBar({
       >
         {primary ? (
           <Button disabled={primary.disabled} onClick={primary.onSelect}>
+            <ActionIcon action={primary} />
             {primary.label}
           </Button>
         ) : null}
@@ -956,6 +1089,7 @@ function PieceActionBar({
             disabled={a.disabled}
             onClick={a.onSelect}
           >
+            <ActionIcon action={a} />
             {a.label}
           </Button>
         ))}
@@ -967,6 +1101,7 @@ function PieceActionBar({
             disabled={a.disabled}
             onClick={a.onSelect}
           >
+            <ActionIcon action={a} />
             {a.label}
           </Button>
         ))}

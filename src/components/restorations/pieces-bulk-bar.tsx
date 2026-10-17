@@ -1,28 +1,40 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  ChevronDown,
+  type LucideIcon,
+  PackageOpen,
+  Store,
+  Truck,
+  Undo2,
+  Wrench,
+  X,
+} from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { can } from "@/domain/permissions";
 import {
   availableTransitions,
   canMarkArrived,
   canReceiveFromWorkshop,
   canReturnToClient,
+  canSendToWorkshop,
   isClosedStatus,
   PIECE_STATUS_LABELS,
   type PieceStatus,
   type PieceTransition,
 } from "@/domain/piece-state-machine";
+import type { PieceLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 import {
   assignWorkshop,
@@ -30,6 +42,7 @@ import {
   markPiecesArrived,
   receiveFromWorkshop,
   returnPiecesToClient,
+  sendPiecesToWorkshop,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -37,26 +50,34 @@ import {
   ACTION_LABELS,
   needsDialog,
   requirementsFor,
+  ReviewDialog,
   snapshotOf,
   StatusChangeDialog,
+  WORKSHOP_LABELS,
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
 
-/** No se cambia el taller de una pieza en el taller, entregada o en un estado final. */
+/** No se cambia el taller de una pieza entregada o en un estado final. */
 export const WORKSHOP_LOCKED: readonly PieceStatus[] = [
-  "enviada_taller",
   "entregada",
   "rechazada",
   "sin_arreglo",
   "anulada",
 ];
 
+/** Tampoco el de una pieza que está en el taller (por trabajo o revisión). */
+export const isWorkshopLocked = (piece: {
+  status: PieceStatus;
+  location?: PieceLocation;
+}) => WORKSHOP_LOCKED.includes(piece.status) || piece.location === "en_taller";
+
 /** Lo que las acciones masivas necesitan de cada pieza. */
 type BulkPiece = Pick<
   StatusPiece,
   "status" | "arrivedAt" | "readyForDelivery" | "returnedAt"
->;
+> &
+  Partial<StatusPiece>;
 
 const snapshot = (piece: BulkPiece) =>
   snapshotOf({
@@ -97,19 +118,69 @@ export function isSelectable(piece: BulkPiece, role: AppRole) {
   return (
     availableTransitions(s, role).length > 0 ||
     canMarkArrived(s, role) ||
+    canSendToWorkshop(s, role) ||
     canReceiveFromWorkshop(s, role) ||
     canReturnToClient(s, role) ||
     (can(role, "piezas.asignar-taller") &&
-      !WORKSHOP_LOCKED.includes(piece.status))
+      !isWorkshopLocked({ status: piece.status, location: piece.location }))
   );
 }
 
-const NONE = "ninguno";
+const NO_WORKSHOP = "ninguno";
 
 /**
- * Acciones para las piezas elegidas: los cambios de estado comunes, la llegada en
- * bloque y "Asignar taller". `restorationId` null = piezas de varias restauraciones
- * (vista de piezas).
+ * Botón de una acción masiva. Si solo algunas de las piezas elegidas la admiten, se
+ * ve deshabilitado y el `title` explica por qué (en vez de desaparecer); si ninguna
+ * la admite, no se muestra.
+ */
+function BulkButton({
+  label,
+  icon: Icon,
+  able,
+  chosen,
+  verb,
+  primary = false,
+  pending,
+  onClick,
+}: {
+  label: string;
+  icon: LucideIcon;
+  /** Cuántas de las piezas elegidas admiten la acción. */
+  able: number;
+  chosen: number;
+  /** "enviar al taller", "recibir del taller"… para el motivo. */
+  verb: string;
+  primary?: boolean;
+  pending: boolean;
+  onClick: () => void;
+}) {
+  if (able === 0) return null;
+  const reason =
+    able < chosen
+      ? `Solo ${able} de las ${chosen} piezas elegidas se pueden ${verb}; desmarca las demás.`
+      : undefined;
+  return (
+    <span title={reason} className="inline-flex" data-reason={reason}>
+      <Button
+        size="sm"
+        variant={primary ? "default" : "outline"}
+        disabled={pending || reason !== undefined}
+        onClick={onClick}
+      >
+        <Icon aria-hidden />
+        {label}
+      </Button>
+    </span>
+  );
+}
+
+/**
+ * Acciones para las piezas elegidas, en una barra fija arriba mientras se recorre la
+ * lista: el contador y "Quitar selección"; las acciones de ubicación con su ícono
+ * (Enviar al taller es la principal cuando corresponde); "Cambiar estado" con un menú
+ * de los cambios comunes a todas, y "Asignar taller" con un menú de talleres. En el
+ * celular los grupos se apilan. `restorationId` null = piezas de varias
+ * restauraciones (vista de piezas).
  */
 export function PiecesBulkBar({
   restorationId,
@@ -117,8 +188,9 @@ export function PiecesBulkBar({
   role,
   workshops,
   onDone,
-  statusPicker = false,
-  total = chosen.length,
+  onClear = onDone,
+  alwaysVisible = false,
+  total,
   workshopPicker = true,
   children,
 }: {
@@ -126,46 +198,47 @@ export function PiecesBulkBar({
   chosen: StatusPiece[];
   role: AppRole;
   workshops: WorkshopOption[];
+  /** Tras aplicar una acción (normalmente, vaciar la selección). */
   onDone: () => void;
-  /**
-   * Cambio de estado con un selector ("Cambiar estado a…" + Aplicar) en lugar de un
-   * botón por estado, y barra siempre visible (detalle de la restauración).
-   */
-  statusPicker?: boolean;
+  /** "Quitar selección" (por defecto, `onDone`). */
+  onClear?: () => void;
+  /** Barra visible aun sin piezas elegidas (detalle de la guía). */
+  alwaysVisible?: boolean;
   /** Piezas que se pueden elegir, para el contador "N de M". */
   total?: number;
   /**
-   * Selector "Taller" + "Asignar taller" en la barra. La tabla de piezas lo apaga:
-   * allí el taller se asigna con el lápiz de cada pieza sin taller.
+   * Menú "Asignar taller" en la barra. La tabla de piezas lo apaga: allí el taller se
+   * asigna con el lápiz de cada pieza sin taller.
    */
   workshopPicker?: boolean;
   /** Acciones extra de la vista (p. ej. exportar las piezas elegidas). */
   children?: React.ReactNode;
 }) {
-  const [target, setTarget] = useState<PieceStatus | null>(null);
   const [dialog, setDialog] = useState<PendingChange | null>(null);
-  const [bulkWorkshop, setBulkWorkshop] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Lo elegido en un menú corre al cerrarse, así el diálogo que abra recibe el foco.
+  const chosenAction = useRef<(() => void) | null>(null);
 
   const bulk = commonTransitions(chosen, role);
-  const every = (check: (piece: ReturnType<typeof snapshot>) => boolean) =>
-    chosen.length > 0 && chosen.every((p) => check(snapshot(p)));
-  const bulkArrival = every((p) => canMarkArrived(p, role));
-  const bulkReceive = every((p) => canReceiveFromWorkshop(p, role));
-  const bulkReturn = every((p) => canReturnToClient(p, role));
-  const bulkAssign =
-    workshopPicker &&
-    can(role, "piezas.asignar-taller") &&
-    chosen.length > 0 &&
-    chosen.every((p) => !WORKSHOP_LOCKED.includes(p.status));
+  const howMany = (check: (piece: ReturnType<typeof snapshot>) => boolean) =>
+    chosen.filter((p) => check(snapshot(p))).length;
+  const arrival = howMany((p) => canMarkArrived(p, role));
+  const send = howMany((p) => canSendToWorkshop(p, role));
+  const receive = howMany((p) => canReceiveFromWorkshop(p, role));
+  const giveBack = howMany((p) => canReturnToClient(p, role));
+  const assignable =
+    workshopPicker && can(role, "piezas.asignar-taller")
+      ? chosen.filter((p) => !isWorkshopLocked(p)).length
+      : 0;
   const ids = chosen.map((p) => p.id);
+  const n = chosen.length;
 
+  const count = n === 1 ? "1 pieza" : `${n} piezas`;
   const done = (message: string) => {
     toast.success(message);
-    setTarget(null);
     onDone();
   };
-  const count = chosen.length === 1 ? "1 pieza" : `${chosen.length} piezas`;
   const act = (
     call: () => Promise<{ ok: true } | { error: string }>,
     message: string,
@@ -192,6 +265,13 @@ export function PiecesBulkBar({
     return null;
   };
 
+  const sendToWorkshop = async (workshopId: string) => {
+    const result = await sendPiecesToWorkshop(ids, workshopId);
+    if ("error" in result) return result.error;
+    done(`${count}: enviada${n === 1 ? "" : "s"} al taller.`);
+    return null;
+  };
+
   const runChange = (change: PendingChange) =>
     needsDialog(change)
       ? setDialog(change)
@@ -202,185 +282,219 @@ export function PiecesBulkBar({
           });
           if (message) toast.error(message);
         });
-  const picked = bulk.find((c) => c.to === target) ?? null;
-  // Con piezas elegidas que no comparten ningún cambio, el selector deshabilitado no
-  // sirve: se muestra solo un aviso corto en la misma fila.
-  const noCommonChange = chosen.length > 0 && bulk.length === 0;
 
-  if (chosen.length === 0 && !statusPicker) return null;
+  const assign = (workshopId: string | null) =>
+    startTransition(async () => {
+      const result = await assignWorkshop(restorationId, ids, workshopId);
+      if ("error" in result) toast.error(result.error);
+      else done("Taller asignado.");
+    });
+
+  if (n === 0 && !alwaysVisible) return null;
+
+  const statusReason =
+    n === 0
+      ? "Elige piezas para cambiar su estado."
+      : bulk.length === 0
+        ? "Las piezas elegidas no comparten un cambio de estado posible; desmarca las que no correspondan."
+        : undefined;
+  const assignReason =
+    assignable > 0 && assignable < n
+      ? "Algunas piezas elegidas están en el taller, entregadas o cerradas: su taller no se cambia."
+      : undefined;
+  const regular = bulk.filter((c) => !isClosedStatus(c.to));
+  const closing = bulk.filter((c) => isClosedStatus(c.to));
+  const runAfterClose = () => {
+    const action = chosenAction.current;
+    chosenAction.current = null;
+    action?.();
+  };
 
   return (
     <div
-      className="bg-card border-primary/40 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-lg border px-2.5 py-1.5"
+      className="bg-card border-primary/40 sticky top-2 z-20 flex flex-col gap-2 rounded-lg border px-3 py-2 shadow-sm md:flex-row md:flex-wrap md:items-center"
       role="region"
       aria-label="Acciones para las piezas elegidas"
     >
-      <p className="mr-auto text-sm font-medium whitespace-nowrap">
-        {chosen.length === 1
-          ? "1 pieza elegida"
-          : `${chosen.length} piezas elegidas`}
-        {statusPicker && total > 0 ? (
-          <span className="text-muted-foreground font-normal">
-            {" "}
-            (de {total})
-          </span>
+      <div className="flex items-center justify-between gap-2 md:mr-auto">
+        <p className="text-sm font-medium whitespace-nowrap" aria-live="polite">
+          {total !== undefined
+            ? `${n} de ${total} ${total === 1 ? "seleccionada" : "seleccionadas"}`
+            : n === 1
+              ? "1 pieza seleccionada"
+              : `${n} piezas seleccionadas`}
+        </p>
+        {n > 0 ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={onClear}
+          >
+            <X aria-hidden />
+            Quitar selección
+          </Button>
         ) : null}
-      </p>
-      {bulkArrival ? (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={pending}
+      </div>
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        role="group"
+        aria-label="Acciones"
+      >
+        <BulkButton
+          label={WORKSHOP_LABELS.send}
+          icon={Truck}
+          able={send}
+          chosen={n}
+          verb="enviar al taller"
+          primary
+          pending={pending}
+          onClick={() => setSending(true)}
+        />
+        <BulkButton
+          label="Marcar llegada"
+          icon={Store}
+          able={arrival}
+          chosen={n}
+          verb="marcar como llegadas"
+          pending={pending}
           onClick={() =>
             act(
               () => markPiecesArrived(restorationId, ids),
               "llegada a la tienda.",
             )
           }
-        >
-          Marcar llegada a tienda
-        </Button>
-      ) : null}
-      {bulkReceive ? (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={pending}
+        />
+        <BulkButton
+          label={WORKSHOP_LABELS.back}
+          icon={PackageOpen}
+          able={receive}
+          chosen={n}
+          verb="recibir del taller"
+          pending={pending}
           onClick={() =>
             act(
               () => receiveFromWorkshop(restorationId, ids),
               "de vuelta del taller.",
             )
           }
-        >
-          Recibir del taller
-        </Button>
-      ) : null}
-      {bulkReturn ? (
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={pending}
+        />
+        <BulkButton
+          label="Devolver al cliente"
+          icon={Undo2}
+          able={giveBack}
+          chosen={n}
+          verb="devolver al cliente"
+          pending={pending}
           onClick={() =>
             act(
               () => returnPiecesToClient(restorationId, ids),
               "devuelta al cliente.",
             )
           }
+        />
+        <span
+          title={statusReason}
+          className="inline-flex"
+          data-reason={statusReason}
         >
-          Devolver al cliente
-        </Button>
-      ) : null}
-      {statusPicker ? (
-        noCommonChange ? (
-          <p
-            className="text-muted-foreground text-xs"
-            title="Las piezas elegidas no comparten un cambio de estado posible; desmarca las que no correspondan."
-          >
-            Sin cambio de estado en común
-          </p>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <Label htmlFor="cambio-masivo" className="sr-only">
-              Cambiar estado a…
-            </Label>
-            <Select
-              value={picked?.to ?? ""}
-              onValueChange={(v) => setTarget(v as PieceStatus)}
-              disabled={pending || bulk.length === 0}
-            >
-              <SelectTrigger
-                id="cambio-masivo"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
                 size="sm"
-                className="w-40 sm:w-44"
+                variant="outline"
+                disabled={pending || statusReason !== undefined}
+                aria-label={
+                  n > 0 ? `Cambiar estado de ${count}` : "Cambiar estado"
+                }
               >
-                <SelectValue
-                  placeholder={
-                    chosen.length === 0 ? "Elige piezas" : "Cambiar estado a…"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {bulk.map((change) => (
-                  <SelectItem key={change.to} value={change.to}>
-                    {ACTION_LABELS[change.to]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              disabled={pending || picked === null}
-              onClick={() => picked && runChange(picked)}
-              aria-label={`Aplicar a ${count}`}
+                Cambiar estado
+                <ChevronDown aria-hidden className="text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="min-w-48"
+              onCloseAutoFocus={runAfterClose}
             >
-              Aplicar
-            </Button>
-          </div>
-        )
-      ) : (
-        bulk.map((change) => (
-          <Button
-            key={change.to}
-            size="sm"
-            variant={isClosedStatus(change.to) ? "ghost" : "outline"}
-            className={
-              isClosedStatus(change.to) ? "text-destructive" : undefined
-            }
-            disabled={pending}
-            onClick={() => runChange(change)}
-          >
-            {ACTION_LABELS[change.to]}
-          </Button>
-        ))
-      )}
-      {bulkAssign ? (
-        <div className="flex items-center gap-1.5">
-          <Label htmlFor="taller-masivo" className="sr-only">
-            Taller
-          </Label>
-          <Select
-            value={bulkWorkshop ?? NONE}
-            onValueChange={(v) => setBulkWorkshop(v === NONE ? null : v)}
-          >
-            <SelectTrigger id="taller-masivo" size="sm" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>Taller: sin asignar</SelectItem>
-              {workshops.map((w) => (
-                <SelectItem key={w.id} value={w.id}>
-                  {w.name}
-                </SelectItem>
+              {regular.length > 0 ? (
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Pasar a…
+                </DropdownMenuLabel>
+              ) : null}
+              {regular.map((change) => (
+                <DropdownMenuItem
+                  key={change.to}
+                  onSelect={() => {
+                    chosenAction.current = () => runChange(change);
+                  }}
+                >
+                  {ACTION_LABELS[change.to]}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await assignWorkshop(
-                  restorationId,
-                  ids,
-                  bulkWorkshop,
-                );
-                if ("error" in result) toast.error(result.error);
-                else done("Taller asignado.");
-              })
-            }
+              {closing.length > 0 ? (
+                <>
+                  {regular.length > 0 ? <DropdownMenuSeparator /> : null}
+                  <DropdownMenuLabel className="text-muted-foreground text-xs">
+                    Cerrar las piezas
+                  </DropdownMenuLabel>
+                  {closing.map((change) => (
+                    <DropdownMenuItem
+                      key={change.to}
+                      variant="destructive"
+                      onSelect={() => {
+                        chosenAction.current = () => runChange(change);
+                      }}
+                    >
+                      {ACTION_LABELS[change.to]}
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </span>
+        {assignable > 0 ? (
+          <span
+            title={assignReason}
+            className="inline-flex"
+            data-reason={assignReason}
           >
-            Asignar taller
-          </Button>
-        </div>
-      ) : null}
-      {children}
-      {statusPicker ? null : (
-        <Button size="sm" variant="ghost" onClick={onDone}>
-          Quitar selección
-        </Button>
-      )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending || assignReason !== undefined}
+                >
+                  <Wrench aria-hidden />
+                  Asignar taller
+                  <ChevronDown aria-hidden className="text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-48">
+                <DropdownMenuLabel className="text-muted-foreground text-xs">
+                  Taller de {count}
+                </DropdownMenuLabel>
+                {workshops.map((w) => (
+                  <DropdownMenuItem key={w.id} onSelect={() => assign(w.id)}>
+                    {w.name}
+                  </DropdownMenuItem>
+                ))}
+                {workshops.length > 0 ? <DropdownMenuSeparator /> : null}
+                <DropdownMenuItem
+                  key={NO_WORKSHOP}
+                  className="text-muted-foreground"
+                  onSelect={() => assign(null)}
+                >
+                  Sin taller
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </span>
+        ) : null}
+        {children}
+      </div>
       <StatusChangeDialog
         key={dialog?.to ?? "cerrado"}
         open={dialog !== null}
@@ -389,6 +503,15 @@ export function PiecesBulkBar({
         pieces={chosen}
         workshops={workshops}
         onConfirm={(input) => applyBulk(dialog!, input)}
+      />
+      <ReviewDialog
+        key={sending ? "envio-masivo-abierto" : "envio-masivo-cerrado"}
+        kind="envio"
+        open={sending}
+        onOpenChange={setSending}
+        pieces={chosen}
+        workshops={workshops}
+        onConfirm={sendToWorkshop}
       />
     </div>
   );

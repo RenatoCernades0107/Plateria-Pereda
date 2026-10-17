@@ -12,6 +12,8 @@ import { createClient } from "@/lib/supabase/server";
 export type WhatsappQuoteItem = {
   id: string;
   number: number;
+  /** Unidades (informativa: el precio es de la línea completa). */
+  quantity: number;
   description: string;
   measure: string;
   /** Materiales del catálogo, en orden (materialName los junta con comas). */
@@ -142,6 +144,7 @@ export async function getWhatsappQuote(
     items: items.data!.map((i) => ({
       id: i.id,
       number: i.number,
+      quantity: i.quantity,
       description: i.description,
       measure: i.measure,
       materialIds: i.material_ids,
