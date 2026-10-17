@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, Copy, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Info, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -26,6 +26,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -470,6 +476,45 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
  * cliente, tipo de pago, piezas y total en vivo. Al guardar abre el detalle con el
  * mensaje de cotización para WhatsApp.
  */
+/** Casilla de una línea con su explicación en un tooltip (ícono de información). */
+function OptionCheckbox({
+  checked,
+  onChange,
+  info,
+  children,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  info: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          className="accent-primary size-4"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        {children}
+      </label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={info}
+            className="text-muted-foreground hover:text-foreground rounded-full"
+          >
+            <Info aria-hidden className="size-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">{info}</TooltipContent>
+      </Tooltip>
+    </span>
+  );
+}
+
 export function RestorationForm({
   defaultDepositPercent,
   workshops,
@@ -728,53 +773,36 @@ export function RestorationForm({
         {error ? <FormAlert>{error}</FormAlert> : null}
 
         {mode.kind === "nueva" ? (
-          <label className="flex items-start gap-3 rounded-lg border p-3">
-            <input
-              type="checkbox"
-              className="accent-primary mt-0.5 size-4"
-              checked={viaWhatsapp}
-              onChange={(e) => toggleWhatsapp(e.target.checked)}
-            />
-            <span className="space-y-0.5">
-              <span className="flex items-center gap-1.5 text-sm font-medium">
+          // Opciones de registro en una sola fila; la explicación va en el ícono (i).
+          <TooltipProvider>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border px-3 py-2">
+              <OptionCheckbox
+                checked={viaWhatsapp}
+                onChange={toggleWhatsapp}
+                info="Se registra como cotización (sin cliente obligatorio). Cuando el cliente confirme qué piezas quiere, se crea la restauración."
+              >
                 <WhatsAppIcon className="text-whatsapp-strong size-4" />
                 El pedido vino por WhatsApp
-              </span>
-              <span className="text-muted-foreground block text-sm">
-                Se registra como cotización (sin cliente obligatorio). Cuando el
-                cliente confirme qué piezas quiere, se crea la restauración.
-              </span>
-            </span>
-          </label>
-        ) : null}
-
-        {mode.kind === "nueva" && !viaWhatsapp && canSetKind ? (
-          <fieldset className="space-y-2" data-testid="tipo-de-guia">
-            <legend className="sr-only">Tipo de guía</legend>
-            {(["interno", "observado"] as const).map((k) => (
-              <label
-                key={k}
-                className="flex items-start gap-3 rounded-lg border p-3"
-              >
-                <input
-                  type="checkbox"
-                  className="accent-primary mt-0.5 size-4"
-                  checked={guideKind === k}
-                  onChange={(e) =>
-                    // Excluyentes: marcar una desmarca la otra (con confirmación).
-                    e.target.checked ? setPendingKind(k) : applyKind("normal")
-                  }
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">
-                    Guía {RESTORATION_KIND_LABELS[k].toLowerCase()}
-                  </span>
-                  <span className="text-muted-foreground block text-sm">
-                    {KIND_SHORT_DESCRIPTIONS[k]}
-                  </span>
-                </span>
-              </label>
-            ))}
+              </OptionCheckbox>
+              {!viaWhatsapp && canSetKind ? (
+                <fieldset className="contents" data-testid="tipo-de-guia">
+                  <legend className="sr-only">Tipo de guía</legend>
+                  {(["interno", "observado"] as const).map((k) => (
+                    <OptionCheckbox
+                      key={k}
+                      checked={guideKind === k}
+                      // Excluyentes: marcar una desmarca la otra (con confirmación).
+                      onChange={(on) =>
+                        on ? setPendingKind(k) : applyKind("normal")
+                      }
+                      info={KIND_SHORT_DESCRIPTIONS[k]}
+                    >
+                      Guía {RESTORATION_KIND_LABELS[k].toLowerCase()}
+                    </OptionCheckbox>
+                  ))}
+                </fieldset>
+              ) : null}
+            </div>
             <RestorationKindConfirmDialog
               kind={pendingKind}
               onCancel={() => setPendingKind(null)}
@@ -783,7 +811,7 @@ export function RestorationForm({
                 setPendingKind(null);
               }}
             />
-          </fieldset>
+          </TooltipProvider>
         ) : null}
 
         <section className="space-y-4" aria-labelledby="datos-cliente">
