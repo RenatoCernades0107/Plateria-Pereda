@@ -54,7 +54,7 @@ const piece: PieceDetail = {
   workshopId: null,
   workshopName: null,
   materialIds: [M1],
-  serviceId: S1,
+  serviceIds: [S1],
   notes: "",
   arrivedAt: "2026-10-04T10:00:00Z",
   createdAt: "2026-10-04T10:00:00Z",
@@ -130,7 +130,7 @@ describe("PieceDialog", () => {
       "p1",
       expect.objectContaining({
         materials: [M1, M2, M4],
-        service: { id: S1, name: "Limpieza" },
+        services: [S1],
         price: "1200.50",
         weight: "820.5",
         quantity: "3",
@@ -214,8 +214,14 @@ describe("PieceDialog", () => {
     // El servicio es obligatorio (D59).
     expect(await within(dialog).findByText("Elige el servicio")).toBeVisible();
     expect(mocks.addPiece).not.toHaveBeenCalled();
+    // Varios servicios a la vez: se marcan uno tras otro y se pueden desmarcar.
     await user.click(within(dialog).getByLabelText("Servicio"));
     await user.click(screen.getByRole("option", { name: "Pulido" }));
+    await user.click(screen.getByRole("option", { name: "Limpieza" }));
+    await user.keyboard("{Escape}");
+    expect(within(dialog).getByLabelText("Servicio")).toHaveTextContent(
+      "Pulido, Limpieza",
+    );
     await user.click(
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
@@ -223,7 +229,7 @@ describe("PieceDialog", () => {
       "r1",
       expect.objectContaining({
         description: "Azucarera",
-        service: { id: S2, name: "Pulido" },
+        services: [S2, S1],
         price: "64.5",
       }),
     );

@@ -13,8 +13,8 @@ import { RESTORATION_KINDS } from "@/domain/restoration-status";
 
 /**
  * Registro de restauraciones y piezas (Pasos 7.3 y 7.4). Campos de la pieza según
- * P22 y D59: el servicio (del catálogo) y la descripción son obligatorios; los
- * materiales (uno o más, del catálogo), peso en gramos, medida y precio son opcionales; taller
+ * P22 y D59: los servicios (uno o más, del catálogo) y la descripción son obligatorios;
+ * los materiales (uno o más, del catálogo), peso en gramos, medida y precio son opcionales; taller
  * opcional al registrar. El precio de venta vacío queda "Por definir" (lo asigna el
  * admin, D58); en las cotizaciones de WhatsApp también es opcional ("Por definir").
  * Al registrar la restauración (directa o desde una cotización) la pieza sin precio
@@ -62,22 +62,16 @@ const materialIds = z
   .transform((ids) => [...new Set(ids)]);
 
 /**
- * Servicio de la pieza (D59): obligatorio, elegido del catálogo (o creado ahí mismo).
- * Un nombre sin id también se acepta: la BD lo agrega al catálogo.
+ * Servicios de la pieza (D59): al menos uno, ids del catálogo, en el orden elegido y
+ * sin repetir.
  */
-const requiredService = z
-  .object({ id: optionalId, name: line(100) })
-  .transform(({ id, name }, ctx) => {
-    if (!name) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["name"],
-        message: "Elige el servicio",
-      });
-      return z.NEVER;
-    }
-    return { id, name };
-  });
+export const MAX_SERVICES = 10;
+const requiredServices = z
+  .array(z.guid())
+  .max(MAX_SERVICES, `Máximo ${MAX_SERVICES} servicios`)
+  .default([])
+  .transform((ids) => [...new Set(ids)])
+  .refine((ids) => ids.length > 0, "Elige el servicio");
 
 /** Monto en céntimos; vacío = null. */
 const money = z
@@ -138,7 +132,7 @@ const pieceFields = {
   ),
   measure: line(100),
   materials: materialIds,
-  service: requiredService,
+  services: requiredServices,
   weight,
   /** Marca "Urgente" (P47): no es un estado. */
   urgent: z.boolean().default(false),

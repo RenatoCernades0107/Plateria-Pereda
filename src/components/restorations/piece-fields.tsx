@@ -39,7 +39,7 @@ const NONE = "ninguno";
 
 type AnyForm = UseFormReturn<FieldValues>;
 
-/** Servicio de la pieza: uno, elegido (o creado) en el buscador del catálogo. */
+/** Servicios de la pieza: uno o más del catálogo (al menos uno). */
 function ServiceField({
   form,
   prefix,
@@ -51,31 +51,22 @@ function ServiceField({
   options: CatalogOption[];
   disabled: boolean;
 }) {
-  const name = `${prefix}service.name` as Path<FieldValues>;
-  const serviceId = useWatch({
-    control: form.control,
-    name: `${prefix}service.id` as Path<FieldValues>,
-  }) as string | null | undefined;
   return (
     <FormField
       control={form.control}
-      name={name}
+      name={`${prefix}services` as Path<FieldValues>}
       render={({ field }) => (
         <FormItem>
           <FormLabel>Servicio</FormLabel>
           <FormControl>
             <CatalogCombobox
               kind="services"
+              multiple
               options={options}
-              value={serviceId ? [serviceId] : []}
+              value={(field.value as string[] | undefined) ?? []}
               disabled={disabled}
-              placeholder="Selecciona un servicio"
-              fallbackLabel={field.value || undefined}
-              onChange={(picked) => {
-                const option = picked[0];
-                form.setValue(`${prefix}service.id`, option?.id ?? null);
-                field.onChange(option?.name ?? "");
-              }}
+              placeholder="Selecciona uno o más servicios"
+              onChange={(picked) => field.onChange(picked.map((o) => o.id))}
             />
           </FormControl>
           <FormMessage />
@@ -126,10 +117,10 @@ function MaterialsField({
  * Campos de una pieza (P22, D59). Se usan en el registro (`prefix` = "pieces.0.") y
  * en los diálogos de edición (`prefix` = ""). `editable` limita lo que se puede
  * cambiar según `editableFields()` (Paso 7.7). Orden pedido por la Platería: primero
- * la descripción junto a las notas de la pieza, luego el servicio (obligatorio),
+ * la descripción junto a las notas de la pieza, luego los servicios (al menos uno),
  * cantidad, materiales, peso, medida y precio (opcionales) en una sola fila y al final taller y
- * urgente. Servicio y materiales se eligen con un buscador del catálogo (los
- * materiales, uno o más) y si no existen se crean ahí mismo. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
+ * urgente. Servicios y materiales se eligen con un buscador del catálogo (uno o
+ * más de cada uno) y los que faltan los agrega el admin en Configuración. Quien no puede cambiar el taller (ventas, D60) lo ve como texto. El
  * precio de venta no sale del servicio: es opcional ("Por definir") y solo lo asigna el
  * admin (D58); en las cotizaciones de WhatsApp es el precio cotizado y también es
  * opcional ("Por definir").

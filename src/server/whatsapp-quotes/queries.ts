@@ -19,7 +19,8 @@ export type WhatsappQuoteItem = {
   /** Materiales del catálogo, en orden (materialName los junta con comas). */
   materialIds: string[];
   materialName: string;
-  serviceId: string | null;
+  /** Servicios del catálogo, en orden (serviceName los junta con comas). */
+  serviceIds: string[];
   serviceName: string;
   weightGrams: number | null;
   /** Null: precio por definir. */
@@ -149,7 +150,7 @@ export async function getWhatsappQuote(
       measure: i.measure,
       materialIds: i.material_ids,
       materialName: i.material_name,
-      serviceId: i.service_id,
+      serviceIds: i.service_ids,
       serviceName: i.service_name,
       weightGrams: i.weight_grams === null ? null : Number(i.weight_grams),
       priceCents: i.price === null ? null : toCents(Number(i.price)),

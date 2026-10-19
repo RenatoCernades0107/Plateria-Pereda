@@ -171,7 +171,7 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `contacts` — client_id, nombre, documento, teléfono, email, cargo/relación, activo.
 - `workshops` — nombre, contacto, teléfono, dirección, notas, activo.
 - `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
-- `materials`, `services` — catálogos que solo el admin edita, desactiva y borra (si ninguna pieza ni cotización los usa); la pieza guarda el id del catálogo (D68, antes P22: lista o texto libre).
+- `materials`, `services` — catálogos que solo el admin edita, desactiva y borra (si ninguna pieza ni cotización los usa); la pieza guarda los ids del catálogo: uno o más servicios (D74) y uno o más materiales (D68, antes P22: lista o texto libre).
 - `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
 - `restorations` — código `RES-00001`, origen (`oficina`, `whatsapp`, P46) y cotización de origen, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
 - `pieces` — restoration_id, código `RES-00001-1`, pieza de la cotización de origen (P46), marca `urgent` (P47), workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `first_sent_at`, `last_sent_at`, `last_returned_at`, `delivered_at`, `returned_at`, `cancelled_at`), `ready_for_delivery` (generada), notas.

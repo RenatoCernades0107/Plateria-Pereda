@@ -198,8 +198,8 @@ function pieceColumns(
       measure: p.measure,
       // El primer material y los nombres los deriva la BD.
       material_ids: p.materials,
-      service_id: p.service?.id ?? null,
-      service_name: p.service?.name ?? "",
+      // El primer servicio y los nombres los deriva la BD.
+      service_ids: p.services,
       weight_grams: p.weightGrams,
       ...(withPrice && {
         price:

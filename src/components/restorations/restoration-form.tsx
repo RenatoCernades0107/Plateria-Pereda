@@ -117,7 +117,7 @@ export const EMPTY_PIECE: PieceFormInput = {
   description: "",
   measure: "",
   materials: [],
-  service: { id: null, name: "" },
+  services: [],
   weight: "",
   price: "",
   urgent: false,

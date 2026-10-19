@@ -5,8 +5,8 @@ import { adminClient } from "./supabase";
 /**
  * Elige un servicio o material que ya está en el catálogo, en el buscador de la pieza.
  * El buscador no crea ítems (solo el admin, en Configuración): se dejan listos antes con
- * `ensureCatalogItem`. Los materiales (varios) dejan el buscador abierto: se cierra con
- * Escape.
+ * `ensureCatalogItem`. Los servicios y materiales (varios) dejan el buscador abierto: se
+ * cierra con Escape.
  */
 export async function chooseCatalog(
   page: Page,

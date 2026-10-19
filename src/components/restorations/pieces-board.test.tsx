@@ -49,7 +49,7 @@ const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
   workshopId: null,
   workshopName: null,
   materialIds: [],
-  serviceId: null,
+  serviceIds: [],
   notes: "",
   arrivedAt: null,
   createdAt: "2026-10-01T15:00:00Z",

@@ -20,8 +20,8 @@ export function pieceToRpc(piece: PieceInput) {
     measure: piece.measure,
     // El primer material y los nombres los deriva la BD (trigger pieces_catalogs_link).
     material_ids: piece.materials,
-    service_id: piece.service?.id ?? null,
-    service_name: piece.service?.name ?? "",
+    // El primer servicio y los nombres los deriva la BD (trigger pieces_catalogs_link).
+    service_ids: piece.services,
     weight_grams:
       piece.weightGrams === null ? null : piece.weightGrams.toFixed(2),
     // Sin precio de venta (D58): queda sin asignar.
