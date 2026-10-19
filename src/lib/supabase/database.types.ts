@@ -1865,6 +1865,7 @@ export type Database = {
       };
       list_pieces_board: {
         Args: {
+          p_dir?: string;
           p_limit?: number;
           p_location?: Database["public"]["Enums"]["piece_location"];
           p_min_workshop_days?: number;
@@ -1873,6 +1874,7 @@ export type Database = {
           p_query?: string;
           p_ready?: boolean;
           p_restoration_code?: string;
+          p_sort?: string;
           p_status?: Database["public"]["Enums"]["piece_status"];
           p_to_return?: boolean;
           p_urgent?: boolean;

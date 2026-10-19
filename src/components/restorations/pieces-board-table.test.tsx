@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { parsePieceBoardFilters } from "@/domain/piece-board-filters";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import { PiecesBoardTable } from "./pieces-board-table";
@@ -77,6 +78,35 @@ const inWorkshop = (changes: Partial<BoardPiece>) =>
   }) as BoardPiece;
 
 describe("PiecesBoardTable", () => {
+  it("con los filtros, los encabezados ordenan por guía, días en taller y precio", () => {
+    render(
+      <PiecesBoardTable
+        pieces={[base]}
+        role="admin"
+        workshops={[]}
+        filters={parsePieceBoardFilters({ orden: "precio" })}
+      />,
+    );
+    // Guía: otra columna empieza de mayor a menor (la más reciente).
+    expect(
+      screen.getByRole("link", { name: "Ordenar por guía" }),
+    ).toHaveAttribute("href", "/piezas");
+    expect(
+      screen.getByRole("link", { name: "Ordenar por días en taller" }),
+    ).toHaveAttribute("href", "/piezas?orden=dias_taller");
+    // La columna activa invierte el sentido.
+    expect(
+      screen.getByRole("link", { name: "Ordenar por precio de venta" }),
+    ).toHaveAttribute("href", "/piezas?orden=precio&dir=asc");
+  });
+
+  it("sin filtros, los encabezados no son enlaces", () => {
+    render(<PiecesBoardTable pieces={[base]} role="admin" workshops={[]} />);
+    expect(
+      screen.queryByRole("link", { name: /Ordenar por/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("resalta las piezas con muchos días en el taller y muestra la última observación", () => {
     render(
       <PiecesBoardTable

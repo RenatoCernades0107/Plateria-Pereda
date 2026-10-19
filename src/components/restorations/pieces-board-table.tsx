@@ -1,6 +1,12 @@
 "use client";
 
-import { Hammer, Loader2, MoreHorizontal } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Hammer,
+  Loader2,
+  MoreHorizontal,
+} from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
@@ -18,6 +24,10 @@ import {
 import { navigateRow } from "@/components/clickable-row";
 import {
   isLongInWorkshop,
+  type PieceBoardFilters,
+  pieceBoardHref,
+  type PieceBoardSort,
+  pieceSortChange,
   WORKSHOP_DAYS_ALERT,
 } from "@/domain/piece-board-filters";
 import { can } from "@/domain/permissions";
@@ -397,17 +407,47 @@ function BoardRow({
  * de la pieza. Selección para acciones en bloque; las urgentes van primero y se
  * resaltan las que llevan muchos días en el taller.
  */
+/** Encabezado que ordena la vista: la misma columna invierte el sentido. */
+function SortHeader({
+  filters,
+  sort,
+  label,
+  children,
+}: {
+  filters: PieceBoardFilters | undefined;
+  sort: PieceBoardSort;
+  label: string;
+  children: React.ReactNode;
+}) {
+  if (!filters) return <>{children}</>;
+  const active = filters.sort === sort;
+  const Icon = filters.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <Link
+      href={pieceBoardHref(filters, pieceSortChange(filters, sort))}
+      className="inline-flex items-center gap-1 hover:underline"
+      aria-label={`Ordenar por ${label}`}
+    >
+      {children}
+      {active ? <Icon className="size-3.5" aria-hidden /> : null}
+    </Link>
+  );
+}
+
 export function PiecesBoardTable({
   pieces,
   role,
   workshops,
   balanceDue = [],
+  filters,
 }: {
   pieces: BoardPiece[];
   role: AppRole;
   workshops: WorkshopOption[];
   /** Restauraciones a las que les falta cobrar el saldo para entregar (P45). */
   balanceDue?: string[];
+  /** Filtros de la vista: con ellos, los encabezados ordenan. */
+  filters?: PieceBoardFilters;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const chosen = pieces.filter((p) => selected.includes(p.id));
@@ -469,7 +509,9 @@ export function PiecesBoardTable({
                 Foto
               </th>
               <th scope="col" className={cn(head, STICKY.code)}>
-                Pieza
+                <SortHeader filters={filters} sort="guia" label="guía">
+                  Pieza
+                </SortHeader>
               </th>
               {showClient ? (
                 <th scope="col" className={head}>
@@ -498,7 +540,13 @@ export function PiecesBoardTable({
                 className={head}
                 title={`Debajo, los días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
               >
-                Taller
+                <SortHeader
+                  filters={filters}
+                  sort="dias_taller"
+                  label="días en taller"
+                >
+                  Taller
+                </SortHeader>
               </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>
@@ -507,7 +555,13 @@ export function PiecesBoardTable({
               ) : null}
               {showPrice ? (
                 <th scope="col" className={cn(head, "text-right")}>
-                  Precio venta
+                  <SortHeader
+                    filters={filters}
+                    sort="precio"
+                    label="precio de venta"
+                  >
+                    Precio venta
+                  </SortHeader>
                 </th>
               ) : null}
             </tr>

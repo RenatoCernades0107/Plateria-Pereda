@@ -22,8 +22,8 @@ import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, StatusAge, UrgentBadge } from "./status-badges";
 
 /**
- * Tablero kanban de piezas en curso: una columna por estado (las urgentes primero en
- * cada columna). Las piezas se mueven de estado arrastrándolas o con "Mover a…"
+ * Tablero kanban de piezas en curso: una columna por estado (en cada columna, en el
+ * orden elegido en los filtros). Las piezas se mueven de estado arrastrándolas o con "Mover a…"
  * (Paso 12.5); Entregada y Anulado aparecen como destino solo al arrastrar. Se
  * eligen piezas de una o varias columnas y se usan las mismas acciones masivas que
  * en la tabla.

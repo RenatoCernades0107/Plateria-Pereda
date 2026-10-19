@@ -37,6 +37,23 @@ export const BOARD_STATUSES = [
   "sin_arreglo",
 ] as const satisfies readonly PieceStatus[];
 
+/** Orden de la vista: por guía (por defecto), fecha de registro, precio o días en taller. */
+export const PIECE_BOARD_SORTS = [
+  "guia",
+  "fecha",
+  "precio",
+  "dias_taller",
+] as const;
+export type PieceBoardSort = (typeof PIECE_BOARD_SORTS)[number];
+export type PieceBoardSortDir = "asc" | "desc";
+
+export const PIECE_BOARD_SORT_LABELS: Record<PieceBoardSort, string> = {
+  guia: "Guía",
+  fecha: "Fecha de registro",
+  precio: "Precio de venta",
+  dias_taller: "Días en taller",
+};
+
 export type PieceBoardFilters = {
   /** Código de la pieza, descripción o cliente. */
   q: string;
@@ -56,6 +73,9 @@ export type PieceBoardFilters = {
    * arreglo que siguen en la tienda (por devolver).
    */
   ready: boolean;
+  /** Por guía: la más reciente primero y sus piezas en orden. */
+  sort: PieceBoardSort;
+  dir: PieceBoardSortDir;
   page: number;
   /** Tabla paginada o tablero kanban por estado. */
   view: "tabla" | "kanban";
@@ -90,6 +110,8 @@ export function parsePieceBoardFilters(
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
     urgent: first(params.urgentes) === "1",
     ready: first(params.listas) === "1",
+    sort: oneOf(PIECE_BOARD_SORTS, first(params.orden)) ?? "guia",
+    dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
     view: first(params.vista) === "kanban" ? "kanban" : "tabla",
   };
@@ -110,6 +132,8 @@ export function pieceBoardHref(
   if (next.minDays) params.set("dias", String(next.minDays));
   if (next.urgent) params.set("urgentes", "1");
   if (next.ready) params.set("listas", "1");
+  if (next.sort !== "guia") params.set("orden", next.sort);
+  if (next.dir !== "desc") params.set("dir", next.dir);
   if (next.page > 1 && next.view === "tabla")
     params.set("pagina", String(next.page));
   if (next.view === "kanban") params.set("vista", "kanban");
@@ -130,10 +154,25 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
     p_min_workshop_days: filters.minDays ?? undefined,
     p_urgent: filters.urgent || undefined,
     p_ready: filters.ready || undefined,
+    p_sort: filters.sort,
+    p_dir: filters.dir,
     p_limit: filters.view === "kanban" ? PIECES_KANBAN_LIMIT : PIECES_PAGE_SIZE,
     p_offset:
       filters.view === "kanban" ? 0 : (filters.page - 1) * PIECES_PAGE_SIZE,
   };
+}
+
+/**
+ * Al ordenar por otra columna se vuelve a la primera página y se empieza de mayor a
+ * menor (la guía más reciente, el precio más alto…); la misma columna invierte.
+ */
+export function pieceSortChange(
+  filters: PieceBoardFilters,
+  sort: PieceBoardSort,
+): Partial<PieceBoardFilters> {
+  const dir: PieceBoardSortDir =
+    filters.sort === sort && filters.dir === "desc" ? "asc" : "desc";
+  return { sort, dir, page: 1 };
 }
 
 /** Se resalta la pieza que sigue en el taller desde hace muchos días. */

@@ -220,10 +220,13 @@ test.describe("Vista de piezas", () => {
 
     await loginAs("logistica");
     await page.goto(`/piezas?q=Vuelta`);
-    // Las urgentes van primero.
-    await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
-      "Urgente",
+    // Por guía, en el orden de las piezas: la urgente no sube, se marca.
+    const rows = page.locator("[data-testid^='pieza-']");
+    await expect(rows.first()).toHaveAttribute(
+      "data-testid",
+      `pieza-${pieces[0]!.code}`,
     );
+    await expect(rows.nth(1)).toContainText("Urgente");
     await page
       .getByRole("navigation", { name: "Mostrar solo" })
       .getByRole("link", { name: "Urgentes" })

@@ -85,6 +85,7 @@ export default async function PiezasPage({
         filters={filters}
         workshops={workshops.data}
         showClient={showClient}
+        showPrice={can(user.role, "piezas.precio-venta.ver")}
       />
       {/* Barra de la lista: cuántas hay y, juntas, las acciones de la vista. */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
@@ -117,6 +118,7 @@ export default async function PiezasPage({
         <>
           <PiecesBoardTable
             balanceDue={balanceDue}
+            filters={filters}
             pieces={items}
             role={user.role}
             workshops={workshops.data}
