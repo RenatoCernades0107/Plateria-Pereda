@@ -444,7 +444,6 @@ export type Database = {
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_ids: string[];
-          service_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -460,6 +459,7 @@ export type Database = {
           review_sent_at: string | null;
           service_cost: number | null;
           service_id: string | null;
+          service_ids: string[];
           service_name: string;
           shopify_line_item_id: string | null;
           status: Database["public"]["Enums"]["piece_status"];
@@ -485,7 +485,6 @@ export type Database = {
           location?: never;
           material_id?: string | null;
           material_ids?: string[];
-          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -501,6 +500,7 @@ export type Database = {
           review_sent_at?: string | null;
           service_cost?: number | null;
           service_id?: string | null;
+          service_ids?: string[];
           service_name?: string;
           shopify_line_item_id?: string | null;
           status?: Database["public"]["Enums"]["piece_status"];
@@ -526,7 +526,6 @@ export type Database = {
           location?: never;
           material_id?: string | null;
           material_ids?: string[];
-          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -542,6 +541,7 @@ export type Database = {
           review_sent_at?: string | null;
           service_cost?: number | null;
           service_id?: string | null;
+          service_ids?: string[];
           service_name?: string;
           shopify_line_item_id?: string | null;
           status?: Database["public"]["Enums"]["piece_status"];
@@ -1263,7 +1263,6 @@ export type Database = {
           id: string;
           material_id: string | null;
           material_ids: string[];
-          service_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -1272,6 +1271,7 @@ export type Database = {
           quantity: number;
           quote_id: string;
           service_id: string | null;
+          service_ids: string[];
           service_name: string;
           updated_at: string;
           weight_grams: number | null;
@@ -1282,7 +1282,6 @@ export type Database = {
           id?: string;
           material_id?: string | null;
           material_ids?: string[];
-          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1291,6 +1290,7 @@ export type Database = {
           quantity?: number;
           quote_id: string;
           service_id?: string | null;
+          service_ids?: string[];
           service_name?: string;
           updated_at?: string;
           weight_grams?: number | null;
@@ -1301,7 +1301,6 @@ export type Database = {
           id?: string;
           material_id?: string | null;
           material_ids?: string[];
-          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1310,6 +1309,7 @@ export type Database = {
           quantity?: number;
           quote_id?: string;
           service_id?: string | null;
+          service_ids?: string[];
           service_name?: string;
           updated_at?: string;
           weight_grams?: number | null;
@@ -1499,7 +1499,6 @@ export type Database = {
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_ids: string[] | null;
-          service_ids: string[] | null;
           material_name: string | null;
           measure: string | null;
           notes: string | null;
@@ -1512,6 +1511,7 @@ export type Database = {
           review_returned_at: string | null;
           review_sent_at: string | null;
           service_id: string | null;
+          service_ids: string[] | null;
           service_name: string | null;
           status: Database["public"]["Enums"]["piece_status"] | null;
           updated_at: string | null;
