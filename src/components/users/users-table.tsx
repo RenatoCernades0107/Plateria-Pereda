@@ -20,10 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ChangePasswordDialog } from "@/components/users/change-password-dialog";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { ROLES } from "@/lib/validation/users";
 import {
-  resendAccess,
   setUserActive,
   updateUserRole,
   type UserActionResult,
@@ -75,19 +75,7 @@ function UserActions({ user, isSelf }: { user: UserRow; isSelf: boolean }) {
           ))}
         </SelectContent>
       </Select>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={pending}
-        onClick={() =>
-          run(
-            () => resendAccess(user.id),
-            `Enviamos un enlace de acceso a ${user.email}.`,
-          )
-        }
-      >
-        Reenviar acceso
-      </Button>
+      <ChangePasswordDialog user={user} disabled={pending} />
       <Button
         variant={user.active ? "outline" : "default"}
         size="sm"

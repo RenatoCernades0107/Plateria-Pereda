@@ -20,7 +20,8 @@ export default function RecoverPasswordPage() {
           Recuperar contraseña
         </CardTitle>
         <CardDescription>
-          Te enviaremos un enlace para crear una nueva.
+          Te enviaremos un enlace para crear una nueva. Si no te llega, pídele
+          al administrador que te cambie la contraseña.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

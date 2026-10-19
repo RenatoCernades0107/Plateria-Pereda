@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => {
   return {
     me: { id: "admin-1", role: "admin" },
     forbidden: false,
-    origin: "http://localhost:3100" as string | null,
     update,
     maybeSingle,
     supabase: {
@@ -19,8 +18,7 @@ const mocks = vi.hoisted(() => {
     },
     admin: {
       auth: {
-        admin: { inviteUserByEmail: vi.fn(), updateUserById: vi.fn() },
-        resetPasswordForEmail: vi.fn(),
+        admin: { createUser: vi.fn(), updateUserById: vi.fn() },
       },
     },
   };
@@ -38,35 +36,28 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => mocks.admin,
 }));
-vi.mock("next/headers", () => ({
-  headers: async () => new Map([["origin", mocks.origin]]),
-}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/lib/env.server", () => ({
-  serverEnv: () => ({ APP_URL: "https://sistema.pereda.pe" }),
-}));
 
-const { createUser, resendAccess, setUserActive, updateUserRole } =
+const { createUser, setUserActive, setUserPassword, updateUserRole } =
   await import("./users-actions");
 
 const nuevo = {
   fullName: "Lola Logística",
   email: "lola@pereda.test",
   role: "logistica" as const,
+  password: "Clave-de-lola-123",
 };
-const LINK = "http://localhost:3100/auth/confirm?next=/restablecer-contrasena";
 
 describe("acciones de usuarios", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.forbidden = false;
     mocks.update.mockResolvedValue({ error: null });
-    mocks.admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+    mocks.admin.auth.admin.createUser.mockResolvedValue({
       data: { user: { id: "u-nuevo" } },
       error: null,
     });
     mocks.admin.auth.admin.updateUserById.mockResolvedValue({ error: null });
-    mocks.admin.auth.resetPasswordForEmail.mockResolvedValue({ error: null });
   });
 
   it("solo un administrador puede usarlas", async () => {
@@ -74,29 +65,26 @@ describe("acciones de usuarios", () => {
     await expect(createUser(nuevo)).rejects.toThrow("FORBIDDEN");
     await expect(updateUserRole("u2", "ventas")).rejects.toThrow("FORBIDDEN");
     await expect(setUserActive("u2", false)).rejects.toThrow("FORBIDDEN");
-    await expect(resendAccess("u2")).rejects.toThrow("FORBIDDEN");
+    await expect(
+      setUserPassword("u2", { password: "Clave-nueva-123" }),
+    ).rejects.toThrow("FORBIDDEN");
   });
 
   describe("createUser", () => {
-    it("invita por correo y asigna el rol", async () => {
+    it("crea el usuario con su contraseña y su rol, sin correo", async () => {
       expect(await createUser(nuevo)).toEqual({ ok: true });
-      expect(mocks.admin.auth.admin.inviteUserByEmail).toHaveBeenCalledWith(
-        "lola@pereda.test",
-        {
-          data: { full_name: "Lola Logística" },
-          redirectTo: LINK,
-        },
-      );
-      expect(mocks.admin.auth.admin.updateUserById).toHaveBeenCalledWith(
-        "u-nuevo",
-        {
-          app_metadata: { role: "logistica" },
-        },
-      );
+      expect(mocks.admin.auth.admin.createUser).toHaveBeenCalledWith({
+        email: "lola@pereda.test",
+        password: "Clave-de-lola-123",
+        email_confirm: true,
+        user_metadata: { full_name: "Lola Logística" },
+        app_metadata: { role: "logistica" },
+      });
     });
 
     it("avisa si el email ya existe", async () => {
-      mocks.admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.admin.auth.admin.createUser.mockResolvedValue({
         data: {},
         error: { code: "email_exists" },
       });
@@ -105,24 +93,14 @@ describe("acciones de usuarios", () => {
       });
     });
 
-    it("avisa si se alcanzó el límite de correos", async () => {
+    it("avisa si la contraseña es débil", async () => {
       vi.spyOn(console, "error").mockImplementation(() => {});
-      mocks.admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+      mocks.admin.auth.admin.createUser.mockResolvedValue({
         data: {},
-        error: { code: "over_email_send_rate_limit", status: 429 },
+        error: { code: "weak_password", status: 422 },
       });
       expect(await createUser(nuevo)).toEqual({
-        error:
-          "Se alcanzó el límite de correos por hora. Espera un rato e intenta de nuevo.",
-      });
-    });
-
-    it("avisa si no pudo asignar el rol", async () => {
-      mocks.admin.auth.admin.updateUserById.mockResolvedValue({
-        error: { code: "unexpected_failure" },
-      });
-      expect(await createUser(nuevo)).toEqual({
-        error: "El usuario se creó, pero no se pudo asignar el rol.",
+        error: "La contraseña es muy débil. Usa una más larga o genera una.",
       });
     });
 
@@ -130,7 +108,10 @@ describe("acciones de usuarios", () => {
       expect(await createUser({ ...nuevo, email: "x" })).toEqual({
         error: "Revisa los datos ingresados.",
       });
-      expect(mocks.admin.auth.admin.inviteUserByEmail).not.toHaveBeenCalled();
+      expect(await createUser({ ...nuevo, password: "corta" })).toEqual({
+        error: "Revisa los datos ingresados.",
+      });
+      expect(mocks.admin.auth.admin.createUser).not.toHaveBeenCalled();
     });
   });
 
@@ -172,49 +153,39 @@ describe("acciones de usuarios", () => {
     });
   });
 
-  describe("resendAccess", () => {
-    it("envía el enlace al email del perfil", async () => {
-      mocks.maybeSingle.mockResolvedValue({
-        data: { email: "lola@pereda.test" },
+  describe("setUserPassword", () => {
+    it("cambia la contraseña del usuario", async () => {
+      expect(
+        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+      ).toEqual({ ok: true });
+      expect(mocks.admin.auth.admin.updateUserById).toHaveBeenCalledWith("u2", {
+        password: "Clave-nueva-123",
       });
-      expect(await resendAccess("u2")).toEqual({ ok: true });
-      expect(mocks.admin.auth.resetPasswordForEmail).toHaveBeenCalledWith(
-        "lola@pereda.test",
-        {
-          redirectTo: LINK,
-        },
-      );
     });
 
-    it("sin origin usa APP_URL", async () => {
-      mocks.origin = null;
-      mocks.maybeSingle.mockResolvedValue({
-        data: { email: "lola@pereda.test" },
+    it("rechaza una contraseña corta sin llamar a Supabase", async () => {
+      expect(await setUserPassword("u2", { password: "corta" })).toEqual({
+        error: "Revisa la contraseña ingresada.",
       });
-      await resendAccess("u2");
-      expect(mocks.admin.auth.resetPasswordForEmail).toHaveBeenCalledWith(
-        "lola@pereda.test",
-        {
-          redirectTo:
-            "https://sistema.pereda.pe/auth/confirm?next=/restablecer-contrasena",
-        },
-      );
-      mocks.origin = "http://localhost:3100";
+      expect(mocks.admin.auth.admin.updateUserById).not.toHaveBeenCalled();
     });
 
-    it("avisa si el usuario no tiene email o falla el envío", async () => {
-      mocks.maybeSingle.mockResolvedValue({ data: null });
-      expect(await resendAccess("u2")).toEqual({
-        error: "El usuario no tiene email.",
+    it("avisa si Supabase rechaza el cambio", async () => {
+      mocks.admin.auth.admin.updateUserById.mockResolvedValue({
+        error: { code: "weak_password" },
       });
-      mocks.maybeSingle.mockResolvedValue({
-        data: { email: "lola@pereda.test" },
+      expect(
+        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+      ).toEqual({
+        error: "La contraseña es muy débil. Usa una más larga o genera una.",
       });
-      mocks.admin.auth.resetPasswordForEmail.mockResolvedValue({
-        error: { code: "over_email_send_rate_limit" },
+      mocks.admin.auth.admin.updateUserById.mockResolvedValue({
+        error: { code: "unexpected_failure" },
       });
-      expect(await resendAccess("u2")).toEqual({
-        error: "No se pudo enviar el correo. Intenta en unos minutos.",
+      expect(
+        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+      ).toEqual({
+        error: "No se pudo cambiar la contraseña. Intenta de nuevo.",
       });
     });
   });
