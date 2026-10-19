@@ -221,7 +221,9 @@ describe("RestorationForm", () => {
     const card = within(screen.getByTestId("pieza-1"));
     expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
     expect(
-      card.getByText("Solo el administrador y logística asignan el precio de venta."),
+      card.getByText(
+        "Solo el administrador y logística asignan el precio de venta.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 0.00");
   });

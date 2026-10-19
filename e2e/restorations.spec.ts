@@ -266,7 +266,9 @@ test.describe("Restauraciones", () => {
       "Por definir",
     );
     await expect(
-      card.getByText("Solo el administrador y logística asignan el precio de venta."),
+      card.getByText(
+        "Solo el administrador y logística asignan el precio de venta.",
+      ),
     ).toBeVisible();
     // Sin precios todavía el total es 0; crece cuando el admin los asigna (D59).
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 0.00");
@@ -370,7 +372,9 @@ test.describe("Restauraciones", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(
-      dialog.getByText("Solo el administrador y logística asignan el precio de venta."),
+      dialog.getByText(
+        "Solo el administrador y logística asignan el precio de venta.",
+      ),
     ).toBeVisible();
     // Varios materiales: dos del catálogo.
     await chooseCatalog(page, dialog.getByLabel("Material"), "Plata 925", {
