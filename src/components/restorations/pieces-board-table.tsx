@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
+import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -190,6 +191,14 @@ function PieceActionsMenu({
  * en el kanban y las acciones masivas); entregar con saldo pendiente sí pide
  * confirmarlo y la BD lo exige igual.
  */
+// Casilla, foto y código quedan fijos al desplazarse de lado: anchos fijos (con el
+// `px-3` de las celdas) para calcular dónde empieza cada una.
+const STICKY = {
+  check: cn(RT.sticky, "md:left-0 md:w-10 md:min-w-10"),
+  photo: cn(RT.sticky, "md:left-10 md:w-[4.25rem] md:min-w-[4.25rem]"),
+  code: cn(RT.sticky, RT.stickyEdge, "md:left-[6.75rem]"),
+};
+
 function BoardRow({
   piece,
   role,
@@ -239,14 +248,15 @@ function BoardRow({
     <>
       <tr
         className={cn(
-          "hover:bg-muted/30 cursor-pointer",
+          "cursor-pointer",
+          RT.hoverRow,
           RT.row,
-          isLongInWorkshop(piece) && "bg-destructive/5",
+          isLongInWorkshop(piece) && RT.alertRow,
         )}
         data-testid={`pieza-${piece.code}`}
         onClick={navigateRow}
       >
-        <td className={cell}>
+        <td className={cn(cell, STICKY.check)}>
           {isSelectable(piece, role) ? (
             <input
               type="checkbox"
@@ -257,10 +267,10 @@ function BoardRow({
             />
           ) : null}
         </td>
-        <td className={cell}>
+        <td className={cn(cell, STICKY.photo)}>
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, "max-md:min-w-0 max-md:flex-1")}>
+        <td className={cn(cell, STICKY.code, "max-md:min-w-0 max-md:flex-1")}>
           {/* Urgente: solo el rayo, al costado del código; la cantidad, si es más
               de una. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
@@ -412,6 +422,7 @@ export function PiecesBoardTable({
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");
 
+  const dragScroll = useDragScroll<HTMLDivElement>();
   if (pieces.length === 0) {
     return <EmptyState title="No hay piezas en curso." />;
   }
@@ -446,18 +457,18 @@ export function PiecesBoardTable({
           </label>
         ) : null}
       </div>
-      <div className={RT.wrapper}>
+      <div ref={dragScroll} className={cn(RT.wrapper, DRAG_SCROLL_CLASS)}>
         <table className={cn(RT.table, "md:min-w-max")}>
           <caption className="sr-only">Piezas en curso</caption>
           <thead className={RT.thead}>
             <tr>
-              <th scope="col" className={cn(head, "w-8")}>
+              <th scope="col" className={cn(head, STICKY.check)}>
                 <span className="sr-only">Elegir</span>
               </th>
-              <th scope="col" className={head}>
+              <th scope="col" className={cn(head, STICKY.photo)}>
                 Foto
               </th>
-              <th scope="col" className={head}>
+              <th scope="col" className={cn(head, STICKY.code)}>
                 Pieza
               </th>
               {showClient ? (

@@ -1,13 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  // Con el ratón, arrastrar la tabla la desplaza de lado (si no cabe).
+  const dragScroll = useDragScroll<HTMLDivElement>();
   return (
     <div
+      ref={dragScroll}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      className={cn("relative w-full overflow-x-auto", DRAG_SCROLL_CLASS)}
     >
       <table
         data-slot="table"

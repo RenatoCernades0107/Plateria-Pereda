@@ -5,22 +5,7 @@ import { cn } from "@/lib/utils";
  * aceptan arrastrar (`kanban-drag.tsx`).
  */
 
-/** Lista de columnas: en el celular se desplaza en horizontal sin mover la página. */
-export function KanbanList({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-      <div className="flex gap-3" role="list" aria-label={label}>
-        {children}
-      </div>
-    </div>
-  );
-}
+export { KanbanList } from "./kanban-list";
 
 /** Una columna: título con el número de tarjetas y el texto si está vacía. */
 export function KanbanColumnFrame({
@@ -73,6 +58,8 @@ export function KanbanCard({
 }: React.ComponentProps<"article">) {
   return (
     <article
+      // Se arrastra con dnd-kit o se abre: no desplaza el tablero.
+      data-no-drag-scroll=""
       className={cn(
         "bg-background space-y-1.5 rounded-md border p-3 text-sm shadow-xs",
         className,

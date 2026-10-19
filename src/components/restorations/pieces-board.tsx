@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
+import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
 import { Button } from "@/components/ui/button";
 import {
@@ -73,6 +74,13 @@ const PRE_APPROVAL: readonly PieceDetail["status"][] = [
 const HEAD = "px-2 py-2 text-left font-medium whitespace-nowrap";
 const CELL = cn(RT.cell, "md:px-2");
 const LABELED = cn(CELL, RT.labeled);
+// Casilla, foto y código quedan fijos al desplazarse de lado: anchos fijos (con el
+// `md:px-2` de las celdas) para calcular dónde empieza cada una.
+const STICKY = {
+  check: cn(RT.sticky, "md:left-0 md:w-8 md:min-w-8"),
+  photo: cn(RT.sticky, "md:left-8 md:w-18 md:min-w-18"),
+  code: cn(RT.sticky, RT.stickyEdge, "md:left-26"),
+};
 
 type RowProps = {
   restorationId: string;
@@ -152,14 +160,14 @@ function PieceRow({
   return (
     <tr
       id={pieceAnchor(piece.id)}
-      className={cn("hover:bg-muted/30 scroll-mt-4", RT.row)}
+      className={cn("scroll-mt-4", RT.hoverRow, RT.row)}
       data-testid={`pieza-${piece.code}`}
     >
-      <td className={CELL}>{checkbox}</td>
-      <td className={CELL}>
+      <td className={cn(CELL, STICKY.check)}>{checkbox}</td>
+      <td className={cn(CELL, STICKY.photo)}>
         <PiecePhoto code={piece.code} url={photoUrl} />
       </td>
-      <td className={cn(CELL, "whitespace-nowrap")}>
+      <td className={cn(CELL, STICKY.code, "whitespace-nowrap")}>
         {/* Urgente: solo el rayo, al costado del código. */}
         <span className="inline-flex items-center gap-1">
           <Link
@@ -453,6 +461,7 @@ export function PiecesBoard({
   const showPrice =
     can(role, "piezas.precio-venta.ver") && isChargedKind(guideKind);
 
+  const dragScroll = useDragScroll<HTMLDivElement>();
   if (pieces.length === 0) {
     return <EmptyState>La guía aún no tiene piezas.</EmptyState>;
   }
@@ -489,18 +498,18 @@ export function PiecesBoard({
 
       {/* `relative`: los textos sr-only (absolutos) quedan dentro del desplazamiento
           y no ensanchan la página en el celular. */}
-      <div className={RT.wrapper}>
+      <div ref={dragScroll} className={cn(RT.wrapper, DRAG_SCROLL_CLASS)}>
         <table className={cn(RT.table, "md:min-w-[48rem]")}>
           <caption className="sr-only">Piezas de la guía</caption>
           <thead className={RT.thead}>
             <tr>
-              <th scope="col" className={cn(HEAD, "w-8")}>
+              <th scope="col" className={cn(HEAD, "w-8", STICKY.check)}>
                 <span className="sr-only">Elegir</span>
               </th>
-              <th scope="col" className={HEAD}>
+              <th scope="col" className={cn(HEAD, STICKY.photo)}>
                 Foto antes
               </th>
-              <th scope="col" className={HEAD}>
+              <th scope="col" className={cn(HEAD, STICKY.code)}>
                 Pieza
               </th>
               <th scope="col" className={HEAD}>
