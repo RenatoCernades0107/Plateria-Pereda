@@ -48,6 +48,24 @@ describe("/auth/confirm", () => {
     });
   });
 
+  it("con un código PKCE (plantilla por defecto de Supabase) abre la sesión", async () => {
+    await expect(
+      confirm(req("/auth/confirm?code=xyz&next=/restablecer-contrasena")),
+    ).rejects.toThrow("REDIRECT:/restablecer-contrasena");
+    expect(mocks.supabase.auth.exchangeCodeForSession).toHaveBeenCalledWith(
+      "xyz",
+    );
+  });
+
+  it("con un código vencido avisa en el login", async () => {
+    mocks.supabase.auth.exchangeCodeForSession.mockResolvedValue({
+      error: { code: "flow_state_expired" },
+    } as never);
+    await expect(confirm(req("/auth/confirm?code=xyz"))).rejects.toThrow(
+      "REDIRECT:/login?motivo=enlace-invalido",
+    );
+  });
+
   it("con un token inválido o incompleto avisa en el login", async () => {
     mocks.supabase.auth.verifyOtp.mockResolvedValue({
       error: { code: "otp_expired" },

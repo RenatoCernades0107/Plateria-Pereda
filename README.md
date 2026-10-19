@@ -93,6 +93,18 @@ scripts/          scripts de desarrollo
 - Las funciones internas van en el esquema `private`, que la API de Supabase no expone.
 - El cliente administrador (`src/lib/supabase/admin.ts`) usa la clave secreta y salta RLS: solo en el servidor.
 
+## Supabase en producción (correos de acceso)
+
+`supabase/config.toml` solo configura el Supabase **local**. En el proyecto de producción, para que funcionen la invitación de usuarios y la recuperación de contraseña, hay que configurar en el panel de Supabase:
+
+1. **Authentication → URL Configuration**
+   - **Site URL**: la URL pública de la app (la misma que `APP_URL`), p. ej. `https://sistema.plateriapereda.com`.
+   - **Redirect URLs**: agregar `https://<tu-dominio>/**`. Si falta, Supabase ignora el destino del enlace y el correo lleva a una URL rota.
+2. **Authentication → Email Templates**: copiar el contenido de `supabase/templates/recovery.html` en **Reset password** y el de `supabase/templates/invite.html` en **Invite user**. Las plantillas por defecto usan `{{ .ConfirmationURL }}`: la recuperación igual funciona si se abre en el mismo navegador donde se pidió, pero la invitación no.
+3. **Authentication → SMTP Settings**: configurar un SMTP propio (Resend, SendGrid, Brevo…). El correo incluido de Supabase solo envía a los miembros del equipo del proyecto y unos pocos correos por hora, así que las invitaciones a otros emails no llegan.
+
+Cada enlace sirve **una sola vez** y vence en 1 hora; si se pide otro, el anterior deja de valer.
+
 ## Tests
 
 | Tipo        | Dónde                  | Herramienta                                                                                      |

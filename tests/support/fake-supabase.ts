@@ -31,6 +31,7 @@ export function fakeSupabase(
       resetPasswordForEmail: vi.fn(async () => ({ error: null })),
       updateUser: vi.fn(async () => ({ error: null as AuthError })),
       verifyOtp: vi.fn(async () => ({ error: null as AuthError })),
+      exchangeCodeForSession: vi.fn(async () => ({ error: null as AuthError })),
     },
   };
 }
