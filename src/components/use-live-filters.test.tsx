@@ -86,4 +86,58 @@ describe("useLiveFilters", () => {
     expect(replace).toHaveBeenLastCalledWith("/x", { scroll: false });
     expect(screen.getByLabelText("Buscar")).toHaveValue("");
   });
+
+  describe("al llegar los resultados de una búsqueda", () => {
+    // La página está más abajo del formulario (que quedó arriba, fuera de vista).
+    const scrolledPast = (top: number) => {
+      const form = screen.getByLabelText("Buscar").closest("form")!;
+      form.getBoundingClientRect = () => ({ top }) as DOMRect;
+      const scroll = vi.fn();
+      form.scrollIntoView = scroll;
+      return scroll;
+    };
+
+    it("si la página estaba más abajo, vuelve para mostrar el primero", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<Form filters={{ q: "", kind: null }} />);
+      const scroll = scrolledPast(-500);
+      await user.type(screen.getByLabelText("Buscar"), "fuente");
+      act(() => vi.advanceTimersByTime(LIVE_SEARCH_DELAY_MS));
+      // Aún no llegan los resultados: no se mueve.
+      expect(scroll).not.toHaveBeenCalled();
+      rerender(<Form filters={{ q: "fuente", kind: null }} />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      expect(scroll).toHaveBeenCalledWith(
+        expect.objectContaining({ block: "start" }),
+      );
+    });
+
+    it("con Enter también", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<Form filters={{ q: "", kind: null }} />);
+      const scroll = scrolledPast(-500);
+      await user.type(screen.getByLabelText("Buscar"), "fuente{Enter}");
+      rerender(<Form filters={{ q: "fuente", kind: null }} />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+    });
+
+    it("no se mueve si el formulario ya se ve", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<Form filters={{ q: "", kind: null }} />);
+      const scroll = scrolledPast(120);
+      await user.type(screen.getByLabelText("Buscar"), "fuente");
+      act(() => vi.advanceTimersByTime(LIVE_SEARCH_DELAY_MS));
+      rerender(<Form filters={{ q: "fuente", kind: null }} />);
+      expect(scroll).not.toHaveBeenCalled();
+    });
+
+    it("los demás filtros no mueven la página", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { rerender } = render(<Form filters={{ q: "", kind: null }} />);
+      const scroll = scrolledPast(-500);
+      await user.click(screen.getByRole("button", { name: "Empresas" }));
+      rerender(<Form filters={{ q: "", kind: "empresa" }} />);
+      expect(scroll).not.toHaveBeenCalled();
+    });
+  });
 });
