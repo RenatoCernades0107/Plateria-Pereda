@@ -48,6 +48,7 @@ import { ViewToggle } from "@/components/view-toggle";
 import { SHOPIFY_BADGE_CLASS, ShopifyBadge } from "@/components/shopify-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
+import { DOCUMENT_LABELS } from "@/domain/documents";
 import { can } from "@/domain/permissions";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
@@ -265,6 +266,7 @@ export default async function RestauracionDetallePage({
     kind,
     paymentType: restoration.paymentType,
     clientName: restoration.client?.name ?? "",
+    document: restoration.client?.document ?? null,
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
     shopifyOrderName: restoration.shopifyOrderName,
@@ -337,6 +339,13 @@ export default async function RestauracionDetallePage({
                   >
                     {restoration.client.name}
                   </Link>
+                  {restoration.client.document ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {DOCUMENT_LABELS[restoration.client.document.type]}{" "}
+                      {restoration.client.document.number}
+                    </span>
+                  ) : null}
                   {restoration.contact ? (
                     <span className="text-muted-foreground">
                       {" "}

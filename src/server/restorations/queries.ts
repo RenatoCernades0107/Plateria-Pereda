@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PaymentType } from "@/domain/money";
 import { depositPercentOf, toCents, type Cents } from "@/domain/money";
+import type { DocumentType } from "@/domain/documents";
 import { calendarDaysBetween } from "@/domain/piece-days";
 import {
   toPieceStatus,
@@ -114,6 +115,7 @@ export type RestorationDetail = {
     name: string;
     phone: string | null;
     kind: string;
+    document: { type: DocumentType; number: string } | null;
   } | null;
   contact: { id: string; name: string; phone: string | null } | null;
   pieces: PieceDetail[];
@@ -164,7 +166,9 @@ export async function getRestorationDetail(
     withClient
       ? supabase
           .from("clients")
-          .select("id, display_name, phone, kind")
+          .select(
+            "id, display_name, phone, kind, document_type, document_number",
+          )
           .eq("id", r.client_id!)
           .single()
       : Promise.resolve({ data: null, error: null }),
@@ -218,6 +222,13 @@ export async function getRestorationDetail(
           name: client.data.display_name ?? "",
           phone: client.data.phone,
           kind: client.data.kind,
+          document:
+            client.data.document_type && client.data.document_number
+              ? {
+                  type: client.data.document_type,
+                  number: client.data.document_number,
+                }
+              : null,
         }
       : null,
     contact: contact.data

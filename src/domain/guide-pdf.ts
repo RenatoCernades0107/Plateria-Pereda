@@ -1,5 +1,6 @@
 import { formatDate } from "@/lib/format";
 
+import { DOCUMENT_LABELS, type DocumentType } from "./documents";
 import { formatCents, type Cents, type PaymentType } from "./money";
 import {
   isClosedStatus,
@@ -75,6 +76,8 @@ export type GuidePdfData = {
   kind: RestorationKind;
   paymentType: PaymentType;
   clientName: string;
+  /** Documento del cliente (opcional): sin él, la línea "DNI:" queda en blanco. */
+  document?: { type: DocumentType; number: string } | null;
   contactName: string | null;
   phone: string | null;
   shopifyOrderName: string | null;
@@ -211,6 +214,9 @@ export function guidePdfModel(
       ? []
       : [
           data.clientName,
+          data.document
+            ? `${DOCUMENT_LABELS[data.document.type]}: ${data.document.number}`
+            : "DNI:",
           data.contactName ? `Contacto: ${data.contactName}` : "",
           data.phone ? `Teléfono: ${data.phone}` : "",
         ].filter(Boolean),

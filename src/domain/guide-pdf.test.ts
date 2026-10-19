@@ -63,7 +63,12 @@ describe("guidePdfModel", () => {
     expect(model.rows[0]!.service).toBe("Limpieza");
     expect(model.rows[1]!.price).toBe("Por definir");
     expect(model.notes).toBe("Entregar en caja");
-    expect(model.client).toEqual(["Ana Torres", "Teléfono: +51 999 888 777"]);
+    // Sin documento, la línea "DNI:" queda en blanco.
+    expect(model.client).toEqual([
+      "Ana Torres",
+      "DNI:",
+      "Teléfono: +51 999 888 777",
+    ]);
     expect(model.guide).toContainEqual(["Piezas", "2 de 3"]);
     expect(model.meta.map(([label]) => label)).toEqual(["Fecha", "Guía N°"]);
     expect(model.guide).toContainEqual(["Atendió", "María Quispe"]);
@@ -77,6 +82,14 @@ describe("guidePdfModel", () => {
       { text: "www.plateriapereda.com", icon: "web" },
     ]);
     expect(model.footer).toContain("01 444 5555 · ventas@pereda.pe");
+  });
+
+  it("lleva el documento del cliente debajo de su nombre", () => {
+    const model = guidePdfModel(
+      { ...data, document: { type: "dni", number: "45678912" } },
+      new Set(["1"]),
+    );
+    expect(model.client[1]).toBe("DNI: 45678912");
   });
 
   it("lleva la cantidad y la ubicación de cada pieza", () => {
