@@ -287,6 +287,32 @@ export function ObservedBadge({
 }
 
 /**
+ * "2 en espera": piezas de la guía en Espera respuesta cliente, con el color y el
+ * icono de esa insignia (violeta, reloj de arena). Solo se muestra si hay alguna.
+ */
+export function WaitingClientBadge({
+  count,
+  className,
+  ...props
+}: { count: number } & Omit<ComponentProps<typeof Badge>, "children">) {
+  if (count <= 0) return null;
+  const style = PIECE_STATUS_STYLES.en_espera;
+  const Icon = style.icon;
+  return (
+    <Badge
+      variant="outline"
+      data-waiting
+      {...props}
+      title={`${count} ${count === 1 ? "pieza espera" : "piezas esperan"} la respuesta del cliente`}
+      className={cn("tabular-nums", style.className, className)}
+    >
+      <Icon aria-hidden />
+      {count} en espera
+    </Badge>
+  );
+}
+
+/**
  * La ubicación no es un estado: insignia neutra con el icono del lugar, para no
  * competir con el color del estado de la pieza.
  */

@@ -1,5 +1,6 @@
 import type { AppRole } from "@/lib/roles";
 
+import { can } from "./permissions";
 import { isClosedStatus, type PieceStatus } from "./piece-state-machine";
 
 /**
@@ -39,7 +40,7 @@ export const WORKSHOP_HINT = "Lo asignan logística y el administrador.";
 
 /** Explicación del precio de venta bloqueado para quien no es admin (D58). */
 export const SALE_PRICE_HINT =
-  "Solo el administrador asigna el precio de venta.";
+  "Solo el administrador y logística asignan el precio de venta.";
 
 export type EditContext = {
   role: AppRole;
@@ -116,4 +117,25 @@ export function editableFields(
     piece: free,
     priceNeedsOrderFlow: admin,
   };
+}
+
+/**
+ * Precio de venta de una pieza fuera del formulario de edición (tabla de la guía y
+ * detalle de la pieza): lo asignan el admin (D58) y logística (2026-10-19) con las
+ * mismas reglas que `editableFields` aplica al admin. `editable`: se asigna o cambia
+ * directo; `needsOrderFlow`: con la orden de Shopify creada, se cambia con motivo
+ * ("Cambiar precio", P12).
+ */
+export function salePriceEditing(
+  ctx: EditContext,
+  piece: { status: PieceStatus; priceCents?: number | null },
+): { editable: boolean; needsOrderFlow: boolean } {
+  if (!can(ctx.role, "piezas.precio-venta") || isClosedStatus(piece.status))
+    return { editable: false, needsOrderFlow: false };
+  const withoutPrice = piece.priceCents == null;
+  if (piece.status === "entregada")
+    return { editable: withoutPrice, needsOrderFlow: false };
+  if (!ctx.hasOrder || withoutPrice)
+    return { editable: true, needsOrderFlow: false };
+  return { editable: false, needsOrderFlow: true };
 }

@@ -18,6 +18,7 @@ const item: RestorationListItem = {
   paymentType: "a_cuenta",
   piecesCount: 2,
   observed: null,
+  waitingCount: 0,
   totalCents: 123450,
   paidCents: 61725,
   balanceCents: 61725,
@@ -80,6 +81,35 @@ describe("RestorationsList", () => {
     expect(
       within(screen.getByTestId("restauracion-RES-00002")).queryByText(
         /observada/,
+      ),
+    ).toBeNull();
+  });
+
+  it("con piezas esperando la respuesta del cliente muestra «2 en espera» en violeta", () => {
+    render(
+      <RestorationsList
+        items={[
+          { ...item, waitingCount: 2 },
+          { ...item, id: "r2", code: "RES-00002" },
+        ]}
+        filters={parseRestorationFilters({})}
+        showMoney
+        emptyMessage="Vacío"
+      />,
+    );
+    const badge = within(
+      screen.getByTestId("restauracion-RES-00001"),
+    ).getByText("2 en espera");
+    expect(badge).toHaveAttribute("data-waiting");
+    expect(badge).toHaveClass("bg-violet-50", "text-violet-900");
+    expect(
+      within(screen.getByTestId("restauracion-movil-RES-00001")).getByText(
+        "2 en espera",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("restauracion-RES-00002")).queryByText(
+        /en espera/,
       ),
     ).toBeNull();
   });

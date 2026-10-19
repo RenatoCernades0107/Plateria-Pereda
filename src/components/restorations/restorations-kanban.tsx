@@ -14,7 +14,7 @@ import {
 import { formatDate } from "@/lib/format";
 import type { RestorationListItem } from "@/server/restorations/queries";
 
-import { PaymentStatusBadge } from "./status-badges";
+import { PaymentStatusBadge, WaitingClientBadge } from "./status-badges";
 
 /**
  * Tablero kanban de restauraciones: una columna por estado general. Logística no
@@ -74,6 +74,10 @@ export function RestorationsKanban({
                 {formatPartialProgress(progress.get(r.id)!)}
               </Badge>
             ) : null}
+            <WaitingClientBadge
+              count={r.waitingCount}
+              data-testid={`en-espera-${r.code}`}
+            />
             {showMoney && r.totalCents !== null ? (
               <span>{formatCents(r.totalCents)}</span>
             ) : null}

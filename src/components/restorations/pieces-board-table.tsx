@@ -381,8 +381,8 @@ function BoardRow({
 /**
  * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
  * "Antes" de cada pieza y sus datos principales; logística y el admin ingresan el
- * costo de servicio y, viéndolo, el admin pone el precio de venta (D58). Ventas ve el
- * precio y logística no ve montos de venta. El lápiz solo sale donde falta el dato
+ * costo de servicio y el precio de venta (D58; logística desde el 2026-10-19). Ventas
+ * ve el precio. Nadie ve aquí totales ni márgenes. El lápiz solo sale donde falta el dato
  * (sin taller, costo o precio por definir); lo ya puesto se cambia desde el detalle
  * de la pieza. Selección para acciones en bloque; las urgentes van primero y se
  * resaltan las que llevan muchos días en el taller.
@@ -407,7 +407,7 @@ export function PiecesBoardTable({
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
   const showCost = can(role, "piezas.costo-servicio");
-  const showPrice = can(role, "dinero.ver");
+  const showPrice = can(role, "piezas.precio-venta.ver");
   const showClient = can(role, "clientes.ver");
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");

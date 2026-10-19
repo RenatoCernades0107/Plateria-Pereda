@@ -33,7 +33,9 @@ const {
   receivePiecesFromReview,
   sendPiecesForReview,
   sendPiecesToWorkshop,
+  setPiecesUrgent,
   setRestorationKind,
+  changePiecePrice,
 } = await import("./status-actions");
 
 describe("revisión en taller", () => {
@@ -209,5 +211,89 @@ describe("tipo de guía", () => {
     expect(await setRestorationKind("r1", "observado")).toEqual({
       error: "La guía tiene pagos registrados: no se puede cambiar su tipo.",
     });
+  });
+});
+
+describe("marcar urgente", () => {
+  beforeEach(() => {
+    mocks.forbidden = false;
+    for (const fn of [mocks.permission, mocks.rpc, mocks.revalidate])
+      fn.mockReset();
+    mocks.result = { error: null };
+  });
+
+  it("marca las piezas como urgentes y refresca las vistas", async () => {
+    expect(await setPiecesUrgent(["p1", "p2"], true)).toEqual({ ok: true });
+    expect(mocks.permission).toHaveBeenCalledWith("piezas.marcar-urgente");
+    expect(mocks.rpc).toHaveBeenCalledWith("set_pieces_urgent", {
+      p_piece_ids: ["p1", "p2"],
+      p_urgent: true,
+    });
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/restauraciones/[id]",
+      "page",
+    );
+    expect(mocks.revalidate).toHaveBeenCalledWith("/piezas");
+    expect(mocks.revalidate).toHaveBeenCalledWith("/piezas/[id]", "page");
+  });
+
+  it("quita la marca", async () => {
+    expect(await setPiecesUrgent(["p1"], false)).toEqual({ ok: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("set_pieces_urgent", {
+      p_piece_ids: ["p1"],
+      p_urgent: false,
+    });
+  });
+
+  it("exige piezas antes de llamar a la BD", async () => {
+    expect(await setPiecesUrgent([], true)).toEqual({
+      error: "Elige al menos una pieza.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("muestra el mensaje de la BD (en español) o uno genérico", async () => {
+    mocks.result = {
+      error: {
+        code: "23514",
+        message: "Una pieza cerrada o entregada no se marca como urgente.",
+      },
+    };
+    expect(await setPiecesUrgent(["p1"], true)).toEqual({
+      error: "Una pieza cerrada o entregada no se marca como urgente.",
+    });
+    mocks.result = { error: { code: "XX000", message: "boom" } };
+    expect(await setPiecesUrgent(["p1"], false)).toEqual({
+      error: "No se pudo quitar la marca de urgente.",
+    });
+    expect(mocks.revalidate).not.toHaveBeenCalled();
+  });
+
+  it("sin permiso no llama a la BD", async () => {
+    mocks.forbidden = true;
+    await expect(setPiecesUrgent(["p1"], true)).rejects.toThrow("FORBIDDEN");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("cambiar precio con la orden creada", () => {
+  beforeEach(() => {
+    mocks.forbidden = false;
+    for (const fn of [mocks.permission, mocks.rpc, mocks.revalidate])
+      fn.mockReset();
+    mocks.result = { error: null };
+  });
+
+  it("lo pide el permiso del precio de venta (admin y logística)", async () => {
+    expect(await changePiecePrice("r1", "p1", 12050, "Más trabajo")).toEqual({
+      ok: true,
+    });
+    expect(mocks.permission).toHaveBeenCalledWith("piezas.precio-venta");
+    expect(mocks.rpc).toHaveBeenCalledWith("change_piece_price", {
+      p_piece_id: "p1",
+      p_price: 120.5,
+      p_reason: "Más trabajo",
+    });
+    expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones/r1");
   });
 });

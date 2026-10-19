@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
-import type { PieceEditableField } from "@/domain/restoration-edit";
+import {
+  salePriceEditing,
+  type PieceEditableField,
+} from "@/domain/restoration-edit";
 import {
   isChargedKind,
   type RestorationKind,
@@ -48,6 +51,7 @@ import {
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import { LocationBadge, PieceStatusBadge, UrgentIcon } from "./status-badges";
+import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
 
 export { commonTransitions } from "./pieces-bulk-bar";
 
@@ -83,6 +87,8 @@ type RowProps = {
   checkbox: React.ReactNode;
   /** Tipo de guía: interna u observada no llevan precio de venta. */
   guideKind: RestorationKind;
+  /** La guía ya tiene orden de Shopify (el precio asignado se cambia con motivo). */
+  hasOrder: boolean;
 };
 
 /** Una fila de la tabla: datos de la pieza, su paso siguiente y su menú «Acciones». */
@@ -97,6 +103,7 @@ function PieceRow({
   balanceDue,
   checkbox,
   guideKind,
+  hasOrder,
 }: RowProps) {
   const {
     piece: live,
@@ -122,11 +129,22 @@ function PieceRow({
 
   const editable = editing?.editable[piece.id] ?? [];
   const canEdit = editing !== null && editable.length > 0;
-  const priceChange = Boolean(editing?.priceChange?.[piece.id]);
-  const showPrice = can(role, "dinero.ver") && isChargedKind(guideKind);
+  const charged = isChargedKind(guideKind);
+  // Precio de venta (admin y logística): con el formulario de edición manda lo que
+  // éste permite; sin él (logística), las mismas reglas por pieza.
+  const salePrice = editing
+    ? {
+        editable: editable.includes("price"),
+        needsOrderFlow: Boolean(editing.priceChange?.[piece.id]),
+      }
+    : salePriceEditing({ role, hasOrder }, piece);
+  const priceChange = charged && salePrice.needsOrderFlow;
+  const showPrice = can(role, "piezas.precio-venta.ver") && charged;
   const editPrice =
     can(role, "piezas.precio-venta") &&
-    (editable.includes("price") || priceChange);
+    charged &&
+    (salePrice.editable || priceChange);
+  const urgentToggle = canToggleUrgent(live, role);
   const details = [piece.serviceName, materialSummary(piece)]
     .filter((v) => v && v !== "—")
     .join(" · ");
@@ -231,6 +249,11 @@ function PieceRow({
           solo con su ícono, para que entre sin desplazarse de lado.
         */}
         <div className="flex items-center gap-2 max-md:w-full md:justify-end">
+          {urgentToggle ? (
+            <UrgentToggle
+              piece={{ id: piece.id, code: piece.code, urgent: live.urgent }}
+            />
+          ) : null}
           {primary ? (
             <Button
               size="sm"
@@ -382,7 +405,8 @@ function PieceRow({
 
 /**
  * Piezas de la guía en tabla, como una hoja de cálculo (como /piezas): foto "Antes",
- * datos, precio de venta (admin y ventas; el admin lo ingresa, D58), estado y taller.
+ * datos, precio de venta (admin, ventas y logística; lo ingresan el admin y logística,
+ * D58), estado y taller. El rayo de cada fila marca o quita "Urgente".
  * Las acciones de cada pieza (cambio de estado, llegada, taller, edición, cambio de
  * precio) van en su menú «Acciones»; arriba, la selección para acciones masivas.
  * La línea de tiempo de cada pieza está en su detalle (/piezas/[id]).
@@ -397,6 +421,7 @@ export function PiecesBoard({
   approvalPayment = null,
   balanceDue = false,
   guideKind = "normal",
+  hasOrder = false,
 }: {
   restorationId: string;
   pieces: PieceDetail[];
@@ -411,6 +436,8 @@ export function PiecesBoard({
   balanceDue?: boolean;
   /** Tipo de guía: interna u observada no muestran precios. */
   guideKind?: RestorationKind;
+  /** La guía ya tiene orden de Shopify. */
+  hasOrder?: boolean;
 }) {
   // Por defecto están elegidas todas las piezas que admiten acciones: se guardan las
   // que la persona desmarca, así lo elegido sigue válido tras refrescar la página.
@@ -423,7 +450,8 @@ export function PiecesBoard({
   // La última pieza por aprobar crea la orden: ahí se ofrece registrar el adelanto.
   const toApprove = pieces.filter((p) => PRE_APPROVAL.includes(p.status));
   const lastToApprove = toApprove.length === 1 ? toApprove[0]!.id : null;
-  const showPrice = can(role, "dinero.ver") && isChargedKind(guideKind);
+  const showPrice =
+    can(role, "piezas.precio-venta.ver") && isChargedKind(guideKind);
 
   if (pieces.length === 0) {
     return <EmptyState>La guía aún no tiene piezas.</EmptyState>;
@@ -509,6 +537,7 @@ export function PiecesBoard({
                 }
                 balanceDue={balanceDue}
                 guideKind={guideKind}
+                hasOrder={hasOrder}
                 checkbox={
                   isSelectable(piece, role) ? (
                     <input

@@ -149,7 +149,7 @@ describe("PiecesBoardTable", () => {
     );
   });
 
-  it("logística ingresa con el lápiz el costo por definir y no ve el precio de venta", async () => {
+  it("logística ingresa con el lápiz el costo por definir y también el precio de venta", async () => {
     const { setPieceServiceCost } =
       await import("@/server/service-cost-actions");
     vi.mocked(setPieceServiceCost).mockClear();
@@ -172,9 +172,15 @@ describe("PiecesBoardTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Costo servicio" }),
     ).toBeInTheDocument();
+    // Desde el 2026-10-19 logística ve y asigna el precio de venta de cada pieza.
     expect(
-      screen.queryByRole("columnheader", { name: "Precio venta" }),
-    ).toBeNull();
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toBeInTheDocument();
     // Con costo: solo el monto como texto, sin lápiz (se cambia en el detalle).
     const row = screen.getByTestId("pieza-RES-00001-1");
     expect(row).toHaveTextContent("S/ 40.00");

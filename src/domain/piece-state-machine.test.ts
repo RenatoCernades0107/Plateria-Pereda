@@ -39,7 +39,7 @@ import {
 const ESPERADO: Record<string, { roles: string; requires?: "N" | "T" }> = {
   "registrada→en_consulta": { roles: "AV", requires: "N" },
   "registrada→aprobada": { roles: "AV" },
-  "en_consulta→en_espera": { roles: "AV" },
+  "en_consulta→en_espera": { roles: "AVL" },
   "en_espera→aprobada": { roles: "AV" },
   "en_espera→rechazada": { roles: "AV", requires: "N" },
   "en_consulta→sin_arreglo": { roles: "AV", requires: "N" },
@@ -246,11 +246,28 @@ describe("availableTransitions", () => {
         (t) => t.to,
       );
       expect(destinos).not.toContain("en_consulta");
-      expect(destinos).not.toContain("en_espera");
+      if (status !== "en_consulta") expect(destinos).not.toContain("en_espera");
       expect(destinos).not.toContain("aprobada");
       expect(destinos).not.toContain("rechazada");
       expect(destinos).not.toContain("anulada");
     }
+  });
+});
+
+describe("logística pasa a Espera respuesta cliente", () => {
+  it("desde Consulta puede pasar a Espera respuesta cliente", () => {
+    expect(
+      availableTransitions(enTienda("en_consulta"), "logistica").map(
+        (t) => t.to,
+      ),
+    ).toEqual(["en_espera"]);
+    expect(
+      applyTransition(piece("en_consulta", { arrivedAt: BEFORE }), {
+        to: "en_espera",
+        role: "logistica",
+        now: NOW,
+      }),
+    ).toMatchObject({ ok: true, changes: { status: "en_espera" } });
   });
 });
 

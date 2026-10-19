@@ -86,7 +86,7 @@ select throws_ok(
     'contado', null, '', jsonb_build_array(jsonb_build_object('quote_item_id', %L, 'description', 'Fuente ovalada',
       'price', '110', 'status', 'aprobada'))) $$,
     (select id from q), (select id from public.whatsapp_quote_items where quote_id = (select id from q) and number = 1)),
-  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no cambia el precio cotizado al copiar'
+  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no cambia el precio cotizado al copiar'
 );
 
 -- Copia de dos piezas que el cliente aprobó: la Fuente y la Jarra, con su precio cotizado.
@@ -332,7 +332,7 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);
 select throws_ok(
   $$ update public.pieces set price = 10 where restoration_id = (select id from r3) and number = 3 $$,
-  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no asigna el precio que falta'
+  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no asigna el precio que falta'
 );
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea3","role":"authenticated"}', true);
 select lives_ok(

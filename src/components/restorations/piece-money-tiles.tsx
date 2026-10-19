@@ -7,14 +7,15 @@ type MoneyPiece = { id: string; code: string; restorationId: string };
 
 /**
  * Montos de la pieza en el detalle (P55), como tarjetas de cifras: precio de venta
- * (admin y ventas), costo de servicio (admin y logística), margen (quien ve ambos) y
- * el saldo de la guía. Cada rol solo recibe lo que puede ver: lo que llega en null no
- * se muestra.
+ * (admin, ventas y logística), costo de servicio (admin y logística), margen (quien ve
+ * ambos y `showMargin`: logística no) y el saldo de la guía. Cada rol solo recibe lo
+ * que puede ver: lo que llega en null no se muestra.
  */
 export function PieceMoneyTiles({
   piece,
   sale,
   costCents,
+  showMargin = true,
   guide,
   className,
 }: {
@@ -27,6 +28,8 @@ export function PieceMoneyTiles({
   } | null;
   /** Costo de servicio; undefined si el rol no lo ve (null = por definir). */
   costCents: Cents | null | undefined;
+  /** Margen (precio − costo): solo quien ve el dinero de la guía (no logística). */
+  showMargin?: boolean;
   /** Total y pagado de la guía; null si el rol no ve pagos. */
   guide: { totalCents: Cents; paidCents: Cents } | null;
   className?: string;
@@ -34,7 +37,7 @@ export function PieceMoneyTiles({
   const showCost = costCents !== undefined;
   // Margen: precio de venta menos el costo del taller (solo con ambos montos).
   const margin =
-    sale && sale.cents !== null && showCost && costCents !== null
+    showMargin && sale && sale.cents !== null && showCost && costCents !== null
       ? sale.cents - costCents
       : null;
   const balance = guide ? guide.totalCents - guide.paidCents : null;

@@ -81,6 +81,8 @@ const rolesWith = (permission: Permission) =>
   ROLES.filter((role) => can(role, permission));
 
 const CONSULTAR_APROBAR_ANULAR = rolesWith("piezas.consultar-aprobar-anular");
+/** Consulta → Espera respuesta cliente: también logística (2026-10-19). */
+const PASAR_A_ESPERA = rolesWith("piezas.pasar-a-espera");
 const MARCAR_LLEGADA = rolesWith("piezas.marcar-llegada");
 const TALLER = rolesWith("piezas.enviar-recibir-taller");
 const ENTREGAR_OBSERVAR = rolesWith("piezas.entregar-observar");
@@ -120,7 +122,7 @@ export const PIECE_TRANSITIONS: readonly PieceTransition[] = [
     note: true,
   }),
   transition("registrada", "aprobada", CONSULTAR_APROBAR_ANULAR),
-  transition("en_consulta", "en_espera", CONSULTAR_APROBAR_ANULAR),
+  transition("en_consulta", "en_espera", PASAR_A_ESPERA),
   transition("en_espera", "aprobada", CONSULTAR_APROBAR_ANULAR),
   ...REJECTABLE_FROM.map((from) =>
     transition(from, "rechazada", CONSULTAR_APROBAR_ANULAR, { note: true }),

@@ -35,7 +35,7 @@ select lives_ok(
 );
 select throws_ok(
   $$ update public.pieces set price = 120 where id = '00000000-0000-0000-0000-00000000a911' $$,
-  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no cambia el precio de venta (D58)'
+  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no cambia el precio de venta (D58)'
 );
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009a3","role":"authenticated"}', true);
 select lives_ok(

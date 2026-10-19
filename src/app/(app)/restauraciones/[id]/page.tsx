@@ -613,6 +613,7 @@ export default async function RestauracionDetallePage({
                   approvalPayment={approvalPayment}
                   balanceDue={balanceDue}
                   guideKind={restoration.kind}
+                  hasOrder={restoration.hasOrder}
                   editing={
                     editing
                       ? {

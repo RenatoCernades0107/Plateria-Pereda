@@ -369,9 +369,10 @@ test.describe("Vista de piezas", () => {
     const row = page.getByTestId(`pieza-${code}`);
     await expect(row).toContainText("Baño de plata");
     await expect(row).toContainText("Sin foto de antes");
+    // Desde el 2026-10-19 logística también ve (y asigna) el precio de venta.
     await expect(
       page.getByRole("columnheader", { name: "Precio venta" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(row).toContainText("Por definir");
     await row
       .getByRole("button", { name: `Editar costo de servicio de ${code}` })

@@ -170,10 +170,9 @@ describe("RestorationPiecesKanban", () => {
     expect(screen.queryAllByTestId("precio")).toHaveLength(0);
   });
 
-  it("no muestra precios a logística", () => {
+  it("logística ve el precio de venta de cada pieza (2026-10-19)", () => {
     renderKanban("logistica");
-    expect(screen.queryAllByTestId("precio")).toHaveLength(0);
-    expect(screen.queryByText("Por definir")).toBeNull();
+    expect(screen.queryAllByTestId("precio")).toHaveLength(pieces.length);
   });
 
   it("al elegir piezas aparece la barra de acciones masivas", async () => {

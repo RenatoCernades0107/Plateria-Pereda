@@ -6,7 +6,7 @@ import type { PieceStatus } from "@/domain/piece-state-machine";
 import { deriveLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 
-import { PieceStatusPanel } from "./piece-status-actions";
+import { PieceHeader, PieceStatusPanel } from "./piece-status-actions";
 import { commonTransitions } from "./pieces-board";
 
 const mocks = vi.hoisted(() => ({
@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   sendWorkshop: vi.fn(),
   backFromReview: vi.fn(),
   undo: vi.fn(),
+  urgent: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -31,6 +32,7 @@ vi.mock("@/server/restorations/status-actions", () => ({
   sendPiecesToWorkshop: (...a: unknown[]) => mocks.sendWorkshop(...a),
   receivePiecesFromReview: (...a: unknown[]) => mocks.backFromReview(...a),
   undoPieceStatus: (...a: unknown[]) => mocks.undo(...a),
+  setPiecesUrgent: (...a: unknown[]) => mocks.urgent(...a),
   assignWorkshop: vi.fn(),
 }));
 vi.mock("sonner", () => ({
@@ -345,7 +347,11 @@ describe("revisión en taller", () => {
     const { unmount } = renderPanel("en_consulta", "logistica", {
       arrivedAt: ARRIVED,
     });
-    expect(buttons()).toEqual(["Llevar al taller a revisar"]);
+    // Desde el 2026-10-19 logística también pasa la pieza a Espera respuesta cliente.
+    expect(buttons()).toEqual([
+      "Esperar respuesta",
+      "Llevar al taller a revisar",
+    ]);
     await user.click(
       screen.getByRole("button", { name: "Llevar al taller a revisar" }),
     );
@@ -503,5 +509,61 @@ describe("Retroceder estado", () => {
     await user.type(within(dialog).getByLabelText(/Motivo/), "Me equivoqué");
     await user.click(within(dialog).getByRole("button", { name: /Confirmar/ }));
     expect(mocks.undo).toHaveBeenCalledWith("r1", "p1", "Me equivoqué");
+  });
+});
+
+describe("PieceHeader: urgente", () => {
+  const renderHeader = (
+    role: AppRole,
+    patch: { urgent?: boolean; status?: PieceStatus } = {},
+  ) =>
+    render(
+      <PieceHeader
+        restorationId="r1"
+        heading={<h1>Pieza</h1>}
+        piece={{
+          id: "p1",
+          code: "RES-00001-1",
+          status: patch.status ?? "en_consulta",
+          location: "sin_enviar",
+          arrivedAt: null,
+          workshopId: null,
+          readyForDelivery: false,
+          returnedAt: null,
+          urgent: patch.urgent ?? false,
+        }}
+        role={role}
+        workshops={workshops}
+      />,
+    );
+
+  it("el botón «Urgente» marca la pieza (también logística)", async () => {
+    mocks.urgent.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderHeader("logistica");
+    const toggle = screen.getByRole("button", { name: "Urgente" });
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await user.click(toggle);
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true);
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1 marcada como urgente.",
+    );
+  });
+
+  it("en una pieza urgente lo quita; si la BD lo rechaza, avisa", async () => {
+    mocks.urgent.mockResolvedValue({ error: "No se pudo." });
+    const user = userEvent.setup();
+    renderHeader("ventas", { urgent: true });
+    const toggle = screen.getByRole("button", { name: "Urgente" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await user.click(toggle);
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1"], false);
+    expect(mocks.error).toHaveBeenCalledWith("No se pudo.");
+  });
+
+  it("una pieza entregada solo muestra la insignia", () => {
+    renderHeader("admin", { urgent: true, status: "entregada" });
+    expect(screen.queryByRole("button", { name: "Urgente" })).toBeNull();
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
   });
 });

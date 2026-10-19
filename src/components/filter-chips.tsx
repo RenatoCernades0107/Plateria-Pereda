@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, Hourglass } from "lucide-react";
 import Link from "next/link";
 
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
@@ -38,6 +38,13 @@ const TONES: Record<ChipTone, { idle: string; active: string; count: string }> =
       idle: "border-whatsapp/50 bg-whatsapp/10 text-foreground hover:bg-whatsapp/20 [&>svg]:text-whatsapp-strong",
       active: "border-whatsapp-strong bg-whatsapp/25 text-foreground",
       count: "bg-whatsapp/20 text-foreground",
+    },
+    // Violeta de la pieza en Espera respuesta cliente.
+    waiting: {
+      idle: "border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-100 dark:hover:bg-violet-900",
+      active: "border-violet-700 bg-violet-700 text-white",
+      count:
+        "bg-violet-100 text-violet-900 dark:bg-violet-900 dark:text-violet-50",
     },
   };
 
@@ -85,6 +92,9 @@ export function FilterChips({
           >
             {chip.tone === "whatsapp" ? (
               <WhatsAppIcon className="size-3.5" aria-hidden />
+            ) : null}
+            {chip.tone === "waiting" && !chip.active ? (
+              <Hourglass className="size-3.5" aria-hidden />
             ) : null}
             {chip.active ? <Check className="size-3.5" aria-hidden /> : null}
             {chip.label}

@@ -9,14 +9,26 @@ const PERMISSIONS = {
   "pagos.registrar": ["admin", "ventas"],
   "pagos.corregir": ["admin"],
   "piezas.consultar-aprobar-anular": ["admin", "ventas"],
+  /** Consulta → Espera respuesta cliente: también logística (2026-10-19). */
+  "piezas.pasar-a-espera": ["admin", "ventas", "logistica"],
   "piezas.marcar-llegada": ["admin", "ventas", "logistica"],
   "piezas.enviar-recibir-taller": ["admin", "logistica"],
   /** Taller de la pieza: lo asignan o cambian logística y el admin (D60); ventas lo ve. */
   "piezas.asignar-taller": ["admin", "logistica"],
   /** Costo de servicio de la pieza: lo que cobra el taller (solo admin y logística). */
   "piezas.costo-servicio": ["admin", "logistica"],
-  /** Precio de venta de la pieza: lo asigna o cambia solo el admin (D58); ventas lo ve. */
-  "piezas.precio-venta": ["admin"],
+  /**
+   * Precio de venta de la pieza: lo asignan o cambian el admin (D58) y logística
+   * (2026-10-19), también con motivo si la orden de Shopify ya existe; ventas lo ve.
+   */
+  "piezas.precio-venta": ["admin", "logistica"],
+  /**
+   * Ver el precio de venta de cada pieza. Logística lo ve (y lo edita), pero no los
+   * totales, pagos, márgenes ni el PDF de la guía (eso sigue en `dinero.ver`).
+   */
+  "piezas.precio-venta.ver": ["admin", "ventas", "logistica"],
+  /** Marca "Urgente" de las piezas (2026-10-19). */
+  "piezas.marcar-urgente": ["admin", "ventas", "logistica"],
   "piezas.entregar-observar": ["admin", "ventas", "logistica"],
   "fotos.subir": ["admin", "ventas", "logistica"],
   "fotos.eliminar-ajenas": ["admin"],

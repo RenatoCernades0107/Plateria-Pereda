@@ -1504,6 +1504,7 @@ export type Database = {
           notes: string | null;
           number: number | null;
           observed_at: string | null;
+          price: number | null;
           quantity: number | null;
           ready_for_delivery: boolean | null;
           restoration_id: string | null;
@@ -1964,6 +1965,7 @@ export type Database = {
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["restoration_status"][];
           p_to?: string;
+          p_waiting_client?: boolean;
           p_workshop_ids?: string[];
         };
         Returns: {
@@ -1983,6 +1985,7 @@ export type Database = {
           status: Database["public"]["Enums"]["restoration_status"];
           total: number;
           total_count: number;
+          waiting_count: number;
         }[];
       };
       list_whatsapp_quotes: {
@@ -2138,9 +2141,20 @@ export type Database = {
         Args: { p_piece_ids: string[] };
         Returns: undefined;
       };
+      set_piece_sale_price: {
+        Args: { p_piece_id: string; p_price: number };
+        Returns: string;
+      };
       set_piece_service_cost: {
         Args: { p_cost: number; p_piece_id: string };
         Returns: undefined;
+      };
+      set_pieces_urgent: {
+        Args: { p_piece_ids: string[]; p_urgent: boolean };
+        Returns: {
+          piece_id: string;
+          urgent: boolean;
+        }[];
       };
       set_restoration_kind: {
         Args: {

@@ -60,7 +60,7 @@ export default async function PiezasHistorialPage({
       <PiecesHistoryTable
         pieces={items}
         showCost={can(user.role, "piezas.costo-servicio")}
-        showPrice={can(user.role, "dinero.ver")}
+        showPrice={can(user.role, "piezas.precio-venta.ver")}
         showClient={showClient}
         empty={
           pieceHistoryHref(filters, { page: 1 }) !== "/piezas/historial" ? (

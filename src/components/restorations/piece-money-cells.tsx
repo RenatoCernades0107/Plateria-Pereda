@@ -244,7 +244,7 @@ export function BoardServiceCostCell({
 }
 
 /**
- * Precio de venta: el admin lo asigna con el lápiz (D58); con la orden de Shopify
+ * Precio de venta: el admin y logística lo asignan con el lápiz (D58); con la orden de Shopify
  * creada un precio ya asignado se cambia con motivo ("Cambiar precio", P12). Ventas
  * solo lo ve.
  */
@@ -301,7 +301,7 @@ export function SalePriceCell({
 }
 
 /**
- * Precio de venta en la tabla de piezas: el admin ve el lápiz solo si aún está "Por
+ * Precio de venta en la tabla de piezas: admin y logística ven el lápiz solo si aún está "Por
  * definir" (D58); un precio ya asignado se cambia desde el detalle de la pieza (con
  * motivo si la orden de Shopify ya está creada, P12).
  */

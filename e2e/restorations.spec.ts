@@ -266,7 +266,7 @@ test.describe("Restauraciones", () => {
       "Por definir",
     );
     await expect(
-      card.getByText("Solo el administrador asigna el precio de venta."),
+      card.getByText("Solo el administrador y logística asignan el precio de venta."),
     ).toBeVisible();
     // Sin precios todavía el total es 0; crece cuando el admin los asigna (D59).
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 0.00");
@@ -370,7 +370,7 @@ test.describe("Restauraciones", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(
-      dialog.getByText("Solo el administrador asigna el precio de venta."),
+      dialog.getByText("Solo el administrador y logística asignan el precio de venta."),
     ).toBeVisible();
     // Varios materiales: dos del catálogo.
     await chooseCatalog(page, dialog.getByLabel("Material"), "Plata 925", {
@@ -385,7 +385,7 @@ test.describe("Restauraciones", () => {
     );
   });
 
-  test("logística ve el detalle sin cliente, precios, pagos ni historial", async ({
+  test("logística ve el detalle con el precio de cada pieza, sin cliente, totales, pagos ni historial", async ({
     page,
     loginAs,
   }) => {
@@ -394,7 +394,12 @@ test.describe("Restauraciones", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^RES-/);
     await expect(page.getByText("Fuente ovalada restaurada")).toBeVisible();
     await expect(page.getByTestId("monto-total")).toHaveCount(0);
-    await expect(page.getByText("1,300.00")).toHaveCount(0);
+    await expect(page.getByText("2,535.50")).toHaveCount(0);
+    // El precio de venta de cada pieza sí (2026-10-19), pero no el total.
+    await expect(
+      page.getByRole("columnheader", { name: "Precio venta" }),
+    ).toBeVisible();
+    await expect(page.getByText("S/ 1,300.00").first()).toBeVisible();
     await expect(page.getByRole("tab", { name: "Pagos" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Historial" })).toHaveCount(0);
     await expect(

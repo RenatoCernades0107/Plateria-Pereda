@@ -49,6 +49,8 @@ export type RestorationFilters = {
   origin: RestorationOrigin[];
   clientId: string | null;
   workshopIds: string[];
+  /** Solo las que tienen piezas en Espera respuesta cliente. */
+  waitingClient: boolean;
   /** Fecha de registro en Lima, "AAAA-MM-DD" (inclusive). */
   from: string | null;
   to: string | null;
@@ -109,6 +111,7 @@ export function parseRestorationFilters(
     origin: manyOf(RESTORATION_ORIGINS, params.origen),
     clientId: uuid(first(params.cliente)),
     workshopIds: uuids(params.taller),
+    waitingClient: first(params.espera) === "1",
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
     sort: oneOf(RESTORATION_SORTS, first(params.orden)) ?? "created_at",
@@ -133,6 +136,7 @@ export function restorationFiltersQuery(
   next.origin.forEach((v) => params.append("origen", v));
   if (next.clientId) params.set("cliente", next.clientId);
   next.workshopIds.forEach((v) => params.append("taller", v));
+  if (next.waitingClient) params.set("espera", "1");
   if (next.from) params.set("desde", next.from);
   if (next.to) params.set("hasta", next.to);
   if (next.sort !== "created_at") params.set("orden", next.sort);
@@ -190,6 +194,7 @@ export function listRestorationsArgs(
     p_workshop_ids: filters.workshopIds.length
       ? filters.workshopIds
       : undefined,
+    p_waiting_client: filters.waitingClient || undefined,
     p_from: filters.from ?? undefined,
     p_to: filters.to ?? undefined,
     p_sort: filters.sort,

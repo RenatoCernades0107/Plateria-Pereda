@@ -97,8 +97,8 @@ export async function undoPieceStatus(
 }
 
 /**
- * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): solo
- * admin, con motivo. La BD encola la edición de la orden.
+ * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): admin
+ * y logística (2026-10-19), con motivo. La BD encola la edición de la orden.
  */
 export async function changePiecePrice(
   restorationId: string,
@@ -106,7 +106,7 @@ export async function changePiecePrice(
   priceCents: number,
   reason: string,
 ): Promise<StatusActionResult> {
-  await requirePermission("restauraciones.editar");
+  await requirePermission("piezas.precio-venta");
   if (!reason.trim())
     return { error: "Escribe el motivo del cambio de precio." };
   if (!Number.isInteger(priceCents) || priceCents < 0)
@@ -120,6 +120,33 @@ export async function changePiecePrice(
   if (error) return fail(error, "No se pudo cambiar el precio.");
   scheduleShopifySync();
   refresh(restorationId);
+  return { ok: true };
+}
+
+/**
+ * Marca o quita "Urgente" a una o varias piezas (admin, ventas y logística; RPC
+ * `set_pieces_urgent`). Las piezas pueden ser de varias guías: se refrescan todas.
+ */
+export async function setPiecesUrgent(
+  pieceIds: string[],
+  urgent: boolean,
+): Promise<StatusActionResult> {
+  await requirePermission("piezas.marcar-urgente");
+  if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_pieces_urgent", {
+    p_piece_ids: pieceIds,
+    p_urgent: urgent,
+  });
+  if (error)
+    return fail(
+      error,
+      urgent
+        ? "No se pudo marcar la pieza como urgente."
+        : "No se pudo quitar la marca de urgente.",
+    );
+  revalidatePath("/restauraciones/[id]", "page");
+  refresh(null);
   return { ok: true };
 }
 

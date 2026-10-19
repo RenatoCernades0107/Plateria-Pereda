@@ -9,6 +9,7 @@ import { PiecesBoard, type PieceEditing } from "./pieces-board";
 
 const mocks = vi.hoisted(() => ({
   change: vi.fn(),
+  urgent: vi.fn(),
 }));
 
 vi.mock("@/server/restorations/status-actions", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/server/restorations/status-actions", () => ({
   returnPiecesToClient: vi.fn(),
   assignWorkshop: vi.fn(),
   changePiecePrice: vi.fn(),
+  setPiecesUrgent: (...a: unknown[]) => mocks.urgent(...a),
 }));
 vi.mock("@/server/restorations/actions", () => ({}));
 vi.mock("@/server/sale-price-actions", () => ({
@@ -31,6 +33,8 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 beforeEach(() => {
   mocks.change.mockReset();
   mocks.change.mockResolvedValue({ ok: true });
+  mocks.urgent.mockReset();
+  mocks.urgent.mockResolvedValue({ ok: true });
 });
 
 const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
@@ -402,11 +406,91 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     ).toBeNull();
   });
 
-  it("logística no ve la columna ni si faltan", () => {
+  it("logística ve el precio y asigna con el lápiz el que falta (sin formulario de edición)", async () => {
+    const { setPieceSalePrice } = await import("@/server/sale-price-actions");
+    vi.mocked(setPieceSalePrice).mockClear();
+    const user = userEvent.setup();
     renderBoard(pieces, { role: "logistica" });
     expect(
-      screen.queryByRole("columnheader", { name: "Precio venta" }),
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
+      "S/ 120.50",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-2",
+      }),
+    );
+    await user.type(screen.getByLabelText("Precio de venta (S/)"), "80");
+    await user.click(screen.getByRole("button", { name: "Guardar precio" }));
+    expect(setPieceSalePrice).toHaveBeenCalledWith("p2", "80");
+  });
+
+  it("logística cambia con motivo el precio asignado si la orden ya existe", async () => {
+    const user = userEvent.setup();
+    const withOrder = [piece(1, { priceCents: 12_000, status: "aprobada" })];
+    render(
+      <PiecesBoard
+        restorationId="r1"
+        role="logistica"
+        workshops={[]}
+        editing={null}
+        pieces={withOrder}
+        hasOrder
+      />,
+    );
+    await openMenu(user, "RES-00001-1");
+    await user.click(screen.getByRole("menuitem", { name: "Cambiar precio" }));
+    expect(
+      await screen.findByRole("dialog", {
+        name: "Cambiar precio de RES-00001-1",
+      }),
+    ).toBeVisible();
+  });
+});
+
+describe("PiecesBoard: urgente", () => {
+  it("el rayo de la fila marca la pieza como urgente", async () => {
+    const user = userEvent.setup();
+    renderBoard([piece(1), piece(2)], { role: "logistica" });
+    const row = screen.getByTestId("pieza-RES-00001-1");
+    await user.click(
+      within(row).getByRole("button", { name: "Marcar como urgente" }),
+    );
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true);
+  });
+
+  it("en una pieza urgente el rayo la quita", async () => {
+    const user = userEvent.setup();
+    renderBoard([piece(1, { urgent: true })], { role: "ventas" });
+    const row = screen.getByTestId("pieza-RES-00001-1");
+    await user.click(
+      within(row).getByRole("button", { name: "Quitar urgente" }),
+    );
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1"], false);
+  });
+
+  it("una pieza entregada o cerrada no se marca", () => {
+    renderBoard([
+      piece(1, { status: "entregada" }),
+      piece(2, { status: "anulada" }),
+    ]);
+    expect(
+      screen.queryByRole("button", { name: "Marcar como urgente" }),
     ).toBeNull();
-    expect(screen.queryByTestId("precio-sin-asignar")).toBeNull();
+  });
+
+  it("la barra marca o quita «Urgente» a las piezas elegidas", async () => {
+    const user = userEvent.setup();
+    renderBoard([piece(1), piece(2, { urgent: true })], { role: "admin" });
+    await user.click(
+      within(bar()).getByRole("button", { name: "Marcar urgente" }),
+    );
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1", "p2"], true);
+    await user.click(
+      within(bar()).getByRole("button", { name: "Quitar urgente" }),
+    );
+    expect(mocks.urgent).toHaveBeenCalledWith(["p1", "p2"], false);
   });
 });

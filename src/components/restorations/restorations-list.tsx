@@ -27,6 +27,7 @@ import {
   ObservedBadge,
   PaymentStatusBadge,
   RestorationStatusBadge,
+  WaitingClientBadge,
 } from "./status-badges";
 
 function SortHeader({
@@ -52,7 +53,10 @@ function SortHeader({
   );
 }
 
-/** Estado de la restauración y, si hay piezas en Observación, cuántas son. */
+/**
+ * Estado de la restauración y, si hay piezas en Observación o esperando la respuesta
+ * del cliente, cuántas son.
+ */
 function Status({
   item,
   className,
@@ -64,6 +68,7 @@ function Status({
     <span className={cn("flex flex-wrap items-center gap-1.5", className)}>
       <RestorationStatusBadge status={item.status} />
       {item.observed ? <ObservedBadge progress={item.observed} /> : null}
+      <WaitingClientBadge count={item.waitingCount} />
     </span>
   );
 }

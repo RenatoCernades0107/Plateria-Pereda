@@ -47,7 +47,28 @@ describe("PieceMoneyTiles", () => {
     ).toHaveTextContent("Definir precio");
   });
 
-  it("logística: solo el costo de servicio", () => {
+  it("logística: precio de venta (editable) y costo, sin margen ni saldo", () => {
+    render(
+      <PieceMoneyTiles
+        piece={piece}
+        sale={{ cents: 10_000, hasOrder: false, editable: true }}
+        costCents={4_000}
+        showMargin={false}
+        guide={null}
+      />,
+    );
+    expect(tile("Precio de venta")).toHaveTextContent("100.00");
+    expect(
+      within(tile("Precio de venta")).getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toBeInTheDocument();
+    expect(tile("Costo de servicio")).toHaveTextContent("40.00");
+    expect(screen.queryByText("Margen")).toBeNull();
+    expect(screen.queryByTestId("saldo-guia")).toBeNull();
+  });
+
+  it("sin precio de venta: solo el costo de servicio", () => {
     render(
       <PieceMoneyTiles
         piece={piece}
