@@ -14,7 +14,6 @@ export const metadata: Metadata = { title: "Iniciar sesión" };
 
 const NOTICES: Record<string, string> = {
   inactivo: MENSAJE_INACTIVO,
-  "enlace-invalido": "El enlace no es válido o ya venció. Pide uno nuevo.",
 };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
