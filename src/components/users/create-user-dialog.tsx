@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PasswordInput } from "@/components/users/password-input";
 import { ROLE_LABELS } from "@/lib/roles";
 import {
   newUserSchema,
@@ -47,7 +48,7 @@ export function CreateUserDialog() {
   const [pending, startTransition] = useTransition();
   const form = useForm<NewUserInput>({
     resolver: zodResolver(newUserSchema),
-    defaultValues: { fullName: "", email: "", role: undefined },
+    defaultValues: { fullName: "", email: "", role: undefined, password: "" },
   });
 
   const onSubmit = form.handleSubmit((values) => {
@@ -58,7 +59,9 @@ export function CreateUserDialog() {
         setError(result.error);
         return;
       }
-      toast.success(`Usuario creado. Enviamos el acceso a ${values.email}.`);
+      toast.success(
+        `Usuario creado. Pásale su email (${values.email}) y su contraseña.`,
+      );
       form.reset();
       setOpen(false);
     });
@@ -82,7 +85,8 @@ export function CreateUserDialog() {
         <DialogHeader>
           <DialogTitle>Nuevo usuario</DialogTitle>
           <DialogDescription>
-            Le enviaremos un correo con un enlace para crear su contraseña.
+            Elige o genera su contraseña y pásasela al usuario (por WhatsApp,
+            por ejemplo). Después puedes cambiarla desde esta pantalla.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -141,9 +145,29 @@ export function CreateUserDialog() {
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contraseña</FormLabel>
+                  <FormControl>
+                    <PasswordInput
+                      {...field}
+                      onGenerate={(password) =>
+                        form.setValue("password", password, {
+                          shouldValidate: true,
+                        })
+                      }
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <DialogFooter>
               <Button type="submit" disabled={pending}>
-                {pending ? "Creando…" : "Crear y enviar acceso"}
+                {pending ? "Creando…" : "Crear usuario"}
               </Button>
             </DialogFooter>
           </form>

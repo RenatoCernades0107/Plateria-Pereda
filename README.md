@@ -95,13 +95,15 @@ scripts/          scripts de desarrollo
 
 ## Supabase en producción (correos de acceso)
 
-`supabase/config.toml` solo configura el Supabase **local**. En el proyecto de producción, para que funcionen la invitación de usuarios y la recuperación de contraseña, hay que configurar en el panel de Supabase:
+Los usuarios **no dependen del correo**: el administrador los crea con una contraseña desde **Usuarios** y, si alguien la olvida, se la cambia desde ahí mismo ("Cambiar contraseña").
+
+El correo solo se usa en "¿Olvidaste tu contraseña?" del login. `supabase/config.toml` solo configura el Supabase **local**; para que ese correo funcione en producción hay que configurar en el panel de Supabase:
 
 1. **Authentication → URL Configuration**
    - **Site URL**: la URL pública de la app (la misma que `APP_URL`), p. ej. `https://sistema.plateriapereda.com`.
    - **Redirect URLs**: agregar `https://<tu-dominio>/**`. Si falta, Supabase ignora el destino del enlace y el correo lleva a una URL rota.
-2. **Authentication → Email Templates**: copiar el contenido de `supabase/templates/recovery.html` en **Reset password** y el de `supabase/templates/invite.html` en **Invite user**. Las plantillas por defecto usan `{{ .ConfirmationURL }}`: la recuperación igual funciona si se abre en el mismo navegador donde se pidió, pero la invitación no.
-3. **Authentication → SMTP Settings**: configurar un SMTP propio (Resend, SendGrid, Brevo…). El correo incluido de Supabase solo envía a los miembros del equipo del proyecto y unos pocos correos por hora, así que las invitaciones a otros emails no llegan.
+2. **Authentication → Email Templates**: copiar el contenido de `supabase/templates/recovery.html` en **Reset password**. La plantilla por defecto (`{{ .ConfirmationURL }}`) también funciona si el enlace se abre en el mismo navegador donde se pidió.
+3. **Authentication → SMTP Settings**: configurar un SMTP propio (Resend, SendGrid, Brevo…). El correo incluido de Supabase solo envía a los miembros del equipo del proyecto y unos pocos correos por hora. Sin dominio propio sirve Gmail (`smtp.gmail.com`, puerto 465, con una contraseña de aplicación).
 
 Cada enlace sirve **una sola vez** y vence en 1 hora; si se pide otro, el anterior deja de valer.
 
