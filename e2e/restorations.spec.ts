@@ -38,6 +38,7 @@ async function fillPiece(
     page,
     card.getByLabel("Servicio"),
     piece.service ?? "Limpieza",
+    { multiple: true },
   );
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }
@@ -255,7 +256,9 @@ test.describe("Restauraciones", () => {
     const card = page.getByTestId("pieza-1");
     // El taller lo asignan logística y el admin (D60): ventas no lo elige.
     await expect(card.getByText("Taller", { exact: true })).toHaveCount(0);
-    await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza");
+    await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza", {
+      multiple: true,
+    });
     await card.getByLabel("Descripción").fill("Tetera sin precio");
     await expect(card.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
@@ -330,7 +333,9 @@ test.describe("Restauraciones", () => {
 
     await page.getByRole("button", { name: "Agregar pieza" }).click();
     dialog = page.getByRole("dialog");
-    await chooseCatalog(page, dialog.getByLabel("Servicio"), "Limpieza");
+    await chooseCatalog(page, dialog.getByLabel("Servicio"), "Limpieza", {
+      multiple: true,
+    });
     await dialog.getByLabel("Descripción").fill("Azucarera");
     await dialog.getByLabel("Precio (S/)").fill("64.50");
     await dialog.getByRole("button", { name: "Agregar pieza" }).click();

@@ -16,6 +16,7 @@ const CLIENT = "6f1c9a52-1b7e-4c1a-9d3e-2a4b5c6d7e8f";
 const CONTACT = "0e5d1f7a-3c2b-4a1d-8e9f-1a2b3c4d5e6f";
 const WORKSHOP = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const SILVER = "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e";
+const POLISH = "3d4e5f6a-7b8c-4d9e-8f10-2b3c4d5e6f70";
 const YAPE = "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f";
 
 const piece: PieceFormInput = {
@@ -23,7 +24,7 @@ const piece: PieceFormInput = {
   description: "  Bandeja   ovalada con asas ",
   measure: "40 × 30 cm",
   materials: [SILVER],
-  service: { id: null, name: " Limpieza y pulido " },
+  services: [POLISH],
   weight: "850,5",
   price: "1,250.50",
   notes: "",
@@ -64,7 +65,7 @@ describe("pieceSchema", () => {
       description: "Bandeja ovalada con asas",
       measure: "40 × 30 cm",
       materials: [SILVER],
-      service: { id: null, name: "Limpieza y pulido" },
+      services: [POLISH],
       weightGrams: 850.5,
       priceCents: 125_050,
       urgent: false,
@@ -95,7 +96,7 @@ describe("pieceSchema", () => {
         workshopId: null,
         description: "Cáliz",
         measure: "",
-        service: { id: null, name: "Limpieza" },
+        services: [POLISH],
         weight: "",
         price: "0",
         notes: "",
@@ -106,7 +107,7 @@ describe("pieceSchema", () => {
       description: "Cáliz",
       measure: "",
       materials: [],
-      service: { id: null, name: "Limpieza" },
+      services: [POLISH],
       weightGrams: null,
       priceCents: 0,
       urgent: false,
@@ -149,19 +150,32 @@ describe("pieceSchema", () => {
     });
   });
 
-  it("servicio requerido, del catálogo o escrito (D59)", () => {
+  it("al menos un servicio del catálogo; varios, sin repetir y en orden (D59)", () => {
     for (const schema of [pieceSchema, quotePieceSchema]) {
+      expect(errorsOf(schema, { ...piece, services: [] })).toEqual({
+        services: "Elige el servicio",
+      });
+      expect(errorsOf(schema, { ...piece, services: undefined })).toEqual({
+        services: "Elige el servicio",
+      });
       expect(
-        errorsOf(schema, { ...piece, service: { id: null, name: "  " } }),
-      ).toEqual({ "service.name": "Elige el servicio" });
-      expect(
-        errorsOf(schema, { ...piece, service: { id: SILVER, name: "" } }),
-      ).toEqual({ "service.name": "Elige el servicio" });
+        errorsOf(schema, { ...piece, services: ["Pulido"] }),
+      ).toHaveProperty("services.0");
     }
     expect(
-      pieceSchema.parse({ ...piece, service: { id: SILVER, name: "Pulido" } })
-        .service,
-    ).toEqual({ id: SILVER, name: "Pulido" });
+      pieceSchema.parse({ ...piece, services: [SILVER, POLISH, SILVER] })
+        .services,
+    ).toEqual([SILVER, POLISH]);
+  });
+
+  it("máximo 10 servicios por pieza", () => {
+    const many = Array.from(
+      { length: 11 },
+      (_, i) => `3d4e5f6a-7b8c-4d9e-8f10-${String(i).padStart(12, "0")}`,
+    );
+    expect(errorsOf(pieceSchema, { ...piece, services: many })).toEqual({
+      services: "Máximo 10 servicios",
+    });
   });
 
   it("descripción requerida", () => {

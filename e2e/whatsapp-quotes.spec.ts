@@ -32,7 +32,9 @@ async function fillPiece(
 ) {
   const card = page.getByTestId(`pieza-${index}`);
   // El servicio es obligatorio (D59).
-  await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza");
+  await chooseCatalog(page, card.getByLabel("Servicio"), "Limpieza", {
+    multiple: true,
+  });
   await card.getByLabel("Descripción").fill(piece.description);
   await card.getByLabel("Precio (S/)").fill(piece.price);
 }

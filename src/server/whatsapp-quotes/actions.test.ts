@@ -34,7 +34,7 @@ const piece = {
   description: "Bandeja",
   measure: "",
   materials: [],
-  service: { id: null, name: "Limpieza" },
+  services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
   weight: "",
   price: "",
   notes: "",

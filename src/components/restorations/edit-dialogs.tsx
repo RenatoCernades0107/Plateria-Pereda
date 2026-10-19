@@ -295,7 +295,7 @@ function pieceDefaults(piece: PieceDetail): PieceFormInput {
     description: piece.description,
     measure: piece.measure,
     materials: piece.materialIds,
-    service: { id: piece.serviceId, name: piece.serviceName },
+    services: piece.serviceIds,
     weight: piece.weightGrams === null ? "" : String(piece.weightGrams),
     price: piece.priceCents === null ? "" : toDecimalString(piece.priceCents),
     urgent: piece.urgent,

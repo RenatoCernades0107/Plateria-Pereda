@@ -444,6 +444,7 @@ export type Database = {
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_ids: string[];
+          service_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -484,6 +485,7 @@ export type Database = {
           location?: never;
           material_id?: string | null;
           material_ids?: string[];
+          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -524,6 +526,7 @@ export type Database = {
           location?: never;
           material_id?: string | null;
           material_ids?: string[];
+          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1260,6 +1263,7 @@ export type Database = {
           id: string;
           material_id: string | null;
           material_ids: string[];
+          service_ids: string[];
           material_name: string;
           measure: string;
           notes: string;
@@ -1278,6 +1282,7 @@ export type Database = {
           id?: string;
           material_id?: string | null;
           material_ids?: string[];
+          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1296,6 +1301,7 @@ export type Database = {
           id?: string;
           material_id?: string | null;
           material_ids?: string[];
+          service_ids?: string[];
           material_name?: string;
           measure?: string;
           notes?: string;
@@ -1493,6 +1499,7 @@ export type Database = {
           location: Database["public"]["Enums"]["piece_location"] | null;
           material_id: string | null;
           material_ids: string[] | null;
+          service_ids: string[] | null;
           material_name: string | null;
           measure: string | null;
           notes: string | null;

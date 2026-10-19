@@ -668,6 +668,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D71 | Tipo de guía Normal / Interna / Observada (excluyentes, admin y ventas, con confirmación). Interna: piezas Aprobadas sin precio, con costo, sin pagos ni Shopify. Observada: piezas en Observación sin precio ni costo, sin pagos ni Shopify. Se cambia después solo sin orden de Shopify, sin pagos y sin piezas que hayan ido al taller o se hayan entregado | Pedido del 2026-10-16 |
 | D72 | Una guía Rechazada, Anulada o Completada pasa al historial solo cuando ya no le quedan piezas por devolver en la tienda | Pedido del 2026-10-16 |
 | D73 | "Listas para entregar" (piezas) incluye las rechazadas o sin arreglo por devolver; se quita el chip "Por devolver". Filtro "Sin taller". La tabla de piezas no muestra la guía y lleva los días en este estado, en taller y en la ubicación dentro de sus celdas; los PDF llevan cantidad y ubicación | Pedido del 2026-10-16 |
+| D74 | Varios servicios por pieza (pedido del 2026-10-18), como los materiales: se marcan uno o más del catálogo y debe haber al menos uno. La pieza guarda `service_ids`; `service_id` (el primero) y `service_name` (los nombres separados por coma) los deriva la BD, así listados, PDF y reportes siguen igual. Una pieza con servicio queda con ese único servicio. |
 
 ---
 
@@ -675,6 +676,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 | Fecha | Preguntas | Resumen |
 |---|---|---|
+| 2026-10-18 | D74 | Se pueden marcar varios servicios a la vez en cada pieza (registro, edición, agregar pieza y cotización de WhatsApp). |
 | 2026-10-16 | D68 | Servicios y materiales: el admin los administra en Configuración, incluido borrarlos si nadie los usa; ventas ya no los crea desde la pieza. |
 | 2026-10-16 | P13 (se revierte) | Se quita todo lo del IGV: ni se pregunta, ni se muestra, ni se suma al total. |
 | 2026-10-16 | D69–D73 | Sin "En restauración" (ir al taller es una acción), cantidad por pieza, guías interna y observada, historial de guías con piezas por devolver, filtros y tabla de piezas. |

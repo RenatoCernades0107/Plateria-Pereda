@@ -37,6 +37,8 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+const CLEANING = "00000000-0000-0000-0000-0000000000a1";
+
 /** Por defecto como admin, que asigna el precio de venta (D58) y el taller (D60). */
 function renderForm(
   mode?: RestorationFormMode,
@@ -55,7 +57,7 @@ function renderForm(
       materials={[]}
       services={[
         {
-          id: "00000000-0000-0000-0000-0000000000a1",
+          id: CLEANING,
           name: "Limpieza",
           price: 40,
         },
@@ -396,7 +398,7 @@ const quoteItem = (
     description,
     measure: "",
     materials: [],
-    service: { id: null, name: "Limpieza" },
+    services: [CLEANING],
     weight: "",
     price,
     urgent: false,

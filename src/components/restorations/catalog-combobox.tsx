@@ -31,7 +31,7 @@ export type CatalogOption = {
 export type PickedOption = { id: string; name: string };
 
 /**
- * Buscador del catálogo para la pieza: servicio (uno) o materiales (varios). Solo
+ * Buscador del catálogo para la pieza: servicios o materiales (uno o varios). Solo
  * elige: lo que falta lo agrega el admin en Configuración.
  */
 export function CatalogCombobox({

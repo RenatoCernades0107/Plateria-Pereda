@@ -93,7 +93,7 @@ select is(
 );
 
 -- 4. Al soltarlo, se puede borrar.
-update public.pieces set service_id = null, service_name = ''
+update public.pieces set service_ids = '{}'
   where id = '00000000-0000-0000-0000-00000000c461';
 delete from public.services where id = '00000000-0000-0000-0000-00000000c442';
 select is(

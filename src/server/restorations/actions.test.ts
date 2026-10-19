@@ -37,7 +37,7 @@ const piece = {
   description: "Fuente ovalada",
   measure: "40 cm",
   materials: [],
-  service: { id: null, name: "Limpieza" },
+  services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
   weight: "820,5",
   price: "1,200.50",
   notes: "",
@@ -186,7 +186,7 @@ describe("createRestoration", () => {
 });
 
 describe("pieceToRpc", () => {
-  it("convierte céntimos a soles; servicio con id + nombre y los ids de los materiales", () => {
+  it("convierte céntimos a soles; los ids de los servicios y de los materiales", () => {
     expect(
       pieceToRpc({
         workshopId: null,
@@ -194,7 +194,7 @@ describe("pieceToRpc", () => {
         description: "Fuente",
         measure: "",
         materials: ["m1", "m2"],
-        service: { id: "s1", name: "Limpieza" },
+        services: ["s1", "s2"],
         weightGrams: 12.5,
         priceCents: 120050,
         urgent: true,
@@ -206,8 +206,7 @@ describe("pieceToRpc", () => {
       description: "Fuente",
       measure: "",
       material_ids: ["m1", "m2"],
-      service_id: "s1",
-      service_name: "Limpieza",
+      service_ids: ["s1", "s2"],
       weight_grams: "12.50",
       price: "1200.50",
       urgent: true,
@@ -226,7 +225,7 @@ describe("pieceToRpc", () => {
         description: "Fuente",
         measure: "",
         materials: [],
-        service: { id: null, name: "Limpieza" },
+        services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
         weightGrams: null,
         priceCents: null,
         urgent: false,
@@ -243,7 +242,7 @@ describe("pieceToRpc", () => {
         description: "Fuente",
         measure: "",
         materials: [],
-        service: { id: null, name: "Limpieza" },
+        services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
         weightGrams: null,
         priceCents: 1000,
         urgent: false,
@@ -265,7 +264,7 @@ describe("withoutSalePrices (D58)", () => {
     description: "Fuente",
     measure: "",
     materials: [],
-    service: { id: null, name: "Limpieza" },
+    services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
     weightGrams: null,
     urgent: false,
     notes: "",
@@ -294,7 +293,7 @@ describe("withoutWorkshops (D60)", () => {
       description: "Fuente",
       measure: "",
       materials: [],
-      service: { id: null, name: "Limpieza" },
+      services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
       weightGrams: null,
       priceCents: null,
       urgent: false,

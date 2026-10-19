@@ -34,7 +34,7 @@ async function catalogService(name: string) {
     .select("id, name")
     .eq("name", name)
     .single();
-  return { id: data!.id, name: data!.name };
+  return data!.id;
 }
 
 describe("registro de restauraciones", () => {
@@ -83,7 +83,11 @@ describe("registro de restauraciones", () => {
           description: "Fuente ovalada",
           measure: "40 cm",
           materials: [materialId("Plata 950"), materialId("Alpaca")],
-          service: await catalogService("Limpieza y pulido"),
+          // Varios servicios a la vez.
+          services: [
+            await catalogService("Limpieza y pulido"),
+            await catalogService("Soldadura"),
+          ],
           weight: "820.5",
           price: "0.10",
           notes: "",
@@ -93,7 +97,7 @@ describe("registro de restauraciones", () => {
           description: "Bandeja",
           measure: "",
           materials: [],
-          service: await catalogService("Soldadura"),
+          services: [await catalogService("Soldadura")],
           weight: "",
           price: "0.20",
           notes: "",
@@ -110,7 +114,7 @@ describe("registro de restauraciones", () => {
     const { data: restoration } = await pricing
       .from("restorations")
       .select(
-        "total, expected_deposit, notes, pieces(id, code, material_name, price, location)",
+        "total, expected_deposit, notes, pieces(id, code, material_name, service_name, price, location)",
       )
       .eq("id", result.id)
       .single();
@@ -127,6 +131,7 @@ describe("registro de restauraciones", () => {
       {
         code: `${result.code}-1`,
         material_name: "Plata 950, Alpaca",
+        service_name: "Limpieza y pulido, Soldadura",
         price: 0.1,
         // Las piezas de oficina nacen en la tienda, sin enviar al taller (P48).
         location: "sin_enviar",
@@ -134,6 +139,7 @@ describe("registro de restauraciones", () => {
       {
         code: `${result.code}-2`,
         material_name: "",
+        service_name: "Soldadura",
         price: 0.2,
         location: "sin_enviar",
       },
@@ -157,7 +163,7 @@ describe("registro de restauraciones", () => {
       description: "Jarra",
       measure: "",
       materials: [],
-      service: await catalogService("Limpieza y pulido"),
+      services: [await catalogService("Limpieza y pulido")],
       weight: "",
       price: "",
       notes: "",
