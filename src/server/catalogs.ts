@@ -12,6 +12,12 @@ export type CatalogItem = {
   shopifyName?: string | null;
 };
 
+/** Nombres de los servicios (también los inactivos) por id, para el mensaje de WhatsApp. */
+export async function serviceNamesById(): Promise<Map<string, string>> {
+  const services = await listCatalog("services");
+  return new Map(services.map((s) => [s.id, s.name]));
+}
+
 /** Ítems del catálogo, los activos primero; `onlyActive` para los selectores. */
 export async function listCatalog(
   kind: CatalogKind,

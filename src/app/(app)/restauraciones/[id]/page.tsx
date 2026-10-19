@@ -70,7 +70,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
-import { listCatalog } from "@/server/catalogs";
+import { listCatalog, serviceNamesById } from "@/server/catalogs";
 import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
@@ -146,12 +146,15 @@ export default async function RestauracionDetallePage({
           terms: settings.terms,
         }
       : null;
+  const serviceNames = quoteData ? await serviceNamesById() : new Map();
   const quotePieces = restoration.pieces.map((p) => ({
     id: p.id,
     code: p.code,
     description: p.description,
     quantity: p.quantity,
     service: p.serviceName || null,
+    // Un servicio por línea en el mensaje.
+    services: p.serviceIds.flatMap((id) => serviceNames.get(id) ?? []),
     // Sin precio de venta (D58) el mensaje dice "por definir".
     priceCents: p.priceCents,
     status: p.status,

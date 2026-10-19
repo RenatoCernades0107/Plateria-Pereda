@@ -277,9 +277,12 @@ test.describe("Restauraciones", () => {
       timeout: 30_000,
     });
     const url = new URL(page.url()).pathname;
-    await expect(
-      page.getByRole("dialog").getByTestId("mensaje-cotizacion"),
-    ).toContainText("Tetera sin precio – Limpieza: precio por definir");
+    const quoteMessage = page
+      .getByRole("dialog")
+      .getByTestId("mensaje-cotizacion");
+    await expect(quoteMessage).toContainText("*1. Tetera sin precio*");
+    await expect(quoteMessage).toContainText("▸ Limpieza");
+    await expect(quoteMessage).toContainText("*Precio por definir*");
     await page.keyboard.press("Escape");
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
     await expect(

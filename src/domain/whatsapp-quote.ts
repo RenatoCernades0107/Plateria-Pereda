@@ -14,10 +14,11 @@ import {
 } from "./whatsapp-template";
 
 /**
- * Mensaje de cotización por WhatsApp (Todo.md §8 Paso 7.5). P25 sigue pendiente:
- * se usa su propuesta (una línea numerada por pieza "descripción – servicio:
- * S/ precio" y una línea de forma de pago con el adelanto). Con cantidad mayor que 1
- * la descripción lleva "x2"; el precio es de la pieza completa (no se multiplica).
+ * Mensaje de cotización por WhatsApp (Todo.md §8 Paso 7.5). Cada pieza es un bloque
+ * separado por una línea en blanco: el número y la descripción en negrita, un
+ * servicio por línea ("▸") y el precio en negrita en su propia línea. Con cantidad
+ * mayor que 1 la descripción lleva "(x2)"; el precio es de la pieza completa (no se
+ * multiplica).
  */
 
 export type QuotePiece = {
@@ -26,6 +27,11 @@ export type QuotePiece = {
   quantity?: number;
   /** Nombre del servicio (del catálogo o texto libre); puede faltar. */
   service: string | null;
+  /**
+   * Servicios del catálogo, en orden: cada uno va en su línea. Sin ellos se usa
+   * `service` tal cual (los nombres pueden llevar comas, así que no se separa).
+   */
+  services?: readonly string[];
   /** null: precio de venta sin asignar (D58); el mensaje dice "por definir" y suma 0. */
   priceCents: Cents | null;
   status: PieceStatus;
@@ -114,21 +120,44 @@ function paymentLine(
   }
 }
 
+/** Sangría de las líneas de servicio y precio bajo el nombre de la pieza. */
+const INDENT = "     ";
+
+/** Paréntesis largo al final de la descripción: va fuera de la negrita. */
+const LONG_DETAIL = /^(.+?)\s+(\([^()]{25,}\))$/;
+
+/**
+ * Bloque de una pieza:
+ *   *1. Juego de té* (tetera, azucarero y lechera)
+ *        ▸ Limpieza profunda
+ *        *S/ 1,300.00*
+ */
+function pieceBlock(p: QuotePiece, number: number): string {
+  const quantity = p.quantity && p.quantity > 1 ? ` (x${p.quantity})` : "";
+  const description = p.description.trim();
+  const detail = LONG_DETAIL.exec(description);
+  const title = detail
+    ? `*${number}. ${detail[1]}${quantity}* ${detail[2]}`
+    : `*${number}. ${description}${quantity}*`;
+  const services = (p.services?.length ? p.services : [p.service ?? ""])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => `${INDENT}▸ ${s}`);
+  const price =
+    p.priceCents === null
+      ? `${INDENT}*Precio por definir*`
+      : `${INDENT}*S/ ${amount(p.priceCents)}*`;
+  return [title, ...services, price].join("\n");
+}
+
 /** Valores de cada variable de la plantilla para una restauración. */
 export function quoteValues(
   data: QuoteMessageData,
 ): Record<WhatsAppPlaceholder, string> {
   const { totalCents, depositCents } = quoteAmounts(data);
-  const lines = chargedPieces(data).map((p, i) => {
-    const service = p.service?.trim();
-    const quantity = p.quantity && p.quantity > 1 ? ` x${p.quantity}` : "";
-    const description = `${p.description.trim()}${quantity}`;
-    const name = service ? `${description} – ${service}` : description;
-    return p.priceCents === null
-      ? `${i + 1}. ${name}: precio por definir`
-      : `${i + 1}. ${name}: S/ ${amount(p.priceCents)}`;
-  });
-  const piezas = lines.join("\n");
+  const piezas = chargedPieces(data)
+    .map((p, i) => pieceBlock(p, i + 1))
+    .join("\n\n");
   return {
     cliente: (data.contactName?.trim() || data.clientName).trim(),
     codigo: data.code,

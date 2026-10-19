@@ -49,8 +49,12 @@ describe("mensaje de cotización", () => {
       "Hola Ana Pérez, te saludamos de Platería Pereda.
       Te compartimos la cotización de tu restauración *RES-00001*:
 
-      1. Fuente de plata – Pulido: S/ 1,200.50
-      2. Candelabro: S/ 350.00
+      *1. Fuente de plata*
+           ▸ Pulido
+           *S/ 1,200.50*
+
+      *2. Candelabro*
+           *S/ 350.00*
 
       *Total: S/ 1,550.50*
       Forma de pago: Al contado (S/ 1,550.50)
@@ -58,7 +62,7 @@ describe("mensaje de cotización", () => {
     `);
   });
 
-  it("con cantidad mayor que 1 dice x2; el precio es de la pieza completa", () => {
+  it("con cantidad mayor que 1 dice (x2); el precio es de la pieza completa", () => {
     const pieces = data().pieces.map((p, i) =>
       i === 0 ? { ...p, quantity: 6 } : { ...p, quantity: 1 },
     );
@@ -66,8 +70,10 @@ describe("mensaje de cotización", () => {
       DEFAULT_WHATSAPP_TEMPLATE,
       data({ paymentType: "contado", pieces }),
     );
-    expect(text).toContain("1. Fuente de plata x6 – Pulido: S/ 1,200.50");
-    expect(text).toContain("2. Candelabro: S/ 350.00");
+    expect(text).toContain(
+      "*1. Fuente de plata (x6)*\n     ▸ Pulido\n     *S/ 1,200.50*",
+    );
+    expect(text).toContain("*2. Candelabro*\n     *S/ 350.00*");
     expect(text).toContain("*Total: S/ 1,550.50*");
   });
 
@@ -81,8 +87,12 @@ describe("mensaje de cotización", () => {
       "Hola Ana Pérez, te saludamos de Platería Pereda.
       Te compartimos la cotización de tu restauración *RES-00001*:
 
-      1. Fuente de plata – Pulido: S/ 1,200.50
-      2. Candelabro: S/ 350.00
+      *1. Fuente de plata*
+           ▸ Pulido
+           *S/ 1,200.50*
+
+      *2. Candelabro*
+           *S/ 350.00*
 
       *Total: S/ 1,550.50*
       Forma de pago: A cuenta (adelanto del 33.5 %: S/ 519.42)
@@ -100,8 +110,12 @@ describe("mensaje de cotización", () => {
       "Hola Luis Gómez, te saludamos de Platería Pereda.
       Te compartimos la cotización de tu restauración *RES-00001*:
 
-      1. Fuente de plata – Pulido: S/ 1,200.50
-      2. Candelabro: S/ 350.00
+      *1. Fuente de plata*
+           ▸ Pulido
+           *S/ 1,200.50*
+
+      *2. Candelabro*
+           *S/ 350.00*
 
       *Total: S/ 1,550.50*
       Forma de pago: Al crédito (sin adelanto)"
@@ -126,7 +140,7 @@ describe("mensaje de cotización", () => {
       DEFAULT_WHATSAPP_TEMPLATE,
       data({ pieces, paymentType: "contado" }),
     );
-    expect(message).toContain("2. Candelabro: precio por definir");
+    expect(message).toContain("*2. Candelabro*\n     *Precio por definir*");
     expect(message).toContain("*Total: S/ 1,200.50*");
     expect(quoteAmounts(data({ pieces })).totalCents).toBe(120_050);
   });
@@ -139,25 +153,29 @@ describe("mensaje de cotización", () => {
     });
     expect(buildQuoteMessage(DEFAULT_WHATSAPP_TEMPLATE, contado))
       .toMatchInlineSnapshot(`
-      "Hola Ana Pérez, te saludamos de Platería Pereda.
-      Te compartimos la cotización de tu restauración *RES-00001*:
+        "Hola Ana Pérez, te saludamos de Platería Pereda.
+        Te compartimos la cotización de tu restauración *RES-00001*:
 
-      1. Fuente de plata – Pulido: S/ 1,200.50
-      2. Candelabro: S/ 350.00
+        *1. Fuente de plata*
+             ▸ Pulido
+             *S/ 1,200.50*
 
-      *Total: S/ 1,550.50*
-      Forma de pago: Al contado (S/ 1,550.50)
-      La cotización vale 15 días."
-    `);
+        *2. Candelabro*
+             *S/ 350.00*
+
+        *Total: S/ 1,550.50*
+        Forma de pago: Al contado (S/ 1,550.50)
+        La cotización vale 15 días."
+      `);
   });
 
-  it("usa soles con separador de miles y una línea por pieza", () => {
+  it("usa soles con separador de miles y un bloque por pieza", () => {
     const message = buildQuoteMessage(
       "{piezas}\nTotal: S/ {total} | {tipo_pago} | {porcentaje_adelanto} % = S/ {adelanto}",
       data({ pieces: [{ ...data().pieces[0]!, priceCents: 5 }] }),
     );
     expect(message).toBe(
-      "1. Fuente de plata – Pulido: S/ 0.05\nTotal: S/ 0.05 | A cuenta | 50 % = S/ 0.03",
+      "*1. Fuente de plata*\n     ▸ Pulido\n     *S/ 0.05*\nTotal: S/ 0.05 | A cuenta | 50 % = S/ 0.03",
     );
   });
 
@@ -172,7 +190,9 @@ describe("mensaje de cotización", () => {
         ],
       }),
     );
-    expect(message).toBe("1. Copa – Pulido: S/ 1,200.50|1,200.50");
+    expect(message).toBe(
+      "*1. Copa*\n     ▸ Pulido\n     *S/ 1,200.50*|1,200.50",
+    );
   });
 
   it("cotización de WhatsApp sin nombre: saludo genérico y código CWA (P46)", () => {
@@ -216,6 +236,43 @@ describe("whatsappUrl", () => {
     expect(whatsappUrl(undefined, "x")).toBeNull();
     expect(whatsappUrl("", "x")).toBeNull();
     expect(whatsappUrl("123", "x")).toBeNull();
+  });
+});
+
+describe("formato de cada pieza", () => {
+  it("un servicio por línea, detalle largo fuera de la negrita y bloques separados", () => {
+    const message = buildQuoteMessage("{piezas}", {
+      ...data(),
+      pieces: [
+        {
+          description:
+            "Juego de té 5 piezas (tetera alta, tetera chica, azucarero y lechera)",
+          service: "Baño de plata, RR-02 – Desabollado",
+          services: ["Baño de plata", "RR-02 – Desabollado"],
+          priceCents: 35_000,
+          status: "registrada",
+        },
+        {
+          description: "Ceniceros",
+          quantity: 3,
+          service: "Limpieza profunda, pulido y baño de plata 1000",
+          priceCents: 8_000,
+          status: "registrada",
+        },
+      ],
+    });
+    expect(message).toBe(
+      [
+        "*1. Juego de té 5 piezas* (tetera alta, tetera chica, azucarero y lechera)",
+        "     ▸ Baño de plata",
+        "     ▸ RR-02 – Desabollado",
+        "     *S/ 350.00*",
+        "",
+        "*2. Ceniceros (x3)*",
+        "     ▸ Limpieza profunda, pulido y baño de plata 1000",
+        "     *S/ 80.00*",
+      ].join("\n"),
+    );
   });
 });
 
