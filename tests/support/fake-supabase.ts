@@ -1,7 +1,5 @@
 import { vi } from "vitest";
 
-type AuthError = { code: string } | null;
-
 type Profile = { full_name?: string; role?: string; active?: boolean } | null;
 
 /** Cliente de Supabase simulado con lo que usan las acciones y helpers de autenticación. */
@@ -28,10 +26,6 @@ export function fakeSupabase(
       })),
       signInWithPassword: vi.fn(),
       signOut: vi.fn(async () => ({ error: null })),
-      resetPasswordForEmail: vi.fn(async () => ({ error: null })),
-      updateUser: vi.fn(async () => ({ error: null as AuthError })),
-      verifyOtp: vi.fn(async () => ({ error: null as AuthError })),
-      exchangeCodeForSession: vi.fn(async () => ({ error: null as AuthError })),
     },
   };
 }

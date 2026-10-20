@@ -22,62 +22,10 @@ vi.mock("next/navigation", () => ({
   redirect: (url: string) => mocks.redirect(url),
 }));
 
-const { GET: confirm } = await import("./confirm/route");
 const { GET: salir } = await import("./salir/route");
 
 const req = (path: string) =>
   new NextRequest(new URL(path, "http://localhost:3000"));
-
-describe("/auth/confirm", () => {
-  beforeEach(() => {
-    mocks.supabase = fakeSupabase();
-    mocks.redirect = redirectMock();
-  });
-
-  it("con un token válido abre la sesión y va al destino", async () => {
-    await expect(
-      confirm(
-        req(
-          "/auth/confirm?token_hash=abc&type=recovery&next=/restablecer-contrasena",
-        ),
-      ),
-    ).rejects.toThrow("REDIRECT:/restablecer-contrasena");
-    expect(mocks.supabase.auth.verifyOtp).toHaveBeenCalledWith({
-      type: "recovery",
-      token_hash: "abc",
-    });
-  });
-
-  it("con un código PKCE (plantilla por defecto de Supabase) abre la sesión", async () => {
-    await expect(
-      confirm(req("/auth/confirm?code=xyz&next=/restablecer-contrasena")),
-    ).rejects.toThrow("REDIRECT:/restablecer-contrasena");
-    expect(mocks.supabase.auth.exchangeCodeForSession).toHaveBeenCalledWith(
-      "xyz",
-    );
-  });
-
-  it("con un código vencido avisa en el login", async () => {
-    mocks.supabase.auth.exchangeCodeForSession.mockResolvedValue({
-      error: { code: "flow_state_expired" },
-    } as never);
-    await expect(confirm(req("/auth/confirm?code=xyz"))).rejects.toThrow(
-      "REDIRECT:/login?motivo=enlace-invalido",
-    );
-  });
-
-  it("con un token inválido o incompleto avisa en el login", async () => {
-    mocks.supabase.auth.verifyOtp.mockResolvedValue({
-      error: { code: "otp_expired" },
-    } as never);
-    await expect(
-      confirm(req("/auth/confirm?token_hash=abc&type=recovery")),
-    ).rejects.toThrow("REDIRECT:/login?motivo=enlace-invalido");
-    await expect(confirm(req("/auth/confirm"))).rejects.toThrow(
-      "REDIRECT:/login?motivo=enlace-invalido",
-    );
-  });
-});
 
 describe("/auth/salir", () => {
   beforeEach(() => {

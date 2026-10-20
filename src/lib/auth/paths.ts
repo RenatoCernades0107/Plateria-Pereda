@@ -1,8 +1,6 @@
 /** Rutas a las que se entra sin sesión. */
 const PUBLIC_PATHS = [
   "/login",
-  "/recuperar-contrasena",
-  "/auth/confirm",
   "/auth/salir",
   // Endpoints entre máquinas: cada uno se autentica solo (modo fake, CRON_SECRET o HMAC).
   "/api/test",
