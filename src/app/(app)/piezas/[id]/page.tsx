@@ -147,7 +147,11 @@ export default async function PiezaDetallePage({
           previousStatus={previousStatus}
           heading={
             <div className="space-y-2">
-              <PieceEyebrow number={piece.number} code={piece.code} />
+              <PieceEyebrow
+                number={piece.number}
+                code={piece.code}
+                quantity={piece.quantity}
+              />
               <h1
                 id="titulo-pieza"
                 className="text-heading text-2xl font-semibold tracking-tight text-balance"

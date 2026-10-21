@@ -36,20 +36,32 @@ export function GuideEyebrow({ className }: { className?: string }) {
   );
 }
 
-/** Rótulo "Pieza N · código" de cada pieza de la guía. */
+/** Rótulo "Pieza N · código" (y "· ×cantidad", si se da) de cada pieza de la guía. */
 export function PieceEyebrow({
   number,
   code,
+  quantity,
   className,
 }: {
   number: number;
   code: string;
+  quantity?: number;
   className?: string;
 }) {
   return (
     <p className={cn(EYEBROW_CLASS, className)} data-testid="rotulo-pieza">
       <Gem aria-hidden />
       <span>Pieza {number}</span> <span aria-hidden>·</span> <span>{code}</span>
+      {quantity === undefined ? null : (
+        <>
+          {" "}
+          <span aria-hidden>·</span>{" "}
+          <span data-testid="cantidad" title={`Cantidad: ${quantity}`}>
+            <span aria-hidden>×{quantity}</span>
+            <span className="sr-only">Cantidad: {quantity}</span>
+          </span>
+        </>
+      )}
     </p>
   );
 }

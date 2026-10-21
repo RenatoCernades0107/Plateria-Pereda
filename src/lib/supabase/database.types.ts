@@ -2024,6 +2024,7 @@ export type Database = {
           id: string;
           material_name: string;
           measure: string;
+          quantity: number;
           restoration_code: string;
           restoration_id: string;
           service_cost: number;

@@ -25,6 +25,7 @@ const base: WorkshopPiece = {
   restorationCode: "RES-00001",
   status: "aprobada",
   code: "RES-00001-1",
+  quantity: 2,
   description: "Fuente con abolladuras",
   serviceName: "Pulido",
   measure: "40 cm",
@@ -138,5 +139,18 @@ describe("WorkshopPiecesTable", () => {
   it("avisa cuando el taller no tiene piezas", () => {
     render(<WorkshopPiecesTable pieces={[]} totalCostCents={0} canEditCost />);
     expect(screen.getByText(/no tiene piezas pendientes/)).toBeInTheDocument();
+  });
+
+  it("muestra la cantidad junto al código de la pieza", () => {
+    render(
+      <WorkshopPiecesTable
+        pieces={[base]}
+        totalCostCents={15000}
+        canEditCost={false}
+      />,
+    );
+    expect(
+      within(screen.getByTestId("pieza-RES-00001-1")).getByTestId("cantidad"),
+    ).toHaveTextContent("×2");
   });
 });

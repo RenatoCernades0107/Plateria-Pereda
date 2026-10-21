@@ -109,6 +109,18 @@ describe("PiecesKanban: tiempos de la tarjeta", () => {
   });
 });
 
+describe("PiecesKanban: cantidad", () => {
+  it("cada tarjeta muestra la cantidad junto al código, también con una", () => {
+    renderKanban([piece(1), piece(2, { quantity: 6 })]);
+    expect(
+      within(screen.getByTestId("tarjeta-RES-00001-1")).getByTestId("cantidad"),
+    ).toHaveTextContent("×1");
+    expect(
+      within(screen.getByTestId("tarjeta-RES-00001-2")).getByTestId("cantidad"),
+    ).toHaveTextContent("×6");
+  });
+});
+
 describe("PiecesKanban: revisión en taller", () => {
   it("el menú de la tarjeta ofrece llevar a revisar y, en revisión, «Volvió de revisión»", async () => {
     const user = userEvent.setup();
