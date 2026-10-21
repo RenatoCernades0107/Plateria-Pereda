@@ -1,6 +1,8 @@
 /** Variables que se pueden usar en la plantilla del mensaje de cotización (P25). */
 export const WHATSAPP_PLACEHOLDERS = {
   cliente: "Nombre del cliente",
+  telefono: "Teléfono del cliente",
+  dni: "DNI (u otro documento) del cliente; vacío si no tiene",
   codigo: "Código de la restauración (RES-00001)",
   piezas: "Una línea por pieza con su descripción, servicio y precio",
   total: "Total de la restauración",

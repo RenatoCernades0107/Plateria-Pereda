@@ -239,6 +239,20 @@ describe("whatsappUrl", () => {
   });
 });
 
+describe("teléfono y DNI del cliente", () => {
+  it("llenan {telefono} y {dni}; sin datos quedan vacíos", () => {
+    const template = "Tel: {telefono} | DNI: {dni}";
+    expect(
+      buildQuoteMessage(template, {
+        ...data(),
+        clientPhone: "+51 999 888 777",
+        clientDocument: "45678912",
+      }),
+    ).toBe("Tel: +51 999 888 777 | DNI: 45678912");
+    expect(buildQuoteMessage(template, data())).toBe("Tel:  | DNI:");
+  });
+});
+
 describe("formato de cada pieza", () => {
   it("un servicio por línea, detalle largo fuera de la negrita y bloques separados", () => {
     const message = buildQuoteMessage("{piezas}", {

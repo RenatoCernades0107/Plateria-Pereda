@@ -44,6 +44,10 @@ export type QuoteMessageData = {
   clientName: string;
   /** Contacto de la restauración; si hay, el saludo va a su nombre. */
   contactName?: string | null;
+  /** Teléfono del cliente (ya con formato); vacío si no hay. */
+  clientPhone?: string | null;
+  /** Número de documento del cliente (DNI, RUC…); vacío si no tiene. */
+  clientDocument?: string | null;
   /** En el orden en que se muestran; las anuladas, rechazadas y sin arreglo se omiten. */
   pieces: readonly QuotePiece[];
   paymentType: PaymentType;
@@ -160,6 +164,8 @@ export function quoteValues(
     .join("\n\n");
   return {
     cliente: (data.contactName?.trim() || data.clientName).trim(),
+    telefono: data.clientPhone?.trim() ?? "",
+    dni: data.clientDocument?.trim() ?? "",
     codigo: data.code,
     piezas,
     total: amount(totalCents),

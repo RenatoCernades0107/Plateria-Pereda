@@ -135,12 +135,16 @@ export default async function RestauracionDetallePage({
   const company = await getSettings();
   const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
+  const clientPhone =
+    restoration.client?.phone ?? restoration.contact?.phone ?? null;
   const quoteData =
     settings && charged
       ? {
           code: restoration.code,
           clientName: restoration.client?.name ?? "",
           contactName: restoration.contact?.name ?? null,
+          clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+          clientDocument: restoration.client?.document?.number ?? null,
           paymentType: restoration.paymentType,
           depositPercent: restoration.money?.depositPercent ?? 0,
           terms: settings.terms,

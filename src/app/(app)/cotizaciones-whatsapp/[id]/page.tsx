@@ -97,9 +97,15 @@ export default async function CotizacionWhatsappPage({
     quote.client?.phone ??
     (quote.customerPhone || null);
   const serviceNames = await serviceNamesById();
+  const clientPhone =
+    quote.client?.phone ??
+    quote.contact?.phone ??
+    (quote.customerPhone || null);
   const message = buildQuoteMessage(settings.whatsappTemplate, {
     code: quote.code,
     clientName: name,
+    clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+    clientDocument: quote.client?.documentNumber ?? null,
     pieces: quote.items.map((i) => ({
       description: i.description,
       quantity: i.quantity,
