@@ -42,7 +42,12 @@ export function AlertsBell({ userId }: { userId: string }) {
   const [alerts, setAlerts] = useState<MyAlert[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  // Alertas ya vistas en esta pestaña: solo las nuevas muestran un aviso.
+  // Aviso para lectores de pantalla. Sin toast: aparecería en cualquier momento,
+  // en medio del trabajo; el contador de la campana ya lo muestra.
+  const [announcement, setAnnouncement] = useState("");
+  // Recibe las alertas en vivo (Realtime suscrito).
+  const [live, setLive] = useState(false);
+  // Alertas ya vistas en esta pestaña: solo las nuevas se anuncian.
   const known = useRef<Set<string> | null>(null);
 
   const refresh = useCallback(async () => {
@@ -55,7 +60,7 @@ export function AlertsBell({ userId }: { userId: string }) {
     const previous = known.current;
     if (previous) {
       const fresh = result.alerts.find((a) => !a.read && !previous.has(a.id));
-      if (fresh) toast.info(fresh.title, { description: fresh.body });
+      if (fresh) setAnnouncement(`Nueva alerta: ${fresh.title}`);
     }
     known.current = new Set(result.alerts.map((a) => a.id));
     setAlerts(result.alerts);
@@ -85,7 +90,14 @@ export function AlertsBell({ userId }: { userId: string }) {
           },
           () => void refresh(),
         )
-        .subscribe();
+        .subscribe((status) => {
+          // Ya suscrita: se recarga por si llegó algo antes de la suscripción.
+          if (status === "SUBSCRIBED") {
+            void refresh().then(() => {
+              if (!cancelled) setLive(true);
+            });
+          }
+        });
     });
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -128,6 +140,7 @@ export function AlertsBell({ userId }: { userId: string }) {
           size="icon"
           className="relative"
           aria-label={bellLabel(unread)}
+          data-live={live}
         >
           <Bell />
           {unread > 0 ? (
@@ -203,6 +216,9 @@ export function AlertsBell({ userId }: { userId: string }) {
           </ul>
         )}
       </PopoverContent>
+      <span role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </span>
     </Popover>
   );
 }

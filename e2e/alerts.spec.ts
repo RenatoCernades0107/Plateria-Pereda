@@ -72,15 +72,27 @@ test.describe("Alertas", () => {
     await loginAs("logistica");
     await page.goto("/piezas");
     const bell = page.getByRole("button", { name: /^Alertas/ });
-    await expect(bell).toBeVisible();
+    // Esperar a que la campana escuche en vivo (Realtime).
+    await expect(bell).toHaveAttribute("data-live", "true", {
+      timeout: 15_000,
+    });
+
+    const unread = async () =>
+      Number(
+        /(\d+) sin leer/.exec(
+          (await bell.getAttribute("aria-label")) ?? "",
+        )?.[1] ?? 0,
+      );
+    const before = await unread();
 
     await changeStatusAs("ventas", [guide.pieceIds[0]!], "aprobada");
 
-    // Llega sola (Realtime), con su aviso.
+    // Llega sola, sin recargar, y se anuncia a los lectores de pantalla (otros tests
+    // en paralelo también pueden mandarle alertas a logística).
+    await expect.poll(unread, { timeout: 15_000 }).toBeGreaterThan(before);
     await expect(
-      page.getByText(`${guide.code} · Guía parcialmente aprobada`).first(),
-    ).toBeVisible({ timeout: 15_000 });
-    await expect(bell).toHaveAccessibleName(/Alertas, \d+ sin leer/);
+      page.getByRole("status").filter({ hasText: "Nueva alerta" }),
+    ).toContainText("Nueva alerta:");
 
     await bell.click();
     const item = page
@@ -136,7 +148,11 @@ test.describe("Alertas", () => {
       const guide = await seedRestoration(["en_consulta", "en_consulta"]);
       await changeStatusAs("logistica", [guide.pieceIds[0]!], "en_espera");
       await page.goto("/dashboard");
-      await page.getByRole("button", { name: /^Alertas/ }).click();
+      const adminBell = page.getByRole("button", { name: /^Alertas/ });
+      await expect(adminBell).toHaveAttribute("data-live", "true", {
+        timeout: 15_000,
+      });
+      await adminBell.click();
       await expect(
         page
           .getByRole("dialog")

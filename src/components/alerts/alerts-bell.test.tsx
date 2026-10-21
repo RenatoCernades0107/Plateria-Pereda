@@ -112,12 +112,12 @@ describe("AlertsBell", () => {
     expect(mocks.toastInfo).not.toHaveBeenCalled();
 
     await act(async () => mocks.onInsert?.());
-    await waitFor(() =>
-      expect(mocks.toastInfo).toHaveBeenCalledWith(
-        "RES-00003 · Guía parcialmente aprobada",
-        { description: "Van 2 de 4 piezas aprobadas." },
+    expect(
+      await screen.findByText(
+        "Nueva alerta: RES-00003 · Guía parcialmente aprobada",
       ),
-    );
+    ).toBeInTheDocument();
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
     expect(
       screen.getByRole("button", { name: "Alertas, 1 sin leer" }),
     ).toBeInTheDocument();
