@@ -365,14 +365,14 @@ describe("PiecesBoard: precio de venta (D58)", () => {
     expect(screen.queryByText("Por definir")).toBeNull();
   });
 
-  it("muestra la cantidad junto al código cuando es más de una", () => {
+  it("muestra siempre la cantidad junto al código, también con una", () => {
     renderBoard([piece(1), piece(2, { quantity: 4 })]);
     expect(
       within(screen.getByTestId("pieza-RES-00001-2")).getByTestId("cantidad"),
     ).toHaveTextContent("×4");
     expect(
-      within(screen.getByTestId("pieza-RES-00001-1")).queryByTestId("cantidad"),
-    ).toBeNull();
+      within(screen.getByTestId("pieza-RES-00001-1")).getByTestId("cantidad"),
+    ).toHaveTextContent("×1");
   });
 
   it("el admin asigna con el lápiz de la tabla el precio por definir", async () => {

@@ -18,9 +18,17 @@ import { loadPhotos, PDF_LOGO_URL, thumbnail } from "./pdf-images";
 
 /**
  * Botón "Generar reporte para proveedor" de la vista de piezas: un PDF con la ficha de
- * cada pieza elegida (sin precios, costos ni datos del cliente) y la fecha de impresión.
+ * cada pieza elegida (con medidas, peso y, si quien lo genera lo ve, el costo de
+ * servicio; sin precio de venta ni datos del cliente) y la fecha de impresión.
  */
-export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
+export function ProviderReportButton({
+  pieces,
+  showServiceCost = false,
+}: {
+  pieces: BoardPiece[];
+  /** Admin y logística: el reporte lleva el costo de servicio de cada pieza. */
+  showServiceCost?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
 
   async function generate() {
@@ -45,7 +53,6 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
       const model = providerReportModel(
         pieces.map((p) => ({
           id: p.id,
-          guideCode: p.restorationCode,
           code: p.code,
           quantity: p.quantity,
           status: p.status,
@@ -56,8 +63,9 @@ export function ProviderReportButton({ pieces }: { pieces: BoardPiece[] }) {
           materialName: p.materialName,
           measure: p.measure,
           weightGrams: p.weightGrams,
+          serviceCostCents: p.serviceCostCents,
         })),
-        { generatedBy: data.generatedBy },
+        { generatedBy: data.generatedBy, showServiceCost },
       );
       const pdf = await drawProviderReport(model, { logo, images });
       pdf.save(providerReportFileName());

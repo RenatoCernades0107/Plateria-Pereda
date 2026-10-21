@@ -51,6 +51,7 @@ import {
   LocationBadge,
   PieceStatusBadge,
   StatusAge,
+  PieceQuantity,
   UrgentIcon,
 } from "./status-badges";
 import { WorkshopEditButton } from "./workshop-edit-button";
@@ -281,8 +282,8 @@ function BoardRow({
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
         <td className={cn(cell, STICKY.code, "max-md:min-w-0 max-md:flex-1")}>
-          {/* Urgente: solo el rayo, al costado del código; la cantidad, si es más
-              de una. El código ya dice la guía (el detalle de la pieza la enlaza). */}
+          {/* Urgente: solo el rayo, al costado del código; y la cantidad,
+              siempre. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
             <Link
               href={pieceHref(piece)}
@@ -292,16 +293,7 @@ function BoardRow({
             >
               {piece.code}
             </Link>
-            {piece.quantity > 1 ? (
-              <span
-                className="text-muted-foreground text-xs font-medium whitespace-nowrap tabular-nums"
-                data-testid="cantidad"
-                title={`Cantidad: ${piece.quantity}`}
-              >
-                <span aria-hidden>×{piece.quantity}</span>
-                <span className="sr-only">Cantidad: {piece.quantity}</span>
-              </span>
-            ) : null}
+            <PieceQuantity quantity={piece.quantity} />
             {piece.urgent ? <UrgentIcon /> : null}
           </span>
         </td>
@@ -492,7 +484,10 @@ export function PiecesBoardTable({
         total={selectable.length}
         workshopPicker={false}
       >
-        <ProviderReportButton pieces={chosen} />
+        <ProviderReportButton
+          pieces={chosen}
+          showServiceCost={can(role, "piezas.costo-servicio")}
+        />
       </PiecesBulkBar>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {selectable.length > 0 ? (

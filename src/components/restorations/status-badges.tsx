@@ -226,6 +226,33 @@ export function UrgentIcon({ className }: { className?: string }) {
 }
 
 /**
+ * Cantidad de unidades de la pieza ("×N"), al costado del código. Se muestra siempre,
+ * también con una sola unidad (2026-10-21). El texto oculto lo dice a los lectores de
+ * pantalla y el `title` al pasar el mouse.
+ */
+export function PieceQuantity({
+  quantity,
+  className,
+}: {
+  quantity: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "text-muted-foreground text-xs font-medium whitespace-nowrap tabular-nums",
+        className,
+      )}
+      data-testid="cantidad"
+      title={`Cantidad: ${quantity}`}
+    >
+      <span aria-hidden>×{quantity}</span>
+      <span className="sr-only">Cantidad: {quantity}</span>
+    </span>
+  );
+}
+
+/**
  * Tono del estado general: en aprobación (info), listo para entregar (éxito),
  * completado (neutro, ya no pide nada), rechazado (crítico). El icono de progreso es el
  * indicador de la insignia.

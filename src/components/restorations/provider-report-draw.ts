@@ -13,24 +13,27 @@ type Column = {
   key:
     | "number"
     | "photo"
-    | "guide"
     | "code"
     | "quantity"
     | "description"
+    | "measure"
+    | "weight"
     | "service"
+    | "serviceCost"
     | "status"
     | "location";
   title: string;
   width: number;
-  align?: "left" | "center";
+  align?: "left" | "center" | "right";
 };
 
 /**
- * Dibuja el reporte para el proveedor en un A4 vertical (mm), con la misma tabla que la
- * guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, guía, código,
- * cantidad, descripción con material, medidas y peso, servicio a realizar, servicio,
- * estado y ubicación).
- * Sin precios, costos ni datos del cliente. `logo` y las fotos van como data URL.
+ * Dibuja el reporte para el proveedor en un A4 horizontal (mm), con la misma tabla que
+ * la guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, código,
+ * cantidad, descripción con material y servicio a realizar, medidas, peso, servicio,
+ * costo de servicio si el modelo lo lleva, estado y ubicación). El código ya dice la
+ * guía, así que no va aparte. Con costo de servicio, al final va su total.
+ * Sin precio de venta ni datos del cliente. `logo` y las fotos van como data URL.
  */
 export async function drawProviderReport(
   model: ProviderReportModel,
@@ -40,7 +43,11 @@ export async function drawProviderReport(
   }: { logo?: string | null; images?: Map<string, string> | null } = {},
 ): Promise<jsPDF> {
   const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  const pdf = new jsPDF({
+    unit: "mm",
+    format: "a4",
+    orientation: "landscape",
+  });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
   const right = pageW - MARGIN;
@@ -76,13 +83,24 @@ export async function drawProviderReport(
   const columns: Column[] = [
     { key: "number", title: "N°", width: 8, align: "center" },
     { key: "photo", title: "FOTO", width: 18 },
-    { key: "guide", title: "N° GUÍA", width: 21 },
-    { key: "code", title: "CÓDIGO", width: 24 },
-    { key: "quantity", title: "CANT.", width: 10, align: "center" },
+    { key: "code", title: "CÓDIGO", width: 26 },
+    { key: "quantity", title: "CANT.", width: 11, align: "center" },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
-    { key: "service", title: "SERVICIO", width: 24 },
-    { key: "status", title: "ESTADO", width: 21 },
-    { key: "location", title: "UBICACIÓN", width: 19 },
+    { key: "measure", title: "MEDIDAS", width: 24 },
+    { key: "weight", title: "PESO", width: 16, align: "right" },
+    { key: "service", title: "SERVICIO", width: 30 },
+    ...(model.showServiceCost
+      ? [
+          {
+            key: "serviceCost",
+            title: "COSTO SERV.",
+            width: 22,
+            align: "right",
+          } as const,
+        ]
+      : []),
+    { key: "status", title: "ESTADO", width: 24 },
+    { key: "location", title: "UBICACIÓN", width: 22 },
   ];
   const description = columns.find((c) => c.key === "description")!;
   description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
@@ -126,14 +144,14 @@ export async function drawProviderReport(
     const status = pdf.splitTextToSize(row.status, textW("status"));
     const location = pdf.splitTextToSize(row.location, textW("location"));
     const code = pdf.splitTextToSize(row.code, textW("code"));
-    const guide = pdf.splitTextToSize(row.guide, textW("guide"));
+    const measure = pdf.splitTextToSize(row.measure, textW("measure"));
     const lines = Math.max(
       desc.length + detail.length + task.length,
       service.length,
       status.length,
       location.length,
       code.length,
-      guide.length,
+      measure.length,
     );
     const rowH = Math.max(lines * lineH + pad * 2, 20);
     if (y + rowH > bottomLimit) {
@@ -174,10 +192,6 @@ export async function drawProviderReport(
           }
           break;
         }
-        case "guide":
-          font("normal", 8.5);
-          pdf.text(guide, x + pad, textTop);
-          break;
         case "code":
           font("bold", 8.5);
           pdf.text(code, x + pad, textTop);
@@ -198,9 +212,23 @@ export async function drawProviderReport(
           }
           break;
         }
+        case "measure":
+          font("normal", 8);
+          pdf.text(measure, x + pad, textTop);
+          break;
+        case "weight":
+          font("normal", 8);
+          pdf.text(row.weight, x + c.width - pad, textTop, { align: "right" });
+          break;
         case "service":
           font("normal", 8);
           pdf.text(service, x + pad, textTop);
+          break;
+        case "serviceCost":
+          font("normal", 8);
+          pdf.text(row.serviceCost, x + c.width - pad, textTop, {
+            align: "right",
+          });
           break;
         case "quantity":
           font("normal", 8.5);
@@ -225,6 +253,21 @@ export async function drawProviderReport(
   for (let n = model.rows.length; n < MIN_ROWS && y + 7 <= bottomLimit; n++) {
     drawRowFrame(7);
     y += 7;
+  }
+
+  // Total del costo de servicio, bajo la tabla.
+  if (model.showServiceCost) {
+    if (y + 8 > bottomLimit) {
+      pdf.addPage();
+      y = MARGIN;
+    }
+    font("bold", 9);
+    pdf.text(
+      `TOTAL COSTO DE SERVICIO: ${model.totalServiceCost}`,
+      right,
+      y + 6,
+      { align: "right" },
+    );
   }
 
   // --- Pie: fecha, quién lo generó (discreto) y numeración.

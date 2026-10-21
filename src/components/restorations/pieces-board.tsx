@@ -51,7 +51,12 @@ import {
 } from "./piece-status-actions";
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, PieceStatusBadge, UrgentIcon } from "./status-badges";
+import {
+  LocationBadge,
+  PieceQuantity,
+  PieceStatusBadge,
+  UrgentIcon,
+} from "./status-badges";
 import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
 
 export { commonTransitions } from "./pieces-bulk-bar";
@@ -168,7 +173,7 @@ function PieceRow({
         <PiecePhoto code={piece.code} url={photoUrl} />
       </td>
       <td className={cn(CELL, STICKY.code, "whitespace-nowrap")}>
-        {/* Urgente: solo el rayo, al costado del código. */}
+        {/* Urgente: solo el rayo, al costado del código, como la cantidad. */}
         <span className="inline-flex items-center gap-1">
           <Link
             href={pieceHref(piece)}
@@ -176,16 +181,7 @@ function PieceRow({
           >
             {piece.code}
           </Link>
-          {piece.quantity > 1 ? (
-            <span
-              className="text-muted-foreground text-xs font-medium tabular-nums"
-              data-testid="cantidad"
-              title={`Cantidad: ${piece.quantity}`}
-            >
-              <span aria-hidden>×{piece.quantity}</span>
-              <span className="sr-only">Cantidad: {piece.quantity}</span>
-            </span>
-          ) : null}
+          <PieceQuantity quantity={piece.quantity} />
           {live.urgent ? <UrgentIcon /> : null}
         </span>
       </td>
