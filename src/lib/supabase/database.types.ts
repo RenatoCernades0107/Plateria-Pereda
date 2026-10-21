@@ -2053,10 +2053,10 @@ export type Database = {
       list_whatsapp_quotes: {
         Args: {
           p_client_id?: string;
+          p_dir?: string;
           p_from?: string;
           p_limit?: number;
           p_offset?: number;
-          p_dir?: string;
           p_query?: string;
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["whatsapp_quote_status"];
