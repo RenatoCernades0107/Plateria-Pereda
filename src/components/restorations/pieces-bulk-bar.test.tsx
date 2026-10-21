@@ -29,7 +29,10 @@ const piece: StatusPiece = {
   urgent: false,
 };
 const second = { ...piece, id: "p2", code: "RES-00001-2" };
-const workshops = [{ id: "w1", name: "Taller Central" }];
+const workshops = [
+  { id: "w1", name: "Taller Central" },
+  { id: "w2", name: "Taller Norte" },
+];
 
 beforeEach(() => {
   Object.values(actions).forEach((fn) => fn.mockReset());
@@ -181,6 +184,50 @@ describe("PiecesBulkBar · acciones de ubicación", () => {
       ["p1", "p2"],
       "w1",
     );
+  });
+
+  it("piezas de talleres distintos: cada una va a su taller asignado", async () => {
+    const user = userEvent.setup();
+    renderBar([
+      { ...piece, workshopId: "w1" },
+      { ...second, workshopId: "w2" },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("combobox")).toHaveTextContent(
+      "Cada una a su taller asignado",
+    );
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: enviar al taller",
+      }),
+    );
+    expect(actions.sendPiecesToWorkshop).toHaveBeenCalledWith(
+      ["p1", "p2"],
+      null,
+    );
+  });
+
+  it("si alguna pieza no tiene taller, hay que elegir uno", async () => {
+    const user = userEvent.setup();
+    renderBar([
+      { ...piece, workshopId: "w1" },
+      { ...second, workshopId: null },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("combobox")).toHaveTextContent(
+      "Elige un taller",
+    );
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: enviar al taller",
+      }),
+    );
+    expect(
+      within(dialog).getByText("Elige el taller al que se envía la pieza."),
+    ).toBeInTheDocument();
+    expect(actions.sendPiecesToWorkshop).not.toHaveBeenCalled();
   });
 
   it("si solo algunas admiten la acción, el botón se deshabilita y explica por qué", () => {

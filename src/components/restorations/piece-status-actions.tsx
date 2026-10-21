@@ -184,6 +184,8 @@ export function locationAfter(
 }
 
 const NONE = "ninguno";
+/** «Cada una a su taller asignado» (envío masivo de piezas de varios talleres). */
+const OWN = "propio";
 
 /** Taller a elegir entre los activos (cambio de estado y revisión en taller). */
 function WorkshopSelect({
@@ -191,11 +193,14 @@ function WorkshopSelect({
   value,
   onChange,
   workshops,
+  ownOption = false,
 }: {
   id: string;
   value: string | null;
   onChange: (workshopId: string | null) => void;
   workshops: WorkshopOption[];
+  /** Ofrece «Cada una a su taller asignado» (valor `OWN`). */
+  ownOption?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
@@ -209,6 +214,9 @@ function WorkshopSelect({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={NONE}>Elige un taller</SelectItem>
+          {ownOption ? (
+            <SelectItem value={OWN}>Cada una a su taller asignado</SelectItem>
+          ) : null}
           {workshops.map((w) => (
             <SelectItem key={w.id} value={w.id}>
               {w.name}
@@ -346,7 +354,9 @@ const sharedWorkshop = (pieces: readonly StatusPiece[]) => {
  * Elegir el taller y llevar ahí las piezas, sin cambiar su estado: a revisar
  * (`kind="revision"`, «Llevar al taller a revisar») o a restaurar (`kind="envio"`,
  * «Enviar al taller»). La ubicación pasa a En taller hasta que se marca que volvió.
- * Propone el taller que ya tienen asignado.
+ * Propone el taller que ya tienen asignado. Al enviar varias piezas que ya tienen
+ * taller (de talleres distintos), propone «Cada una a su taller asignado»:
+ * `onConfirm(null)` y cada pieza va al suyo.
  */
 export function ReviewDialog({
   open,
@@ -360,11 +370,16 @@ export function ReviewDialog({
   onOpenChange: (open: boolean) => void;
   pieces: StatusPiece[];
   workshops: WorkshopOption[];
-  onConfirm: (workshopId: string) => Promise<string | null>;
+  onConfirm: (workshopId: string | null) => Promise<string | null>;
   kind?: "revision" | "envio";
 }) {
+  const shared = sharedWorkshop(pieces);
+  const ownOption =
+    kind === "envio" &&
+    pieces.length > 1 &&
+    pieces.every((p) => p.workshopId !== null);
   const [workshopId, setWorkshopId] = useState<string | null>(
-    sharedWorkshop(pieces),
+    shared ?? (ownOption ? OWN : null),
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -383,7 +398,7 @@ export function ReviewDialog({
     }
     setError(null);
     startTransition(async () => {
-      const message = await onConfirm(workshopId);
+      const message = await onConfirm(workshopId === OWN ? null : workshopId);
       if (message) {
         setError(message);
         return;
@@ -413,6 +428,7 @@ export function ReviewDialog({
             value={workshopId}
             onChange={setWorkshopId}
             workshops={workshops}
+            ownOption={ownOption}
           />
         </div>
         <DialogFooter>
@@ -614,7 +630,7 @@ export function usePieceActions({
     });
 
   /** "Llevar al taller a revisar" desde su diálogo: el mensaje de error o null. */
-  const sendToReview = (workshopId: string) =>
+  const sendToReview = (workshopId: string | null) =>
     new Promise<string | null>((resolve) => {
       startTransition(async () => {
         setOptimistic({
@@ -639,7 +655,7 @@ export function usePieceActions({
     });
 
   /** "Enviar al taller" desde su diálogo: el mensaje de error o null. */
-  const sendToWorkshop = (workshopId: string) =>
+  const sendToWorkshop = (workshopId: string | null) =>
     new Promise<string | null>((resolve) => {
       startTransition(async () => {
         const now = new Date().toISOString();
