@@ -1066,6 +1066,7 @@ export type Database = {
           ruc: string | null;
           terms: string;
           updated_at: string;
+          whatsapp_quote_template: string | null;
           whatsapp_template: string | null;
         };
         Insert: {
@@ -1081,6 +1082,7 @@ export type Database = {
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
+          whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };
         Update: {
@@ -1096,6 +1098,7 @@ export type Database = {
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
+          whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };
         Relationships: [];
@@ -1255,6 +1258,63 @@ export type Database = {
           webhook_id?: string;
         };
         Relationships: [];
+      };
+      whatsapp_quote_files: {
+        Row: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          item_id: string | null;
+          mime_type: string;
+          name: string;
+          path: string;
+          quote_id: string;
+          size_bytes: number;
+        };
+        Insert: {
+          category: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          item_id?: string | null;
+          mime_type: string;
+          name: string;
+          path: string;
+          quote_id: string;
+          size_bytes: number;
+        };
+        Update: {
+          category?: Database["public"]["Enums"]["file_category"];
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          item_id?: string | null;
+          mime_type?: string;
+          name?: string;
+          path?: string;
+          quote_id?: string;
+          size_bytes?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_quote_files_item_id_fkey";
+            columns: ["item_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quote_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "whatsapp_quote_files_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "whatsapp_quotes";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       whatsapp_quote_items: {
         Row: {
@@ -1996,7 +2056,9 @@ export type Database = {
           p_from?: string;
           p_limit?: number;
           p_offset?: number;
+          p_dir?: string;
           p_query?: string;
+          p_sort?: string;
           p_status?: Database["public"]["Enums"]["whatsapp_quote_status"];
           p_to?: string;
         };

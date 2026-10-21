@@ -6,6 +6,18 @@ import { unknownPlaceholders } from "@/domain/whatsapp-template";
 const text = (max: number) =>
   z.string().trim().max(max, `Máximo ${max} caracteres`);
 
+/** Plantilla de WhatsApp: solo con variables conocidas. */
+const template = () =>
+  text(4000).superRefine((value, ctx) => {
+    const unknown = unknownPlaceholders(value);
+    if (unknown.length > 0) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Variables desconocidas: ${unknown.map((v) => `{${v}}`).join(", ")}`,
+      });
+    }
+  });
+
 export const settingsSchema = z.object({
   legalName: text(200).min(1, "Ingresa la razón social"),
   ruc: z
@@ -35,15 +47,8 @@ export const settingsSchema = z.object({
       (v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-9,
       "Máximo dos decimales",
     ),
-  whatsappTemplate: text(4000).superRefine((value, ctx) => {
-    const unknown = unknownPlaceholders(value);
-    if (unknown.length > 0) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Variables desconocidas: ${unknown.map((v) => `{${v}}`).join(", ")}`,
-      });
-    }
-  }),
+  whatsappTemplate: template(),
+  whatsappQuoteTemplate: template(),
   terms: text(5000),
 });
 

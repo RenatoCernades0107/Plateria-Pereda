@@ -39,6 +39,7 @@ export default async function ConfiguracionPage() {
           quoteValidityDays: settings.quoteValidityDays,
           depositPercent: settings.depositPercent,
           whatsappTemplate: settings.whatsappTemplate,
+          whatsappQuoteTemplate: settings.whatsappQuoteTemplate,
           terms: settings.terms,
         }}
       />

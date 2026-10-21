@@ -60,6 +60,11 @@ export type QuoteMessageData = {
    * aunque estén cerradas.
    */
   includeClosed?: boolean;
+  /**
+   * Formato de `{piezas}`: el de la guía (negrita, servicios y precio) o el
+   * referencial de las cotizaciones de WhatsApp (nombre, cantidad y precio aproximado).
+   */
+  pieceStyle?: "guia" | "referencial";
 };
 
 /** Piezas que entran en el mensaje: sin las que no se cobran, salvo elegidas a mano. */
@@ -154,13 +159,32 @@ function pieceBlock(p: QuotePiece, number: number): string {
   return [title, ...services, price].join("\n");
 }
 
+/**
+ * Bloque de una pieza en la cotización referencial de WhatsApp:
+ *   1. Juego de té
+ *   Cantidad: 1 unidad
+ *   Precio aproximado: S/ 1,300.00
+ */
+function referencePieceBlock(p: QuotePiece, number: number): string {
+  const quantity = p.quantity && p.quantity > 0 ? p.quantity : 1;
+  const price =
+    p.priceCents === null ? "por definir" : `S/ ${amount(p.priceCents)}`;
+  return [
+    `${number}. ${p.description.trim()}`,
+    `Cantidad: ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`,
+    `Precio aproximado: ${price}`,
+  ].join("\n");
+}
+
 /** Valores de cada variable de la plantilla para una restauración. */
 export function quoteValues(
   data: QuoteMessageData,
 ): Record<WhatsAppPlaceholder, string> {
   const { totalCents, depositCents } = quoteAmounts(data);
+  const block =
+    data.pieceStyle === "referencial" ? referencePieceBlock : pieceBlock;
   const piezas = chargedPieces(data)
-    .map((p, i) => pieceBlock(p, i + 1))
+    .map((p, i) => block(p, i + 1))
     .join("\n\n");
   return {
     cliente: (data.contactName?.trim() || data.clientName).trim(),
@@ -182,7 +206,10 @@ export function quoteValues(
   };
 }
 
-/** Arma el mensaje con la plantilla de la configuración (`settings.whatsappTemplate`). */
+/**
+ * Arma el mensaje con una plantilla de la configuración: `settings.whatsappTemplate`
+ * (guías) o `settings.whatsappQuoteTemplate` (cotizaciones de WhatsApp).
+ */
 export function buildQuoteMessage(
   template: string,
   data: QuoteMessageData,

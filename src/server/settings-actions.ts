@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 import { createClient } from "@/lib/supabase/server";
 import {
   settingsSchema,
@@ -13,6 +16,12 @@ import { BRANDING_BUCKET } from "@/server/settings";
 
 export type SettingsActionResult = { ok: true } | { error: string };
 
+/** Plantilla a guardar: null si está vacía o es la de la aplicación. */
+function storedTemplate(value: string, fallback: string): string | null {
+  const template = value.trim();
+  return template === "" || template === fallback ? null : template;
+}
+
 export async function updateSettings(
   input: SettingsFormInput,
 ): Promise<SettingsActionResult> {
@@ -21,7 +30,6 @@ export async function updateSettings(
   if (!parsed.success) return { error: "Revisa los datos ingresados." };
   const v = parsed.data;
 
-  const template = v.whatsappTemplate.trim();
   const supabase = await createClient();
   const { error } = await supabase
     .from("settings")
@@ -34,10 +42,14 @@ export async function updateSettings(
       quote_validity_days: v.quoteValidityDays,
       deposit_percent: v.depositPercent,
       // Igual a la de la aplicación o vacía: se guarda null para seguir sus mejoras.
-      whatsapp_template:
-        template === "" || template === DEFAULT_WHATSAPP_TEMPLATE
-          ? null
-          : template,
+      whatsapp_template: storedTemplate(
+        v.whatsappTemplate,
+        DEFAULT_WHATSAPP_TEMPLATE,
+      ),
+      whatsapp_quote_template: storedTemplate(
+        v.whatsappQuoteTemplate,
+        DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+      ),
       terms: v.terms,
     })
     .eq("id", true);

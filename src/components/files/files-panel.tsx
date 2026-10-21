@@ -1,3 +1,4 @@
+import type { FileOwner } from "@/domain/files";
 import { cn } from "@/lib/utils";
 import type { RestorationFile } from "@/server/files/queries";
 
@@ -12,7 +13,7 @@ import type { FileTarget } from "./types";
  * (sin formar una tercera columna) y la galería debajo, con todo el ancho.
  */
 export function FilesPanel({
-  restorationId,
+  owner,
   files,
   targets,
   canUpload,
@@ -23,7 +24,7 @@ export function FilesPanel({
   stacked = false,
   className,
 }: {
-  restorationId: string;
+  owner: FileOwner;
   files: RestorationFile[];
   targets: FileTarget[];
   canUpload: boolean;
@@ -56,7 +57,7 @@ export function FilesPanel({
     return (
       <div className={cn("space-y-4", className)}>
         {gallery}
-        <FileUploader restorationId={restorationId} targets={targets} />
+        <FileUploader owner={owner} targets={targets} />
       </div>
     );
   }
@@ -68,7 +69,7 @@ export function FilesPanel({
       )}
     >
       <FileUploader
-        restorationId={restorationId}
+        owner={owner}
         targets={targets}
         className="wide:static wide:max-w-xl lg:sticky lg:top-4"
       />

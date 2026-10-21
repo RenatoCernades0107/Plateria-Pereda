@@ -102,8 +102,12 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     );
     quoteUrl = new URL(page.url()).pathname;
     const mensaje = page.getByRole("dialog").getByTestId("mensaje-cotizacion");
-    await expect(mensaje).toContainText(`Hola Ana ${run}`);
-    await expect(mensaje).toContainText(/CWA-\d{5,}/);
+    // Mensaje propio de las cotizaciones de WhatsApp (no el de las guías).
+    await expect(mensaje).toContainText(
+      "Te compartimos la cotización referencial de restauración",
+    );
+    await expect(mensaje).toContainText("Cantidad: 1 unidad");
+    await expect(mensaje).toContainText("TOTAL REFERENCIAL: S/");
     // Sin teléfono no hay "Abrir WhatsApp".
     await expect(
       page.getByRole("dialog").getByRole("link", { name: /Abrir WhatsApp/ }),

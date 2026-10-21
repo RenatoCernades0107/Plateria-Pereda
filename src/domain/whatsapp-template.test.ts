@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   DEFAULT_WHATSAPP_TEMPLATE,
   renderWhatsAppTemplate,
   unknownPlaceholders,
@@ -9,6 +10,7 @@ import {
 describe("plantilla de WhatsApp", () => {
   it("la plantilla por defecto solo usa variables conocidas", () => {
     expect(unknownPlaceholders(DEFAULT_WHATSAPP_TEMPLATE)).toEqual([]);
+    expect(unknownPlaceholders(DEFAULT_WHATSAPP_QUOTE_TEMPLATE)).toEqual([]);
   });
 
   it("detecta variables mal escritas, sin repetirlas", () => {

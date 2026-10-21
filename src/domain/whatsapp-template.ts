@@ -3,9 +3,11 @@ export const WHATSAPP_PLACEHOLDERS = {
   cliente: "Nombre del cliente",
   telefono: "Teléfono del cliente",
   dni: "DNI (u otro documento) del cliente; vacío si no tiene",
-  codigo: "Código de la restauración (RES-00001)",
-  piezas: "Una línea por pieza con su descripción, servicio y precio",
-  total: "Total de la restauración",
+  codigo:
+    "Código de la restauración (RES-00001) o de la cotización (CWA-00001)",
+  piezas:
+    "Un bloque por pieza con su descripción, cantidad o servicio y precio",
+  total: "Total de la restauración o de la cotización",
   tipo_pago: "Tipo de pago (al contado, a cuenta o al crédito)",
   forma_pago: "Línea con el tipo de pago y el adelanto que corresponde",
   porcentaje_adelanto: "Porcentaje de adelanto",
@@ -23,6 +25,22 @@ Te compartimos la cotización de tu restauración *{codigo}*:
 *Total: S/ {total}*
 {forma_pago}
 {condiciones}`;
+
+/**
+ * Mensaje por defecto de las cotizaciones de WhatsApp (CWA): referencial, según las
+ * fotos que mandó el cliente; independiente del de las guías.
+ */
+export const DEFAULT_WHATSAPP_QUOTE_TEMPLATE = `Te compartimos la cotización referencial de restauración, según las fotografías enviadas.
+
+{piezas}
+
+TOTAL REFERENCIAL: S/ {total} aprox.
+
+📌 Esta cotización es referencial y podrá variar una vez que las piezas sean evaluadas físicamente en nuestro taller.
+
+Estaremos encantados de recibir las piezas para evaluarlas y confirmar la cotización. Si lo deseas, también contamos con servicio de recojo.
+
+Cualquier consulta, estaré encantada de atenderte. ☺️`;
 
 const PLACEHOLDER = /\{([^{}]*)\}/g;
 

@@ -39,7 +39,7 @@ describe("FileUploader", () => {
     const user = userEvent.setup();
     render(
       <FileUploader
-        restorationId={RESTORATION}
+        owner={{ kind: "restoration", id: RESTORATION }}
         targets={[{ id: PIECE, label: "RES-00001-1 · Fuente" }]}
       />,
     );
@@ -66,7 +66,7 @@ describe("FileUploader", () => {
     const user = userEvent.setup();
     render(
       <FileUploader
-        restorationId={RESTORATION}
+        owner={{ kind: "restoration", id: RESTORATION }}
         targets={[
           { id: null, label: "General (todas las piezas)" },
           { id: PIECE, label: "RES-00001-1 · Fuente" },

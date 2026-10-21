@@ -119,6 +119,8 @@ export default async function RestauracionDetallePage({
   const justCreated = query.registrada === "1";
   // Se registró, pero el adelanto no quedó como pago (se registra desde Pagos).
   const depositPending = query.adelanto === "pendiente";
+  // Se creó desde una cotización de WhatsApp, pero no se copiaron todas sus fotos.
+  const photosPending = query.fotos === "pendiente";
   // Piezas en lista (por defecto) o en kanban por estado (`?vista=kanban`).
   const piecesView = parseRestorationPiecesView(query);
   // Pestaña abierta (`?pestana=pagos`): sobrevive a recargas y se puede enlazar.
@@ -550,6 +552,13 @@ export default async function RestauracionDetallePage({
             </Notice>
           ) : null}
 
+          {photosPending ? (
+            <Notice tone="destructive">
+              No se pudieron copiar algunas fotos de la cotización de WhatsApp:
+              súbelas desde Archivos.
+            </Notice>
+          ) : null}
+
           {restoration.money &&
           restoration.hasOrder &&
           restoration.money.paidCents > restoration.money.totalCents ? (
@@ -693,7 +702,7 @@ export default async function RestauracionDetallePage({
             ) : null}
             <TabsContent value="archivos">
               <FilesPanel
-                restorationId={restoration.id}
+                owner={{ kind: "restoration", id: restoration.id }}
                 files={files}
                 targets={fileTargets}
                 canUpload={can(user.role, "fotos.subir")}

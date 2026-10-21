@@ -118,6 +118,38 @@ export function filePath(
   return `restorations/${restorationId}/${folder}/${fileId}.${FILE_TYPES[type]}`;
 }
 
+/**
+ * Ruta en el bucket de un archivo de cotización de WhatsApp:
+ * `whatsapp-quotes/{id}/general/...` o `whatsapp-quotes/{id}/items/{id}/...`.
+ */
+export function quoteFilePath(
+  quoteId: string,
+  itemId: string | null,
+  fileId: string,
+  type: FileMimeType,
+): string {
+  const folder = itemId ? `items/${itemId}` : "general";
+  return `whatsapp-quotes/${quoteId}/${folder}/${fileId}.${FILE_TYPES[type]}`;
+}
+
+/** De quién es un archivo: una restauración (guía) o una cotización de WhatsApp. */
+export type FileOwner = {
+  kind: "restoration" | "whatsappQuote";
+  id: string;
+};
+
+/** Ruta en el bucket según de quién es el archivo (`targetId`: pieza o ítem; null, general). */
+export function ownerFilePath(
+  owner: FileOwner,
+  targetId: string | null,
+  fileId: string,
+  type: FileMimeType,
+): string {
+  return owner.kind === "whatsappQuote"
+    ? quoteFilePath(owner.id, targetId, fileId, type)
+    : filePath(owner.id, targetId, fileId, type);
+}
+
 /** Agrupa por clasificación, en el orden Antes, Después, Documento, Otro (solo las que tienen archivos). */
 export function groupByCategory<T extends { category: FileCategory }>(
   files: readonly T[],

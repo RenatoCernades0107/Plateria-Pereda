@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
@@ -38,6 +41,7 @@ const input = {
   quoteValidityDays: "20",
   depositPercent: "40",
   whatsappTemplate: "Hola {cliente}",
+  whatsappQuoteTemplate: "Cotización {piezas}",
   terms: "",
 };
 
@@ -55,6 +59,7 @@ describe("updateSettings", () => {
         quote_validity_days: 20,
         deposit_percent: 40,
         whatsapp_template: "Hola {cliente}",
+        whatsapp_quote_template: "Cotización {piezas}",
       }),
     );
   });
@@ -68,6 +73,22 @@ describe("updateSettings", () => {
       expect.objectContaining({ whatsapp_template: null }),
     );
   });
+
+  it.each([
+    ["", "vacía"],
+    [DEFAULT_WHATSAPP_QUOTE_TEMPLATE, "igual a la original"],
+  ])(
+    "una plantilla de cotizaciones %#(%s) se guarda como null",
+    async (whatsappQuoteTemplate) => {
+      await updateSettings({ ...input, whatsappQuoteTemplate });
+      expect(mocks.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          whatsapp_template: "Hola {cliente}",
+          whatsapp_quote_template: null,
+        }),
+      );
+    },
+  );
 
   it("rechaza datos inválidos sin guardar", async () => {
     expect(await updateSettings({ ...input, depositPercent: "0" })).toEqual({

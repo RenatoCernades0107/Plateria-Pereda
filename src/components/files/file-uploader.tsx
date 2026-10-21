@@ -20,13 +20,17 @@ import {
   FILE_CATEGORY_LABELS,
   fileError,
   fileMimeType,
-  filePath,
+  ownerFilePath,
   type FileCategory,
+  type FileOwner,
 } from "@/domain/files";
 import { compressImage } from "@/lib/images/compress";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
-import { registerRestorationFile } from "@/server/files/actions";
+import {
+  registerRestorationFile,
+  registerWhatsappQuoteFile,
+} from "@/server/files/actions";
 
 import type { FileTarget } from "./types";
 
@@ -47,27 +51,37 @@ const BUCKET = "restoration-files";
 
 /** Comprime (si es foto), sube al bucket y registra. Devuelve el error, si lo hay. */
 async function uploadOne(
-  restorationId: string,
+  owner: FileOwner,
   item: UploadItem,
 ): Promise<string | null> {
   const file = await compressImage(item.file);
   const mimeType = fileMimeType(file);
   if (!mimeType) return "Tipo de archivo no permitido.";
   const fileId = crypto.randomUUID();
-  const path = filePath(restorationId, item.pieceId, fileId, mimeType);
+  const path = ownerFilePath(owner, item.pieceId, fileId, mimeType);
   const { error } = await createClient()
     .storage.from(BUCKET)
     .upload(path, file, { contentType: mimeType });
   if (error) return "No se pudo subir. Revisa la conexión e intenta de nuevo.";
-  const result = await registerRestorationFile({
-    restorationId,
-    pieceId: item.pieceId,
+  const data = {
     fileId,
     name: file.name,
     mimeType,
     sizeBytes: file.size,
     category: item.category,
-  });
+  };
+  const result =
+    owner.kind === "whatsappQuote"
+      ? await registerWhatsappQuoteFile({
+          quoteId: owner.id,
+          itemId: item.pieceId,
+          ...data,
+        })
+      : await registerRestorationFile({
+          restorationId: owner.id,
+          pieceId: item.pieceId,
+          ...data,
+        });
   return "error" in result ? result.error : null;
 }
 
@@ -75,18 +89,19 @@ const targetValue = (t: FileTarget) => t.id ?? GENERAL;
 
 /**
  * Subida de fotos y archivos (Paso 10.2, P32): varios a la vez o con la cámara del
- * celular, a la restauración (foto general) o a una pieza, con su clasificación.
+ * celular, a la restauración o a la cotización de WhatsApp (foto general) o a una
+ * pieza, con su clasificación.
  *
  * Con un solo destino (p. ej. en el detalle de una pieza) el destino queda fijo: se
  * muestra como texto y no se puede cambiar. Con varios, empieza en el primero (en la
  * guía, "General").
  */
 export function FileUploader({
-  restorationId,
+  owner,
   targets,
   className,
 }: {
-  restorationId: string;
+  owner: FileOwner;
   targets: FileTarget[];
   className?: string;
 }) {
@@ -116,7 +131,7 @@ export function FileUploader({
     let ok = 0;
     for (const item of batch) {
       update(item.key, { status: "subiendo", error: undefined });
-      const error = await uploadOne(restorationId, item).catch(
+      const error = await uploadOne(owner, item).catch(
         () => "No se pudo subir. Intenta de nuevo.",
       );
       update(

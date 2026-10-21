@@ -11,6 +11,8 @@ import {
   WHATSAPP_QUOTE_STATUS_LABELS,
   WHATSAPP_QUOTE_STATUSES,
   whatsappQuoteFiltersHref,
+  whatsappQuoteSortChange,
+  whatsappQuoteStatusChips,
 } from "./whatsapp-quotes";
 
 describe("estado de la cotización de WhatsApp (P46)", () => {
@@ -78,6 +80,8 @@ describe("filtros del listado", () => {
       clientId: null,
       from: null,
       to: null,
+      sort: "created_at",
+      dir: "desc",
       page: 1,
     });
     expect(
@@ -95,6 +99,8 @@ describe("filtros del listado", () => {
       clientId: "00000000-0000-0000-0000-0000000000ab",
       from: "2026-10-01",
       to: null,
+      sort: "created_at",
+      dir: "desc",
       page: 2,
     });
     expect(parseWhatsappQuoteFilters({ estado: "x" }).status).toBeNull();
@@ -120,6 +126,49 @@ describe("filtros del listado", () => {
       p_to: undefined,
       p_limit: 25,
       p_offset: 50,
+      p_sort: "created_at",
+      p_dir: "desc",
+    });
+  });
+
+  it("ordena como las restauraciones: la misma columna invierte", () => {
+    const filters = parseWhatsappQuoteFilters({ orden: "total", dir: "asc" });
+    expect(filters).toMatchObject({ sort: "total", dir: "asc" });
+    expect(whatsappQuoteFiltersHref(filters)).toBe(
+      "/cotizaciones-whatsapp?orden=total&dir=asc",
+    );
+    expect(whatsappQuoteSortChange(filters, "total")).toEqual({
+      sort: "total",
+      dir: "desc",
+      page: 1,
+    });
+    expect(whatsappQuoteSortChange(filters, "client")).toEqual({
+      sort: "client",
+      dir: "asc",
+      page: 1,
+    });
+    expect(parseWhatsappQuoteFilters({ orden: "x" }).sort).toBe("created_at");
+  });
+
+  it("chips por estado: activan el filtro y, activos, lo quitan", () => {
+    const chips = whatsappQuoteStatusChips(
+      parseWhatsappQuoteFilters({ estado: "cotizada", pagina: "2" }),
+      { pedida: 4 },
+    );
+    expect(chips.map((c) => c.key)).toEqual([
+      "cotizada",
+      "pedida_parcial",
+      "pedida",
+      "descartada",
+    ]);
+    expect(chips[0]).toMatchObject({
+      active: true,
+      href: "/cotizaciones-whatsapp",
+    });
+    expect(chips[2]).toMatchObject({
+      active: false,
+      count: 4,
+      href: "/cotizaciones-whatsapp?estado=pedida",
     });
   });
 });

@@ -15,6 +15,10 @@ import {
 } from "@/lib/validation/restorations";
 import { requirePermission } from "@/server/auth";
 import {
+  copyQuoteFilesToRestoration,
+  PHOTOS_NOT_COPIED,
+} from "@/server/files/copy";
+import {
   DEPOSIT_NOT_RECORDED,
   recordInitialDeposit,
 } from "@/server/payments/initial-deposit";
@@ -26,9 +30,19 @@ import {
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type QuoteActionResult = { ok: true } | { error: string };
-/** `warning`: la restauración se creó, pero su adelanto no se registró como pago. */
+/**
+ * `warning`: la restauración se creó, pero su adelanto no se registró como pago.
+ * `photosWarning`: se creó, pero no se copiaron todas las fotos de la cotización.
+ */
 export type CreatedResult =
-  { ok: true; id: string; code: string; warning?: string } | { error: string };
+  | {
+      ok: true;
+      id: string;
+      code: string;
+      warning?: string;
+      photosWarning?: string;
+    }
+  | { error: string };
 
 /** Las RPC de la BD ya traen mensajes en español para estos códigos. */
 const READABLE = new Set(["23514", "42501", "23503", "22023"]);
@@ -160,11 +174,21 @@ export async function createRestorationFromQuote(
     v.depositAmount !== null && v.depositAmount > 0 && v.depositMethodId
       ? await recordInitialDeposit(supabase, data.id, v.depositMethodId)
       : true;
+  // Las fotos de la cotización pasan a la guía (la cotización conserva las suyas).
+  const notCopied = await copyQuoteFilesToRestoration(
+    supabase,
+    quoteId,
+    data.id,
+  ).catch(() => 1);
   // Con todas las piezas Aprobadas se encola la orden de Shopify (9.1).
   scheduleShopifySync();
   revalidatePath(`/cotizaciones-whatsapp/${quoteId}`);
   revalidatePath("/restauraciones");
-  return recorded
-    ? { ok: true, id: data.id, code: data.code }
-    : { ok: true, id: data.id, code: data.code, warning: DEPOSIT_NOT_RECORDED };
+  return {
+    ok: true,
+    id: data.id,
+    code: data.code,
+    ...(recorded ? {} : { warning: DEPOSIT_NOT_RECORDED }),
+    ...(notCopied > 0 ? { photosWarning: PHOTOS_NOT_COPIED } : {}),
+  };
 }

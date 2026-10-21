@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 
 const mocks = vi.hoisted(() => ({ single: vi.fn() }));
 
@@ -33,6 +36,7 @@ const row = {
   quote_validity_days: 15,
   deposit_percent: "50.00",
   whatsapp_template: null,
+  whatsapp_quote_template: null,
   terms: "",
 };
 
@@ -45,17 +49,25 @@ describe("getSettings", () => {
       depositPercent: 50,
       customWhatsappTemplate: null,
       whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE,
+      customWhatsappQuoteTemplate: null,
+      whatsappQuoteTemplate: DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
     });
   });
 
   it("usa la plantilla guardada y no arma URL sin logo", async () => {
     mocks.single.mockResolvedValue({
-      data: { ...row, logo_path: null, whatsapp_template: "Hola" },
+      data: {
+        ...row,
+        logo_path: null,
+        whatsapp_template: "Hola",
+        whatsapp_quote_template: "Cotización",
+      },
       error: null,
     });
     expect(await getSettings()).toMatchObject({
       logoUrl: null,
       whatsappTemplate: "Hola",
+      whatsappQuoteTemplate: "Cotización",
     });
   });
 
