@@ -5,7 +5,10 @@ const unique = (prefix: string) =>
   `${prefix} ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 test.describe("Catálogos", () => {
-  const created: { table: "materials" | "services"; name: string }[] = [];
+  const created: {
+    table: "materials" | "services" | "payment_methods";
+    name: string;
+  }[] = [];
 
   test.afterAll(async () => {
     for (const { table, name } of created) {
@@ -183,6 +186,42 @@ test.describe("Catálogos", () => {
     await dialog.getByLabel("Nombre en Shopify").fill("");
     await dialog.getByRole("button", { name: "Guardar" }).click();
     await expect(tarjeta).not.toContainText("Visa");
+  });
+
+  test("el admin elimina un método de pago sin pagos; uno con pagos solo se desactiva", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    const name = unique("Transferencia E2E");
+    created.push({ table: "payment_methods", name });
+
+    await page.goto("/configuracion/metodos-de-pago");
+    await page.getByRole("button", { name: "Agregar" }).click();
+    let dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Nombre", { exact: true }).fill(name);
+    await dialog.getByRole("button", { name: "Agregar" }).click();
+    const item = page.getByTestId(`catalogo-${name}`);
+    await expect(item).toBeVisible();
+
+    await item.getByRole("button", { name: `Eliminar ${name}` }).click();
+    dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText(`¿Eliminar "${name}"?`);
+    await dialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(item).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByTestId(`catalogo-${name}`)).toHaveCount(0);
+
+    // Yape tiene pagos en los datos de prueba: el aviso pide desactivarlo.
+    const yape = page.getByTestId("catalogo-Yape");
+    await yape.getByRole("button", { name: "Eliminar Yape" }).click();
+    dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(dialog.getByRole("alert")).toContainText(
+      /“Yape” está en uso en \d+ pagos?\. Desactívalo en su lugar\./,
+    );
+    await dialog.getByRole("button", { name: "Cancelar" }).click();
+    await expect(yape).toBeVisible();
   });
 
   test("ventas no entra a los catálogos", async ({ page, loginAs }) => {

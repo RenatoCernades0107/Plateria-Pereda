@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil, Table2 } from "lucide-react";
+import { Pencil, Table2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { EDIT_ICON_CLASS } from "@/components/icons/icon-colors";
@@ -17,11 +18,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { setWorkshopActive } from "@/server/workshops-actions";
+import { deleteWorkshop, setWorkshopActive } from "@/server/workshops-actions";
 
 import { WorkshopDialog, type WorkshopRow } from "./workshop-dialog";
 
-function WorkshopActions({ workshop }: { workshop: WorkshopRow }) {
+function WorkshopActions({
+  workshop,
+  canDelete,
+}: {
+  workshop: WorkshopRow;
+  canDelete: boolean;
+}) {
   const [pending, startTransition] = useTransition();
 
   const toggle = () =>
@@ -68,6 +75,24 @@ function WorkshopActions({ workshop }: { workshop: WorkshopRow }) {
       >
         {workshop.active ? "Desactivar" : "Activar"}
       </Button>
+      {canDelete ? (
+        <ConfirmDeleteDialog
+          title="Eliminar taller"
+          name={workshop.name}
+          hint="Si alguna pieza ya pasó por este taller, no se podrá eliminar: desactívalo."
+          onConfirm={() => deleteWorkshop(workshop.id)}
+          trigger={
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Eliminar ${workshop.name}`}
+            >
+              <Trash2 className="text-destructive" />
+              Eliminar
+            </Button>
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -89,7 +114,14 @@ function Contact({ workshop }: { workshop: WorkshopRow }) {
   );
 }
 
-export function WorkshopsList({ workshops }: { workshops: WorkshopRow[] }) {
+/** `canDelete`: solo el admin borra talleres (los que ninguna pieza usó). */
+export function WorkshopsList({
+  workshops,
+  canDelete = false,
+}: {
+  workshops: WorkshopRow[];
+  canDelete?: boolean;
+}) {
   if (workshops.length === 0) {
     return (
       <EmptyState>
@@ -126,7 +158,7 @@ export function WorkshopsList({ workshops }: { workshops: WorkshopRow[] }) {
                 <StatusBadge active={w.active} />
               </TableCell>
               <TableCell>
-                <WorkshopActions workshop={w} />
+                <WorkshopActions workshop={w} canDelete={canDelete} />
               </TableCell>
             </TableRow>
           ))}
@@ -150,7 +182,7 @@ export function WorkshopsList({ workshops }: { workshops: WorkshopRow[] }) {
               </div>
               <StatusBadge active={w.active} />
             </div>
-            <WorkshopActions workshop={w} />
+            <WorkshopActions workshop={w} canDelete={canDelete} />
           </li>
         ))}
       </ul>

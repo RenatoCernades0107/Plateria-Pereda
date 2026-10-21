@@ -1,8 +1,10 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+import { ConfirmDeleteDialog } from "@/components/confirm-delete-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,7 @@ import {
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { ROLES } from "@/lib/validation/users";
 import {
+  deleteUser,
   resendAccess,
   setUserActive,
   updateUserRole,
@@ -103,7 +106,36 @@ function UserActions({ user, isSelf }: { user: UserRow; isSelf: boolean }) {
       >
         {user.active ? "Desactivar" : "Activar"}
       </Button>
+      {isSelf ? (
+        <DeleteButton name={user.fullName} disabled />
+      ) : (
+        <ConfirmDeleteDialog
+          title="Eliminar usuario"
+          name={user.fullName}
+          hint="Solo se puede eliminar a quien aún no registró nada en el sistema; si ya lo hizo, desactívalo."
+          onConfirm={() => deleteUser(user.id)}
+          trigger={<DeleteButton name={user.fullName} disabled={pending} />}
+        />
+      )}
     </div>
+  );
+}
+
+/** Botón "Eliminar"; recibe las props del DialogTrigger (asChild). */
+function DeleteButton({
+  name,
+  ...props
+}: { name: string } & React.ComponentProps<typeof Button>) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      aria-label={`Eliminar ${name}`}
+      {...props}
+    >
+      <Trash2 className="text-destructive" />
+      Eliminar
+    </Button>
   );
 }
 

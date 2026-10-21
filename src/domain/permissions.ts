@@ -33,6 +33,8 @@ const PERMISSIONS = {
   "fotos.subir": ["admin", "ventas", "logistica"],
   "fotos.eliminar-ajenas": ["admin"],
   "talleres.gestionar": ["admin", "logistica"],
+  /** Borrar un taller que ninguna pieza usó (2026-10-21); los demás se desactivan. */
+  "talleres.eliminar": ["admin"],
   /** PDF de la guía: lleva los datos del cliente, así que logística no lo exporta. */
   "guias.exportar-pdf": ["admin", "ventas"],
   /** Clientes y sus datos (nombre, teléfono, contactos): logística no los ve en ningún lado. */

@@ -181,19 +181,34 @@ describe("CatalogManager", () => {
     expect(mocks.deleteCatalogItem).toHaveBeenCalledTimes(1);
   });
 
-  it("los métodos de pago no se pueden eliminar, solo desactivar", () => {
+  it("los métodos de pago también se eliminan, con el aviso de los pagos", async () => {
+    mocks.deleteCatalogItem.mockResolvedValue({
+      error: "“Yape” está en uso en 3 pagos. Desactívalo en su lugar.",
+    });
+    const user = userEvent.setup();
     render(
       <CatalogManager
         kind="payment_methods"
         items={[{ id: "p1", name: "Yape", price: null, active: true }]}
       />,
     );
-    const row = screen.getByTestId("catalogo-Yape");
-    expect(
-      within(row).getByRole("button", { name: "Desactivar" }),
-    ).toBeVisible();
-    expect(
-      within(row).queryByRole("button", { name: /Eliminar/ }),
-    ).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByTestId("catalogo-Yape")).getByRole("button", {
+        name: "Eliminar Yape",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Eliminar método de pago");
+    expect(dialog).toHaveTextContent(
+      "Si algún pago ya lo usa, no se podrá eliminar: desactívalo.",
+    );
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+    expect(mocks.deleteCatalogItem).toHaveBeenCalledWith(
+      "payment_methods",
+      "p1",
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "“Yape” está en uso en 3 pagos. Desactívalo en su lugar.",
+    );
   });
 });

@@ -116,6 +116,56 @@ export async function setUserActive(
   return { ok: true };
 }
 
+/**
+ * Elimina a un usuario que aún no registró nada (solo el admin, nunca a sí mismo ni al
+ * último admin activo). Primero borra su perfil con la sesión del admin: un trigger de la
+ * BD lo rechaza si tiene actividad (23503, con un aviso que dice qué registró y sugiere
+ * desactivarlo) y el borrado queda en la auditoría a nombre del admin. Después borra el
+ * usuario de Supabase Auth; si eso falla, el perfil se restaura.
+ */
+export async function deleteUser(userId: string): Promise<UserActionResult> {
+  const me = await requirePermission("usuarios.gestionar");
+  if (userId === me.id) {
+    return {
+      error: "No puedes eliminarte a ti mismo: pídeselo a otro administrador.",
+    };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", userId)
+    .select("id, full_name, email, role, active, created_at");
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? error.message
+          : "No se pudo eliminar el usuario.",
+    };
+  }
+  // Sin permiso (RLS) o ya borrado: el delete no falla, solo no toca filas.
+  const profile = data[0];
+  if (!profile) return { error: "No se pudo eliminar el usuario." };
+
+  const admin = createAdminClient();
+  const { error: authError } = await admin.auth.admin.deleteUser(userId);
+  if (authError) {
+    console.error("No se pudo borrar el usuario de Auth", {
+      code: authError.code,
+      status: authError.status,
+      message: authError.message,
+    });
+    // Sin perfil no podría ingresar ni aparecería en la lista: se restaura.
+    await admin.from("profiles").insert(profile);
+    return { error: "No se pudo eliminar el usuario. Intenta de nuevo." };
+  }
+
+  revalidatePath("/usuarios");
+  return { ok: true };
+}
+
 /** Envía un enlace para crear una nueva contraseña (sirve también si no usó la invitación). */
 export async function resendAccess(userId: string): Promise<UserActionResult> {
   await requirePermission("usuarios.gestionar");

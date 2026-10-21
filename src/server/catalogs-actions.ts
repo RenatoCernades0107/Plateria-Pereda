@@ -96,9 +96,9 @@ export async function setCatalogItemActive(
 }
 
 /**
- * Borra un material o servicio. Solo si ninguna pieza ni cotización lo usa (lo garantiza
- * un trigger de la BD, que avisa con el 23503 y un mensaje listo para mostrar); si está
- * en uso, se desactiva. Los métodos de pago solo se desactivan.
+ * Borra un material, servicio o método de pago. Solo si nada lo usa (piezas y
+ * cotizaciones de WhatsApp, o pagos): lo garantiza un trigger de la BD, que avisa con el
+ * 23503 y un mensaje listo para mostrar; si está en uso, se desactiva.
  */
 export async function deleteCatalogItem(
   kind: CatalogKind,
@@ -106,9 +106,6 @@ export async function deleteCatalogItem(
 ): Promise<CatalogActionResult> {
   await requirePermission("configuracion.gestionar");
   if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
-  if (!CATALOGS[kind].canDelete) {
-    return { error: "Los métodos de pago solo se desactivan." };
-  }
 
   const supabase = await createClient();
   const { data, error } = await supabase

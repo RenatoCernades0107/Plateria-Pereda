@@ -115,12 +115,15 @@ select is(
   2, 'ventas y logística no borran materiales ni servicios'
 );
 
--- 6. Los métodos de pago no se borran.
+-- 6. Los métodos de pago los borra solo el admin, si ningún pago los usa
+--    (49_borrar_metodos_talleres_usuarios).
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000c41","role":"authenticated"}', true);
-select throws_ok(
-  $$ delete from public.payment_methods where name = 'Yape' $$,
-  '42501', null, 'los métodos de pago no se borran, ni el admin'
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000c42","role":"authenticated"}', true);
+delete from public.payment_methods where name = 'Yape';
+reset role;
+select is(
+  (select count(*)::int from public.payment_methods where name = 'Yape'),
+  1, 'ventas no borra métodos de pago'
 );
 
 -- 7. Queda en el historial.

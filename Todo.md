@@ -169,10 +169,10 @@ Pirámide: muchos tests unitarios (dominio puro) → tests de BD e integración 
 - `profiles` — id (= `auth.users.id`), nombre, rol (`admin`, `ventas`, `logistica`), activo.
 - `clients` — tipo (`persona`, `empresa`), nombres/apellidos o razón social, tipo y número de documento, email, teléfono, dirección, `shopify_customer_id`, estado de sincronización.
 - `contacts` — client_id, nombre, documento, teléfono, email, cargo/relación, activo.
-- `workshops` — nombre, contacto, teléfono, dirección, notas, activo.
+- `workshops` — nombre, contacto, teléfono, dirección, notas, activo. El admin borra los que ninguna pieza usó (D75).
 - `settings` — fila única: datos de la empresa, logo, vigencia por defecto de cotizaciones, términos, plantilla de WhatsApp, % de adelanto por defecto (50 %).
 - `materials`, `services` — catálogos que solo el admin edita, desactiva y borra (si ninguna pieza ni cotización los usa); la pieza guarda los ids del catálogo: uno o más servicios (D74) y uno o más materiales (D68, antes P22: lista o texto libre).
-- `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin).
+- `payment_methods` — catálogo editable de métodos de pago (efectivo, tarjeta, Yape, Plin); el admin borra los que ningún pago usa (D75).
 - `restorations` — código `RES-00001`, origen (`oficina`, `whatsapp`, P46) y cotización de origen, client_id, contact_id, tipo de pago (`contado`, `a_cuenta`, `credito`), % de adelanto (50 % por defecto) y adelanto esperado, estado general, estado de pago, total, pagado, saldo, `shopify_order_id`, `shopify_order_name`, notas, creado por/en.
 - `pieces` — restoration_id, código `RES-00001-1`, pieza de la cotización de origen (P46), marca `urgent` (P47), workshop_id, descripción, medida, material, peso (g), servicio, precio, estado, `arrived_at` (llegada física a tienda), `ubicacion` (columna generada), fechas por hito (`approved_at`, `first_sent_at`, `last_sent_at`, `last_returned_at`, `delivered_at`, `returned_at`, `cancelled_at`), `ready_for_delivery` (generada), notas.
 - `piece_status_transitions` — from, to, roles permitidos, requiere nota, requiere taller. **Fuente de verdad** de la máquina de estados.
@@ -412,7 +412,7 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - Commit: `feat(auth): agrega matriz de permisos por rol`
 
 #### Paso 2.4 — Gestión de usuarios (admin)
-- [x] Listado de usuarios (tabla en escritorio, tarjetas en celular); invitar/crear (API de admin con clave secreta, solo servidor; correo de invitación con plantilla propia → crea su contraseña); cambiar rol; activar/desactivar (un admin no puede cambiarse el rol ni desactivarse); reenviar acceso. El email se copia a `profiles` para listar sin consultar Auth.
+- [x] Listado de usuarios (tabla en escritorio, tarjetas en celular); invitar/crear (API de admin con clave secreta, solo servidor; correo de invitación con plantilla propia → crea su contraseña); cambiar rol; activar/desactivar (un admin no puede cambiarse el rol ni desactivarse); reenviar acceso. El email se copia a `profiles` para listar sin consultar Auth. Desde D75, eliminar a un usuario que no registró nada (nunca a sí mismo ni al último admin activo): se borra su perfil con la sesión del admin (queda en la auditoría a su nombre; un trigger lo rechaza con un aviso si tiene actividad) y luego el usuario de Auth.
 - **Unit:**
   - [x] Esquema zod del usuario.
   - [x] Las acciones rechazan a quien no es admin y al propio admin sobre sí mismo (dependencias simuladas).
@@ -547,13 +547,13 @@ Objetivo: validar con llamadas reales antes de construir.
   - [x] Crear, editar y desactivar un taller.
   - [x] Nombre duplicado muestra error.
   - [x] `@mobile` crear taller.
-- Hecho: tabla `workshops` (nombre único sin distinguir mayúsculas ni espacios, auditada). Todos los usuarios activos la leen (ventas asigna talleres); admin y logística crean y editan; nadie borra, solo se desactiva. La regla "no se borra un taller con piezas" queda cubierta porque no se borra ninguno; en 7.1 la FK de piezas usa `on delete restrict`. El historial ahora omite también los textos vacíos al crear (migración `auditoria_omite_vacios`).
+- Hecho: tabla `workshops` (nombre único sin distinguir mayúsculas ni espacios, auditada). Todos los usuarios activos la leen (ventas asigna talleres); admin y logística crean y editan; nadie borra, solo se desactiva. La regla "no se borra un taller con piezas" queda cubierta porque no se borra ninguno; en 7.1 la FK de piezas usa `on delete restrict`. Desde D75 el admin (permiso `talleres.eliminar`) borra un taller por el que ninguna pieza pasó (ni ahora ni en su historial); si no, un trigger lo rechaza con un aviso y se desactiva (migración `borrar_metodos_talleres_usuarios`). El historial ahora omite también los textos vacíos al crear (migración `auditoria_omite_vacios`).
 - Commit: `feat(talleres): agrega gestión de talleres`
 
 #### Paso 5.3 — Catálogos de materiales, servicios y métodos de pago
 - [x] CRUD simple (nombre, activo; precio sugerido opcional para servicios). Materiales y servicios se eligen de la lista (P22; desde D68 ya no se escriben libremente ni se crean desde la pieza) y el admin puede borrarlos si ninguna pieza ni cotización los usa. Métodos de pago iniciales: efectivo, tarjeta, Yape y Plin (N1).
 - **Unit / BD / E2E:** análogos a 5.2.
-- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado (desde D68, materiales y servicios sí se borran si nadie los usa; migración `borrar_materiales_y_servicios`). Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
+- Hecho: tablas `materials`, `services` (precio sugerido opcional) y `payment_methods` (Efectivo, Tarjeta, Yape y Plin cargados en la migración), auditadas, sin borrado (desde D68, materiales y servicios sí se borran si nadie los usa, migración `borrar_materiales_y_servicios`; desde D75 también los métodos de pago sin pagos, migración `borrar_metodos_talleres_usuarios`). Solo admin gestiona; los materiales los leen todos; servicios y métodos de pago solo admin y ventas (logística no ve dinero, P42). Pestañas en `/configuracion` (Empresa, Materiales, Servicios, Métodos de pago) con un componente `CatalogManager` compartido y `listCatalog()` para los selectores de los pasos siguientes.
 - Commit: `feat(catalogos): agrega catálogos de materiales, servicios y métodos de pago`
 
 ### Fase 6 — Clientes y contactos

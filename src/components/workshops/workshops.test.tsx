@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   createWorkshop: vi.fn(),
   updateWorkshop: vi.fn(),
   setWorkshopActive: vi.fn(),
+  deleteWorkshop: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
 }));
@@ -17,6 +18,7 @@ vi.mock("@/server/workshops-actions", () => ({
   createWorkshop: (...a: unknown[]) => mocks.createWorkshop(...a),
   updateWorkshop: (...a: unknown[]) => mocks.updateWorkshop(...a),
   setWorkshopActive: (...a: unknown[]) => mocks.setWorkshopActive(...a),
+  deleteWorkshop: (...a: unknown[]) => mocks.deleteWorkshop(...a),
 }));
 vi.mock("sonner", () => ({
   toast: { success: mocks.success, error: mocks.error },
@@ -154,6 +156,61 @@ describe("WorkshopsList", () => {
     expect(mocks.error).toHaveBeenCalledWith(
       "No se pudo actualizar el taller.",
     );
+  });
+
+  it("solo con permiso muestra Eliminar", () => {
+    const { unmount } = render(<WorkshopsList workshops={[taller]} />);
+    expect(
+      within(screen.getByTestId("taller-Taller Rímac")).queryByRole("button", {
+        name: /Eliminar/,
+      }),
+    ).not.toBeInTheDocument();
+    unmount();
+    render(<WorkshopsList workshops={[taller]} canDelete />);
+    expect(
+      within(screen.getByTestId("taller-Taller Rímac")).getByRole("button", {
+        name: "Eliminar Taller Rímac",
+      }),
+    ).toBeVisible();
+  });
+
+  it("elimina un taller después de confirmar", async () => {
+    mocks.deleteWorkshop.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(<WorkshopsList workshops={[taller]} canDelete />);
+    await user.click(
+      within(screen.getByTestId("taller-Taller Rímac")).getByRole("button", {
+        name: "Eliminar Taller Rímac",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Eliminar taller");
+    expect(dialog).toHaveTextContent('¿Eliminar "Taller Rímac"?');
+    expect(mocks.deleteWorkshop).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+    expect(mocks.deleteWorkshop).toHaveBeenCalledWith("w1");
+    expect(mocks.success).toHaveBeenCalledWith('"Taller Rímac" fue eliminado.');
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("si el taller está en uso muestra el aviso y no se cierra", async () => {
+    mocks.deleteWorkshop.mockResolvedValue({
+      error: "“Taller Rímac” está en uso en 4 piezas. Desactívalo en su lugar.",
+    });
+    const user = userEvent.setup();
+    render(<WorkshopsList workshops={[taller]} canDelete />);
+    await user.click(
+      within(screen.getByTestId("taller-Taller Rímac")).getByRole("button", {
+        name: "Eliminar Taller Rímac",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "“Taller Rímac” está en uso en 4 piezas. Desactívalo en su lugar.",
+    );
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("sin talleres muestra un mensaje", () => {

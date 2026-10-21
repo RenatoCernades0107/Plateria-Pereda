@@ -669,6 +669,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D72 | Una guía Rechazada, Anulada o Completada pasa al historial solo cuando ya no le quedan piezas por devolver en la tienda | Pedido del 2026-10-16 |
 | D73 | "Listas para entregar" (piezas) incluye las rechazadas o sin arreglo por devolver; se quita el chip "Por devolver". Filtro "Sin taller". La tabla de piezas no muestra la guía y lleva los días en este estado, en taller y en la ubicación dentro de sus celdas; los PDF llevan cantidad y ubicación | Pedido del 2026-10-16 |
 | D74 | Varios servicios por pieza (pedido del 2026-10-18), como los materiales: se marcan uno o más del catálogo y debe haber al menos uno. La pieza guarda `service_ids`; `service_id` (el primero) y `service_name` (los nombres separados por coma) los deriva la BD, así listados, PDF y reportes siguen igual. Una pieza con servicio queda con ese único servicio. |
+| D75 | El admin también **borra** métodos de pago, talleres y usuarios, con confirmación, como los materiales y servicios (D68). Solo si nada los usa: un método de pago sin pagos; un taller por el que ninguna pieza pasó (ni ahora ni en su historial); un usuario que no registró nada (restauraciones, piezas, cambios de estado, pagos, archivos, clientes, contactos, cotizaciones ni cambios en la auditoría). Si están en uso, aunque estén desactivados, la BD lo rechaza con un aviso que dice cuántos registros los usan y se desactivan. El admin no se borra a sí mismo y nunca se borra al último admin activo. Logística sigue creando, editando y desactivando talleres, pero no los borra. Reemplaza la parte de D68 "los métodos de pago y los talleres solo se desactivan" | Pedido del 2026-10-21 |
 
 ---
 
@@ -676,6 +677,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 | Fecha | Preguntas | Resumen |
 |---|---|---|
+| 2026-10-21 | D75 | Se pueden borrar métodos de pago, talleres y usuarios (solo el admin) si nada los usa; si no, se desactivan. |
 | 2026-10-18 | D74 | Se pueden marcar varios servicios a la vez en cada pieza (registro, edición, agregar pieza y cotización de WhatsApp). |
 | 2026-10-16 | D68 | Servicios y materiales: el admin los administra en Configuración, incluido borrarlos si nadie los usa; ventas ya no los crea desde la pieza. |
 | 2026-10-16 | P13 (se revierte) | Se quita todo lo del IGV: ni se pregunta, ni se muestra, ni se suma al total. |

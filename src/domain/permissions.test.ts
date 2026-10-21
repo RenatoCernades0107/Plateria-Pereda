@@ -33,6 +33,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "fotos.subir": [A, V, L],
   "fotos.eliminar-ajenas": [A],
   "talleres.gestionar": [A, L],
+  "talleres.eliminar": [A],
   "guias.exportar-pdf": [A, V],
   "clientes.ver": [A, V],
   "clientes.editar": [A, V],

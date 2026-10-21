@@ -74,22 +74,20 @@ function ItemActions({
       >
         {item.active ? "Desactivar" : "Activar"}
       </Button>
-      {CATALOGS[kind].canDelete ? (
-        <CatalogDeleteDialog
-          kind={kind}
-          item={item}
-          trigger={
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={`Eliminar ${item.name}`}
-            >
-              <Trash2 className="text-destructive" />
-              Eliminar
-            </Button>
-          }
-        />
-      ) : null}
+      <CatalogDeleteDialog
+        kind={kind}
+        item={item}
+        trigger={
+          <Button
+            variant="outline"
+            size="sm"
+            aria-label={`Eliminar ${item.name}`}
+          >
+            <Trash2 className="text-destructive" />
+            Eliminar
+          </Button>
+        }
+      />
     </div>
   );
 }

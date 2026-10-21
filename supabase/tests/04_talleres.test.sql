@@ -30,9 +30,12 @@ select is(
   false,
   'logística desactiva un taller'
 );
-select throws_ok(
-  $$ delete from public.workshops where id = '00000000-0000-0000-0000-00000000aaa1' $$,
-  '42501', null, 'los talleres no se borran, solo se desactivan'
+-- Solo el admin borra talleres, y solo si nadie los usa (49_borrar_metodos_talleres_usuarios).
+delete from public.workshops where id = '00000000-0000-0000-0000-00000000aaa1';
+select is(
+  (select count(*)::int from public.workshops where id = '00000000-0000-0000-0000-00000000aaa1'),
+  1,
+  'logística no borra talleres, solo los desactiva'
 );
 
 -- Ventas lee pero no crea ni edita
