@@ -23,7 +23,7 @@ import { changePiecePrice } from "@/server/restorations/status-actions";
 import type { PieceDetail } from "@/server/restorations/queries";
 
 /**
- * Cambio de precio con la orden de Shopify creada (Paso 9.2, P12): solo admin y con
+ * Cambio de precio con la orden de Shopify creada (Paso 9.2, P12): admin y logística, con
  * motivo. La orden se edita sola (job `order.edit`).
  */
 export function PriceChangeDialog({

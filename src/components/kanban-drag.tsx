@@ -133,6 +133,7 @@ function DraggableCard({
   return (
     <div
       ref={setNodeRef}
+      data-no-drag-scroll=""
       className={cn("cursor-grab", isDragging && "opacity-40")}
       onMouseDown={fromBody("onMouseDown")}
       onTouchStart={fromBody("onTouchStart")}

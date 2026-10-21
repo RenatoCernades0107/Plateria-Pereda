@@ -84,11 +84,11 @@ select results_eq(
 select throws_ok(
   $$ select * from public.create_restoration('00000000-0000-0000-0000-00000000d801', null, 'contado', null, '',
        '[{"description": "X", "price": "10"}]') $$,
-  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas no asigna el precio de venta'
+  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no asigna el precio de venta'
 );
 select throws_ok(
   $$ update public.pieces p set price = 10 from created_by_sales c where c.id = p.restoration_id $$,
-  '42501', 'Solo el administrador asigna el precio de venta.', 'ventas tampoco lo asigna al editar la pieza'
+  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas tampoco lo asigna al editar la pieza'
 );
 reset role;
 grant select on created_by_sales to service_role;

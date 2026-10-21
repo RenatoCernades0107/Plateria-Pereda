@@ -3,23 +3,39 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => {
   const update = vi.fn();
   const maybeSingle = vi.fn();
+  const remove = vi.fn();
+  const restore = vi.fn();
   return {
     me: { id: "admin-1", role: "admin" },
     forbidden: false,
     update,
     maybeSingle,
+    remove,
+    restore,
     supabase: {
       from: vi.fn(() => ({
         update: (values: object) => ({
           eq: (_c: string, id: string) => update(values, id),
         }),
         select: () => ({ eq: () => ({ maybeSingle }) }),
+        delete: () => ({
+          eq: (_c: string, id: string) => ({
+            select: async (columns: string) => remove(id, columns),
+          }),
+        }),
       })),
     },
     admin: {
       auth: {
-        admin: { createUser: vi.fn(), updateUserById: vi.fn() },
+        admin: {
+          createUser: vi.fn(),
+          updateUserById: vi.fn(),
+          deleteUser: vi.fn(),
+        },
       },
+      from: (table: string) => ({
+        insert: async (row: object) => restore(table, row),
+      }),
     },
   };
 });
@@ -38,8 +54,22 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { createUser, setUserActive, setUserPassword, updateUserRole } =
-  await import("./users-actions");
+const {
+  createUser,
+  deleteUser,
+  setUserActive,
+  setUserPassword,
+  updateUserRole,
+} = await import("./users-actions");
+
+const perfil = {
+  id: "u2",
+  full_name: "Nora Nueva",
+  email: "nora@pereda.test",
+  role: "ventas",
+  active: true,
+  created_at: "2026-10-20T15:00:00Z",
+};
 
 const nuevo = {
   fullName: "Lola Logística",
@@ -58,6 +88,9 @@ describe("acciones de usuarios", () => {
       error: null,
     });
     mocks.admin.auth.admin.updateUserById.mockResolvedValue({ error: null });
+    mocks.admin.auth.admin.deleteUser.mockResolvedValue({ error: null });
+    mocks.remove.mockResolvedValue({ data: [perfil], error: null });
+    mocks.restore.mockResolvedValue({ error: null });
   });
 
   it("solo un administrador puede usarlas", async () => {
@@ -68,6 +101,9 @@ describe("acciones de usuarios", () => {
     await expect(
       setUserPassword("u2", { password: "Clave-nueva-123" }),
     ).rejects.toThrow("FORBIDDEN");
+    await expect(deleteUser("u2")).rejects.toThrow("FORBIDDEN");
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
   describe("createUser", () => {
@@ -187,6 +223,68 @@ describe("acciones de usuarios", () => {
       ).toEqual({
         error: "No se pudo cambiar la contraseña. Intenta de nuevo.",
       });
+    });
+  });
+
+  describe("deleteUser", () => {
+    it("borra el perfil con la sesión del admin y luego el usuario de Auth", async () => {
+      expect(await deleteUser("u2")).toEqual({ ok: true });
+      expect(mocks.remove).toHaveBeenCalledWith(
+        "u2",
+        "id, full_name, email, role, active, created_at",
+      );
+      expect(mocks.admin.auth.admin.deleteUser).toHaveBeenCalledWith("u2");
+      expect(mocks.restore).not.toHaveBeenCalled();
+      // El perfil se borra antes que el usuario de Auth (queda a nombre del admin).
+      expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(
+        Number(mocks.admin.auth.admin.deleteUser.mock.invocationCallOrder[0]),
+      );
+    });
+
+    it("con actividad muestra el aviso de la BD y no toca Auth", async () => {
+      const message =
+        "“Nora Nueva” tiene actividad en el sistema (2 restauraciones y 1 pago). Desactívalo en su lugar.";
+      mocks.remove.mockResolvedValue({
+        data: null,
+        error: { code: "23503", message },
+      });
+      expect(await deleteUser("u2")).toEqual({ error: message });
+      expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it("el admin no se elimina a sí mismo", async () => {
+      expect(await deleteUser("admin-1")).toEqual({
+        error:
+          "No puedes eliminarte a ti mismo: pídeselo a otro administrador.",
+      });
+      expect(mocks.remove).not.toHaveBeenCalled();
+      expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it("no revela otros errores y avisa si no se borró nada", async () => {
+      mocks.remove.mockResolvedValue({
+        data: null,
+        error: { code: "XX000", message: "detalle interno" },
+      });
+      expect(await deleteUser("u2")).toEqual({
+        error: "No se pudo eliminar el usuario.",
+      });
+      mocks.remove.mockResolvedValue({ data: [], error: null });
+      expect(await deleteUser("u2")).toEqual({
+        error: "No se pudo eliminar el usuario.",
+      });
+      expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
+    });
+
+    it("si Auth falla restaura el perfil", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      mocks.admin.auth.admin.deleteUser.mockResolvedValue({
+        error: { code: "unexpected_failure", status: 500 },
+      });
+      expect(await deleteUser("u2")).toEqual({
+        error: "No se pudo eliminar el usuario. Intenta de nuevo.",
+      });
+      expect(mocks.restore).toHaveBeenCalledWith("profiles", perfil);
     });
   });
 });

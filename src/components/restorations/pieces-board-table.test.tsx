@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { parsePieceBoardFilters } from "@/domain/piece-board-filters";
 import type { BoardPiece } from "@/server/restorations/queries";
 
 import { PiecesBoardTable } from "./pieces-board-table";
@@ -77,6 +78,42 @@ const inWorkshop = (changes: Partial<BoardPiece>) =>
   }) as BoardPiece;
 
 describe("PiecesBoardTable", () => {
+  it("con los filtros, los encabezados ordenan por guía, días en taller y precio", () => {
+    render(
+      <PiecesBoardTable
+        pieces={[base]}
+        role="admin"
+        workshops={[]}
+        filters={parsePieceBoardFilters({ orden: "precio" })}
+      />,
+    );
+    // Guía: otra columna empieza de mayor a menor (la más reciente).
+    expect(screen.getByRole("link", { name: "Pieza" })).toHaveAttribute(
+      "href",
+      "/piezas",
+    );
+    expect(screen.getByRole("link", { name: "Taller" })).toHaveAttribute(
+      "href",
+      "/piezas?orden=dias_taller",
+    );
+    // La columna activa invierte el sentido.
+    expect(screen.getByRole("link", { name: "Precio venta" })).toHaveAttribute(
+      "href",
+      "/piezas?orden=precio&dir=asc",
+    );
+    // La columna activa lo anuncia; el nombre de la columna sigue siendo su texto.
+    expect(
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toHaveAttribute("aria-sort", "descending");
+  });
+
+  it("sin filtros, los encabezados no son enlaces", () => {
+    render(<PiecesBoardTable pieces={[base]} role="admin" workshops={[]} />);
+    expect(
+      screen.queryByRole("link", { name: "Precio venta" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("resalta las piezas con muchos días en el taller y muestra la última observación", () => {
     render(
       <PiecesBoardTable
@@ -149,7 +186,7 @@ describe("PiecesBoardTable", () => {
     );
   });
 
-  it("logística ingresa con el lápiz el costo por definir y no ve el precio de venta", async () => {
+  it("logística ingresa con el lápiz el costo por definir y también el precio de venta", async () => {
     const { setPieceServiceCost } =
       await import("@/server/service-cost-actions");
     vi.mocked(setPieceServiceCost).mockClear();
@@ -172,9 +209,15 @@ describe("PiecesBoardTable", () => {
     expect(
       screen.getByRole("columnheader", { name: "Costo servicio" }),
     ).toBeInTheDocument();
+    // Desde el 2026-10-19 logística ve y asigna el precio de venta de cada pieza.
     expect(
-      screen.queryByRole("columnheader", { name: "Precio venta" }),
-    ).toBeNull();
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toBeInTheDocument();
     // Con costo: solo el monto como texto, sin lápiz (se cambia en el detalle).
     const row = screen.getByTestId("pieza-RES-00001-1");
     expect(row).toHaveTextContent("S/ 40.00");

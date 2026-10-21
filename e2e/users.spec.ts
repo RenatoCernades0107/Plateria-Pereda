@@ -4,6 +4,7 @@ import {
   createTestUser,
   deleteTestUser,
 } from "./support/supabase";
+import { SEED_USERS } from "./support/users";
 
 test.describe("Gestión de usuarios", () => {
   test.beforeEach(async ({ loginAs }) => {
@@ -104,6 +105,59 @@ test.describe("Gestión de usuarios", () => {
     await expect(
       fila.getByRole("button", { name: "Desactivar" }),
     ).toBeDisabled();
+    await expect(
+      fila.getByRole("button", {
+        name: `Eliminar ${SEED_USERS.admin.fullName}`,
+      }),
+    ).toBeDisabled();
+  });
+
+  test("el admin elimina a un usuario que aún no registró nada", async ({
+    page,
+  }) => {
+    const fullName = `Prueba Eliminar ${Date.now()}`;
+    const user = await createTestUser(
+      "logistica",
+      "Clave-de-prueba-123",
+      fullName,
+    );
+    try {
+      await page.goto("/usuarios");
+      const fila = page.getByTestId(`usuario-${user.email}`);
+      await fila.getByRole("button", { name: `Eliminar ${fullName}` }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toContainText(`¿Eliminar "${fullName}"?`);
+      await dialog.getByRole("button", { name: "Eliminar" }).click();
+      await expect(
+        page.getByText(`"${fullName}" fue eliminado.`),
+      ).toBeVisible();
+      await expect(fila).toHaveCount(0);
+
+      // También se borró de Supabase Auth.
+      const { data } = await adminClient().auth.admin.getUserById(user.id);
+      expect(data.user).toBeNull();
+    } finally {
+      await deleteTestUser(user.id);
+    }
+  });
+
+  test("un usuario con actividad no se elimina: el aviso sugiere desactivarlo", async ({
+    page,
+  }) => {
+    const { email, fullName } = SEED_USERS.ventas;
+    await page.goto("/usuarios");
+    const fila = page.getByTestId(`usuario-${email}`);
+    await fila.getByRole("button", { name: `Eliminar ${fullName}` }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(dialog.getByRole("alert")).toContainText(
+      `“${fullName}” tiene actividad en el sistema (`,
+    );
+    await expect(dialog.getByRole("alert")).toContainText(
+      "Desactívalo en su lugar.",
+    );
+    await dialog.getByRole("button", { name: "Cancelar" }).click();
+    await expect(fila).toBeVisible();
   });
 
   test("el admin cambia la contraseña de un usuario, que ingresa con la nueva", async ({

@@ -5,13 +5,14 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { WorkshopDialog } from "@/components/workshops/workshop-dialog";
 import { WorkshopsList } from "@/components/workshops/workshops-list";
+import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Talleres" };
 
 export default async function TalleresPage() {
-  await requirePermission("talleres.gestionar");
+  const me = await requirePermission("talleres.gestionar");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workshops")
@@ -46,7 +47,10 @@ export default async function TalleresPage() {
           }
         />
       </div>
-      <WorkshopsList workshops={workshops} />
+      <WorkshopsList
+        workshops={workshops}
+        canDelete={can(me.role, "talleres.eliminar")}
+      />
     </div>
   );
 }

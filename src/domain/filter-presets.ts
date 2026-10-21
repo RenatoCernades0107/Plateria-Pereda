@@ -17,7 +17,13 @@ import {
 
 /** `alert`: lo que pide atención (urgente, demorado) va en un rojo tenue. */
 export type ChipTone =
-  "default" | "alert" | "info" | "success" | "attention" | "whatsapp";
+  | "default"
+  | "alert"
+  | "info"
+  | "success"
+  | "attention"
+  | "whatsapp"
+  | "waiting";
 
 export type FilterChip = {
   key: string;
@@ -96,6 +102,15 @@ export const RESTORATION_PRESETS: readonly Preset<RestorationFilters>[] = [
     on: { status: ["parcialmente_aprobada"] },
     off: { status: [] },
     isActive: (f) => sameSet(f.status, ["parcialmente_aprobada"]),
+  },
+  {
+    // Guías con piezas en Espera respuesta cliente (violeta, como la insignia).
+    key: "esperando-cliente",
+    tone: "waiting",
+    label: "Esperando cliente",
+    on: { waitingClient: true },
+    off: { waitingClient: false },
+    isActive: (f) => f.waitingClient,
   },
   {
     key: "listas",

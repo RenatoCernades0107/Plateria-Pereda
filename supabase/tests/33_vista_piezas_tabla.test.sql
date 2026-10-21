@@ -74,8 +74,8 @@ select is(
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000da2","role":"authenticated"}', true);
 select results_eq(
   $$ select service_cost, price from public.list_pieces_board(p_query => 'Fuente tabla') $$,
-  $$ values (40.00::numeric, null::numeric) $$,
-  'logística ve el costo de servicio, no el precio de venta'
+  $$ values (40.00::numeric, 150.00::numeric) $$,
+  'logística ve el costo de servicio y el precio de venta (2026-10-19)'
 );
 select is(
   public.get_piece_service_cost('00000000-0000-0000-0000-00000000da41'),

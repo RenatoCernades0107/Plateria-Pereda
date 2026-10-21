@@ -50,7 +50,30 @@ describe("filtros de un clic (K12)", () => {
     );
     expect(
       restorationFilterChips(filters, { showMoney: false }).map((c) => c.key),
-    ).toEqual(["parcialmente-aprobadas", "listas", "whatsapp"]);
+    ).toEqual([
+      "parcialmente-aprobadas",
+      "esperando-cliente",
+      "listas",
+      "whatsapp",
+    ]);
+  });
+
+  it("restauraciones: «Esperando cliente» filtra las que tienen piezas en espera", () => {
+    const chip = (f: ReturnType<typeof parseRestorationFilters>) =>
+      restorationFilterChips(f, { showMoney: false }).find(
+        (c) => c.key === "esperando-cliente",
+      )!;
+    const off = chip(parseRestorationFilters({ vista: "kanban" }));
+    expect(off).toMatchObject({
+      active: false,
+      tone: "waiting",
+      href: "/restauraciones?espera=1&vista=kanban",
+    });
+    const on = chip(parseRestorationFilters({ espera: "1", vista: "kanban" }));
+    expect(on).toMatchObject({
+      active: true,
+      href: "/restauraciones?vista=kanban",
+    });
   });
 
   it("los chips que piden atención van en tono de alerta y muestran su contador", () => {
@@ -79,6 +102,11 @@ describe("filtros de un clic (K12)", () => {
       restorationChipCountFilters(parseRestorationFilters({}), {
         showMoney: false,
       }).map((c) => c.key),
-    ).toEqual(["parcialmente-aprobadas", "listas", "whatsapp"]);
+    ).toEqual([
+      "parcialmente-aprobadas",
+      "esperando-cliente",
+      "listas",
+      "whatsapp",
+    ]);
   });
 });

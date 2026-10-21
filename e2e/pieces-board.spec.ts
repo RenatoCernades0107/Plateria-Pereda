@@ -125,7 +125,7 @@ test.describe("Vista de piezas", () => {
     );
   });
 
-  test("resalta las piezas con muchos días en el taller y no muestra precios", async ({
+  test("resalta las piezas con muchos días en el taller y muestra el precio de venta a logística", async ({
     page,
     loginAs,
   }) => {
@@ -161,7 +161,7 @@ test.describe("Vista de piezas", () => {
       "9 días (en curso)",
     );
     await expect(row.getByLabel("Muchos días en el taller")).toBeVisible();
-    await expect(row).not.toContainText("S/");
+    await expect(row).toContainText("S/ 10.00");
   });
 
   test("acción masiva desde el celular @mobile", async ({
@@ -220,10 +220,13 @@ test.describe("Vista de piezas", () => {
 
     await loginAs("logistica");
     await page.goto(`/piezas?q=Vuelta`);
-    // Las urgentes van primero.
-    await expect(page.locator("[data-testid^='pieza-']").first()).toContainText(
-      "Urgente",
+    // Por guía, en el orden de las piezas: la urgente no sube, se marca.
+    const rows = page.locator("[data-testid^='pieza-']");
+    await expect(rows.first()).toHaveAttribute(
+      "data-testid",
+      `pieza-${pieces[0]!.code}`,
     );
+    await expect(rows.nth(1)).toContainText("Urgente");
     await page
       .getByRole("navigation", { name: "Mostrar solo" })
       .getByRole("link", { name: "Urgentes" })
@@ -369,9 +372,10 @@ test.describe("Vista de piezas", () => {
     const row = page.getByTestId(`pieza-${code}`);
     await expect(row).toContainText("Baño de plata");
     await expect(row).toContainText("Sin foto de antes");
+    // Desde el 2026-10-19 logística también ve (y asigna) el precio de venta.
     await expect(
       page.getByRole("columnheader", { name: "Precio venta" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(row).toContainText("Por definir");
     await row
       .getByRole("button", { name: `Editar costo de servicio de ${code}` })

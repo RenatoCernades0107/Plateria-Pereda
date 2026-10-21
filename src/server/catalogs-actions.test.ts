@@ -145,13 +145,17 @@ describe("acciones de catálogos", () => {
     ).rejects.toThrow("FORBIDDEN");
   });
 
-  it("borra un material o servicio sin uso", async () => {
+  it("borra un material, servicio o método de pago sin uso", async () => {
     expect(await deleteCatalogItem("materials", "m1")).toEqual({ ok: true });
     expect(await deleteCatalogItem("services", "s1")).toEqual({ ok: true });
+    expect(await deleteCatalogItem("payment_methods", "p1")).toEqual({
+      ok: true,
+    });
     expect(mocks.permission).toBe("configuracion.gestionar");
     expect(mocks.calls).toEqual([
       ["delete", "materials", "m1"],
       ["delete", "services", "s1"],
+      ["delete", "payment_methods", "p1"],
     ]);
   });
 
@@ -179,10 +183,15 @@ describe("acciones de catálogos", () => {
     });
   });
 
-  it("los métodos de pago y los catálogos desconocidos no se borran", async () => {
+  it("un método de pago que usan pagos muestra el aviso de la BD", async () => {
+    const message = "“Yape” está en uso en 12 pagos. Desactívalo en su lugar.";
+    mocks.deleted = { data: [], error: { code: "23503", message } };
     expect(await deleteCatalogItem("payment_methods", "p1")).toEqual({
-      error: "Los métodos de pago solo se desactivan.",
+      error: message,
     });
+  });
+
+  it("los catálogos desconocidos no se borran", async () => {
     expect(await deleteCatalogItem("profiles" as never, "1")).toEqual({
       error: "Catálogo inválido.",
     });

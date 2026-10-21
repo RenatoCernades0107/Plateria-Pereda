@@ -19,6 +19,7 @@ describe("filtros del listado de restauraciones", () => {
       origin: [],
       clientId: null,
       workshopIds: [],
+      waitingClient: false,
       from: null,
       to: null,
       sort: "created_at",
@@ -59,6 +60,7 @@ describe("filtros del listado de restauraciones", () => {
       origin: ["whatsapp"],
       clientId: UUID.toLowerCase(),
       workshopIds: [],
+      waitingClient: false,
       from: "2026-09-01",
       to: null,
       sort: "total",
@@ -157,6 +159,7 @@ describe("filtros del listado de restauraciones", () => {
       p_payment_type: undefined,
       p_client_id: undefined,
       p_workshop_ids: undefined,
+      p_waiting_client: undefined,
       p_from: undefined,
       p_to: undefined,
       p_sort: "created_at",
@@ -176,6 +179,16 @@ describe("filtros del listado de restauraciones", () => {
     expect(filters.scope).toBe("historial");
     expect(restorationFiltersHref(filters)).toBe("/restauraciones?historial=1");
     expect(listRestorationsArgs(filters).p_scope).toBe("historial");
+  });
+
+  it("el filtro Esperando cliente se guarda en la URL y llega a la BD", () => {
+    const filters = parseRestorationFilters({ espera: "1", vista: "kanban" });
+    expect(filters.waitingClient).toBe(true);
+    expect(restorationFiltersHref(filters)).toBe(
+      "/restauraciones?espera=1&vista=kanban",
+    );
+    expect(listRestorationsArgs(filters).p_waiting_client).toBe(true);
+    expect(parseRestorationFilters({ espera: "si" }).waitingClient).toBe(false);
   });
 
   it("en kanban trae todo en una página y lo guarda en la URL", () => {

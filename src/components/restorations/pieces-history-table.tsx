@@ -7,10 +7,12 @@ import { navigateRow } from "@/components/clickable-row";
 import { formatCents } from "@/domain/money";
 import { pieceHref } from "@/domain/restoration-pieces-view";
 import { formatDateTime } from "@/lib/format";
+import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import { cn } from "@/lib/utils";
 import type { HistoryPiece } from "@/server/restorations/piece-history-queries";
 
 import { materialSummary, PiecePhoto } from "./piece-photo";
+import { RT } from "./responsive-table";
 import { PieceStatusBadge, UrgentIcon } from "./status-badges";
 
 const Money = ({ cents, empty }: { cents: number | null; empty: string }) =>
@@ -19,6 +21,13 @@ const Money = ({ cents, empty }: { cents: number | null; empty: string }) =>
   ) : (
     <span className="tabular-nums">{formatCents(cents)}</span>
   );
+
+// Foto y código quedan fijos al desplazarse de lado (foto de ancho fijo, con el
+// `px-3` de las celdas, para saber dónde empieza el código).
+const STICKY = {
+  photo: cn(RT.sticky, "md:left-0 md:w-20 md:min-w-20"),
+  code: cn(RT.sticky, RT.stickyEdge, "md:left-20"),
+};
 
 /**
  * Historial de piezas terminadas, en una tabla de solo lectura con las mismas
@@ -40,6 +49,7 @@ export function PiecesHistoryTable({
   /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
   empty?: React.ReactNode;
 }) {
+  const dragScroll = useDragScroll<HTMLDivElement>();
   if (pieces.length === 0) {
     return (
       empty ?? (
@@ -52,15 +62,23 @@ export function PiecesHistoryTable({
   const cell = "px-3 py-2 align-top";
 
   return (
-    <div className="relative overflow-x-auto rounded-lg border">
+    <div
+      ref={dragScroll}
+      className={cn(
+        "relative overflow-x-auto rounded-lg border",
+        DRAG_SCROLL_CLASS,
+      )}
+    >
       <table className="w-full min-w-max border-collapse text-sm">
         <caption className="sr-only">Historial de piezas</caption>
-        <thead className="bg-muted/60 text-muted-foreground border-b text-xs">
+        <thead
+          className={cn(RT.headTint, "text-muted-foreground border-b text-xs")}
+        >
           <tr>
-            <th scope="col" className={head}>
+            <th scope="col" className={cn(head, STICKY.photo)}>
               Foto antes
             </th>
-            <th scope="col" className={head}>
+            <th scope="col" className={cn(head, STICKY.code)}>
               Pieza
             </th>
             <th scope="col" className={head}>
@@ -100,14 +118,14 @@ export function PiecesHistoryTable({
           {pieces.map((piece) => (
             <tr
               key={piece.id}
-              className="hover:bg-muted/30 cursor-pointer"
+              className={cn("cursor-pointer bg-(--row-tint)", RT.hoverRow)}
               data-testid={`historial-${piece.code}`}
               onClick={navigateRow}
             >
-              <td className={cell}>
+              <td className={cn(cell, STICKY.photo)}>
                 <PiecePhoto code={piece.code} url={piece.photoUrl} />
               </td>
-              <td className={cn(cell, "whitespace-nowrap")}>
+              <td className={cn(cell, STICKY.code, "whitespace-nowrap")}>
                 {/* Urgente: solo el rayo, al costado del código. */}
                 <span className="inline-flex items-center gap-1">
                   <Link

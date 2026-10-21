@@ -35,6 +35,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
+import { serviceNamesById } from "@/server/catalogs";
 import { getSettings } from "@/server/settings";
 import { getWhatsappQuote } from "@/server/whatsapp-quotes/queries";
 
@@ -95,13 +96,21 @@ export default async function CotizacionWhatsappPage({
     quote.contact?.phone ??
     quote.client?.phone ??
     (quote.customerPhone || null);
+  const serviceNames = await serviceNamesById();
+  const clientPhone =
+    quote.client?.phone ??
+    quote.contact?.phone ??
+    (quote.customerPhone || null);
   const message = buildQuoteMessage(settings.whatsappTemplate, {
     code: quote.code,
     clientName: name,
+    clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+    clientDocument: quote.client?.documentNumber ?? null,
     pieces: quote.items.map((i) => ({
       description: i.description,
       quantity: i.quantity,
       service: i.serviceName || null,
+      services: i.serviceIds.flatMap((id) => serviceNames.get(id) ?? []),
       priceCents: i.priceCents,
       status: "registrada",
     })),

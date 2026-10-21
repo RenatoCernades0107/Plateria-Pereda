@@ -30,7 +30,7 @@ export default async function UsuariosPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           title="Usuarios"
-          description="Crea usuarios, asigna su rol y desactiva a quienes ya no deben ingresar."
+          description="Crea usuarios, asigna su rol y desactiva a quienes ya no deben ingresar. Solo se elimina un usuario sin actividad."
         />
         <CreateUserDialog />
       </div>

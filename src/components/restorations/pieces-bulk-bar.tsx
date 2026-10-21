@@ -9,6 +9,8 @@ import {
   Undo2,
   Wrench,
   X,
+  Zap,
+  ZapOff,
 } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -43,6 +45,7 @@ import {
   receiveFromWorkshop,
   returnPiecesToClient,
   sendPiecesToWorkshop,
+  setPiecesUrgent,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -57,6 +60,7 @@ import {
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
+import { canToggleUrgent } from "./urgent-toggle";
 
 /** No se cambia el taller de una pieza entregada o en un estado final. */
 export const WORKSHOP_LOCKED: readonly PieceStatus[] = [
@@ -121,6 +125,7 @@ export function isSelectable(piece: BulkPiece, role: AppRole) {
     canSendToWorkshop(s, role) ||
     canReceiveFromWorkshop(s, role) ||
     canReturnToClient(s, role) ||
+    canToggleUrgent(piece, role) ||
     (can(role, "piezas.asignar-taller") &&
       !isWorkshopLocked({ status: piece.status, location: piece.location }))
   );
@@ -227,6 +232,10 @@ export function PiecesBulkBar({
   const send = howMany((p) => canSendToWorkshop(p, role));
   const receive = howMany((p) => canReceiveFromWorkshop(p, role));
   const giveBack = howMany((p) => canReturnToClient(p, role));
+  // "Urgente": se marca o quita en las piezas abiertas (no cerradas ni entregadas).
+  const urgentable = chosen.filter((p) => canToggleUrgent(p, role));
+  const toMark = urgentable.filter((p) => !p.urgent).length;
+  const toUnmark = urgentable.filter((p) => p.urgent).length;
   const assignable =
     workshopPicker && can(role, "piezas.asignar-taller")
       ? chosen.filter((p) => !isWorkshopLocked(p)).length
@@ -393,6 +402,46 @@ export function PiecesBulkBar({
             )
           }
         />
+        {toMark > 0 ? (
+          <BulkButton
+            label="Marcar urgente"
+            icon={Zap}
+            able={urgentable.length}
+            chosen={n}
+            verb="marcar como urgentes"
+            pending={pending}
+            onClick={() =>
+              act(
+                () =>
+                  setPiecesUrgent(
+                    urgentable.map((p) => p.id),
+                    true,
+                  ),
+                `marcada${n === 1 ? "" : "s"} como urgente${n === 1 ? "" : "s"}.`,
+              )
+            }
+          />
+        ) : null}
+        {toUnmark > 0 ? (
+          <BulkButton
+            label="Quitar urgente"
+            icon={ZapOff}
+            able={urgentable.length}
+            chosen={n}
+            verb="quitar de urgentes"
+            pending={pending}
+            onClick={() =>
+              act(
+                () =>
+                  setPiecesUrgent(
+                    urgentable.map((p) => p.id),
+                    false,
+                  ),
+                n === 1 ? "ya no es urgente." : "ya no son urgentes.",
+              )
+            }
+          />
+        ) : null}
         <span
           title={statusReason}
           className="inline-flex"

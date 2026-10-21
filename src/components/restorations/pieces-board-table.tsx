@@ -1,10 +1,17 @@
 "use client";
 
-import { Hammer, Loader2, MoreHorizontal } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Hammer,
+  Loader2,
+  MoreHorizontal,
+} from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
+import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +24,10 @@ import {
 import { navigateRow } from "@/components/clickable-row";
 import {
   isLongInWorkshop,
+  type PieceBoardFilters,
+  pieceBoardHref,
+  type PieceBoardSort,
+  pieceSortChange,
   WORKSHOP_DAYS_ALERT,
 } from "@/domain/piece-board-filters";
 import { can } from "@/domain/permissions";
@@ -190,6 +201,14 @@ function PieceActionsMenu({
  * en el kanban y las acciones masivas); entregar con saldo pendiente sí pide
  * confirmarlo y la BD lo exige igual.
  */
+// Casilla, foto y código quedan fijos al desplazarse de lado: anchos fijos (con el
+// `px-3` de las celdas) para calcular dónde empieza cada una.
+const STICKY = {
+  check: cn(RT.sticky, "md:left-0 md:w-10 md:min-w-10"),
+  photo: cn(RT.sticky, "md:left-10 md:w-[4.25rem] md:min-w-[4.25rem]"),
+  code: cn(RT.sticky, RT.stickyEdge, "md:left-[6.75rem]"),
+};
+
 function BoardRow({
   piece,
   role,
@@ -239,14 +258,15 @@ function BoardRow({
     <>
       <tr
         className={cn(
-          "hover:bg-muted/30 cursor-pointer",
+          "cursor-pointer",
+          RT.hoverRow,
           RT.row,
-          isLongInWorkshop(piece) && "bg-destructive/5",
+          isLongInWorkshop(piece) && RT.alertRow,
         )}
         data-testid={`pieza-${piece.code}`}
         onClick={navigateRow}
       >
-        <td className={cell}>
+        <td className={cn(cell, STICKY.check)}>
           {isSelectable(piece, role) ? (
             <input
               type="checkbox"
@@ -257,10 +277,10 @@ function BoardRow({
             />
           ) : null}
         </td>
-        <td className={cell}>
+        <td className={cn(cell, STICKY.photo)}>
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, "max-md:min-w-0 max-md:flex-1")}>
+        <td className={cn(cell, STICKY.code, "max-md:min-w-0 max-md:flex-1")}>
           {/* Urgente: solo el rayo, al costado del código; la cantidad, si es más
               de una. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
@@ -381,23 +401,65 @@ function BoardRow({
 /**
  * Vista de piezas en tabla, como una hoja de cálculo (12.2, P55): primero la foto
  * "Antes" de cada pieza y sus datos principales; logística y el admin ingresan el
- * costo de servicio y, viéndolo, el admin pone el precio de venta (D58). Ventas ve el
- * precio y logística no ve montos de venta. El lápiz solo sale donde falta el dato
+ * costo de servicio y el precio de venta (D58; logística desde el 2026-10-19). Ventas
+ * ve el precio. Nadie ve aquí totales ni márgenes. El lápiz solo sale donde falta el dato
  * (sin taller, costo o precio por definir); lo ya puesto se cambia desde el detalle
  * de la pieza. Selección para acciones en bloque; las urgentes van primero y se
  * resaltan las que llevan muchos días en el taller.
  */
+/** Orden de la columna para `aria-sort` (solo la activa). */
+function ariaSort(
+  filters: PieceBoardFilters | undefined,
+  sort: PieceBoardSort,
+) {
+  if (!filters || filters.sort !== sort) return undefined;
+  return filters.dir === "asc" ? "ascending" : "descending";
+}
+
+/**
+ * Encabezado que ordena la vista: la misma columna invierte el sentido. El nombre de
+ * la columna sigue siendo su texto; "Ordenar por…" va en el `title`.
+ */
+function SortHeader({
+  filters,
+  sort,
+  label,
+  children,
+}: {
+  filters: PieceBoardFilters | undefined;
+  sort: PieceBoardSort;
+  label: string;
+  children: React.ReactNode;
+}) {
+  if (!filters) return <>{children}</>;
+  const active = filters.sort === sort;
+  const Icon = filters.dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <Link
+      href={pieceBoardHref(filters, pieceSortChange(filters, sort))}
+      className="inline-flex items-center gap-1 hover:underline"
+      title={`Ordenar por ${label}`}
+    >
+      {children}
+      {active ? <Icon className="size-3.5" aria-hidden /> : null}
+    </Link>
+  );
+}
+
 export function PiecesBoardTable({
   pieces,
   role,
   workshops,
   balanceDue = [],
+  filters,
 }: {
   pieces: BoardPiece[];
   role: AppRole;
   workshops: WorkshopOption[];
   /** Restauraciones a las que les falta cobrar el saldo para entregar (P45). */
   balanceDue?: string[];
+  /** Filtros de la vista: con ellos, los encabezados ordenan. */
+  filters?: PieceBoardFilters;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
   const chosen = pieces.filter((p) => selected.includes(p.id));
@@ -407,11 +469,12 @@ export function PiecesBoardTable({
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
   const showCost = can(role, "piezas.costo-servicio");
-  const showPrice = can(role, "dinero.ver");
+  const showPrice = can(role, "piezas.precio-venta.ver");
   const showClient = can(role, "clientes.ver");
   const editPrice = can(role, "piezas.precio-venta");
   const assignTaller = can(role, "piezas.asignar-taller");
 
+  const dragScroll = useDragScroll<HTMLDivElement>();
   if (pieces.length === 0) {
     return <EmptyState title="No hay piezas en curso." />;
   }
@@ -446,19 +509,25 @@ export function PiecesBoardTable({
           </label>
         ) : null}
       </div>
-      <div className={RT.wrapper}>
+      <div ref={dragScroll} className={cn(RT.wrapper, DRAG_SCROLL_CLASS)}>
         <table className={cn(RT.table, "md:min-w-max")}>
           <caption className="sr-only">Piezas en curso</caption>
           <thead className={RT.thead}>
             <tr>
-              <th scope="col" className={cn(head, "w-8")}>
+              <th scope="col" className={cn(head, STICKY.check)}>
                 <span className="sr-only">Elegir</span>
               </th>
-              <th scope="col" className={head}>
+              <th scope="col" className={cn(head, STICKY.photo)}>
                 Foto
               </th>
-              <th scope="col" className={head}>
-                Pieza
+              <th
+                scope="col"
+                className={cn(head, STICKY.code)}
+                aria-sort={ariaSort(filters, "guia")}
+              >
+                <SortHeader filters={filters} sort="guia" label="guía">
+                  Pieza
+                </SortHeader>
               </th>
               {showClient ? (
                 <th scope="col" className={head}>
@@ -486,8 +555,15 @@ export function PiecesBoardTable({
                 scope="col"
                 className={head}
                 title={`Debajo, los días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
+                aria-sort={ariaSort(filters, "dias_taller")}
               >
-                Taller
+                <SortHeader
+                  filters={filters}
+                  sort="dias_taller"
+                  label="días en taller"
+                >
+                  Taller
+                </SortHeader>
               </th>
               {showCost ? (
                 <th scope="col" className={cn(head, "text-right")}>
@@ -495,8 +571,18 @@ export function PiecesBoardTable({
                 </th>
               ) : null}
               {showPrice ? (
-                <th scope="col" className={cn(head, "text-right")}>
-                  Precio venta
+                <th
+                  scope="col"
+                  className={cn(head, "text-right")}
+                  aria-sort={ariaSort(filters, "precio")}
+                >
+                  <SortHeader
+                    filters={filters}
+                    sort="precio"
+                    label="precio de venta"
+                  >
+                    Precio venta
+                  </SortHeader>
                 </th>
               ) : null}
             </tr>

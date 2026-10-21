@@ -4,6 +4,7 @@ import { CLOSED_STATUSES, PIECE_STATUSES } from "./piece-state-machine";
 import {
   editableFields,
   PIECE_FREE_FIELDS,
+  salePriceEditing,
   SALES_PIECE_FIELDS,
 } from "./restoration-edit";
 
@@ -136,5 +137,67 @@ describe("editableFields", () => {
     expect(editableFields({ role: "admin", hasOrder: true }).piece).toContain(
       "price",
     );
+  });
+});
+
+describe("salePriceEditing", () => {
+  const none = { editable: false, needsOrderFlow: false };
+
+  it("ventas no asigna el precio de venta", () => {
+    expect(
+      salePriceEditing(
+        { role: "ventas", hasOrder: false },
+        { status: "registrada", priceCents: null },
+      ),
+    ).toEqual(none);
+  });
+
+  it("admin y logística lo asignan sin la orden, o si falta", () => {
+    for (const role of ["admin", "logistica"] as const) {
+      expect(
+        salePriceEditing(
+          { role, hasOrder: false },
+          { status: "aprobada", priceCents: 1000 },
+        ),
+      ).toEqual({ editable: true, needsOrderFlow: false });
+      expect(
+        salePriceEditing(
+          { role, hasOrder: true },
+          { status: "aprobada", priceCents: null },
+        ),
+      ).toEqual({ editable: true, needsOrderFlow: false });
+    }
+  });
+
+  it("con la orden creada, un precio asignado se cambia con motivo", () => {
+    expect(
+      salePriceEditing(
+        { role: "logistica", hasOrder: true },
+        { status: "aprobada", priceCents: 1000 },
+      ),
+    ).toEqual({ editable: false, needsOrderFlow: true });
+  });
+
+  it("cerradas no; entregadas solo si falta el precio", () => {
+    for (const status of CLOSED_STATUSES) {
+      expect(
+        salePriceEditing(
+          { role: "logistica", hasOrder: false },
+          { status, priceCents: null },
+        ),
+      ).toEqual(none);
+    }
+    expect(
+      salePriceEditing(
+        { role: "logistica", hasOrder: true },
+        { status: "entregada", priceCents: 1000 },
+      ),
+    ).toEqual(none);
+    expect(
+      salePriceEditing(
+        { role: "logistica", hasOrder: true },
+        { status: "entregada", priceCents: null },
+      ),
+    ).toEqual({ editable: true, needsOrderFlow: false });
   });
 });

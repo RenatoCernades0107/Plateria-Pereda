@@ -87,6 +87,7 @@ import {
 
 import type { WorkshopOption } from "./piece-fields";
 import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
+import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
 export const ACTION_LABELS: Record<PieceStatus, string> = {
@@ -1015,16 +1016,22 @@ function MoreActionsMenu({
   );
 }
 
-/** Estado, ubicación y urgente de la pieza: solo informan (insignias, no se pulsan). */
+/**
+ * Estado, ubicación y urgente de la pieza: insignias que solo informan. Quien puede
+ * marcar "Urgente" (`role`) ve en su lugar el botón que lo marca o lo quita.
+ */
 function PieceStatusBadges({
   piece,
   pending,
   label = true,
+  role,
 }: {
   piece: StatusPiece;
   pending: boolean;
   /** Rótulo "Estado" encima (en la cabecera de la ficha sobra). */
   label?: boolean;
+  /** Rol de quien mira: con permiso, "Urgente" es un botón. */
+  role?: AppRole;
 }) {
   return (
     <div className="space-y-1.5" data-testid="estado-pieza">
@@ -1037,7 +1044,14 @@ function PieceStatusBadges({
           location={piece.location}
           className={LARGE_BADGE_CLASS}
         />
-        {piece.urgent ? <UrgentBadge className={LARGE_BADGE_CLASS} /> : null}
+        {role && canToggleUrgent(piece, role) ? (
+          <UrgentToggle
+            variant="label"
+            piece={{ id: piece.id, code: piece.code, urgent: piece.urgent }}
+          />
+        ) : piece.urgent ? (
+          <UrgentBadge className={LARGE_BADGE_CLASS} />
+        ) : null}
         {pending ? (
           <Loader2
             className="text-muted-foreground size-4 animate-spin"
@@ -1161,7 +1175,12 @@ export function PieceHeader({
     >
       <div className="min-w-0 space-y-3">
         {heading}
-        <PieceStatusBadges piece={piece} pending={pending} label={false} />
+        <PieceStatusBadges
+          piece={piece}
+          pending={pending}
+          label={false}
+          role={props.role}
+        />
       </div>
       <PieceActionBar
         code={props.piece.code}

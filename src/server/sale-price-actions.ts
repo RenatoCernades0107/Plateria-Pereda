@@ -9,9 +9,13 @@ import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type SalePriceResult = { ok: true } | { error: string };
 
+/** Las reglas de la BD ya traen mensajes en español para estos códigos. */
+const READABLE = new Set(["23514", "42501", "23503", "22023"]);
+
 /**
- * Fija el precio de venta de una pieza desde la vista de piezas (P55). Solo el admin
- * (D58); texto vacío lo deja sin asignar. Con la orden de Shopify creada, un precio ya
+ * Fija el precio de venta de una pieza desde la vista de piezas (P55). Admin (D58) y
+ * logística (2026-10-19), por la RPC `set_piece_sale_price` (logística no edita la
+ * tabla); texto vacío lo deja sin asignar. Con la orden de Shopify creada, un precio ya
  * asignado se cambia con "Cambiar precio" (con motivo): lo exige la BD.
  */
 export async function setPieceSalePrice(
@@ -30,24 +34,26 @@ export async function setPieceSalePrice(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pieces")
-    .update({ price })
-    .eq("id", pieceId)
-    .select("restoration_id");
+  const { data: restorationId, error } = await supabase.rpc(
+    "set_piece_sale_price",
+    {
+      p_piece_id: pieceId,
+      // El tipo generado no admite null, pero la función sí (deja el precio sin asignar).
+      p_price: price as number,
+    },
+  );
   if (error) {
     return {
       error:
-        error.code === "23514" || error.code === "42501"
+        READABLE.has(error.code ?? "") && error.message
           ? error.message
           : "No se pudo guardar el precio de venta.",
     };
   }
-  if (data.length === 0) return { error: "La pieza no existe." };
   // Asignar el último precio encola la orden de Shopify, o agrega la pieza a la orden.
   scheduleShopifySync();
   revalidatePath("/piezas");
   revalidatePath("/piezas/[id]", "page");
-  revalidatePath(`/restauraciones/${data[0]!.restoration_id}`);
+  if (restorationId) revalidatePath(`/restauraciones/${restorationId}`);
   return { ok: true };
 }

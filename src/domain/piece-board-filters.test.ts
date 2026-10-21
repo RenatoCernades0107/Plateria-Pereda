@@ -5,6 +5,7 @@ import {
   listPiecesBoardArgs,
   parsePieceBoardFilters,
   pieceBoardHref,
+  pieceSortChange,
 } from "./piece-board-filters";
 
 describe("filtros de la vista de piezas", () => {
@@ -19,6 +20,8 @@ describe("filtros de la vista de piezas", () => {
       minDays: null,
       urgent: false,
       ready: false,
+      sort: "guia",
+      dir: "desc",
       page: 1,
       view: "tabla",
     });
@@ -45,6 +48,8 @@ describe("filtros de la vista de piezas", () => {
       minDays: 10,
       urgent: true,
       ready: true,
+      sort: "guia",
+      dir: "desc",
       page: 2,
       view: "tabla",
     });
@@ -86,9 +91,41 @@ describe("filtros de la vista de piezas", () => {
       p_status: undefined,
       p_workshop_id: undefined,
       p_min_workshop_days: 7,
+      p_sort: "guia",
+      p_dir: "desc",
       p_limit: 50,
       p_offset: 100,
     });
+  });
+
+  it("ordena por guía por defecto; el orden elegido va en la URL", () => {
+    const byPrice = parsePieceBoardFilters({ orden: "precio", dir: "asc" });
+    expect([byPrice.sort, byPrice.dir]).toEqual(["precio", "asc"]);
+    expect(pieceBoardHref(byPrice)).toBe("/piezas?orden=precio&dir=asc");
+    expect(listPiecesBoardArgs(byPrice)).toMatchObject({
+      p_sort: "precio",
+      p_dir: "asc",
+    });
+    // Un orden desconocido vuelve al de guía; el de por defecto no va en la URL.
+    const unknown = parsePieceBoardFilters({ orden: "urgente", dir: "x" });
+    expect([unknown.sort, unknown.dir]).toEqual(["guia", "desc"]);
+    expect(pieceBoardHref(unknown)).toBe("/piezas");
+  });
+
+  it("al ordenar por otra columna empieza de mayor a menor; la misma invierte", () => {
+    const filters = parsePieceBoardFilters({ pagina: "3" });
+    expect(pieceSortChange(filters, "guia")).toEqual({
+      sort: "guia",
+      dir: "asc",
+      page: 1,
+    });
+    expect(pieceSortChange(filters, "precio")).toEqual({
+      sort: "precio",
+      dir: "desc",
+      page: 1,
+    });
+    const asc = parsePieceBoardFilters({ orden: "fecha", dir: "asc" });
+    expect(pieceSortChange(asc, "fecha")).toMatchObject({ dir: "desc" });
   });
 
   it("filtra las piezas sin taller (taller=sin)", () => {

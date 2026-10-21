@@ -1,6 +1,7 @@
 /**
- * Catálogos simples que gestiona el admin desde Configuración (P22, N1). `canDelete`: se
- * pueden borrar mientras ninguna pieza ni cotización los use; si no, solo se desactivan.
+ * Catálogos simples que gestiona el admin desde Configuración (P22, N1). Se pueden borrar
+ * mientras nada los use (piezas y cotizaciones, o pagos); si no, solo se desactivan.
+ * `deleteHint` lo explica en la confirmación de borrado.
  */
 export const CATALOGS = {
   materials: {
@@ -9,7 +10,8 @@ export const CATALOGS = {
     href: "/configuracion/materiales",
     hasPrice: false,
     hasShopifyName: false,
-    canDelete: true,
+    deleteHint:
+      "Si alguna pieza o cotización ya lo usa, no se podrá eliminar: desactívalo.",
     description:
       "Se eligen en cada pieza (uno o varios). Si falta uno, se agrega aquí. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
@@ -19,7 +21,8 @@ export const CATALOGS = {
     href: "/configuracion/servicios",
     hasPrice: true,
     hasShopifyName: false,
-    canDelete: true,
+    deleteHint:
+      "Si alguna pieza o cotización ya lo usa, no se podrá eliminar: desactívalo.",
     description:
       "Se eligen en cada pieza. Si falta uno, se agrega aquí, con su precio sugerido. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
@@ -29,8 +32,9 @@ export const CATALOGS = {
     href: "/configuracion/metodos-de-pago",
     hasPrice: false,
     hasShopifyName: true,
-    canDelete: false,
-    description: "Se eligen al registrar un pago; se envían a Shopify.",
+    deleteHint: "Si algún pago ya lo usa, no se podrá eliminar: desactívalo.",
+    description:
+      "Se eligen al registrar un pago; se envían a Shopify. Solo se borran los que ningún pago usa; los demás se desactivan.",
   },
 } as const;
 

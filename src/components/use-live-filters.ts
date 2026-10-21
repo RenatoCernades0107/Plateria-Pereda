@@ -12,6 +12,21 @@ import {
 /** Espera tras la última tecla antes de buscar. */
 export const LIVE_SEARCH_DELAY_MS = 400;
 
+/**
+ * Si quien buscó había bajado más allá del formulario, lo vuelve a mostrar (con los
+ * resultados justo debajo) para que se vea el primero. Si ya se ve, no mueve nada.
+ */
+function revealResults(form: HTMLFormElement) {
+  if (!form.isConnected || form.getBoundingClientRect().top >= 0) return;
+  const reduce = window.matchMedia?.(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
+  form.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+}
+
+const formOf = (element: Element | null) =>
+  element?.closest("form") ?? undefined;
+
 const trimmed = <F extends object>(filters: F): F =>
   Object.fromEntries(
     Object.entries(filters).map(([k, v]) => [
@@ -29,6 +44,10 @@ const trimmed = <F extends object>(filters: F): F =>
  * escribir): si la URL cambia por otro lado (un chip, la vista, "Atrás"), el
  * formulario toma esos filtros; si es el eco de lo que el propio formulario aplicó,
  * conserva lo escrito (p. ej. un espacio al final que la URL no guarda).
+ *
+ * Al buscar por texto, cuando llegan los resultados, si la página estaba más abajo
+ * vuelve al formulario para que se vea el primer resultado (los demás filtros no
+ * mueven la página).
  *
  * `toHref` arma la URL de unos filtros (en la página 1).
  */
@@ -62,11 +81,22 @@ export function useLiveFilters<F extends object>(
   }, [current, own]);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const apply = (next: F) => {
+  // La búsqueda por texto pedida y su formulario, para mostrarlo cuando llegue.
+  const reveal = useRef<{ href: string; form: HTMLFormElement } | null>(null);
+  useEffect(() => {
+    if (reveal.current?.href !== current) return;
+    const { form } = reveal.current;
+    reveal.current = null;
+    revealResults(form);
+  }, [current]);
+
+  /** `form`: el de la búsqueda por texto, si la hubo. */
+  const apply = (next: F, form?: HTMLFormElement) => {
     clearTimeout(timer.current);
     const href = toHref(trimmed(next));
     if (href === latest.current) return;
     latest.current = href;
+    reveal.current = form ? { href, form } : null;
     setOwn((list) => [...list, href]);
     startTransition(() => router.replace(href, { scroll: false }));
   };
@@ -77,7 +107,9 @@ export function useLiveFilters<F extends object>(
     setState(next);
     clearTimeout(timer.current);
     if (debounce) {
-      timer.current = setTimeout(() => apply(next), LIVE_SEARCH_DELAY_MS);
+      // Se escribe en el formulario: es el elemento con el foco.
+      const form = formOf(document.activeElement);
+      timer.current = setTimeout(() => apply(next, form), LIVE_SEARCH_DELAY_MS);
     } else {
       apply(next);
     }
@@ -92,7 +124,7 @@ export function useLiveFilters<F extends object>(
   /** Enter en la búsqueda: aplica de inmediato, sin esperar. */
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    apply(state);
+    apply(state, formOf(event.currentTarget as Element));
   };
 
   return { state, update, reset, submit, pending };

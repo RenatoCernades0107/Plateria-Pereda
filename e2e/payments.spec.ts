@@ -208,8 +208,9 @@ test.describe("Pagos", () => {
       page.getByRole("menuitem", { name: "Entregar", exact: true }),
     ).toBeDisabled();
     await page.keyboard.press("Escape");
-    // Sin montos para logística (P42).
-    await expect(card).not.toContainText("S/");
+    // Logística ve el precio de venta de la pieza, pero no los pagos (P42).
+    await expect(card).toContainText("S/ 200.00");
+    await expect(page.getByRole("tab", { name: "Pagos" })).toHaveCount(0);
 
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);

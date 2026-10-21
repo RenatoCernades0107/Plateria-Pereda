@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk";
+import { Command as CommandPrimitive, useCommandState } from "cmdk";
 import { cn } from "@/lib/utils";
 import { SearchIcon } from "lucide-react";
 
@@ -82,12 +82,34 @@ function CommandInput({
   );
 }
 
+/**
+ * Lista con scroll. Al cambiar la búsqueda vuelve arriba: si no, quien bajó por la
+ * lista y luego escribe deja el primer resultado escondido arriba (cmdk solo hace
+ * scroll si cambia el elegido, y con `shouldFilter={false}` los resultados llegan
+ * después).
+ */
 function CommandList({
   className,
+  ref,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const search = useCommandState((state) => state.search);
+  const list = React.useRef<HTMLDivElement | null>(null);
+  React.useLayoutEffect(() => {
+    if (list.current) list.current.scrollTop = 0;
+  }, [search]);
+  const setRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      list.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+
   return (
     <CommandPrimitive.List
+      ref={setRef}
       data-slot="command-list"
       className={cn(
         "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",

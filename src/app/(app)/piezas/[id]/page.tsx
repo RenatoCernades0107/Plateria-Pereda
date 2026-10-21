@@ -76,6 +76,8 @@ export default async function PiezaDetallePage({
   if (!restoration || !piece) notFound();
 
   const canSeeCost = can(user.role, "piezas.costo-servicio");
+  // Precio de venta de la pieza: también logística (sin totales, pagos ni margen).
+  const canSeePrice = can(user.role, "piezas.precio-venta.ver");
   const [
     history,
     logistics,
@@ -113,7 +115,7 @@ export default async function PiezaDetallePage({
     piece.weightGrams === null
       ? null
       : `${piece.weightGrams.toLocaleString("es-PE")} g`;
-  const showMoney = canSeeCost || canSeeMoney;
+  const showMoney = canSeeCost || canSeePrice || canSeeMoney;
 
   return (
     <div className="space-y-6">
@@ -199,7 +201,7 @@ export default async function PiezaDetallePage({
                   restorationId: restoration.id,
                 }}
                 sale={
-                  canSeeMoney
+                  canSeePrice
                     ? {
                         cents: piece.priceCents,
                         hasOrder: restoration.hasOrder,
@@ -208,6 +210,7 @@ export default async function PiezaDetallePage({
                     : null
                 }
                 costCents={canSeeCost ? costCents : undefined}
+                showMargin={can(user.role, "dinero.ver")}
                 guide={
                   restoration.money
                     ? {

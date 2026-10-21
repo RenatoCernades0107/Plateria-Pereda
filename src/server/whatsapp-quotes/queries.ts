@@ -43,6 +43,8 @@ export type WhatsappQuoteDetail = {
     name: string;
     phone: string | null;
     kind: "persona" | "empresa";
+    /** Número de documento (DNI, RUC…); null si no tiene. */
+    documentNumber: string | null;
   } | null;
   contact: { id: string; name: string; phone: string | null } | null;
   customerName: string;
@@ -82,7 +84,7 @@ export async function getWhatsappQuote(
     q.client_id
       ? supabase
           .from("clients")
-          .select("id, display_name, phone, kind")
+          .select("id, display_name, phone, kind, document_number")
           .eq("id", q.client_id)
           .single()
       : Promise.resolve({ data: null, error: null }),
@@ -123,6 +125,7 @@ export async function getWhatsappQuote(
           name: client.data.display_name ?? "",
           phone: client.data.phone,
           kind: client.data.kind,
+          documentNumber: client.data.document_number,
         }
       : null,
     contact: contact.data

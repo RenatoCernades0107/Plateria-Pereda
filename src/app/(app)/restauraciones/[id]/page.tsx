@@ -48,6 +48,7 @@ import { ViewToggle } from "@/components/view-toggle";
 import { SHOPIFY_BADGE_CLASS, ShopifyBadge } from "@/components/shopify-badge";
 import { formatCents, PAYMENT_TYPE_LABELS } from "@/domain/money";
 import { firstBeforePhotos } from "@/domain/files";
+import { DOCUMENT_LABELS } from "@/domain/documents";
 import { can } from "@/domain/permissions";
 import { suggestedPayment } from "@/domain/payments";
 import { formatPhone } from "@/domain/phone";
@@ -69,7 +70,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
-import { listCatalog } from "@/server/catalogs";
+import { listCatalog, serviceNamesById } from "@/server/catalogs";
 import { listRestorationFiles } from "@/server/files/queries";
 import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
@@ -134,23 +135,30 @@ export default async function RestauracionDetallePage({
   const company = await getSettings();
   const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
+  const clientPhone =
+    restoration.client?.phone ?? restoration.contact?.phone ?? null;
   const quoteData =
     settings && charged
       ? {
           code: restoration.code,
           clientName: restoration.client?.name ?? "",
           contactName: restoration.contact?.name ?? null,
+          clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+          clientDocument: restoration.client?.document?.number ?? null,
           paymentType: restoration.paymentType,
           depositPercent: restoration.money?.depositPercent ?? 0,
           terms: settings.terms,
         }
       : null;
+  const serviceNames = quoteData ? await serviceNamesById() : new Map();
   const quotePieces = restoration.pieces.map((p) => ({
     id: p.id,
     code: p.code,
     description: p.description,
     quantity: p.quantity,
     service: p.serviceName || null,
+    // Un servicio por línea en el mensaje.
+    services: p.serviceIds.flatMap((id) => serviceNames.get(id) ?? []),
     // Sin precio de venta (D58) el mensaje dice "por definir".
     priceCents: p.priceCents,
     status: p.status,
@@ -265,6 +273,7 @@ export default async function RestauracionDetallePage({
     kind,
     paymentType: restoration.paymentType,
     clientName: restoration.client?.name ?? "",
+    document: restoration.client?.document ?? null,
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
     shopifyOrderName: restoration.shopifyOrderName,
@@ -337,6 +346,13 @@ export default async function RestauracionDetallePage({
                   >
                     {restoration.client.name}
                   </Link>
+                  {restoration.client.document ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {DOCUMENT_LABELS[restoration.client.document.type]}{" "}
+                      {restoration.client.document.number}
+                    </span>
+                  ) : null}
                   {restoration.contact ? (
                     <span className="text-muted-foreground">
                       {" "}
@@ -613,6 +629,7 @@ export default async function RestauracionDetallePage({
                   approvalPayment={approvalPayment}
                   balanceDue={balanceDue}
                   guideKind={restoration.kind}
+                  hasOrder={restoration.hasOrder}
                   editing={
                     editing
                       ? {

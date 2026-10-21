@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PaymentType } from "@/domain/money";
 import { depositPercentOf, toCents, type Cents } from "@/domain/money";
+import type { DocumentType } from "@/domain/documents";
 import { calendarDaysBetween } from "@/domain/piece-days";
 import {
   toPieceStatus,
@@ -114,6 +115,7 @@ export type RestorationDetail = {
     name: string;
     phone: string | null;
     kind: string;
+    document: { type: DocumentType; number: string } | null;
   } | null;
   contact: { id: string; name: string; phone: string | null } | null;
   pieces: PieceDetail[];
@@ -136,9 +138,10 @@ export async function getProfileName(id: string): Promise<string | null> {
 }
 
 /**
- * Detalle de una restauración. Los datos sin dinero salen de las vistas
- * `*_operational` (logística no ve las pasadas, D24); los montos solo se leen si
- * `withMoney` (admin y ventas; la RLS de las tablas lo exige igual). Cliente y
+ * Detalle de una restauración. Los datos de las piezas salen de las vistas
+ * `*_operational` (logística no ve las pasadas, D24), con el precio de venta de cada
+ * pieza (admin, ventas y logística); totales y pagos solo se leen si `withMoney`
+ * (admin y ventas; la RLS de las tablas lo exige igual). Cliente y
  * contacto solo se leen si `withClient` (admin y ventas): logística no los ve.
  */
 export async function getRestorationDetail(
@@ -154,7 +157,7 @@ export async function getRestorationDetail(
   if (error) throw error;
   if (!r?.id) return null;
 
-  const [pieces, client, contact, money, prices] = await Promise.all([
+  const [pieces, client, contact, money] = await Promise.all([
     supabase
       .from("pieces_operational")
       .select("*")
@@ -163,7 +166,9 @@ export async function getRestorationDetail(
     withClient
       ? supabase
           .from("clients")
-          .select("id, display_name, phone, kind")
+          .select(
+            "id, display_name, phone, kind, document_type, document_number",
+          )
           .eq("id", r.client_id!)
           .single()
       : Promise.resolve({ data: null, error: null }),
@@ -183,11 +188,8 @@ export async function getRestorationDetail(
           .eq("id", id)
           .single()
       : Promise.resolve({ data: null, error: null }),
-    withMoney
-      ? supabase.from("pieces").select("id, price").eq("restoration_id", id)
-      : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const result of [pieces, client, contact, money, prices]) {
+  for (const result of [pieces, client, contact, money]) {
     if (result.error) throw result.error;
   }
 
@@ -199,12 +201,6 @@ export async function getRestorationDetail(
     : { data: [], error: null };
   if (workshops.error) throw workshops.error;
   const workshopName = new Map(workshops.data!.map((w) => [w.id, w.name]));
-  const priceOf = new Map(
-    (prices.data ?? []).map((p) => [
-      p.id,
-      p.price === null ? null : toCents(Number(p.price)),
-    ]),
-  );
 
   return {
     id: r.id,
@@ -226,6 +222,13 @@ export async function getRestorationDetail(
           name: client.data.display_name ?? "",
           phone: client.data.phone,
           kind: client.data.kind,
+          document:
+            client.data.document_type && client.data.document_number
+              ? {
+                  type: client.data.document_type,
+                  number: client.data.document_number,
+                }
+              : null,
         }
       : null,
     contact: contact.data
@@ -266,7 +269,8 @@ export async function getRestorationDetail(
       firstSentAt: p.first_sent_at,
       lastSentAt: p.last_sent_at,
       lastReturnedAt: p.last_returned_at,
-      priceCents: withMoney ? (priceOf.get(p.id!) ?? null) : null,
+      // La vista da el precio a quien lo ve (null si el rol no lo ve o sin asignar).
+      priceCents: p.price === null ? null : toCents(Number(p.price)),
     })),
     money: money.data
       ? {
@@ -385,6 +389,8 @@ export type RestorationListItem = {
   piecesCount: number;
   /** Piezas en Observación sobre las piezas vivas; null si no hay ninguna observada. */
   observed: ObservedProgress | null;
+  /** Piezas en Espera respuesta cliente (0 si ninguna). */
+  waitingCount: number;
   totalCents: Cents | null;
   paidCents: Cents | null;
   balanceCents: Cents | null;
@@ -434,6 +440,7 @@ export async function listRestorations(
       paymentType: r.payment_type,
       piecesCount: r.pieces_count,
       observed: observed.get(r.id) ?? null,
+      waitingCount: r.waiting_count ?? 0,
       totalCents: centsOrNull(r.total),
       paidCents: centsOrNull(r.paid),
       balanceCents: centsOrNull(r.balance),

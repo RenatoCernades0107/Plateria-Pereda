@@ -60,7 +60,9 @@ export function RestorationPiecesKanban({
   const chosen = pieces.filter((p) => selected.includes(p.id));
   const toggle = (id: string, on: boolean) =>
     setSelected((s) => (on ? [...s, id] : s.filter((x) => x !== id)));
-  const showMoney = can(role, "dinero.ver") && isChargedKind(guideKind);
+  // Solo el precio de venta de cada pieza (también logística), sin totales.
+  const showMoney =
+    can(role, "piezas.precio-venta.ver") && isChargedKind(guideKind);
   const moves = usePieceMoves({
     restorationId,
     pieces,

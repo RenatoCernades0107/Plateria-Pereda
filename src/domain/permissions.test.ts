@@ -21,15 +21,19 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "pagos.registrar": [A, V],
   "pagos.corregir": [A],
   "piezas.consultar-aprobar-anular": [A, V],
+  "piezas.pasar-a-espera": [A, V, L],
   "piezas.marcar-llegada": [A, V, L],
   "piezas.enviar-recibir-taller": [A, L],
   "piezas.asignar-taller": [A, L],
   "piezas.costo-servicio": [A, L],
-  "piezas.precio-venta": [A],
+  "piezas.precio-venta": [A, L],
+  "piezas.precio-venta.ver": [A, V, L],
+  "piezas.marcar-urgente": [A, V, L],
   "piezas.entregar-observar": [A, V, L],
   "fotos.subir": [A, V, L],
   "fotos.eliminar-ajenas": [A],
   "talleres.gestionar": [A, L],
+  "talleres.eliminar": [A],
   "guias.exportar-pdf": [A, V],
   "clientes.ver": [A, V],
   "clientes.editar": [A, V],
@@ -66,7 +70,14 @@ describe("matriz de permisos", () => {
     }
   });
 
-  it("logística no ve precios, pagos, métricas ni historial", () => {
+  it("logística ve y edita el precio de venta de la pieza, pero no los totales", () => {
+    expect(can(L, "piezas.precio-venta.ver")).toBe(true);
+    expect(can(L, "piezas.precio-venta")).toBe(true);
+    expect(can(L, "dinero.ver")).toBe(false);
+    expect(can(V, "piezas.precio-venta")).toBe(false);
+  });
+
+  it("logística no ve totales, pagos, métricas ni historial", () => {
     for (const permission of [
       "dinero.ver",
       "pagos.registrar",

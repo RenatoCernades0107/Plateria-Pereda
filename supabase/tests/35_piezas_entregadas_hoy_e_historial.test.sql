@@ -54,7 +54,7 @@ select is(
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000db2","role":"authenticated"}', true);
 select is(
   (select price from public.list_pieces_history(p_query => 'Antes historial')),
-  null, 'logística no ve el precio de venta en el historial'
+  10.00::numeric, 'logística ve el precio de venta en el historial (2026-10-19)'
 );
 
 select * from finish();

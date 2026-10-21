@@ -2,29 +2,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  permission: "" as string,
   insert: vi.fn(),
   update: vi.fn(),
+  remove: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({
-  requirePermission: async () => {
+  requirePermission: async (permission: string) => {
+    mocks.permission = permission;
     if (mocks.forbidden) throw new Error("FORBIDDEN");
     return { id: "u1", role: "logistica" };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    from: () => ({
+    from: (table: string) => ({
       insert: mocks.insert,
       update: (values: object) => ({
         eq: (_c: string, id: string) => mocks.update(values, id),
+      }),
+      delete: () => ({
+        eq: (_c: string, id: string) => ({
+          select: async () => mocks.remove(table, id),
+        }),
       }),
     }),
   }),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-const { createWorkshop, setWorkshopActive, updateWorkshop } =
+const { createWorkshop, deleteWorkshop, setWorkshopActive, updateWorkshop } =
   await import("./workshops-actions");
 
 const input = {
@@ -47,6 +55,9 @@ describe("acciones de talleres", () => {
     mocks.forbidden = false;
     mocks.insert.mockReset().mockResolvedValue({ error: null });
     mocks.update.mockReset().mockResolvedValue({ error: null });
+    mocks.remove
+      .mockReset()
+      .mockResolvedValue({ data: [{ id: "w1" }], error: null });
   });
 
   it("crea y edita con los datos normalizados", async () => {
@@ -100,5 +111,39 @@ describe("acciones de talleres", () => {
     await expect(createWorkshop(input)).rejects.toThrow("FORBIDDEN");
     await expect(updateWorkshop("w1", input)).rejects.toThrow("FORBIDDEN");
     await expect(setWorkshopActive("w1", true)).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("borra un taller sin uso; solo el admin (talleres.eliminar)", async () => {
+    expect(await deleteWorkshop("w1")).toEqual({ ok: true });
+    expect(mocks.permission).toBe("talleres.eliminar");
+    expect(mocks.remove).toHaveBeenCalledWith("workshops", "w1");
+  });
+
+  it("si está en uso muestra el aviso de la BD, que sugiere desactivarlo", async () => {
+    const message =
+      "“Taller Rímac” está en uso en 4 piezas. Desactívalo en su lugar.";
+    mocks.remove.mockResolvedValue({
+      data: null,
+      error: { code: "23503", message },
+    });
+    expect(await deleteWorkshop("w1")).toEqual({ error: message });
+  });
+
+  it("al borrar no revela otros errores y avisa si no se borró nada", async () => {
+    mocks.remove.mockResolvedValue({
+      data: null,
+      error: { code: "XX000", message: "detalle interno" },
+    });
+    const failed = { error: "No se pudo eliminar el taller." };
+    expect(await deleteWorkshop("w1")).toEqual(failed);
+    // Sin permiso (RLS) o ya borrado: el delete no falla pero no toca filas.
+    mocks.remove.mockResolvedValue({ data: [], error: null });
+    expect(await deleteWorkshop("w1")).toEqual(failed);
+  });
+
+  it("borrar exige el permiso", async () => {
+    mocks.forbidden = true;
+    await expect(deleteWorkshop("w1")).rejects.toThrow("FORBIDDEN");
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
 });

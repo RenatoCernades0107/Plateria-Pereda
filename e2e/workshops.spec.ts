@@ -22,7 +22,7 @@ test.describe("Talleres", () => {
   });
 
   test.afterAll(async () => {
-    // Los talleres no se borran desde la app; los de prueba se limpian con la clave secreta.
+    // Logística no los borra (solo el admin); los de prueba se limpian con la clave secreta.
     for (const name of created) {
       await adminClient().from("workshops").delete().ilike("name", name);
     }
@@ -56,6 +56,8 @@ test.describe("Talleres", () => {
     await expect(page.getByText(`${renamed} fue desactivado.`)).toBeVisible();
     await expect(fila).toContainText("Inactivo");
     await expect(fila.getByRole("button", { name: "Activar" })).toBeVisible();
+    // Borrar talleres es solo del admin.
+    await expect(fila.getByRole("button", { name: /Eliminar/ })).toHaveCount(0);
 
     const results = await makeAxeBuilder().analyze();
     expect(
@@ -97,5 +99,107 @@ test.describe("Talleres", () => {
     expect(scrollWidth).toBeLessThanOrEqual(
       page.viewportSize()?.width ?? Infinity,
     );
+  });
+});
+
+test.describe("Talleres: eliminar (admin)", () => {
+  const created: string[] = [];
+
+  test.beforeEach(async ({ loginAs }) => {
+    await loginAs("admin");
+  });
+
+  test.afterAll(async () => {
+    for (const name of created) {
+      await adminClient().from("workshops").delete().ilike("name", name);
+    }
+  });
+
+  test("el admin elimina un taller que ninguna pieza usó", async ({ page }) => {
+    const name = unique("Taller Borrar");
+    created.push(name);
+
+    await page.goto("/talleres");
+    await createWorkshop(page, name);
+    const fila = page.getByTestId(`taller-${name}`);
+    await expect(fila).toBeVisible();
+
+    await fila.getByRole("button", { name: `Eliminar ${name}` }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toContainText(`¿Eliminar "${name}"?`);
+    await dialog.getByRole("button", { name: "Eliminar" }).click();
+    await expect(page.getByText(`"${name}" fue eliminado.`)).toBeVisible();
+    await expect(fila).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByTestId(`taller-${name}`)).toHaveCount(0);
+  });
+
+  test("un taller con piezas no se elimina: el aviso sugiere desactivarlo", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    const name = unique("Taller En Uso");
+    created.push(name);
+    const { data: workshop, error } = await admin
+      .from("workshops")
+      .insert({ name })
+      .select("id")
+      .single();
+    if (error) throw error;
+    const { data: client, error: clientError } = await admin
+      .from("clients")
+      .insert({
+        kind: "persona",
+        first_name: unique("Taller"),
+        // Ya sincronizado: no encola trabajo para el Shopify falso.
+        shopify_customer_id: `gid://shopify/Customer/t${Date.now()}`,
+      })
+      .select("id")
+      .single();
+    if (clientError) throw clientError;
+
+    try {
+      const { data: restoration, error: restorationError } = await admin
+        .from("restorations")
+        .insert({ client_id: client.id, payment_type: "contado" })
+        .select("id")
+        .single();
+      if (restorationError) throw restorationError;
+      const { error: pieceError } = await admin.from("pieces").insert({
+        restoration_id: restoration.id,
+        description: "Pieza del taller",
+        workshop_id: workshop.id,
+        price: 10,
+        // El código y el número los pone un trigger.
+      } as never);
+      if (pieceError) throw pieceError;
+
+      await page.goto("/talleres");
+      const fila = page.getByTestId(`taller-${name}`);
+      await fila.getByRole("button", { name: `Eliminar ${name}` }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("button", { name: "Eliminar" }).click();
+      await expect(dialog.getByRole("alert")).toContainText(
+        `“${name}” está en uso en 1 pieza. Desactívalo en su lugar.`,
+      );
+      await dialog.getByRole("button", { name: "Cancelar" }).click();
+      await expect(fila).toBeVisible();
+
+      // Lo que sí se puede es desactivarlo.
+      await fila.getByRole("button", { name: "Desactivar" }).click();
+      await expect(fila).toContainText("Inactivo");
+    } finally {
+      const { data: restorations } = await admin
+        .from("restorations")
+        .select("id")
+        .eq("client_id", client.id);
+      const ids = (restorations ?? []).map((r) => r.id);
+      if (ids.length) {
+        await admin.from("pieces").delete().in("restoration_id", ids);
+        await admin.from("restorations").delete().in("id", ids);
+      }
+      await admin.from("clients").delete().eq("id", client.id);
+    }
   });
 });

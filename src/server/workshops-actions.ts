@@ -61,7 +61,7 @@ export async function updateWorkshop(
   return { ok: true };
 }
 
-/** Los talleres no se borran: se desactivan para conservar el historial de sus piezas. */
+/** Un taller en uso no se borra: se desactiva para conservar el historial de sus piezas. */
 export async function setWorkshopActive(
   id: string,
   active: boolean,
@@ -73,6 +73,35 @@ export async function setWorkshopActive(
     .update({ active })
     .eq("id", id);
   if (error) return { error: "No se pudo actualizar el taller." };
+  revalidatePath("/talleres");
+  return { ok: true };
+}
+
+/**
+ * Borra un taller (solo el admin). Solo si ninguna pieza lo tiene ni lo tuvo: lo garantiza
+ * un trigger de la BD, que avisa con el 23503 y un mensaje listo para mostrar; si está en
+ * uso, se desactiva.
+ */
+export async function deleteWorkshop(
+  id: string,
+): Promise<WorkshopActionResult> {
+  await requirePermission("talleres.eliminar");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workshops")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? error.message
+          : "No se pudo eliminar el taller.",
+    };
+  }
+  // Sin permiso (RLS) o ya borrado: el delete no falla, solo no toca filas.
+  if (data.length === 0) return { error: "No se pudo eliminar el taller." };
   revalidatePath("/talleres");
   return { ok: true };
 }
