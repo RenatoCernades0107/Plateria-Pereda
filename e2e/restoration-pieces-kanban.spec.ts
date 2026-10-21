@@ -133,8 +133,8 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
     await loginAs("logistica");
     await page.goto(`/restauraciones/${restoration.id}?vista=kanban`);
     await expect(page.getByTestId(`tarjeta-${approvedCode}`)).toBeVisible();
-    // Logística no ve montos.
-    await expect(page.getByTestId("precio")).toHaveCount(0);
+    // Logística ve el precio de venta de cada pieza.
+    expect(await page.getByTestId("precio").count()).toBeGreaterThan(0);
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(page.viewportSize()?.width ?? Infinity);

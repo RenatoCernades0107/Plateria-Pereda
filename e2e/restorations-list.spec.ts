@@ -176,7 +176,8 @@ test.describe("Listado de restauraciones", () => {
     await expect(
       page.getByRole("columnheader", { name: /Cliente/ }),
     ).toHaveCount(0);
-    await expect(page.getByLabel("Cliente")).toHaveCount(0);
+    // Exacto: el atajo "Esperando cliente" no es un filtro de cliente.
+    await expect(page.getByLabel("Cliente", { exact: true })).toHaveCount(0);
     await expect(
       page.getByTestId(`restauracion-${codes[0]}`).getByText(clientName),
     ).toHaveCount(0);

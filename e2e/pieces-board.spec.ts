@@ -125,7 +125,7 @@ test.describe("Vista de piezas", () => {
     );
   });
 
-  test("resalta las piezas con muchos días en el taller y no muestra precios", async ({
+  test("resalta las piezas con muchos días en el taller y muestra el precio de venta a logística", async ({
     page,
     loginAs,
   }) => {
@@ -161,7 +161,7 @@ test.describe("Vista de piezas", () => {
       "9 días (en curso)",
     );
     await expect(row.getByLabel("Muchos días en el taller")).toBeVisible();
-    await expect(row).not.toContainText("S/");
+    await expect(row).toContainText("S/ 10.00");
   });
 
   test("acción masiva desde el celular @mobile", async ({
