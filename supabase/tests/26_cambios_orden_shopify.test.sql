@@ -1,6 +1,6 @@
 begin;
 
-select plan(16);
+select plan(15);
 
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
@@ -85,11 +85,6 @@ update public.shopify_sync_jobs set status = 'processing'
 where kind = 'order.edit' and entity_id = '00000000-0000-0000-0000-00000000bb40';
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000bb1","role":"authenticated"}', true);
-select throws_ok(
-  $$ select public.change_piece_price('00000000-0000-0000-0000-00000000bb41', 120, 'Más trabajo') $$,
-  '42501', null, 'ventas no cambia el precio con la orden creada'
-);
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000bb3","role":"authenticated"}', true);
 select throws_ok(
   $$ update public.pieces set price = 120 where id = '00000000-0000-0000-0000-00000000bb41' $$,

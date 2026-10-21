@@ -38,9 +38,9 @@ export const SALES_PIECE_FIELDS = PIECE_FREE_FIELDS.filter(
 /** Explicación del taller bloqueado para ventas (D60). */
 export const WORKSHOP_HINT = "Lo asignan logística y el administrador.";
 
-/** Explicación del precio de venta bloqueado para quien no es admin (D58). */
+/** Explicación del precio de venta bloqueado para quien no lo asigna (D58). */
 export const SALE_PRICE_HINT =
-  "Solo el administrador y logística asignan el precio de venta.";
+  "Solo el administrador, ventas y logística asignan el precio de venta.";
 
 export type EditContext = {
   role: AppRole;
@@ -71,8 +71,8 @@ const canEdit = (role: AppRole) => role === "admin" || role === "ventas";
  * Logística no edita nada (solo sube fotos, Fase 10; el taller lo asigna con sus
  * acciones). Ventas no cambia el taller (D60). Una pieza anulada, rechazada o
  * sin arreglo no se edita;
- * de una entregada solo las notas. El precio de venta lo asigna y cambia solo el
- * admin (D58): una pieza sin precio lo recibe siempre (así entra a la orden); con la
+ * de una entregada solo las notas. El precio de venta lo asignan y cambian el admin
+ * (D58) y ventas (2026-10-21): una pieza sin precio lo recibe siempre (así entra a la orden); con la
  * orden creada, un precio ya asignado sigue el flujo de P12 (Paso 9.2). Las piezas
  * nuevas se agregan siempre: llegan a Shopify cuando se aprueban.
  */
@@ -82,6 +82,7 @@ export function editableFields(
 ): EditableFields {
   if (!canEdit(ctx.role)) return NOTHING;
   const admin = ctx.role === "admin";
+  const price = can(ctx.role, "piezas.precio-venta");
   const free = admin ? PIECE_FREE_FIELDS : SALES_PIECE_FIELDS;
   const base = {
     restoration: RESTORATION_EDITABLE_FIELDS,
@@ -90,7 +91,7 @@ export function editableFields(
   if (!piece) {
     return {
       ...base,
-      piece: admin ? [...free, "price"] : free,
+      piece: price ? [...free, "price"] : free,
       priceNeedsOrderFlow: false,
     };
   }
@@ -101,28 +102,28 @@ export function editableFields(
   if (piece.status === "entregada") {
     return {
       ...base,
-      piece: admin && withoutPrice ? ["notes", "price"] : ["notes"],
+      piece: price && withoutPrice ? ["notes", "price"] : ["notes"],
       priceNeedsOrderFlow: false,
     };
   }
   if (!ctx.hasOrder || withoutPrice) {
     return {
       ...base,
-      piece: admin ? [...free, "price"] : free,
+      piece: price ? [...free, "price"] : free,
       priceNeedsOrderFlow: false,
     };
   }
   return {
     ...base,
     piece: free,
-    priceNeedsOrderFlow: admin,
+    priceNeedsOrderFlow: price,
   };
 }
 
 /**
  * Precio de venta de una pieza fuera del formulario de edición (tabla de la guía y
- * detalle de la pieza): lo asignan el admin (D58) y logística (2026-10-19) con las
- * mismas reglas que `editableFields` aplica al admin. `editable`: se asigna o cambia
+ * detalle de la pieza): lo asignan el admin (D58), logística (2026-10-19) y ventas
+ * (2026-10-21) con las mismas reglas que `editableFields`. `editable`: se asigna o cambia
  * directo; `needsOrderFlow`: con la orden de Shopify creada, se cambia con motivo
  * ("Cambiar precio", P12).
  */

@@ -18,10 +18,11 @@ const PERMISSIONS = {
   /** Costo de servicio de la pieza: lo que cobra el taller (solo admin y logística). */
   "piezas.costo-servicio": ["admin", "logistica"],
   /**
-   * Precio de venta de la pieza: lo asignan o cambian el admin (D58) y logística
-   * (2026-10-19), también con motivo si la orden de Shopify ya existe; ventas lo ve.
+   * Precio de venta de la pieza: lo asignan o cambian el admin (D58), logística
+   * (2026-10-19) y ventas (2026-10-21), también con motivo si la orden de Shopify ya
+   * existe.
    */
-  "piezas.precio-venta": ["admin", "logistica"],
+  "piezas.precio-venta": ["admin", "ventas", "logistica"],
   /**
    * Ver el precio de venta de cada pieza. Logística lo ve (y lo edita), pero no los
    * totales, pagos, márgenes ni el PDF de la guía (eso sigue en `dinero.ver`).

@@ -164,7 +164,7 @@ function PieceCard({
   quoteOnly: boolean;
   /** "Crear restauración" desde una cotización: estado inicial y nota (P49). */
   showInitialStatus: boolean;
-  /** Puede asignar el precio de venta (admin, D58). */
+  /** Puede asignar el precio de venta (admin, ventas y logística). */
   canSetPrice: boolean;
   /** Puede elegir el taller (logística y admin, D60). */
   canAssignWorkshop: boolean;
@@ -533,7 +533,7 @@ export function RestorationForm({
   mode?: RestorationFormMode;
   /** Métodos de pago activos, para el adelanto (solo al registrar restauraciones). */
   paymentMethods?: { id: string; name: string }[];
-  /** Puede asignar el precio de venta de las piezas (solo admin, D58). */
+  /** Puede asignar el precio de venta de las piezas (admin, ventas y logística). */
   canSetPrice?: boolean;
   /** Puede elegir el taller de las piezas (logística y admin, D60). */
   canAssignWorkshop?: boolean;

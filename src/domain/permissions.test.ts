@@ -26,7 +26,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "piezas.enviar-recibir-taller": [A, L],
   "piezas.asignar-taller": [A, L],
   "piezas.costo-servicio": [A, L],
-  "piezas.precio-venta": [A, L],
+  "piezas.precio-venta": [A, V, L],
   "piezas.precio-venta.ver": [A, V, L],
   "piezas.marcar-urgente": [A, V, L],
   "piezas.entregar-observar": [A, V, L],
@@ -74,7 +74,7 @@ describe("matriz de permisos", () => {
     expect(can(L, "piezas.precio-venta.ver")).toBe(true);
     expect(can(L, "piezas.precio-venta")).toBe(true);
     expect(can(L, "dinero.ver")).toBe(false);
-    expect(can(V, "piezas.precio-venta")).toBe(false);
+    expect(can(V, "piezas.precio-venta")).toBe(true);
   });
 
   it("logística no ve totales, pagos, métricas ni historial", () => {

@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(13);
 
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
@@ -32,10 +32,6 @@ select lives_ok(
   $$ update public.pieces set description = 'Fuente ovalada', price = 100
      where id = '00000000-0000-0000-0000-00000000a911' $$,
   'ventas edita la descripción (el precio igual no cuenta como cambio)'
-);
-select throws_ok(
-  $$ update public.pieces set price = 120 where id = '00000000-0000-0000-0000-00000000a911' $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no cambia el precio de venta (D58)'
 );
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009a3","role":"authenticated"}', true);
 select lives_ok(

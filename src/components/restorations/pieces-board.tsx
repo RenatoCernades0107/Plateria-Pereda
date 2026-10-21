@@ -143,7 +143,7 @@ function PieceRow({
   const editable = editing?.editable[piece.id] ?? [];
   const canEdit = editing !== null && editable.length > 0;
   const charged = isChargedKind(guideKind);
-  // Precio de venta (admin y logística): con el formulario de edición manda lo que
+  // Precio de venta (admin, ventas y logística): con el formulario de edición manda lo que
   // éste permite; sin él (logística), las mismas reglas por pieza.
   const salePrice = editing
     ? {

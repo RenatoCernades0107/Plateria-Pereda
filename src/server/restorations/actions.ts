@@ -55,8 +55,7 @@ export async function createRestoration(
   const user = await requirePermission("restauraciones.editar");
   const parsed = restorationSchema.safeParse(input);
   if (!parsed.success) return { error: invalidInputMessage(parsed.error) };
-  // El precio de venta lo asigna solo el admin (D58) y el taller, logística y el
-  // admin (D60): ventas registra sin precio ni taller.
+  // El taller lo asignan logística y el admin (D60): ventas registra sin taller.
   let pieces = parsed.data.pieces;
   // La guía interna u observada no se cobra: sin precios (la BD también los ignora).
   const charged = parsed.data.kind === "normal";

@@ -120,13 +120,13 @@ describe("createRestoration", () => {
     });
   });
 
-  it("ventas registra las piezas sin precio de venta: lo asigna el admin (D58)", async () => {
+  it("ventas registra las piezas con su precio de venta", async () => {
     mocks.role = "ventas";
     expect(await createRestoration(input)).toMatchObject({ ok: true });
     expect(mocks.create).toHaveBeenCalledWith(
       {},
       expect.objectContaining({
-        pieces: [expect.objectContaining({ priceCents: null })],
+        pieces: [expect.objectContaining({ priceCents: expect.any(Number) })],
       }),
     );
   });

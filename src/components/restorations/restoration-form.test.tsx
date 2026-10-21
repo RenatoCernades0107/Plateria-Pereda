@@ -216,13 +216,13 @@ describe("RestorationForm", () => {
     expect(card.getByLabelText("Urgente")).toBeInTheDocument();
   });
 
-  it("sin ser admin el precio de venta no se edita (D58)", () => {
+  it("sin permiso el precio de venta no se edita (D58)", () => {
     renderForm(undefined, false);
     const card = within(screen.getByTestId("pieza-1"));
     expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
     expect(
       card.getByText(
-        "Solo el administrador y logística asignan el precio de venta.",
+        "Solo el administrador, ventas y logística asignan el precio de venta.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 0.00");
@@ -769,8 +769,8 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
   });
 
   it.each([
-    ["admin", true],
-    ["ventas", false],
+    ["con permiso", true],
+    ["sin permiso", false],
   ])(
     "crea la restauración sin precio desde una pieza Por definir (%s)",
     async (_role, canSetPrice) => {

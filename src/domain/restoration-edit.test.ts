@@ -25,14 +25,15 @@ describe("editableFields", () => {
     }
   });
 
-  it("antes de la orden, ventas y admin editan todo; el precio de venta solo el admin (D58)", () => {
+  it("antes de la orden, ventas y admin editan todo, también el precio de venta", () => {
     for (const role of ["admin", "ventas"] as const) {
       const fields = editableFields(
         { role, hasOrder: false },
         { status: "aprobada", priceCents: 10_000 },
       );
-      if (role === "admin") expect(fields.piece).toContain("price");
-      else expect(fields.piece).toEqual(SALES_PIECE_FIELDS);
+      expect(fields.piece).toContain("price");
+      if (role === "ventas")
+        expect(fields.piece).toEqual([...SALES_PIECE_FIELDS, "price"]);
       expect(fields.restoration).toEqual([
         "contactId",
         "paymentType",
@@ -43,14 +44,14 @@ describe("editableFields", () => {
     }
   });
 
-  it("con la orden creada, el precio sale de la edición directa; solo admin sigue el flujo de P12", () => {
+  it("con la orden creada, el precio sale de la edición directa y sigue el flujo de P12", () => {
     const ventas = editableFields(
       { role: "ventas", hasOrder: true },
       { status: "aprobada", priceCents: 10_000 },
     );
     expect(ventas.piece).toEqual(SALES_PIECE_FIELDS);
     expect(ventas.piece).not.toContain("price");
-    expect(ventas.priceNeedsOrderFlow).toBe(false);
+    expect(ventas.priceNeedsOrderFlow).toBe(true);
     expect(ventas.restoration).toContain("paymentType");
 
     const admin = editableFields(
@@ -61,20 +62,16 @@ describe("editableFields", () => {
     expect(admin.priceNeedsOrderFlow).toBe(true);
   });
 
-  it("una pieza sin precio lo recibe del admin aunque exista la orden o ya se entregó (D58)", () => {
+  it("una pieza sin precio lo recibe del admin o ventas aunque exista la orden o ya se entregó (D58)", () => {
     for (const status of ["aprobada", "entregada"] as const) {
-      const admin = editableFields(
-        { role: "admin", hasOrder: true },
-        { status, priceCents: null },
-      );
-      expect(admin.piece).toContain("price");
-      expect(admin.priceNeedsOrderFlow).toBe(false);
-      expect(
-        editableFields(
-          { role: "ventas", hasOrder: true },
+      for (const role of ["admin", "ventas"] as const) {
+        const fields = editableFields(
+          { role, hasOrder: true },
           { status, priceCents: null },
-        ).piece,
-      ).not.toContain("price");
+        );
+        expect(fields.piece).toContain("price");
+        expect(fields.priceNeedsOrderFlow).toBe(false);
+      }
     }
     expect(
       editableFields(
@@ -94,7 +91,7 @@ describe("editableFields", () => {
       expect(
         editableFields(
           { role: "ventas", hasOrder },
-          { status: "entregada", priceCents: null },
+          { status: "entregada", priceCents: 500 },
         ).piece,
       ).toEqual(["notes"]);
     }
@@ -106,7 +103,10 @@ describe("editableFields", () => {
     );
     for (const status of others) {
       expect(
-        editableFields({ role: "ventas", hasOrder: true }, { status }).piece,
+        editableFields(
+          { role: "ventas", hasOrder: true },
+          { status, priceCents: 1000 },
+        ).piece,
       ).toEqual(SALES_PIECE_FIELDS);
       expect(
         editableFields(
@@ -129,9 +129,9 @@ describe("editableFields", () => {
     }
   });
 
-  it("sin pieza informa los campos de una pieza nueva: el precio solo para el admin", () => {
+  it("sin pieza informa los campos de una pieza nueva, con el precio", () => {
     expect(editableFields({ role: "ventas", hasOrder: false })).toMatchObject({
-      piece: SALES_PIECE_FIELDS,
+      piece: [...SALES_PIECE_FIELDS, "price"],
       canAddPieces: true,
     });
     expect(editableFields({ role: "admin", hasOrder: true }).piece).toContain(
@@ -143,17 +143,8 @@ describe("editableFields", () => {
 describe("salePriceEditing", () => {
   const none = { editable: false, needsOrderFlow: false };
 
-  it("ventas no asigna el precio de venta", () => {
-    expect(
-      salePriceEditing(
-        { role: "ventas", hasOrder: false },
-        { status: "registrada", priceCents: null },
-      ),
-    ).toEqual(none);
-  });
-
-  it("admin y logística lo asignan sin la orden, o si falta", () => {
-    for (const role of ["admin", "logistica"] as const) {
+  it("admin, ventas y logística lo asignan sin la orden, o si falta", () => {
+    for (const role of ["admin", "ventas", "logistica"] as const) {
       expect(
         salePriceEditing(
           { role, hasOrder: false },

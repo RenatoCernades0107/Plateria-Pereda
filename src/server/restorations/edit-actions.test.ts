@@ -237,12 +237,12 @@ describe("edición de restauraciones", () => {
     });
   });
 
-  it("ventas no escribe el precio de venta: lo asigna el admin (D58)", async () => {
+  it("ventas escribe el precio de venta", async () => {
     mocks.role = "ventas";
     expect(await updatePiece("p1", piece)).toEqual({ ok: true });
-    expect(mocks.update.mock.calls[0]![0]).not.toHaveProperty("price");
+    expect(mocks.update.mock.calls[0]![0]).toHaveProperty("price");
     expect(await addPiece("r1", piece)).toEqual({ ok: true });
-    expect(mocks.insert.mock.calls[0]![0]).not.toHaveProperty("price");
+    expect(mocks.insert.mock.calls[0]![0]).toHaveProperty("price");
   });
 
   it("solo el admin escribe el taller; ventas no lo envía (D60)", async () => {
