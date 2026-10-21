@@ -11,6 +11,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+import { DragScroll } from "@/components/drag-scroll";
 import { Badge } from "@/components/ui/badge";
 
 import { PieceStatusBadge } from "./status-badges";
@@ -118,87 +119,92 @@ export function Timeline({
       ) : (
         // Horizontal, del más antiguo al más reciente; en pantallas angostas se
         // desplaza de lado. Cada paso lleva la insignia del estado (mismos colores).
-        <ol
-          className="-mx-1 flex snap-x snap-mandatory gap-0 overflow-x-auto px-1 pb-2"
-          aria-label="Línea de tiempo de la pieza"
+        <DragScroll
+          className="-mx-1 snap-x snap-mandatory px-1 pb-2"
           tabIndex={0}
         >
-          {ordered.map((event, i) => {
-            const isState = !event.event || event.event === "estado";
-            const current = i === lastIndex;
-            return (
-              <li
-                key={i}
-                data-testid="evento"
-                aria-current={current ? "step" : undefined}
-                className="relative w-48 shrink-0 snap-start pr-3 sm:w-52"
-              >
-                {/* Riel: punto del paso y línea hacia el siguiente. */}
-                <div aria-hidden className="mb-2 flex items-center">
-                  <span
-                    className={cn(
-                      "size-3 shrink-0 rounded-full border-2",
-                      current
-                        ? "border-primary bg-primary ring-primary/25 ring-4"
-                        : isState
-                          ? "border-primary bg-background"
-                          : "border-muted-foreground/60 bg-background",
-                    )}
-                  />
-                  {i < lastIndex ? (
-                    <span className="bg-border -mr-3 h-0.5 flex-1" />
-                  ) : null}
-                </div>
-                <div
-                  className={cn(
-                    "space-y-1 rounded-md border p-2",
-                    current ? "border-primary/50 bg-primary/5" : "bg-card",
-                  )}
+          <ol className="flex gap-0" aria-label="Línea de tiempo de la pieza">
+            {ordered.map((event, i) => {
+              const isState = !event.event || event.event === "estado";
+              const current = i === lastIndex;
+              return (
+                <li
+                  key={i}
+                  data-testid="evento"
+                  aria-current={current ? "step" : undefined}
+                  className="relative w-48 shrink-0 snap-start pr-3 sm:w-52"
                 >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {isState ? (
-                      <PieceStatusBadge status={event.toStatus} />
-                    ) : (
-                      <Badge variant="secondary" data-event={event.event}>
-                        {EVENT_LABELS[event.event as keyof typeof EVENT_LABELS]}
-                      </Badge>
-                    )}
-                    {current ? (
-                      <span className="text-primary text-xs font-medium tracking-wide uppercase">
-                        Último
-                      </span>
+                  {/* Riel: punto del paso y línea hacia el siguiente. */}
+                  <div aria-hidden className="mb-2 flex items-center">
+                    <span
+                      className={cn(
+                        "size-3 shrink-0 rounded-full border-2",
+                        current
+                          ? "border-primary bg-primary ring-primary/25 ring-4"
+                          : isState
+                            ? "border-primary bg-background"
+                            : "border-muted-foreground/60 bg-background",
+                      )}
+                    />
+                    {i < lastIndex ? (
+                      <span className="bg-border -mr-3 h-0.5 flex-1" />
                     ) : null}
                   </div>
-                  {isState && event.fromStatus ? (
+                  <div
+                    className={cn(
+                      "space-y-1 rounded-md border p-2",
+                      current ? "border-primary/50 bg-primary/5" : "bg-card",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {isState ? (
+                        <PieceStatusBadge status={event.toStatus} />
+                      ) : (
+                        <Badge variant="secondary" data-event={event.event}>
+                          {
+                            EVENT_LABELS[
+                              event.event as keyof typeof EVENT_LABELS
+                            ]
+                          }
+                        </Badge>
+                      )}
+                      {current ? (
+                        <span className="text-primary text-xs font-medium tracking-wide uppercase">
+                          Último
+                        </span>
+                      ) : null}
+                    </div>
+                    {isState && event.fromStatus ? (
+                      <p className="text-muted-foreground text-xs">
+                        desde {PIECE_STATUS_LABELS[event.fromStatus]}
+                      </p>
+                    ) : null}
+                    {event.event === "retroceso" && event.fromStatus ? (
+                      <p className="text-xs">
+                        De {PIECE_STATUS_LABELS[event.fromStatus]} a{" "}
+                        {PIECE_STATUS_LABELS[event.toStatus]}
+                      </p>
+                    ) : null}
                     <p className="text-muted-foreground text-xs">
-                      desde {PIECE_STATUS_LABELS[event.fromStatus]}
+                      <time dateTime={event.at.toISOString()}>
+                        {formatDateTime(event.at)}
+                      </time>{" "}
+                      · {event.actorName ?? "Sistema"}
                     </p>
-                  ) : null}
-                  {event.event === "retroceso" && event.fromStatus ? (
-                    <p className="text-xs">
-                      De {PIECE_STATUS_LABELS[event.fromStatus]} a{" "}
-                      {PIECE_STATUS_LABELS[event.toStatus]}
-                    </p>
-                  ) : null}
-                  <p className="text-muted-foreground text-xs">
-                    <time dateTime={event.at.toISOString()}>
-                      {formatDateTime(event.at)}
-                    </time>{" "}
-                    · {event.actorName ?? "Sistema"}
-                  </p>
-                  {event.note ? (
-                    <p
-                      className="line-clamp-3 text-xs break-words whitespace-pre-wrap"
-                      title={event.note}
-                    >
-                      {event.note}
-                    </p>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+                    {event.note ? (
+                      <p
+                        className="line-clamp-3 text-xs break-words whitespace-pre-wrap"
+                        title={event.note}
+                      >
+                        {event.note}
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </DragScroll>
       )}
     </div>
   );

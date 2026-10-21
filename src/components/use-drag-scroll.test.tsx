@@ -95,6 +95,26 @@ describe("useDragScroll", () => {
     expect(onRow).not.toHaveBeenCalled();
   });
 
+  it("también arrastra desde un enlace, sin abrirlo ni el arrastre nativo", () => {
+    const { box, onRow } = setup();
+    const link = screen.getByRole("link", { name: "P-1" });
+    drag(link, -60);
+    expect(box.scrollLeft).toBe(160);
+    fireEvent.click(link);
+    expect(onRow).not.toHaveBeenCalled();
+    // El arrastre nativo del navegador (enlaces, imágenes) se anula.
+    expect(fireEvent.dragStart(link)).toBe(false);
+  });
+
+  it("avisa si queda contenido a la derecha (sin barra, se desvanece el borde)", () => {
+    const { box } = setup();
+    fireEvent.scroll(box);
+    expect(box).toHaveAttribute("data-more-right");
+    box.scrollLeft = 600;
+    fireEvent.scroll(box);
+    expect(box).not.toHaveAttribute("data-more-right");
+  });
+
   it("un movimiento chico sigue siendo un clic", () => {
     const { box, onRow } = setup();
     const celda = screen.getByTestId("celda");

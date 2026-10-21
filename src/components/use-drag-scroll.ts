@@ -3,17 +3,19 @@
 import { useCallback } from "react";
 
 /**
- * Desplazar de lado arrastrando con el ratón (kanban y tablas anchas): así no hay que
- * bajar hasta la barra de desplazamiento. En pantallas táctiles ya se desplaza solo.
+ * Desplazar de lado arrastrando con el ratón (kanban y tablas anchas): no hay barra de
+ * desplazamiento abajo (quedaba al final de la lista y había que bajar hasta ella); un
+ * desvanecido en el borde derecho avisa que hay más. Siguen sirviendo el touchpad,
+ * Mayús + rueda, el teclado y, en pantallas táctiles, el dedo.
  *
  * No empieza sobre controles ni sobre las tarjetas del kanban (`data-no-drag-scroll`),
- * que se arrastran con dnd-kit. Recién se activa tras unos píxeles, así los clics
+ * que se arrastran con dnd-kit. Sí empieza sobre enlaces e imágenes (se anula su
+ * arrastre nativo del navegador), así se arrastra desde cualquier parte. Recién se activa tras unos píxeles, así los clics
  * siguen funcionando; tras un arrastre real se anula el clic que viene después (para
  * que una fila clicable no navegue).
  */
 
 const SKIP = [
-  "a",
   "button",
   "input",
   "select",
@@ -31,11 +33,17 @@ const SKIP = [
 /** Píxeles antes de considerarlo arrastre y no clic. */
 const THRESHOLD = 5;
 
-/** Clases del contenedor: mano mientras se puede desplazar y al arrastrar. */
+/**
+ * Clases del contenedor: sin barra de desplazamiento, mano mientras se puede desplazar
+ * y al arrastrar, y el borde derecho desvanecido mientras hay más contenido.
+ */
 export const DRAG_SCROLL_CLASS =
-  "data-drag-scroll:cursor-grab data-drag-scrolling:cursor-grabbing data-drag-scrolling:select-none data-drag-scrolling:**:cursor-grabbing";
+  "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden data-drag-scroll:cursor-grab data-drag-scrolling:cursor-grabbing data-drag-scrolling:select-none data-drag-scrolling:snap-none data-drag-scrolling:**:cursor-grabbing data-more-right:[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]";
 
 const overflows = (el: HTMLElement) => el.scrollWidth > el.clientWidth;
+/** Queda contenido a la derecha (el píxel de margen evita redondeos). */
+const moreRight = (el: HTMLElement) =>
+  el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
 
 /** Ref (callback) para el contenedor con `overflow-x`. */
 export function useDragScroll<T extends HTMLElement>() {
@@ -44,8 +52,12 @@ export function useDragScroll<T extends HTMLElement>() {
 
 /** Escucha el puntero sobre el contenedor; devuelve la limpieza. */
 function attach(el: HTMLElement) {
-  // `data-drag-scroll` solo si hay desplazamiento horizontal (cursor de mano).
-  const update = () => el.toggleAttribute("data-drag-scroll", overflows(el));
+  // `data-drag-scroll` solo si hay desplazamiento horizontal (cursor de mano) y
+  // `data-more-right` mientras queda contenido a la derecha (desvanecido).
+  const update = () => {
+    el.toggleAttribute("data-drag-scroll", overflows(el));
+    el.toggleAttribute("data-more-right", moreRight(el));
+  };
   update();
   const observer =
     typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
@@ -100,6 +112,13 @@ function attach(el: HTMLElement) {
     window.removeEventListener("pointercancel", onUp);
   }
 
+  // El arrastre nativo de enlaces e imágenes cortaría el desplazamiento.
+  const onNativeDrag = (event: DragEvent) => {
+    const target = event.target as Element | null;
+    if (target?.closest?.("[data-no-drag-scroll]")) return;
+    event.preventDefault();
+  };
+
   const onDown = (event: PointerEvent) => {
     if (event.pointerType !== "mouse" || event.button !== 0) return;
     const target = event.target as Element | null;
@@ -115,13 +134,18 @@ function attach(el: HTMLElement) {
 
   el.addEventListener("pointerdown", onDown);
   el.addEventListener("selectstart", onSelectStart);
+  el.addEventListener("scroll", update, { passive: true });
+  el.addEventListener("dragstart", onNativeDrag);
   return () => {
     stop();
     observer?.disconnect();
     el.removeEventListener("pointerdown", onDown);
     el.removeEventListener("selectstart", onSelectStart);
+    el.removeEventListener("scroll", update);
+    el.removeEventListener("dragstart", onNativeDrag);
     el.removeEventListener("click", suppressClick, true);
     el.removeAttribute("data-drag-scroll");
+    el.removeAttribute("data-more-right");
     el.removeAttribute("data-drag-scrolling");
   };
 }
