@@ -44,7 +44,6 @@ Estaremos encantados de recibir las piezas para evaluarlas y confirmar la cotiza
 
 Cualquier consulta, estaré encantada de atenderte. ☺️`;
 
-
 /** Variables escritas en la plantilla que no existen (p. ej., "{clienet}"). */
 export function unknownPlaceholders(template: string): string[] {
   return unknownTemplatePlaceholders(template, WHATSAPP_PLACEHOLDERS);
