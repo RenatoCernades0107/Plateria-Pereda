@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/configuracion", title: "Empresa" },
+  { href: "/configuracion/alertas", title: "Alertas" },
   ...Object.values(CATALOGS).map(({ href, title }) => ({ href, title })),
 ];
 

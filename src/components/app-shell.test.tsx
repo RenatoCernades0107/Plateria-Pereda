@@ -10,14 +10,23 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/restauraciones/123",
 }));
 vi.mock("@/server/auth-actions", () => ({ logout: vi.fn() }));
+vi.mock("@/components/alerts/alerts-bell", () => ({
+  AlertsBell: () => <button type="button">Alertas</button>,
+}));
 
 const user = {
+  id: "u-1",
   fullName: "Vera Ventas",
   email: "ventas@pereda.test",
   role: "ventas" as const,
 };
 
 describe("AppShell", () => {
+  it("muestra la campana de alertas en el encabezado", () => {
+    render(<AppShell user={user}>contenido</AppShell>);
+    expect(screen.getByRole("button", { name: "Alertas" })).toBeVisible();
+  });
+
   it.each([
     ["admin", NAV_ITEMS.map((i) => i.title)],
     [
