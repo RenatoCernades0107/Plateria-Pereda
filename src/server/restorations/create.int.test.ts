@@ -157,7 +157,7 @@ describe("registro de restauraciones", () => {
     expect(count).toBe(2);
   });
 
-  it("ventas registra sin precio de venta; con precio lo rechaza la BD (D58)", async () => {
+  it("ventas registra sin precio de venta o con él", async () => {
     const piece = {
       workshopId: null,
       description: "Jarra",
@@ -187,9 +187,14 @@ describe("registro de restauraciones", () => {
       .single();
     expect(data).toEqual({ total: 0, pieces: [{ price: null }] });
 
-    await expect(
-      createRestorationRecord(ventas, input("10")),
-    ).rejects.toMatchObject({ code: "42501" });
+    const priced = await createRestorationRecord(ventas, input("10"));
+    created.restorations.push(priced.id);
+    const { data: withPrice } = await ventas
+      .from("restorations")
+      .select("total, pieces(price)")
+      .eq("id", priced.id)
+      .single();
+    expect(withPrice).toEqual({ total: 10, pieces: [{ price: 10 }] });
   });
 
   it("logística no puede registrar", async () => {

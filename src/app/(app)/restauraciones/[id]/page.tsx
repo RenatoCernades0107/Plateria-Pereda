@@ -643,7 +643,7 @@ export default async function RestauracionDetallePage({
                           ),
                           priceHint: !charged
                             ? `${kindNotice}: la pieza no lleva precio de venta.`
-                            : user.role === "admin"
+                            : can(user.role, "piezas.precio-venta")
                               ? "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo)."
                               : SALE_PRICE_HINT,
                           priceChange: Object.fromEntries(
