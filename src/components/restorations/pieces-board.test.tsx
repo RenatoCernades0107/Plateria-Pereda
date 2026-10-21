@@ -333,19 +333,16 @@ describe("PiecesBoard: menú «Acciones» de cada pieza", () => {
 describe("PiecesBoard: precio de venta (D58)", () => {
   const pieces = [piece(1, { priceCents: 12_050 }), piece(2)];
 
-  it("ventas ve el precio o «Por definir»", () => {
+  it("ventas ve el precio y asigna el que falta", () => {
     renderBoard(pieces, { role: "ventas" });
     expect(screen.getByTestId("pieza-RES-00001-1")).toHaveTextContent(
       "S/ 120.50",
     );
     expect(
-      within(screen.getByTestId("pieza-RES-00001-2")).getByTestId(
-        "precio-sin-asignar",
-      ),
-    ).toHaveTextContent("Por definir");
-    expect(
-      screen.queryByLabelText("Precio de venta de RES-00001-2"),
-    ).toBeNull();
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-2",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("una guía interna u observada no muestra la columna de precio", () => {

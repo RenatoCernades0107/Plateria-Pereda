@@ -1,6 +1,6 @@
 begin;
 
-select plan(26);
+select plan(23);
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
 
@@ -124,22 +124,8 @@ select throws_ok(
   'logística no marca piezas de guías pasadas'
 );
 
--- 4. Ventas: marca y quita urgente, pero no asigna el precio.
+-- 4. Ventas: marca y quita urgente.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000045a2","role":"authenticated"}', true);
-select throws_ok(
-  $$ select public.set_piece_sale_price('00000000-0000-0000-0000-0000000045e1', 10) $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.',
-  'ventas no asigna el precio de venta'
-);
-select throws_ok(
-  $$ update public.pieces set price = 10 where id = '00000000-0000-0000-0000-0000000045e1' $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.',
-  'ni editando la tabla'
-);
-select throws_ok(
-  $$ select public.change_piece_price('00000000-0000-0000-0000-0000000045e4', 130, 'Otro motivo') $$,
-  '42501', null, 'ventas no cambia el precio con la orden creada'
-);
 select lives_ok(
   $$ select * from public.set_pieces_urgent(array['00000000-0000-0000-0000-0000000045e1']::uuid[], false) $$,
   'ventas quita la marca de urgente'

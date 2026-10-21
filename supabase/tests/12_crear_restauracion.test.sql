@@ -1,6 +1,6 @@
 begin;
 
-select plan(14);
+select plan(12);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000008a1', 'ventas@crear.test', '{"role":"ventas"}', '{}'),
@@ -64,7 +64,7 @@ select throws_ok(
   '23503', null, 'rechaza clientes desactivados'
 );
 
--- Precio de venta sin asignar (D58): ventas registra sin precio; solo el admin lo pone.
+-- Precio de venta sin asignar (D58): ventas registra sin precio.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000008a1","role":"authenticated"}', true);
 create temporary table created_by_sales on commit drop as
 select * from public.create_restoration(
@@ -80,15 +80,6 @@ select results_eq(
   $$ select r.total, r.expected_deposit from public.restorations r join created_by_sales c on c.id = r.id $$,
   $$ values (0.00::numeric, 0.00::numeric) $$,
   'sin precios el total y el adelanto son 0'
-);
-select throws_ok(
-  $$ select * from public.create_restoration('00000000-0000-0000-0000-00000000d801', null, 'contado', null, '',
-       '[{"description": "X", "price": "10"}]') $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no asigna el precio de venta'
-);
-select throws_ok(
-  $$ update public.pieces p set price = 10 from created_by_sales c where c.id = p.restoration_id $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas tampoco lo asigna al editar la pieza'
 );
 reset role;
 grant select on created_by_sales to service_role;

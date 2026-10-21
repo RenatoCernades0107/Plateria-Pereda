@@ -265,11 +265,8 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await expect(page.getByTestId("orden-shopify")).toBeVisible({
       timeout: 30_000,
     });
-    // Ventas no cambia el precio con la orden creada.
-    await expect(
-      page.getByRole("button", { name: "Cambiar precio" }),
-    ).toHaveCount(0);
-    expect(await pieceActionNames(page, `${r.code}-1`)).not.toContain(
+    // Ventas también cambia el precio con la orden creada (2026-10-21).
+    expect(await pieceActionNames(page, `${r.code}-1`)).toContain(
       "Cambiar precio",
     );
 

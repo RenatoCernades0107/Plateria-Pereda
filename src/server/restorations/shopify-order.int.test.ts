@@ -133,11 +133,9 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     // Todas aprobadas, pero sin precios: la orden espera (D58).
     expect((await jobs()).data).toEqual([]);
 
-    expect((await setPrice(ventas, pieces![0]!.id, 100)).error).toMatchObject({
-      code: "42501",
-    });
+    // Ventas asigna un precio y el admin el otro.
+    expect((await setPrice(ventas, pieces![0]!.id, 100)).error).toBeNull();
     const pricing = await signIn("admin@pereda.test");
-    expect((await setPrice(pricing, pieces![0]!.id, 100)).error).toBeNull();
     expect((await jobs()).data).toEqual([]);
     expect((await setPrice(pricing, pieces![1]!.id, 33.33)).error).toBeNull();
     expect((await jobs()).data).toHaveLength(1);

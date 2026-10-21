@@ -120,8 +120,8 @@ export async function undoPieceStatus(
 }
 
 /**
- * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): admin
- * y logística (2026-10-19), con motivo. La BD encola la edición de la orden.
+ * Cambia el precio de una pieza con la orden de Shopify creada (Paso 9.2, P12): admin,
+ * logística (2026-10-19) y ventas (2026-10-21), con motivo. La BD encola la edición de la orden.
  */
 export async function changePiecePrice(
   restorationId: string,

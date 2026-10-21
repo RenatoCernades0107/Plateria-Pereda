@@ -246,7 +246,7 @@ test.describe("Restauraciones", () => {
     ).toHaveValue("Bandeja con asas");
   });
 
-  test("ventas registra sin precio de venta y el admin lo asigna (D58)", async ({
+  test("ventas puede registrar sin precio de venta y el admin lo asigna (D58)", async ({
     page,
     loginAs,
   }) => {
@@ -260,16 +260,12 @@ test.describe("Restauraciones", () => {
       multiple: true,
     });
     await card.getByLabel("Descripción").fill("Tetera sin precio");
-    await expect(card.getByLabel("Precio (S/)")).toBeDisabled();
+    // Ventas asigna el precio (2026-10-21); aquí lo deja por definir.
+    await expect(card.getByLabel("Precio (S/)")).toBeEnabled();
     await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
       "placeholder",
       "Por definir",
     );
-    await expect(
-      card.getByText(
-        "Solo el administrador y logística asignan el precio de venta.",
-      ),
-    ).toBeVisible();
     // Sin precios todavía el total es 0; crece cuando el admin los asigna (D59).
     await expect(page.getByTestId("total-en-vivo")).toHaveText("S/ 0.00");
     await page.getByRole("button", { name: "Registrar restauración" }).click();
@@ -285,8 +281,11 @@ test.describe("Restauraciones", () => {
     await expect(quoteMessage).toContainText("*Precio por definir*");
     await page.keyboard.press("Escape");
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
+    // Sin precio, ventas ve el lápiz para asignarlo desde la tabla.
     await expect(
-      page.getByTestId(`pieza-${code}-1`).getByTestId("precio-sin-asignar"),
+      page.getByRole("button", {
+        name: `Editar precio de venta de ${code}-1`,
+      }),
     ).toBeVisible();
 
     // Aprobada sin precio: la orden de Shopify espera el precio.
@@ -376,7 +375,7 @@ test.describe("Restauraciones", () => {
     await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
     await expect(
       dialog.getByText(
-        "Solo el administrador y logística asignan el precio de venta.",
+        "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo).",
       ),
     ).toBeVisible();
     // Varios materiales: dos del catálogo.

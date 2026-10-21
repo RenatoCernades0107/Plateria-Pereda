@@ -1,6 +1,6 @@
 begin;
 
-select plan(53);
+select plan(51);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000ea1', 'ventas@cwa.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -78,15 +78,6 @@ select throws_ok(
   format($$ select * from public.create_restoration_from_whatsapp_quote(%L, null, null, 'contado', null, '',
     '[{"description":"Jarra","price":"60.50"}]'::jsonb) $$, (select id from q)),
   '23514', 'Elige el cliente de la restauración.', 'la copia exige un cliente'
-);
-
--- Ventas copia con el precio cotizado; cambiarlo es cosa del admin (D58).
-select throws_ok(
-  format($$ select * from public.create_restoration_from_whatsapp_quote(%L, '00000000-0000-0000-0000-00000000ea20', null,
-    'contado', null, '', jsonb_build_array(jsonb_build_object('quote_item_id', %L, 'description', 'Fuente ovalada',
-      'price', '110', 'status', 'aprobada'))) $$,
-    (select id from q), (select id from public.whatsapp_quote_items where quote_id = (select id from q) and number = 1)),
-  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no cambia el precio cotizado al copiar'
 );
 
 -- Copia de dos piezas que el cliente aprobó: la Fuente y la Jarra, con su precio cotizado.
@@ -329,11 +320,6 @@ select is(
   0, 'pero la orden espera el precio de la Cucharita (D58)'
 );
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);
-select throws_ok(
-  $$ update public.pieces set price = 10 where restoration_id = (select id from r3) and number = 3 $$,
-  '42501', 'Solo el administrador y logística asignan el precio de venta.', 'ventas no asigna el precio que falta'
-);
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea3","role":"authenticated"}', true);
 select lives_ok(
   $$ update public.pieces set price = 10 where restoration_id = (select id from r3) and number = 3 $$,
