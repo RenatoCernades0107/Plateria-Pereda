@@ -5,7 +5,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   return (
     <AppShell
-      user={{ fullName: user.fullName, email: user.email, role: user.role }}
+      user={{
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+      }}
     >
       {children}
     </AppShell>

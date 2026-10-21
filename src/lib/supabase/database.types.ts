@@ -9,6 +9,30 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      alert_settings: {
+        Row: {
+          enabled: boolean;
+          id: Database["public"]["Enums"]["alert_kind"];
+          muted_user_ids: string[];
+          template: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          enabled?: boolean;
+          id: Database["public"]["Enums"]["alert_kind"];
+          muted_user_ids?: string[];
+          template?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          enabled?: boolean;
+          id?: Database["public"]["Enums"]["alert_kind"];
+          muted_user_ids?: string[];
+          template?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       audit_log: {
         Row: {
           action: string;
@@ -217,6 +241,67 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      notifications: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          created_at: string;
+          data: NonNullable<Json>;
+          id: string;
+          kind: Database["public"]["Enums"]["alert_kind"];
+          read_at: string | null;
+          recipient_id: string;
+          restoration_id: string;
+          txid: number;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          created_at?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          kind: Database["public"]["Enums"]["alert_kind"];
+          read_at?: string | null;
+          recipient_id: string;
+          restoration_id: string;
+          txid: number;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          created_at?: string;
+          data?: NonNullable<Json>;
+          id?: string;
+          kind?: Database["public"]["Enums"]["alert_kind"];
+          read_at?: string | null;
+          recipient_id?: string;
+          restoration_id?: string;
+          txid?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notifications_recipient_id_fkey";
+            columns: ["recipient_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "notifications_restoration_id_fkey";
+            columns: ["restoration_id"];
+            isOneToOne: false;
+            referencedRelation: "restorations_operational";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       payment_methods: {
         Row: {
@@ -2041,6 +2126,22 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      my_notifications: {
+        Args: { p_limit?: number };
+        Returns: {
+          actor_name: string;
+          client_name: string;
+          created_at: string;
+          data: Json;
+          id: string;
+          kind: Database["public"]["Enums"]["alert_kind"];
+          pieces: Json;
+          read_at: string;
+          restoration_code: string;
+          restoration_id: string;
+          unread_count: number;
+        }[];
+      };
       piece_location_since: {
         Args: {
           p_arrived_at?: string;
@@ -2224,6 +2325,11 @@ export type Database = {
       };
     };
     Enums: {
+      alert_kind:
+        | "aprobacion_parcial"
+        | "aprobacion_total"
+        | "pieza_en_espera"
+        | "guia_en_espera";
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
@@ -2402,6 +2508,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      alert_kind: [
+        "aprobacion_parcial",
+        "aprobacion_total",
+        "pieza_en_espera",
+        "guia_en_espera",
+      ],
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],
       document_type: ["dni", "ce", "pasaporte", "ruc"],

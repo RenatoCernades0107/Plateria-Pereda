@@ -5,6 +5,7 @@ import Link, { useLinkStatus } from "next/link";
 import { Loader2, LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 
+import { AlertsBell } from "@/components/alerts/alerts-bell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,7 +47,12 @@ import { findNavItem, NAV_ITEMS } from "@/lib/navigation";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { logout } from "@/server/auth-actions";
 
-export type ShellUser = { fullName: string; email: string; role: AppRole };
+export type ShellUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: AppRole;
+};
 
 /**
  * Indicador de carga del enlace del menú mientras llega la sección. No se usan
@@ -193,7 +199,8 @@ function AppHeader({ user }: { user: ShellUser }) {
           )}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-1">
+        <AlertsBell userId={user.id} />
         <UserMenu user={user} />
       </div>
     </header>

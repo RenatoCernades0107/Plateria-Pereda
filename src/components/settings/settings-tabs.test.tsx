@@ -13,6 +13,7 @@ describe("SettingsTabs", () => {
     const links = screen.getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual([
       "Empresa",
+      "Alertas",
       "Materiales",
       "Servicios",
       "Métodos de pago",
