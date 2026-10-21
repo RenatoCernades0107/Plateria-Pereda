@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   result: { error: null as { code?: string; message?: string } | null },
   facts: [] as object[],
+  undoIds: null as number[] | null,
   revalidate: vi.fn(),
 }));
 
@@ -22,6 +23,8 @@ vi.mock("@/lib/supabase/server", () => ({
       mocks.rpc(name, args);
       if (name === "piece_requirement_facts")
         return { data: mocks.facts, error: null };
+      if (name === "piece_move_undo_ids")
+        return { data: mocks.undoIds, error: null };
       return mocks.result;
     },
   }),
@@ -30,12 +33,15 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
 
 const {
+  changePieceStatus,
+  receiveFromWorkshop,
   receivePiecesFromReview,
   sendPiecesForReview,
   sendPiecesToWorkshop,
   setPiecesUrgent,
   setRestorationKind,
   changePiecePrice,
+  undoPieceMove,
 } = await import("./status-actions");
 
 describe("revisión en taller", () => {
@@ -295,5 +301,100 @@ describe("cambiar precio con la orden creada", () => {
       p_reason: "Más trabajo",
     });
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones/r1");
+  });
+});
+
+describe("deshacer un movimiento del kanban", () => {
+  beforeEach(() => {
+    mocks.forbidden = false;
+    for (const fn of [mocks.permission, mocks.rpc, mocks.revalidate])
+      fn.mockReset();
+    mocks.result = { error: null };
+    mocks.facts = [];
+    mocks.undoIds = null;
+  });
+
+  it("los movimientos devuelven los eventos que «Deshacer» revierte", async () => {
+    mocks.undoIds = [41];
+    expect(
+      await changePieceStatus("r1", ["p1"], "en_espera", null, null),
+    ).toEqual({ ok: true, undoIds: [41] });
+    expect(mocks.rpc).toHaveBeenCalledWith("piece_move_undo_ids", {
+      p_piece_ids: ["p1"],
+    });
+
+    mocks.undoIds = [42, 43];
+    expect(await receivePiecesFromReview(null, ["p1", "p2"])).toEqual({
+      ok: true,
+      undoIds: [42, 43],
+    });
+    expect(await sendPiecesForReview(null, ["p1", "p2"], "w1")).toEqual({
+      ok: true,
+      undoIds: [42, 43],
+    });
+    expect(await receiveFromWorkshop("r1", ["p1", "p2"])).toEqual({
+      ok: true,
+      undoIds: [42, 43],
+    });
+  });
+
+  it("si la BD no ofrece deshacer (Shopify, pago, otro usuario), el resultado es el de siempre", async () => {
+    mocks.undoIds = [];
+    expect(
+      await changePieceStatus("r1", ["p1"], "en_espera", null, null),
+    ).toEqual({ ok: true });
+  });
+
+  it("un movimiento que falla no consulta qué deshacer", async () => {
+    mocks.result = { error: { code: "23514", message: "No se puede." } };
+    expect(await receiveFromWorkshop("r1", ["p1"])).toEqual({
+      error: "No se puede.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalledWith(
+      "piece_move_undo_ids",
+      expect.anything(),
+    );
+  });
+
+  it("«Deshacer» llama a la BD con los eventos y refresca las vistas", async () => {
+    expect(await undoPieceMove("r1", [41])).toEqual({ ok: true });
+    expect(mocks.permission).toHaveBeenCalledWith("restauraciones.ver");
+    expect(mocks.rpc).toHaveBeenCalledWith("undo_piece_move", {
+      p_history_ids: [41],
+    });
+    expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones/r1");
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/restauraciones/[id]",
+      "page",
+    );
+    expect(mocks.revalidate).toHaveBeenCalledWith("/piezas");
+  });
+
+  it("muestra el motivo de la BD si ya no se puede deshacer", async () => {
+    mocks.result = {
+      error: {
+        code: "23514",
+        message:
+          "Ya pasó el tiempo para deshacer el movimiento de la pieza RES-00001-1.",
+      },
+    };
+    expect(await undoPieceMove(null, [41])).toEqual({
+      error:
+        "Ya pasó el tiempo para deshacer el movimiento de la pieza RES-00001-1.",
+    });
+    mocks.result = { error: { code: "XX000", message: "boom" } };
+    expect(await undoPieceMove(null, [41])).toEqual({
+      error: "No se pudo deshacer el movimiento.",
+    });
+    expect(mocks.revalidate).not.toHaveBeenCalled();
+  });
+
+  it("sin eventos o sin permiso no llama a la BD", async () => {
+    expect(await undoPieceMove(null, [])).toEqual({
+      error: "No hay ningún movimiento que deshacer.",
+    });
+    mocks.forbidden = true;
+    await expect(undoPieceMove(null, [41])).rejects.toThrow("FORBIDDEN");
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

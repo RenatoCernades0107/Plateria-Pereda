@@ -2067,6 +2067,10 @@ export type Database = {
           workshop_ongoing: boolean;
         }[];
       };
+      piece_move_undo_ids: {
+        Args: { p_piece_ids: string[] };
+        Returns: number[];
+      };
       piece_previous_status: {
         Args: { p_piece_id: string };
         Returns: Database["public"]["Enums"]["piece_status"];
@@ -2172,6 +2176,13 @@ export type Database = {
           job_id: number;
           last_error: string;
           status: string;
+        }[];
+      };
+      undo_piece_move: {
+        Args: { p_history_ids: number[] };
+        Returns: {
+          piece_id: string;
+          status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
       undo_piece_status: {

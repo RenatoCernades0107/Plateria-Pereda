@@ -32,10 +32,12 @@ import type { PieceLocation } from "@/domain/restoration-status";
 import type { AppRole } from "@/lib/roles";
 import {
   changePieceStatus,
+  type MoveActionResult,
   receiveFromWorkshop,
   receivePiecesFromReview,
   sendPiecesForReview,
   sendPiecesToWorkshop,
+  undoPieceMove,
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
@@ -63,8 +65,27 @@ type Optimistic = Pick<StatusPiece, "id" | "status" | "location"> &
       | "firstSentAt"
       | "lastSentAt"
       | "lastReturnedAt"
+      | "observedAt"
     >
   >;
+
+/** Cuánto dura el aviso con "Deshacer" tras mover una pieza. */
+export const UNDO_TOAST_MS = 8000;
+
+/** La pieza tal como estaba antes de moverla (lo que se ve mientras se deshace). */
+const previousOf = (piece: StatusPiece): Optimistic => ({
+  id: piece.id,
+  status: piece.status,
+  location: piece.location,
+  workshopId: piece.workshopId,
+  readyForDelivery: piece.readyForDelivery,
+  reviewSentAt: piece.reviewSentAt ?? null,
+  reviewReturnedAt: piece.reviewReturnedAt ?? null,
+  firstSentAt: piece.firstSentAt ?? null,
+  lastSentAt: piece.lastSentAt ?? null,
+  lastReturnedAt: piece.lastReturnedAt ?? null,
+  observedAt: piece.observedAt ?? null,
+});
 
 /**
  * Columnas de los kanban de piezas. "En restauración" y "Lista para entregar" ya no
@@ -176,6 +197,34 @@ export function usePieceMoves<P extends StatusPiece>({
   const [sending, setSending] = useState<P | null>(null);
   const canConfirmBalance = role === "admin" || role === "ventas";
 
+  /**
+   * "Deshacer" del aviso: la pieza vuelve a como estaba (se ve al instante) y la BD
+   * repone su estado, fechas y taller y borra el movimiento del historial.
+   */
+  const undo = (piece: P, undoIds: number[]) =>
+    startTransition(async () => {
+      setOptimistic(previousOf(piece));
+      const result = await undoPieceMove(restorationId, undoIds);
+      if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
+      else toast.success("Movimiento deshecho");
+    });
+
+  /**
+   * Aviso de éxito de un movimiento. Si la BD dice que se puede deshacer (lo hizo este
+   * usuario y no tocó la orden de Shopify ni un pago), ofrece "Deshacer" unos segundos.
+   */
+  const notifyDone = (piece: P, message: string, result: MoveActionResult) => {
+    const undoIds = "undoIds" in result ? result.undoIds : undefined;
+    if (!undoIds?.length) {
+      toast.success(message);
+      return;
+    }
+    toast.success(message, {
+      duration: UNDO_TOAST_MS,
+      action: { label: "Deshacer", onClick: () => undo(piece, undoIds) },
+    });
+  };
+
   const run = (
     piece: P,
     change: PendingChange,
@@ -199,7 +248,11 @@ export function usePieceMoves<P extends StatusPiece>({
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          toast.success(`${piece.code}: ${PIECE_STATUS_LABELS[change.to]}.`);
+          notifyDone(
+            piece,
+            `${piece.code}: ${PIECE_STATUS_LABELS[change.to]}.`,
+            result,
+          );
           resolve(null);
         }
       });
@@ -226,7 +279,11 @@ export function usePieceMoves<P extends StatusPiece>({
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          toast.success(`${piece.code}: llevada al taller a revisar.`);
+          notifyDone(
+            piece,
+            `${piece.code}: llevada al taller a revisar.`,
+            result,
+          );
           resolve(null);
         }
       });
@@ -241,7 +298,7 @@ export function usePieceMoves<P extends StatusPiece>({
       });
       const result = await receivePiecesFromReview(restorationId, [piece.id]);
       if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
-      else toast.success(`${piece.code}: volvió de revisión.`);
+      else notifyDone(piece, `${piece.code}: volvió de revisión.`, result);
     });
 
   /** "Enviar al taller" (con el taller elegido) y "Recibir del taller". */
@@ -262,7 +319,7 @@ export function usePieceMoves<P extends StatusPiece>({
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          toast.success(`${piece.code}: enviada al taller.`);
+          notifyDone(piece, `${piece.code}: enviada al taller.`, result);
           resolve(null);
         }
       });
@@ -278,7 +335,7 @@ export function usePieceMoves<P extends StatusPiece>({
       });
       const result = await receiveFromWorkshop(restorationId, [piece.id]);
       if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
-      else toast.success(`${piece.code}: volvió del taller.`);
+      else notifyDone(piece, `${piece.code}: volvió del taller.`, result);
     });
 
   /** Acciones de ubicación de la tarjeta (taller y revisión en taller). */

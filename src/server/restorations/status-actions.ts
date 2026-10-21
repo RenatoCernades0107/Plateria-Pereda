@@ -20,6 +20,29 @@ import { checkRequirements } from "./requirements";
 
 export type StatusActionResult = { ok: true } | { error: string };
 
+/**
+ * Resultado de mover piezas (estado o ubicación): si el movimiento se puede deshacer,
+ * trae los eventos del historial que `undoPieceMove` revierte ("Deshacer" en el aviso
+ * del kanban). Sin `undoIds` no se ofrece: lo hizo otro, pasó algo después, o el
+ * movimiento tocó la orden de Shopify o un pago.
+ */
+export type MoveActionResult =
+  { ok: true; undoIds?: number[] } | { error: string };
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Eventos para "Deshacer" el movimiento recién hecho (nada si no se puede). */
+async function undoable(
+  supabase: Supabase,
+  pieceIds: string[],
+): Promise<MoveActionResult> {
+  const { data, error } = await supabase.rpc("piece_move_undo_ids", {
+    p_piece_ids: pieceIds,
+  });
+  if (error || !data || data.length === 0) return { ok: true };
+  return { ok: true, undoIds: data };
+}
+
 /** Refresca el detalle de la restauración (si hay una) y la vista de piezas. */
 function refresh(restorationId: string | null) {
   if (restorationId) revalidatePath(`/restauraciones/${restorationId}`);
@@ -52,7 +75,7 @@ export async function changePieceStatus(
   to: PieceStatus,
   note: string | null = null,
   workshopId: string | null = null,
-): Promise<StatusActionResult> {
+): Promise<MoveActionResult> {
   await requirePermission("restauraciones.ver");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
@@ -69,7 +92,7 @@ export async function changePieceStatus(
   // aprobar una pieza agregada la edita (9.2) y entregar la prepara (9.3).
   scheduleShopifySync();
   refresh(restorationId);
-  return { ok: true };
+  return undoable(supabase, pieceIds);
 }
 
 /**
@@ -173,7 +196,7 @@ export async function markPiecesArrived(
 export async function sendPiecesToWorkshop(
   pieceIds: string[],
   workshopId: string | null,
-): Promise<StatusActionResult> {
+): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
@@ -194,14 +217,14 @@ export async function sendPiecesToWorkshop(
   // Las piezas pueden ser de varias guías: se refrescan todos los detalles.
   revalidatePath("/restauraciones/[id]", "page");
   refresh(null);
-  return { ok: true };
+  return undoable(supabase, pieceIds);
 }
 
 /** "Recibir del taller" (admin y logística): la pieza vuelve a la tienda, mismo estado. */
 export async function receiveFromWorkshop(
   restorationId: string | null,
   pieceIds: string[],
-): Promise<StatusActionResult> {
+): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
   const supabase = await createClient();
   const missing = await checkRequirements(supabase, "recibir_taller", pieceIds);
@@ -211,7 +234,7 @@ export async function receiveFromWorkshop(
   });
   if (error) return fail(error, "No se pudo recibir la pieza del taller.");
   refresh(restorationId);
-  return { ok: true };
+  return undoable(supabase, pieceIds);
 }
 
 /**
@@ -222,7 +245,7 @@ export async function sendPiecesForReview(
   restorationId: string | null,
   pieceIds: string[],
   workshopId: string | null,
-): Promise<StatusActionResult> {
+): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   if (!workshopId)
@@ -234,14 +257,14 @@ export async function sendPiecesForReview(
   });
   if (error) return fail(error, "No se pudo llevar la pieza al taller.");
   refresh(restorationId);
-  return { ok: true };
+  return undoable(supabase, pieceIds);
 }
 
 /** "Volvió de revisión" (admin y logística): la pieza vuelve a la tienda, mismo estado. */
 export async function receivePiecesFromReview(
   restorationId: string | null,
   pieceIds: string[],
-): Promise<StatusActionResult> {
+): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
@@ -250,6 +273,29 @@ export async function receivePiecesFromReview(
   });
   if (error)
     return fail(error, "No se pudo registrar la vuelta de la revisión.");
+  refresh(restorationId);
+  return undoable(supabase, pieceIds);
+}
+
+/**
+ * "Deshacer" del aviso tras mover piezas en el kanban (RPC `undo_piece_move`): las
+ * piezas vuelven exactamente a como estaban y los eventos del movimiento salen del
+ * historial. La BD exige que lo haga quien movió, dentro de 2 minutos y sin nada
+ * después; las piezas pueden ser de varias guías, así que se refrescan todas.
+ */
+export async function undoPieceMove(
+  restorationId: string | null,
+  historyIds: number[],
+): Promise<StatusActionResult> {
+  await requirePermission("restauraciones.ver");
+  if (historyIds.length === 0)
+    return { error: "No hay ningún movimiento que deshacer." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("undo_piece_move", {
+    p_history_ids: historyIds,
+  });
+  if (error) return fail(error, "No se pudo deshacer el movimiento.");
+  revalidatePath("/restauraciones/[id]", "page");
   refresh(restorationId);
   return { ok: true };
 }
