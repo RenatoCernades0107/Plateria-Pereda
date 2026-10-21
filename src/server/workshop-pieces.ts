@@ -16,6 +16,8 @@ export type WorkshopPiece = {
   restorationCode: string;
   status: PieceStatus;
   code: string;
+  /** Cantidad (informativa). */
+  quantity: number;
   description: string;
   serviceName: string;
   measure: string;
@@ -56,6 +58,7 @@ export async function listWorkshopPieces(
       restorationCode: p.restoration_code,
       status: toPieceStatus(p.status),
       code: p.code,
+      quantity: p.quantity ?? 1,
       description: p.description,
       serviceName: p.service_name,
       measure: p.measure,

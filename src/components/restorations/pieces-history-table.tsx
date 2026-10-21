@@ -13,7 +13,7 @@ import type { HistoryPiece } from "@/server/restorations/piece-history-queries";
 
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import { RT } from "./responsive-table";
-import { PieceStatusBadge, UrgentIcon } from "./status-badges";
+import { PieceQuantity, PieceStatusBadge, UrgentIcon } from "./status-badges";
 
 const Money = ({ cents, empty }: { cents: number | null; empty: string }) =>
   cents === null ? (
@@ -126,7 +126,7 @@ export function PiecesHistoryTable({
                 <PiecePhoto code={piece.code} url={piece.photoUrl} />
               </td>
               <td className={cn(cell, STICKY.code, "whitespace-nowrap")}>
-                {/* Urgente: solo el rayo, al costado del código. */}
+                {/* Urgente: solo el rayo, al costado del código, como la cantidad. */}
                 <span className="inline-flex items-center gap-1">
                   <Link
                     href={pieceHref(piece)}
@@ -135,6 +135,7 @@ export function PiecesHistoryTable({
                   >
                     {piece.code}
                   </Link>
+                  <PieceQuantity quantity={piece.quantity} />
                   {piece.urgent ? <UrgentIcon /> : null}
                 </span>
               </td>

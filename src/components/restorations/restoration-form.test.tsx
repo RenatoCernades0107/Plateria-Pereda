@@ -173,13 +173,13 @@ describe("RestorationForm", () => {
     expect(screen.getByLabelText("Notas generales")).toBeInTheDocument();
   });
 
-  it("la cantidad vale 1 por defecto y el encabezado muestra ×N cuando es mayor", async () => {
+  it("la cantidad vale 1 por defecto y el encabezado siempre muestra ×N", async () => {
     const user = userEvent.setup();
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
     const quantity = card.getByLabelText("Cant.");
     expect(quantity).toHaveValue("1");
-    expect(card.queryByTestId("cantidad-pieza")).toBeNull();
+    expect(card.getByTestId("cantidad-pieza")).toHaveTextContent("×1");
     await user.clear(quantity);
     await user.type(quantity, "6");
     expect(card.getByTestId("cantidad-pieza")).toHaveTextContent("×6");

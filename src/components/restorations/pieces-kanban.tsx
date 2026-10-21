@@ -19,7 +19,12 @@ import {
   usePieceMoves,
 } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, StatusAge, UrgentBadge } from "./status-badges";
+import {
+  LocationBadge,
+  PieceQuantity,
+  StatusAge,
+  UrgentBadge,
+} from "./status-badges";
 
 /**
  * Tablero kanban de piezas en curso: una columna por estado (en cada columna, en el
@@ -88,12 +93,15 @@ export function PiecesKanban({
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/restauraciones/${piece.restorationId}`}
-                    className="text-heading font-medium underline-offset-4 hover:underline"
-                  >
-                    {piece.code}
-                  </Link>
+                  <span className="inline-flex items-center gap-1">
+                    <Link
+                      href={`/restauraciones/${piece.restorationId}`}
+                      className="text-heading font-medium underline-offset-4 hover:underline"
+                    >
+                      {piece.code}
+                    </Link>
+                    <PieceQuantity quantity={piece.quantity} />
+                  </span>
                   {can(role, "clientes.ver") ? (
                     <p className="text-muted-foreground truncate text-xs">
                       {piece.clientName}

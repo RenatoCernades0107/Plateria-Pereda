@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
-import { PieceStatusBadge } from "@/components/restorations/status-badges";
+import {
+  PieceQuantity,
+  PieceStatusBadge,
+} from "@/components/restorations/status-badges";
 import {
   Table,
   TableBody,
@@ -66,7 +69,7 @@ export function WorkshopPiecesTable({
               <PieceStatusBadge status={p.status} />
             </TableCell>
             <TableCell className="text-heading font-medium whitespace-nowrap">
-              {p.code}
+              {p.code} <PieceQuantity quantity={p.quantity} />
             </TableCell>
             <TableCell className="max-w-64 break-words whitespace-normal">
               {p.description}

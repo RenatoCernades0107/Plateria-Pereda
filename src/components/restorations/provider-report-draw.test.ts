@@ -5,25 +5,59 @@ import { providerReportModel } from "@/domain/provider-report";
 import { drawProviderReport } from "./provider-report-draw";
 
 describe("drawProviderReport", () => {
-  it("la tabla lleva la cantidad y la ubicación de cada pieza", async () => {
+  it("la tabla lleva cantidad, medidas, peso, costo de servicio y ubicación, sin la guía aparte", async () => {
+    const model = providerReportModel(
+      [
+        {
+          id: "p1",
+          code: "RES-00004-1",
+          quantity: 6,
+          status: "aprobada",
+          location: "en_taller",
+          description: "Cucharitas",
+          notes: "",
+          serviceName: "Pulido",
+          materialName: "",
+          measure: "4x12 cm",
+          weightGrams: 85,
+          serviceCostCents: 3000,
+        },
+      ],
+      { showServiceCost: true },
+    );
+    const raw = (await drawProviderReport(model)).output();
+    for (const text of [
+      "CANT.",
+      "6",
+      "En taller",
+      "Cucharitas",
+      "MEDIDAS",
+      "4x12 cm",
+      "85 g",
+      "COSTO SERV.",
+    ])
+      expect(raw).toContain(`(${text})`);
+    expect(raw).not.toContain("(N° GUÍA)");
+  });
+
+  it("sin permiso de costos no lleva la columna de costo de servicio", async () => {
     const model = providerReportModel([
       {
         id: "p1",
-        guideCode: "RES-00004",
         code: "RES-00004-1",
-        quantity: 6,
+        quantity: 1,
         status: "aprobada",
         location: "en_taller",
-        description: "Cucharitas",
+        description: "Fuente",
         notes: "",
-        serviceName: "Pulido",
+        serviceName: "",
         materialName: "",
         measure: "",
         weightGrams: null,
+        serviceCostCents: 3000,
       },
     ]);
     const raw = (await drawProviderReport(model)).output();
-    for (const text of ["CANT.", "6", "En taller", "Cucharitas"])
-      expect(raw).toContain(`(${text})`);
+    expect(raw).not.toContain("(COSTO SERV.)");
   });
 });

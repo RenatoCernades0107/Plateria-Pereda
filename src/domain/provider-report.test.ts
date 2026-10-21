@@ -5,10 +5,10 @@ import {
   providerReportModel,
   type ProviderReportPiece,
 } from "./provider-report";
+import { formatCents } from "./money";
 
 const piece: ProviderReportPiece = {
   id: "p1",
-  guideCode: "RES-00004",
   code: "RES-00004-1",
   quantity: 2,
   status: "aprobada",
@@ -19,31 +19,43 @@ const piece: ProviderReportPiece = {
   materialName: "Plata 925",
   measure: "29x36",
   weightGrams: 120,
+  serviceCostCents: 4550,
 };
 
 describe("providerReportModel", () => {
   it("arma cada pieza con sus datos, la fecha de impresión y quién lo genera", () => {
-    const model = providerReportModel([piece], {
-      generatedBy: " María Quispe ",
-      now: new Date("2026-10-15T15:00:00Z"),
-    });
+    const model = providerReportModel(
+      [
+        piece,
+        { ...piece, id: "p2", code: "RES-00004-2", serviceCostCents: null },
+      ],
+      {
+        generatedBy: " María Quispe ",
+        now: new Date("2026-10-15T15:00:00Z"),
+        showServiceCost: true,
+      },
+    );
     expect(model.printedAt).toBe("15/10/2026");
     expect(model.generatedBy).toBe("María Quispe");
-    expect(model.rows).toEqual([
-      {
-        id: "p1",
-        number: 1,
-        guide: "RES-00004",
-        code: "RES-00004-1",
-        quantity: "2",
-        status: "Aprobada",
-        location: "En taller",
-        description: "Marco llano",
-        detail: "Plata 925 · 29x36 · 120 g",
-        service: "Varios",
-        task: "Soldar gancho de la esquina",
-      },
-    ]);
+    expect(model.showServiceCost).toBe(true);
+    expect(model.totalServiceCost).toBe(formatCents(4550));
+    expect(model.rows[1]).toMatchObject({ number: 2, serviceCost: "—" });
+    // Sin el número de guía: ya va en el código de la pieza.
+    expect(model.rows[0]).toEqual({
+      id: "p1",
+      number: 1,
+      code: "RES-00004-1",
+      quantity: "2",
+      status: "Aprobada",
+      location: "En taller",
+      description: "Marco llano",
+      detail: "Plata 925",
+      measure: "29x36",
+      weight: "120 g",
+      service: "Varios",
+      serviceCost: formatCents(4550),
+      task: "Soldar gancho de la esquina",
+    });
   });
 
   it("omite los datos que faltan", () => {
@@ -58,10 +70,13 @@ describe("providerReportModel", () => {
       },
     ]);
     expect(model.generatedBy).toBeNull();
+    expect(model.showServiceCost).toBe(false);
     expect(model.rows[0]).toMatchObject({
       task: "",
       service: "—",
       detail: "",
+      measure: "—",
+      weight: "—",
     });
   });
 });

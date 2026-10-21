@@ -441,7 +441,7 @@ describe("PiecesBoardTable", () => {
     expect(badge).not.toHaveClass("max-w-[10rem]");
   });
 
-  it("muestra la cantidad junto al código cuando es más de una", () => {
+  it("muestra siempre la cantidad junto al código, también con una", () => {
     render(
       <PiecesBoardTable
         role="ventas"
@@ -450,8 +450,8 @@ describe("PiecesBoardTable", () => {
       />,
     );
     expect(
-      within(screen.getByTestId("pieza-RES-00001-1")).queryByTestId("cantidad"),
-    ).toBeNull();
+      within(screen.getByTestId("pieza-RES-00001-1")).getByTestId("cantidad"),
+    ).toHaveTextContent("×1");
     expect(
       within(screen.getByTestId("pieza-RES-00001-2")).getByTestId("cantidad"),
     ).toHaveTextContent("×3");

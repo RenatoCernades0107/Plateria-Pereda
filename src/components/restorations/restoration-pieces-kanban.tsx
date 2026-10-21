@@ -27,7 +27,7 @@ import {
   usePieceMoves,
 } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, UrgentBadge } from "./status-badges";
+import { LocationBadge, PieceQuantity, UrgentBadge } from "./status-badges";
 
 /**
  * Piezas de una restauración en un tablero kanban por estado (detalle, `?vista=kanban`).
@@ -118,6 +118,7 @@ export function RestorationPiecesKanban({
                 >
                   {piece.code}
                 </Link>
+                <PieceQuantity quantity={piece.quantity} className="mt-0.5" />
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {showMoney ? (

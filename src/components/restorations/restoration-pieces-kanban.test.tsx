@@ -56,6 +56,7 @@ const piece = (
     deliveredAt: null,
     returnedAt: null,
     priceCents: null,
+    quantity: 1,
     ...patch,
   }) as PieceDetail;
 
@@ -65,6 +66,7 @@ const pieces = [
   piece(1, {
     status: "aprobada",
     urgent: true,
+    quantity: 3,
     serviceName: "Limpieza",
     priceCents: 12_000,
     arrivedAt: "2026-10-02T15:00:00Z",
@@ -129,6 +131,7 @@ describe("RestorationPiecesKanban", () => {
       within(card).getByRole("link", { name: "RES-00012-1" }),
     ).toHaveAttribute("href", "/piezas/p1");
     expect(card).toHaveTextContent("Pieza 1");
+    expect(within(card).getByTestId("cantidad")).toHaveTextContent("×3");
     expect(card).toHaveTextContent("Servicio: Limpieza");
     expect(card).toHaveTextContent("Urgente");
     expect(card).toHaveTextContent("Sin enviar");

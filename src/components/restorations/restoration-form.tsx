@@ -211,7 +211,7 @@ function PieceCard({
             </span>
             <span className="text-heading block truncate font-medium">
               {title}
-              {Number.isInteger(quantity) && quantity > 1 ? (
+              {Number.isInteger(quantity) && quantity >= 1 ? (
                 <span
                   className="text-muted-foreground font-normal tabular-nums"
                   data-testid="cantidad-pieza"
