@@ -65,6 +65,8 @@ declare
   v_desde timestamptz := (select inicio from seed_reloj);
   v_tabla text;
 begin
+  -- Antes de tocar las tablas, los disparadores diferidos pendientes (alertas).
+  set constraints all immediate;
   foreach v_tabla in array array[
     'workshops', 'materials', 'services', 'clients', 'contacts', 'restorations', 'pieces',
     'piece_status_history', 'payments', 'restoration_files', 'audit_log'

@@ -1193,6 +1193,16 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [ ] `@mobile` dashboard legible.
 - Commit: `feat(dashboard): agrega dashboard con métricas`
 
+#### Paso 13.3 — Alertas (pedido del 2026-10-21, D76)
+- [x] Campana en el encabezado con las alertas de cada usuario (contador de no leídas, enlace a la guía, marcar como leídas), en vivo con Supabase Realtime (también en el CI). Sin toast: la alerta nueva se anuncia a los lectores de pantalla.
+- [x] Alerta 1 (admin y logística): guía parcialmente aprobada ("2 de 4") o aprobada. Alerta 2 (admin y ventas): pieza en espera del cliente y guía con todas sus piezas vivas en espera.
+- [x] Configuración → Alertas (admin): activar/desactivar cada alerta, mensaje con variables (vista previa y "Restaurar mensaje original") y qué usuarios la reciben.
+- **BD:** [x] `50_alertas.test.sql` (destinatarios, agrupar acciones masivas, sin alerta propia, guía en espera en lugar de pieza, silenciados, desactivadas, guías internas, Retroceder y Deshacer, RLS).
+- **Unit:** [x] `alerts.test.ts` (mensajes), campana, formulario y acciones.
+- **E2E:** [x] `alerts.spec.ts`: logística ve en vivo la aprobación parcial y abre la guía; el admin cambia el mensaje y silencia a un usuario.
+- Hecho (2026-10-21): migración `20261021150000_alertas.sql`: `alert_settings` (una fila por alerta: activa, mensaje propio o null y `muted_user_ids`; auditada), `notifications` (cada usuario lee y marca solo las suyas; en la publicación de Realtime) y `private.notification_events` (piezas de cada alerta, enlazadas al evento del historial: si se borra, se va la pieza, y la alerta que se queda sin piezas se borra). Un disparador **diferido** sobre `piece_status_history` las genera al confirmar la transacción (ve la guía completa y agrupa una acción masiva por `txid`). `my_notifications()` devuelve las del usuario sin el cliente para logística. El mensaje se arma al leer (`src/domain/alerts.ts`) con la plantilla vigente; `src/domain/template.ts` comparte las variables con la plantilla de WhatsApp. El seed llama `set constraints all immediate` antes de cambiar las tablas.
+- Commit: `feat(alertas): alertas de aprobación y de espera del cliente con campana`
+
 ### Fase 14 — Cotizador de productos personalizados
 
 #### Paso 14.1 — Esquema de cotizaciones ⛔ P34

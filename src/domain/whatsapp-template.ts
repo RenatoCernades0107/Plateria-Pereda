@@ -1,3 +1,5 @@
+import { renderTemplate, unknownTemplatePlaceholders } from "./template";
+
 /** Variables que se pueden usar en la plantilla del mensaje de cotización (P25). */
 export const WHATSAPP_PLACEHOLDERS = {
   cliente: "Nombre del cliente",
@@ -42,12 +44,10 @@ Estaremos encantados de recibir las piezas para evaluarlas y confirmar la cotiza
 
 Cualquier consulta, estaré encantada de atenderte. ☺️`;
 
-const PLACEHOLDER = /\{([^{}]*)\}/g;
 
 /** Variables escritas en la plantilla que no existen (p. ej., "{clienet}"). */
 export function unknownPlaceholders(template: string): string[] {
-  const found = [...template.matchAll(PLACEHOLDER)].map((m) => m[1] ?? "");
-  return [...new Set(found.filter((name) => !(name in WHATSAPP_PLACEHOLDERS)))];
+  return unknownTemplatePlaceholders(template, WHATSAPP_PLACEHOLDERS);
 }
 
 /** Reemplaza las variables por sus valores; las que no tienen valor quedan vacías. */
@@ -55,12 +55,7 @@ export function renderWhatsAppTemplate(
   template: string,
   values: Partial<Record<WhatsAppPlaceholder, string>>,
 ): string {
-  return template
-    .replace(PLACEHOLDER, (match, name: string) =>
-      name in WHATSAPP_PLACEHOLDERS
-        ? (values[name as WhatsAppPlaceholder] ?? "")
-        : match,
-    )
+  return renderTemplate(template, WHATSAPP_PLACEHOLDERS, values)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

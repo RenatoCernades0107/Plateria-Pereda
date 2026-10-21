@@ -43,8 +43,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # Con Realtime: la campana de alertas recibe las nuevas en vivo (e2e/alerts.spec.ts).
       - name: Levantar Supabase local
-        run: pnpm exec supabase start -x studio,realtime,imgproxy,edge-runtime,logflare,vector,supavisor
+        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - run: pnpm db:lint
       - run: pnpm db:test
       - name: Los tipos generados coinciden con las migraciones
