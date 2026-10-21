@@ -407,7 +407,19 @@ function BoardRow({
  * de la pieza. Selección para acciones en bloque; las urgentes van primero y se
  * resaltan las que llevan muchos días en el taller.
  */
-/** Encabezado que ordena la vista: la misma columna invierte el sentido. */
+/** Orden de la columna para `aria-sort` (solo la activa). */
+function ariaSort(
+  filters: PieceBoardFilters | undefined,
+  sort: PieceBoardSort,
+) {
+  if (!filters || filters.sort !== sort) return undefined;
+  return filters.dir === "asc" ? "ascending" : "descending";
+}
+
+/**
+ * Encabezado que ordena la vista: la misma columna invierte el sentido. El nombre de
+ * la columna sigue siendo su texto; "Ordenar por…" va en el `title`.
+ */
 function SortHeader({
   filters,
   sort,
@@ -426,7 +438,7 @@ function SortHeader({
     <Link
       href={pieceBoardHref(filters, pieceSortChange(filters, sort))}
       className="inline-flex items-center gap-1 hover:underline"
-      aria-label={`Ordenar por ${label}`}
+      title={`Ordenar por ${label}`}
     >
       {children}
       {active ? <Icon className="size-3.5" aria-hidden /> : null}
@@ -508,7 +520,11 @@ export function PiecesBoardTable({
               <th scope="col" className={cn(head, STICKY.photo)}>
                 Foto
               </th>
-              <th scope="col" className={cn(head, STICKY.code)}>
+              <th
+                scope="col"
+                className={cn(head, STICKY.code)}
+                aria-sort={ariaSort(filters, "guia")}
+              >
                 <SortHeader filters={filters} sort="guia" label="guía">
                   Pieza
                 </SortHeader>
@@ -539,6 +555,7 @@ export function PiecesBoardTable({
                 scope="col"
                 className={head}
                 title={`Debajo, los días acumulados en el taller, sumando todas las idas. Rojo si sigue allí desde hace ${WORKSHOP_DAYS_ALERT} días o más.`}
+                aria-sort={ariaSort(filters, "dias_taller")}
               >
                 <SortHeader
                   filters={filters}
@@ -554,7 +571,11 @@ export function PiecesBoardTable({
                 </th>
               ) : null}
               {showPrice ? (
-                <th scope="col" className={cn(head, "text-right")}>
+                <th
+                  scope="col"
+                  className={cn(head, "text-right")}
+                  aria-sort={ariaSort(filters, "precio")}
+                >
                   <SortHeader
                     filters={filters}
                     sort="precio"

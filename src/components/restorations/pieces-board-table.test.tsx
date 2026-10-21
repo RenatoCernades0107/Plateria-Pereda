@@ -88,22 +88,29 @@ describe("PiecesBoardTable", () => {
       />,
     );
     // Guía: otra columna empieza de mayor a menor (la más reciente).
-    expect(
-      screen.getByRole("link", { name: "Ordenar por guía" }),
-    ).toHaveAttribute("href", "/piezas");
-    expect(
-      screen.getByRole("link", { name: "Ordenar por días en taller" }),
-    ).toHaveAttribute("href", "/piezas?orden=dias_taller");
+    expect(screen.getByRole("link", { name: "Pieza" })).toHaveAttribute(
+      "href",
+      "/piezas",
+    );
+    expect(screen.getByRole("link", { name: "Taller" })).toHaveAttribute(
+      "href",
+      "/piezas?orden=dias_taller",
+    );
     // La columna activa invierte el sentido.
+    expect(screen.getByRole("link", { name: "Precio venta" })).toHaveAttribute(
+      "href",
+      "/piezas?orden=precio&dir=asc",
+    );
+    // La columna activa lo anuncia; el nombre de la columna sigue siendo su texto.
     expect(
-      screen.getByRole("link", { name: "Ordenar por precio de venta" }),
-    ).toHaveAttribute("href", "/piezas?orden=precio&dir=asc");
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toHaveAttribute("aria-sort", "descending");
   });
 
   it("sin filtros, los encabezados no son enlaces", () => {
     render(<PiecesBoardTable pieces={[base]} role="admin" workshops={[]} />);
     expect(
-      screen.queryByRole("link", { name: /Ordenar por/ }),
+      screen.queryByRole("link", { name: "Precio venta" }),
     ).not.toBeInTheDocument();
   });
 

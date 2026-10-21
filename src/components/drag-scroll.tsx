@@ -6,7 +6,8 @@ import { DRAG_SCROLL_CLASS, useDragScroll } from "./use-drag-scroll";
 
 /**
  * Contenedor que se desplaza de lado arrastrando con el ratón y sin barra, para
- * usarlo desde componentes de servidor.
+ * usarlo desde componentes de servidor. `relative` para que lo absoluto de adentro no
+ * ensanche la página.
  */
 export function DragScroll({
   className,
@@ -18,7 +19,7 @@ export function DragScroll({
     <div
       {...props}
       ref={dragScroll}
-      className={cn("overflow-x-auto", DRAG_SCROLL_CLASS, className)}
+      className={cn("relative overflow-x-auto", DRAG_SCROLL_CLASS, className)}
     >
       {children}
     </div>
