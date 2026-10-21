@@ -1,6 +1,8 @@
 begin;
 
 select plan(26);
+-- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
+select set_config('app.deliver_with_balance', 'on', true);
 
 -- Logística y el precio de venta; marca "Urgente" (2026-10-19).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values

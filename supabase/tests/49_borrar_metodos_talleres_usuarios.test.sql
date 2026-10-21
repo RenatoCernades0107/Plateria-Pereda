@@ -47,8 +47,8 @@ insert into public.payments (restoration_id, amount, payment_method_id) values
 
 -- Lo que registró Vera (ventas) y el único cambio de Lalo (logística).
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000e92","role":"authenticated"}', true);
-insert into public.clients (id, kind, first_name)
-  values ('00000000-0000-0000-0000-00000000e931', 'persona', 'De Vera');
+insert into public.clients (id, kind, legal_name, document_type, document_number)
+  values ('00000000-0000-0000-0000-00000000e931', 'empresa', 'De Vera S.A.C.', 'ruc', '20999999983');
 insert into public.contacts (client_id, first_name)
   values ('00000000-0000-0000-0000-00000000e931', 'Contacto de Vera');
 insert into public.restorations (client_id, payment_type)
