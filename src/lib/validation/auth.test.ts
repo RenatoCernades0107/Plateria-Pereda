@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  loginSchema,
-  recoverPasswordSchema,
-  resetPasswordSchema,
-} from "./auth";
+import { loginSchema } from "./auth";
 
 function errores(result: {
   success: boolean;
@@ -31,40 +27,5 @@ describe("loginSchema", () => {
       email: "Ingresa un email válido",
       password: "Ingresa tu contraseña",
     });
-  });
-});
-
-describe("recoverPasswordSchema", () => {
-  it("exige un email válido", () => {
-    expect(recoverPasswordSchema.safeParse({ email: "x" }).success).toBe(false);
-    expect(recoverPasswordSchema.safeParse({ email: "x@y.pe" }).success).toBe(
-      true,
-    );
-  });
-});
-
-describe("resetPasswordSchema", () => {
-  it("exige 8 caracteres como mínimo", () => {
-    expect(
-      errores(
-        resetPasswordSchema.safeParse({
-          password: "corta",
-          confirmPassword: "corta",
-        }),
-      ),
-    ).toEqual({
-      password: "Debe tener al menos 8 caracteres",
-    });
-  });
-
-  it("exige que la confirmación coincida", () => {
-    expect(
-      errores(
-        resetPasswordSchema.safeParse({
-          password: "Clave-segura-1",
-          confirmPassword: "Clave-segura-2",
-        }),
-      ),
-    ).toEqual({ confirmPassword: "Las contraseñas no coinciden" });
   });
 });

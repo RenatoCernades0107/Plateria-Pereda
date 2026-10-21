@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/users-actions", () => ({
   deleteUser: (...a: unknown[]) => mocks.deleteUser(...a),
-  resendAccess: vi.fn(),
+  setUserPassword: vi.fn(),
   setUserActive: vi.fn(),
   updateUserRole: vi.fn(),
 }));

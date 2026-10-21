@@ -43,7 +43,7 @@ export default defineConfig({
       : `pnpm dev -p ${PORT}`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !isCI,
-    // Los enlaces de los correos (recuperar contraseña) deben volver a este servidor.
+    // Las URLs absolutas que arma la app (p. ej. para Shopify) apuntan a este servidor.
     env: { APP_URL: `http://localhost:${PORT}` },
     timeout: 180_000,
   },

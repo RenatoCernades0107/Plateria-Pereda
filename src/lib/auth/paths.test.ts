@@ -5,8 +5,6 @@ import { isPublicPath, safeNextPath } from "./paths";
 describe("isPublicPath", () => {
   it("reconoce las rutas públicas y sus subrutas", () => {
     expect(isPublicPath("/login")).toBe(true);
-    expect(isPublicPath("/recuperar-contrasena")).toBe(true);
-    expect(isPublicPath("/auth/confirm")).toBe(true);
   });
 
   it("deja pasar los endpoints que se autentican solos", () => {
@@ -19,7 +17,7 @@ describe("isPublicPath", () => {
   it("protege el resto, incluso rutas con prefijo parecido", () => {
     expect(isPublicPath("/")).toBe(false);
     expect(isPublicPath("/dashboard")).toBe(false);
-    expect(isPublicPath("/restablecer-contrasena")).toBe(false);
+    expect(isPublicPath("/recuperar-contrasena")).toBe(false);
     expect(isPublicPath("/loginx")).toBe(false);
   });
 });

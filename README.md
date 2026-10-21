@@ -93,6 +93,10 @@ scripts/          scripts de desarrollo
 - Las funciones internas van en el esquema `private`, que la API de Supabase no expone.
 - El cliente administrador (`src/lib/supabase/admin.ts`) usa la clave secreta y salta RLS: solo en el servidor.
 
+## Usuarios y contraseñas
+
+La app no envía correos. El administrador crea cada usuario con una contraseña desde **Usuarios** y, si alguien la olvida, se la cambia desde ahí mismo ("Cambiar contraseña").
+
 ## Tests
 
 | Tipo        | Dónde                  | Herramienta                                                                                      |

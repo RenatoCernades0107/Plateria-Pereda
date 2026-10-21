@@ -3,7 +3,6 @@ import {
   adminClient,
   createTestUser,
   deleteTestUser,
-  latestEmailLink,
 } from "./support/supabase";
 import { SEED_USERS } from "./support/users";
 
@@ -12,7 +11,7 @@ test.describe("Gestión de usuarios", () => {
     await loginAs("admin");
   });
 
-  test("el admin crea un usuario de logística y este activa su cuenta por correo", async ({
+  test("el admin crea un usuario de logística con contraseña y este ingresa", async ({
     page,
     browser,
   }) => {
@@ -25,12 +24,15 @@ test.describe("Gestión de usuarios", () => {
       await dialog.getByLabel("Email").fill(email);
       await dialog.getByRole("combobox").click();
       await page.getByRole("option", { name: "Logística" }).click();
-      await dialog
-        .getByRole("button", { name: "Crear y enviar acceso" })
-        .click();
+      await dialog.getByRole("button", { name: "Generar" }).click();
+      await expect(dialog.getByLabel("Contraseña")).toHaveValue(
+        /^\S{4}-\S{4}-\S{4}$/,
+      );
+      await dialog.getByLabel("Contraseña").fill("Clave-de-lola-123");
+      await dialog.getByRole("button", { name: "Crear usuario" }).click();
 
       await expect(
-        page.getByText(`Usuario creado. Enviamos el acceso a ${email}.`),
+        page.getByText(`Usuario creado. Pásale su email (${email})`),
       ).toBeVisible();
       const fila = page.getByTestId(`usuario-${email}`);
       await expect(fila).toContainText("Lola Logística");
@@ -38,21 +40,16 @@ test.describe("Gestión de usuarios", () => {
         fila.getByRole("combobox", { name: "Rol de Lola Logística" }),
       ).toHaveText("Logística");
 
-      // El nuevo usuario abre el correo en otro navegador y crea su contraseña.
+      // El nuevo usuario ingresa en otro navegador con la contraseña que le pasaron.
       const context = await browser.newContext();
-      const invitado = await context.newPage();
-      await invitado.goto(await latestEmailLink(email));
-      await expect(invitado).toHaveURL(/\/restablecer-contrasena$/);
-      await invitado.getByLabel("Nueva contraseña").fill("Clave-de-lola-123");
-      await invitado
-        .getByLabel("Repite la contraseña")
-        .fill("Clave-de-lola-123");
-      await invitado
-        .getByRole("button", { name: "Guardar contraseña" })
-        .click();
-      await expect(invitado).toHaveURL(/\/piezas$/);
+      const nueva = await context.newPage();
+      await nueva.goto("/login");
+      await nueva.getByLabel("Email").fill(email);
+      await nueva.getByLabel("Contraseña").fill("Clave-de-lola-123");
+      await nueva.getByRole("button", { name: "Ingresar" }).click();
+      await expect(nueva).toHaveURL(/\/piezas$/);
       await expect(
-        invitado.getByRole("button", { name: /Lola Logística/ }),
+        nueva.getByRole("button", { name: /Lola Logística/ }),
       ).toBeVisible();
       await context.close();
     } finally {
@@ -163,18 +160,30 @@ test.describe("Gestión de usuarios", () => {
     await expect(fila).toBeVisible();
   });
 
-  test("el admin reenvía el acceso por correo", async ({ page }) => {
+  test("el admin cambia la contraseña de un usuario, que ingresa con la nueva", async ({
+    page,
+    browser,
+  }) => {
     const user = await createTestUser("ventas", "Clave-de-prueba-123");
     try {
       await page.goto("/usuarios");
       await page
         .getByTestId(`usuario-${user.email}`)
-        .getByRole("button", { name: "Reenviar acceso" })
+        .getByRole("button", { name: "Cambiar contraseña" })
         .click();
-      await expect(
-        page.getByText(`Enviamos un enlace de acceso a ${user.email}.`),
-      ).toBeVisible();
-      expect(await latestEmailLink(user.email)).toContain("type=recovery");
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Nueva contraseña").fill("Clave-cambiada-456");
+      await dialog.getByRole("button", { name: "Guardar contraseña" }).click();
+      await expect(page.getByText(/Contraseña de .* cambiada/)).toBeVisible();
+
+      const context = await browser.newContext();
+      const otro = await context.newPage();
+      await otro.goto("/login");
+      await otro.getByLabel("Email").fill(user.email);
+      await otro.getByLabel("Contraseña").fill("Clave-cambiada-456");
+      await otro.getByRole("button", { name: "Ingresar" }).click();
+      await expect(otro).not.toHaveURL(/\/login/);
+      await context.close();
     } finally {
       await deleteTestUser(user.id);
     }
