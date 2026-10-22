@@ -42,11 +42,13 @@ import {
 
 import type { WorkshopOption } from "./piece-fields";
 import {
+  inReviewAtWorkshop,
   locationAfter,
   needsDialog,
   requirementsFor,
   REVIEW_LABELS,
   ReviewDialog,
+  sendLabel,
   snapshotOf,
   StatusChangeDialog,
   WORKSHOP_LABELS,
@@ -313,13 +315,20 @@ export function usePieceMoves<P extends StatusPiece>({
           workshopId,
           firstSentAt: piece.firstSentAt ?? now,
           lastSentAt: now,
+          ...(inReviewAtWorkshop(piece) ? { reviewReturnedAt: now } : {}),
         });
         const result = await sendPiecesToWorkshop([piece.id], workshopId);
         if ("error" in result) {
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          notifyDone(piece, `${piece.code}: enviada al taller.`, result);
+          notifyDone(
+            piece,
+            inReviewAtWorkshop(piece)
+              ? `${piece.code}: se queda en el taller para el trabajo.`
+              : `${piece.code}: enviada al taller.`,
+            result,
+          );
           resolve(null);
         }
       });
@@ -351,7 +360,7 @@ export function usePieceMoves<P extends StatusPiece>({
     if (canSendToWorkshop(snapshot, role))
       list.push({
         key: "enviar_taller",
-        label: WORKSHOP_LABELS.send,
+        label: sendLabel(piece),
         onSelect: () => setSending(piece),
       });
     if (canReceiveFromReview(snapshot, role))

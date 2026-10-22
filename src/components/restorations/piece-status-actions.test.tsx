@@ -424,13 +424,34 @@ describe("revisión en taller", () => {
     );
   });
 
-  it("aprobada en revisión se envía al taller por trabajo", () => {
+  it("aprobada en revisión se deja en el mismo taller para el trabajo", async () => {
+    const user = userEvent.setup();
     renderPanel("aprobada", "logistica", {
       arrivedAt: ARRIVED,
       workshopId: workshops[0]!.id,
       reviewSentAt: SENT,
     });
-    expect(buttons()).toEqual(["Volvió de revisión", "Enviar al taller"]);
+    // Ya está en el taller: no se «envía», se queda ahí por trabajo.
+    expect(buttons()).toEqual([
+      "Volvió de revisión",
+      "Dejar en taller para trabajo",
+    ]);
+    await user.click(
+      screen.getByRole("button", { name: "Dejar en taller para trabajo" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("se queda en Taller Central");
+    // El taller es el de la revisión: no se elige otro.
+    expect(within(dialog).queryByLabelText("Taller")).not.toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Confirmar: dejar en taller",
+      }),
+    );
+    expect(mocks.sendWorkshop).toHaveBeenCalledWith(["p1"], workshops[0]!.id);
+    expect(mocks.success).toHaveBeenCalledWith(
+      "RES-00001-1: se queda en el taller para el trabajo.",
+    );
   });
 });
 
