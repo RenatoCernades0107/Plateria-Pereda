@@ -3,7 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  EMPTY_PIECE,
   liveTotal,
+  newPiece,
   RestorationForm,
   type QuoteForForm,
   type RestorationFormMode,
@@ -87,6 +89,30 @@ describe("liveTotal", () => {
 
   it("sin precios todavía el total es 0 (D59)", () => {
     expect(liveTotal([{ price: "" }, { price: "" }])).toBe(0);
+  });
+});
+
+describe("newPiece", () => {
+  it("trae elegidos el material y el servicio por defecto (solo si están activos)", () => {
+    const piece = newPiece(
+      [
+        { id: "m1", name: "Plata", price: null, isDefault: true },
+        { id: "m2", name: "Oro", price: null },
+      ],
+      [
+        { id: "s1", name: "Limpieza", price: 40 },
+        {
+          id: "s2",
+          name: "Pulido",
+          price: null,
+          isDefault: true,
+          active: false,
+        },
+      ],
+    );
+    expect(piece).toEqual({ ...EMPTY_PIECE, materials: ["m1"], services: [] });
+    // No comparte los arreglos con la pieza vacía.
+    expect(newPiece([], []).materials).not.toBe(EMPTY_PIECE.materials);
   });
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Star, Trash2 } from "lucide-react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
@@ -25,7 +25,10 @@ import {
 } from "@/components/ui/table";
 import { CATALOGS, type CatalogKind } from "@/domain/catalogs";
 import { formatMoney } from "@/lib/format";
-import { setCatalogItemActive } from "@/server/catalogs-actions";
+import {
+  setCatalogItemActive,
+  setCatalogItemDefault,
+} from "@/server/catalogs-actions";
 
 import { CatalogDeleteDialog } from "./catalog-delete-dialog";
 import { CatalogItemDialog, type CatalogItemRow } from "./catalog-item-dialog";
@@ -49,9 +52,43 @@ function ItemActions({
             : `"${item.name}" fue activado.`,
         );
     });
+  const toggleDefault = () =>
+    startTransition(async () => {
+      if (kind === "payment_methods") return;
+      const result = await setCatalogItemDefault(
+        kind,
+        item.id,
+        !item.isDefault,
+      );
+      if ("error" in result) toast.error(result.error);
+      else
+        toast.success(
+          item.isDefault
+            ? `"${item.name}" ya no viene elegido en las piezas nuevas.`
+            : `"${item.name}" vendrá elegido en cada pieza nueva.`,
+        );
+    });
 
   return (
-    <div className="flex shrink-0 gap-2 md:justify-end">
+    <div className="flex w-full flex-wrap gap-2 md:w-auto md:shrink-0 md:justify-end">
+      {CATALOGS[kind].hasDefault && item.active ? (
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          onClick={toggleDefault}
+          aria-label={
+            item.isDefault
+              ? `Quitar ${item.name} por defecto`
+              : `Marcar ${item.name} por defecto`
+          }
+        >
+          <Star
+            className={item.isDefault ? "fill-current text-amber-500" : ""}
+          />
+          {item.isDefault ? "Quitar por defecto" : "Marcar por defecto"}
+        </Button>
+      ) : null}
       <CatalogItemDialog
         kind={kind}
         item={item}
@@ -89,6 +126,15 @@ function ItemActions({
         }
       />
     </div>
+  );
+}
+
+function DefaultBadge() {
+  return (
+    <Badge variant="secondary" className="ml-2 align-middle">
+      <Star className="fill-current text-amber-500" />
+      Por defecto
+    </Badge>
   );
 }
 
@@ -171,6 +217,7 @@ export function CatalogManager({
                         }
                       >
                         {item.name}
+                        {item.isDefault ? <DefaultBadge /> : null}
                       </TableCell>
                       {catalog.hasPrice ? (
                         <TableCell className="text-right tabular-nums">
@@ -219,6 +266,7 @@ export function CatalogManager({
                     >
                       {item.name}
                     </span>
+                    {item.isDefault ? <DefaultBadge /> : null}
                     {catalog.hasPrice ? (
                       <span className="text-muted-foreground text-sm">
                         {item.price === null

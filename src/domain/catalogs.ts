@@ -10,10 +10,11 @@ export const CATALOGS = {
     href: "/configuracion/materiales",
     hasPrice: false,
     hasShopifyName: false,
+    hasDefault: true,
     deleteHint:
       "Si alguna pieza o cotización ya lo usa, no se podrá eliminar: desactívalo.",
     description:
-      "Se eligen en cada pieza (uno o varios). Si falta uno, se agrega aquí. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
+      "Se eligen en cada pieza (uno o varios). Si falta uno, se agrega aquí. El marcado «Por defecto» ya viene elegido en cada pieza nueva. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
   services: {
     title: "Servicios",
@@ -21,10 +22,11 @@ export const CATALOGS = {
     href: "/configuracion/servicios",
     hasPrice: true,
     hasShopifyName: false,
+    hasDefault: true,
     deleteHint:
       "Si alguna pieza o cotización ya lo usa, no se podrá eliminar: desactívalo.",
     description:
-      "Se eligen en cada pieza. Si falta uno, se agrega aquí, con su precio sugerido. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
+      "Se eligen en cada pieza. Si falta uno, se agrega aquí, con su precio sugerido. El marcado «Por defecto» ya viene elegido en cada pieza nueva. Solo se borran los que ninguna pieza usa; los demás se desactivan.",
   },
   payment_methods: {
     title: "Métodos de pago",
@@ -32,6 +34,7 @@ export const CATALOGS = {
     href: "/configuracion/metodos-de-pago",
     hasPrice: false,
     hasShopifyName: true,
+    hasDefault: false,
     deleteHint: "Si algún pago ya lo usa, no se podrá eliminar: desactívalo.",
     description:
       "Se eligen al registrar un pago; se envían a Shopify. Solo se borran los que ningún pago usa; los demás se desactivan.",
@@ -47,4 +50,8 @@ export const CATALOG_KINDS = Object.keys(CATALOGS) as CatalogKind[];
 
 export function isCatalogKind(value: string): value is CatalogKind {
   return value in CATALOGS;
+}
+
+export function isPieceCatalogKind(value: string): value is PieceCatalogKind {
+  return value === "materials" || value === "services";
 }

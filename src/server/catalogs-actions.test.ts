@@ -26,9 +26,19 @@ vi.mock("@/lib/supabase/server", () => ({
         return mocks.result;
       },
       update: (row: object) => ({
-        eq: async (_c: string, id: string) => {
-          mocks.calls.push(["update", table, row, id]);
-          return mocks.result;
+        eq: (column: string, value: unknown) => {
+          mocks.calls.push(["update", table, row, value]);
+          // Se espera directamente o se encadena con `.neq` / `.select`.
+          return Object.assign(Promise.resolve(mocks.result), {
+            neq: async (_c: string, id: string) => {
+              mocks.calls.push(["neq", id]);
+              return mocks.result;
+            },
+            select: async () => ({
+              data: mocks.result.error ? null : [{ id: value }],
+              error: mocks.result.error,
+            }),
+          });
         },
       }),
       delete: () => ({
@@ -48,6 +58,7 @@ const {
   createCatalogItem,
   deleteCatalogItem,
   setCatalogItemActive,
+  setCatalogItemDefault,
   updateCatalogItem,
 } = await import("./catalogs-actions");
 
@@ -89,8 +100,42 @@ describe("acciones de catálogos", () => {
     });
     expect(mocks.calls).toEqual([
       ["update", "services", { name: "Pulido", suggested_price: null }, "s1"],
-      ["update", "services", { active: false }, "s1"],
+      // Al desactivarlo deja de ser el servicio por defecto.
+      ["update", "services", { active: false, is_default: false }, "s1"],
     ]);
+  });
+
+  it("marca un material o servicio por defecto quitándole la marca al anterior", async () => {
+    expect(await setCatalogItemDefault("materials", "m1", true)).toEqual({
+      ok: true,
+    });
+    expect(await setCatalogItemDefault("services", "s1", false)).toEqual({
+      ok: true,
+    });
+    expect(await setCatalogItemActive("payment_methods", "p1", false)).toEqual({
+      ok: true,
+    });
+    expect(mocks.permission).toBe("configuracion.gestionar");
+    expect(mocks.calls).toEqual([
+      ["update", "materials", { is_default: false }, true],
+      ["neq", "m1"],
+      ["update", "materials", { is_default: true }, "m1"],
+      ["update", "services", { is_default: false }, "s1"],
+      // Los métodos de pago no tienen uno por defecto.
+      ["update", "payment_methods", { active: false }, "p1"],
+    ]);
+  });
+
+  it("no marca por defecto uno desactivado ni catálogos sin esa opción", async () => {
+    mocks.result = { error: { code: "23514" } };
+    expect(await setCatalogItemDefault("services", "s1", false)).toEqual({
+      error: "Activa el ítem antes de marcarlo por defecto.",
+    });
+    mocks.calls = [];
+    expect(
+      await setCatalogItemDefault("payment_methods" as never, "p1", true),
+    ).toEqual({ error: "Catálogo inválido." });
+    expect(mocks.calls).toEqual([]);
   });
 
   it("traduce el nombre duplicado y otros errores", async () => {

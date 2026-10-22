@@ -88,7 +88,7 @@ select results_eq(
      where table_name = 'services' and actor_id = '00000000-0000-0000-0000-0000000000e1'
      order by id $$,
   $$ values
-       ('Ana Admin', 'insert', '{"name": {"old": null, "new": "Limpieza prueba"}, "active": {"old": null, "new": true}, "suggested_price": {"old": null, "new": 35.50}}'::jsonb),
+       ('Ana Admin', 'insert', '{"name": {"old": null, "new": "Limpieza prueba"}, "active": {"old": null, "new": true}, "is_default": {"old": null, "new": false}, "suggested_price": {"old": null, "new": 35.50}}'::jsonb),
        ('Ana Admin', 'update', '{"active": {"old": true, "new": false}}'::jsonb) $$,
   'los cambios de los catálogos quedan auditados'
 );

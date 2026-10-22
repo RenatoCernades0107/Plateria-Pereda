@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createCatalogItem: vi.fn(),
   updateCatalogItem: vi.fn(),
   setCatalogItemActive: vi.fn(),
+  setCatalogItemDefault: vi.fn(),
   deleteCatalogItem: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("@/server/catalogs-actions", () => ({
   createCatalogItem: (...a: unknown[]) => mocks.createCatalogItem(...a),
   updateCatalogItem: (...a: unknown[]) => mocks.updateCatalogItem(...a),
   setCatalogItemActive: (...a: unknown[]) => mocks.setCatalogItemActive(...a),
+  setCatalogItemDefault: (...a: unknown[]) => mocks.setCatalogItemDefault(...a),
   deleteCatalogItem: (...a: unknown[]) => mocks.deleteCatalogItem(...a),
 }));
 vi.mock("sonner", () => ({
@@ -37,6 +39,7 @@ describe("CatalogManager", () => {
       mocks.createCatalogItem,
       mocks.updateCatalogItem,
       mocks.setCatalogItemActive,
+      mocks.setCatalogItemDefault,
       mocks.deleteCatalogItem,
     ])
       fn.mockResolvedValue({ ok: true });
@@ -62,6 +65,65 @@ describe("CatalogManager", () => {
     expect(
       within(dorado).getByRole("button", { name: "Activar" }),
     ).toBeVisible();
+  });
+
+  it("marca un material por defecto; los inactivos y los métodos de pago no", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <CatalogManager
+        kind="materials"
+        items={[
+          ...materials,
+          {
+            id: "m2",
+            name: "Plata",
+            price: null,
+            active: true,
+            isDefault: true,
+          },
+          { id: "m3", name: "Cobre", price: null, active: false },
+        ]}
+      />,
+    );
+    const plata = screen.getByTestId("catalogo-Plata");
+    expect(within(plata).getAllByRole("cell")[0]).toHaveTextContent(
+      "PlataPor defecto",
+    );
+    expect(
+      within(screen.getByTestId("catalogo-Alpaca")).getAllByRole("cell")[0],
+    ).toHaveTextContent(/^Alpaca$/);
+    expect(
+      screen.queryByRole("button", { name: "Marcar Cobre por defecto" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByTestId("catalogo-Alpaca")).getByRole("button", {
+        name: "Marcar Alpaca por defecto",
+      }),
+    );
+    expect(mocks.setCatalogItemDefault).toHaveBeenCalledWith(
+      "materials",
+      "m1",
+      true,
+    );
+    await user.click(
+      within(plata).getByRole("button", { name: "Quitar Plata por defecto" }),
+    );
+    expect(mocks.setCatalogItemDefault).toHaveBeenLastCalledWith(
+      "materials",
+      "m2",
+      false,
+    );
+    unmount();
+
+    render(
+      <CatalogManager
+        kind="payment_methods"
+        items={[{ id: "p1", name: "Yape", price: null, active: true }]}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /por defecto/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("agrega un servicio con precio sugerido", async () => {
