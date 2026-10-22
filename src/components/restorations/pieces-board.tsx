@@ -24,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCents, lineCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import {
   salePriceEditing,
@@ -41,7 +40,7 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PieceDialog } from "./edit-dialogs";
 import type { CatalogOption, WorkshopOption } from "./piece-fields";
-import { SalePriceCell } from "./piece-money-cells";
+import { PieceSaleAmount, SalePriceCell } from "./piece-money-cells";
 import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import {
@@ -206,6 +205,7 @@ function PieceRow({
             <SalePriceCell
               piece={{ id: piece.id, code: piece.code, restorationId }}
               cents={piece.priceCents}
+              quantity={piece.quantity}
               hasOrder={priceChange}
               editable
             />
@@ -218,19 +218,11 @@ function PieceRow({
               Por definir
             </span>
           ) : (
-            <span className="tabular-nums">
-              {formatCents(piece.priceCents)}
-              {/* El precio es por unidad: con varias, el importe debajo. */}
-              {piece.quantity > 1 ? (
-                <span
-                  className="text-muted-foreground block text-xs"
-                  data-testid="importe-pieza"
-                >
-                  c/u ·{" "}
-                  {formatCents(lineCents(piece.priceCents, piece.quantity))}
-                </span>
-              ) : null}
-            </span>
+            // El importe (precio × cantidad) y, con varias unidades, el c/u debajo.
+            <PieceSaleAmount
+              cents={piece.priceCents}
+              quantity={piece.quantity}
+            />
           )}
         </td>
       ) : null}

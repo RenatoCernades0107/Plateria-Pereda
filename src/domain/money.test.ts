@@ -9,6 +9,7 @@ import {
   expectedDeposit,
   formatCents,
   lineCents,
+  unitShareCents,
   MAX_CENTS,
   parseMoney,
   PAYMENT_TYPE_LABELS,
@@ -197,5 +198,20 @@ describe("lineCents", () => {
     expect(lineCents(5000)).toBe(5000);
     expect(lineCents(5000, null)).toBe(5000);
     expect(lineCents(5000, 0)).toBe(5000);
+  });
+
+  it("con más de una unidad redondea hacia arriba al sol entero", () => {
+    expect(lineCents(2666, 3)).toBe(8000);
+    expect(lineCents(1010, 3)).toBe(3100);
+    expect(lineCents(2650, 1)).toBe(2650);
+  });
+});
+
+describe("unitShareCents", () => {
+  it("reparte el monto por unidad, redondeado a céntimos", () => {
+    expect(unitShareCents(3000, 3)).toBe(1000);
+    expect(unitShareCents(5000, 3)).toBe(1667);
+    expect(unitShareCents(-334, 1)).toBe(-334);
+    expect(unitShareCents(5000, 0)).toBe(5000);
   });
 });

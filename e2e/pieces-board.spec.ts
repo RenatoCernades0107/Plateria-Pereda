@@ -405,7 +405,7 @@ test.describe("Vista de piezas", () => {
     const priceDialog = page.getByRole("dialog", {
       name: `Precio de venta de ${code}`,
     });
-    await priceDialog.getByLabel("Precio de venta (S/)").fill("120");
+    await priceDialog.getByLabel("Precio de venta unitario (S/)").fill("120");
     await priceDialog.getByRole("button", { name: "Guardar precio" }).click();
     await expect(page.getByText(`Precio de ${code} guardado.`)).toBeVisible();
     await expect(adminRow).toContainText("S/ 120.00");

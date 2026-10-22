@@ -274,7 +274,7 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await page.goto(`/restauraciones/${r.id}`);
     await pieceAction(page, `${r.code}-1`, "Cambiar precio");
     const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Nuevo precio (S/)").fill("120");
+    await dialog.getByLabel("Nuevo precio unitario (S/)").fill("120");
     await dialog.getByRole("button", { name: "Guardar precio" }).click();
     await expect(dialog.getByText("Escribe el motivo")).toBeVisible();
     await dialog

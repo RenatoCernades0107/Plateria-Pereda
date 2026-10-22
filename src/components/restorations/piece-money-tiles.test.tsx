@@ -31,6 +31,43 @@ describe("PieceMoneyTiles", () => {
     expect(screen.getByTestId("saldo-guia")).toHaveTextContent("150.00");
   });
 
+  it("con varias unidades: importe con techo, costo c/u y margen sobre el total", () => {
+    render(
+      <PieceMoneyTiles
+        piece={piece}
+        sale={{ cents: 2_666, hasOrder: false, editable: true }}
+        costCents={3_000}
+        quantity={3}
+        guide={null}
+      />,
+    );
+    // 3 × 26.66 = 79.98 sube a 80.00; el precio por unidad va debajo.
+    expect(tile("Precio de venta")).toHaveTextContent("S/ 80.00");
+    expect(tile("Precio de venta")).toHaveTextContent("S/ 26.66 c/u");
+    // El costo es de la pieza completa; el c/u es solo referencia.
+    expect(tile("Costo de servicio")).toHaveTextContent("S/ 30.00");
+    expect(tile("Costo de servicio")).toHaveTextContent("S/ 10.00 c/u");
+    // 80.00 − 30.00 = 50.00 (16.67 por unidad).
+    expect(tile("Margen")).toHaveTextContent("S/ 50.00");
+    expect(tile("Margen")).toHaveTextContent(
+      "S/ 16.67 c/u · Venta total − costo",
+    );
+  });
+
+  it("con varias unidades y la orden creada, «Cambiar precio» edita el unitario", () => {
+    render(
+      <PieceMoneyTiles
+        piece={piece}
+        sale={{ cents: 2_666, hasOrder: true, editable: true }}
+        costCents={undefined}
+        quantity={3}
+        guide={null}
+      />,
+    );
+    expect(tile("Precio de venta")).toHaveTextContent("S/ 80.00");
+    expect(tile("Precio de venta")).toHaveTextContent("S/ 26.66 c/u");
+  });
+
   it("el admin define un precio que falta con el botón «Definir precio»", () => {
     render(
       <PieceMoneyTiles

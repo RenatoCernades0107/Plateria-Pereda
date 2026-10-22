@@ -80,6 +80,18 @@ describe("mensaje de cotización", () => {
     expect(text).toContain("*Total: S/ 7,553.00*");
   });
 
+  it("con varias unidades el importe sube al sol entero", () => {
+    const pieces = data().pieces.map((p, i) =>
+      i === 0 ? { ...p, quantity: 3, priceCents: 2666 } : { ...p, quantity: 1 },
+    );
+    const text = buildQuoteMessage(
+      DEFAULT_WHATSAPP_TEMPLATE,
+      data({ paymentType: "contado", pieces }),
+    );
+    expect(text).toContain("*3 x S/ 26.66 = S/ 80.00*");
+    expect(text).toContain("*Total: S/ 430.00*");
+  });
+
   it("a cuenta", () => {
     expect(
       buildQuoteMessage(

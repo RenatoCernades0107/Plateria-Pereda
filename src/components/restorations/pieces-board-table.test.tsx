@@ -290,7 +290,9 @@ describe("PiecesBoardTable", () => {
     const dialog = await screen.findByRole("dialog", {
       name: "Precio de venta de RES-00001-1",
     });
-    const price = within(dialog).getByLabelText("Precio de venta (S/)");
+    const price = within(dialog).getByLabelText(
+      "Precio de venta unitario (S/)",
+    );
     expect(price).toHaveAttribute("placeholder", "Por definir");
     await user.type(price, "150");
     await user.click(

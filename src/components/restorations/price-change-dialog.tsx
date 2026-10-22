@@ -98,13 +98,15 @@ export function PriceChangeDialog({
           <DialogHeader>
             <DialogTitle>Cambiar precio de {piece.code}</DialogTitle>
             <DialogDescription>
-              Precio actual: {formatCents(current)}. La orden de Shopify se
+              Precio actual: {formatCents(current)} c/u. La orden de Shopify se
               actualiza con el nuevo precio y el motivo queda en el historial.
             </DialogDescription>
           </DialogHeader>
           {error ? <FormAlert>{error}</FormAlert> : null}
           <div className="space-y-2">
-            <Label htmlFor={`precio-${piece.id}`}>Nuevo precio (S/)</Label>
+            <Label htmlFor={`precio-${piece.id}`}>
+              Nuevo precio unitario (S/)
+            </Label>
             <Input
               id={`precio-${piece.id}`}
               inputMode="numeric"
