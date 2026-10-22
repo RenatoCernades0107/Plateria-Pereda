@@ -70,7 +70,7 @@ function ItemActions({
     });
 
   return (
-    <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+    <div className="flex w-full flex-wrap gap-2 md:w-auto md:shrink-0 md:justify-end">
       {CATALOGS[kind].hasDefault && item.active ? (
         <Button
           variant="outline"
