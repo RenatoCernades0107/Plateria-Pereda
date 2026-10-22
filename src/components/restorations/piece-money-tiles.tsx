@@ -1,4 +1,9 @@
-import { formatCents, type Cents } from "@/domain/money";
+import {
+  formatCents,
+  lineCents,
+  unitShareCents,
+  type Cents,
+} from "@/domain/money";
 import { cn } from "@/lib/utils";
 
 import { SalePriceCell, ServiceCostCell } from "./piece-money-cells";
@@ -15,6 +20,7 @@ export function PieceMoneyTiles({
   piece,
   sale,
   costCents,
+  quantity = 1,
   showMargin = true,
   guide,
   className,
@@ -28,17 +34,24 @@ export function PieceMoneyTiles({
   } | null;
   /** Costo de servicio; undefined si el rol no lo ve (null = por definir). */
   costCents: Cents | null | undefined;
-  /** Margen (precio − costo): solo quien ve el dinero de la guía (no logística). */
+  /**
+   * Unidades de la pieza: el precio es por unidad y el costo de la pieza completa. Se
+   * muestran el importe (precio × cantidad, con techo al sol) y el margen sobre él.
+   */
+  quantity?: number;
+  /** Margen (importe − costo): solo quien ve el dinero de la guía (no logística). */
   showMargin?: boolean;
   /** Total y pagado de la guía; null si el rol no ve pagos. */
   guide: { totalCents: Cents; paidCents: Cents } | null;
   className?: string;
 }) {
   const showCost = costCents !== undefined;
-  // Margen: precio de venta menos el costo del taller (solo con ambos montos).
+  const several = quantity > 1;
+  // Margen: importe de venta (todas las unidades) menos el costo del taller, que es de
+  // la pieza completa (solo con ambos montos).
   const margin =
     showMargin && sale && sale.cents !== null && showCost && costCents !== null
-      ? sale.cents - costCents
+      ? lineCents(sale.cents, quantity) - costCents
       : null;
   const balance = guide ? guide.totalCents - guide.paidCents : null;
 
@@ -52,6 +65,7 @@ export function PieceMoneyTiles({
           <SalePriceCell
             piece={piece}
             cents={sale.cents}
+            quantity={quantity}
             hasOrder={sale.hasOrder}
             editable={sale.editable}
             align="start"
@@ -64,6 +78,7 @@ export function PieceMoneyTiles({
           <ServiceCostCell
             piece={piece}
             cents={costCents}
+            quantity={quantity}
             align="start"
             emptyAsButton
           />
@@ -76,7 +91,11 @@ export function PieceMoneyTiles({
           >
             {formatCents(margin)}
           </span>
-          <Hint>Precio de venta − costo</Hint>
+          <Hint>
+            {several
+              ? `${formatCents(unitShareCents(margin, quantity))} c/u · Venta total − costo`
+              : "Precio de venta − costo"}
+          </Hint>
         </Tile>
       ) : null}
       {guide && balance !== null ? (

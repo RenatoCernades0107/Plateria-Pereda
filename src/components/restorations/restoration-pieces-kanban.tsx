@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
 import type { ApprovalPayment } from "@/components/payments/piece-payment-dialogs";
-import { formatCents } from "@/domain/money";
+import { formatCents, lineCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import {
   isChargedKind,
@@ -127,7 +127,18 @@ export function RestorationPiecesKanban({
                     {piece.priceCents === null ? (
                       <span className="text-muted-foreground">Por definir</span>
                     ) : (
-                      formatCents(piece.priceCents)
+                      // Importe de la pieza (precio × cantidad); el c/u en el título.
+                      <span
+                        title={
+                          piece.quantity > 1
+                            ? `${formatCents(piece.priceCents)} c/u`
+                            : undefined
+                        }
+                      >
+                        {formatCents(
+                          lineCents(piece.priceCents, piece.quantity),
+                        )}
+                      </span>
                     )}
                   </span>
                 ) : null}

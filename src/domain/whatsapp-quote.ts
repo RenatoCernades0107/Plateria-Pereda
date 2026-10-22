@@ -138,7 +138,10 @@ const INDENT = "     ";
 /** Paréntesis largo al final de la descripción: va fuera de la negrita. */
 const LONG_DETAIL = /^(.+?)\s+(\([^()]{25,}\))$/;
 
-/** Precio de la pieza: "S/ 50.00" o, con varias unidades, "2 x S/ 50.00 = S/ 100.00". */
+/**
+ * Precio de la pieza: "S/ 50.00" o, con varias unidades, "2 x S/ 50.00 = S/ 100.00"
+ * (el importe sube al sol entero: "3 x S/ 26.66 = S/ 80.00").
+ */
 function priceText(unitCents: Cents, quantity?: number): string {
   const unit = `S/ ${amount(unitCents)}`;
   return quantity && quantity > 1

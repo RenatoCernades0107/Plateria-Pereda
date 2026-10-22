@@ -214,6 +214,7 @@ export default async function PiezaDetallePage({
                     : null
                 }
                 costCents={canSeeCost ? costCents : undefined}
+                quantity={piece.quantity}
                 showMargin={can(user.role, "dinero.ver")}
                 guide={
                   restoration.money

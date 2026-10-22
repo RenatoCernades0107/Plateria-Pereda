@@ -47,12 +47,22 @@ export function sumCents(values: readonly Cents[]): Cents {
 }
 
 /**
- * Monto de una pieza: precio por unidad × cantidad (2026-10-22). Sin cantidad (o
- * una inválida) cuenta como 1, igual que en la BD.
+ * Importe de una pieza (2026-10-22): precio por unidad × cantidad, redondeado hacia
+ * arriba al sol entero cuando hay más de una unidad (3 × S/ 26.66 = S/ 80.00). Con una
+ * unidad es el precio tal cual. Sin cantidad (o una inválida) cuenta como 1. Igual que
+ * `private.piece_amount()` en la BD.
  */
 export function lineCents(unitCents: Cents, quantity?: number | null): Cents {
   const units = quantity && quantity > 0 ? quantity : 1;
-  return unitCents * units;
+  return units > 1 ? Math.ceil((unitCents * units) / 100) * 100 : unitCents;
+}
+
+/**
+ * Parte por unidad de un monto de la pieza (costo o margen), redondeada a céntimos.
+ * Solo se muestra: el costo se guarda por la pieza completa.
+ */
+export function unitShareCents(totalCents: Cents, quantity: number): Cents {
+  return roundHalfAwayFromZero(totalCents / Math.max(quantity, 1));
 }
 
 /** `percent` % de un monto, redondeado a céntimos (50 % de S/ 333.33 = S/ 166.67). */
