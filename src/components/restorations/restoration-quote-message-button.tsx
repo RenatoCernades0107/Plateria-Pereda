@@ -83,7 +83,7 @@ export function RestorationQuoteMessageButton({
         phone={phone}
         empty={selected.size === 0}
       >
-        <fieldset className="space-y-1">
+        <fieldset className="min-w-0 space-y-1">
           <legend className="text-muted-foreground mb-1 text-xs font-medium">
             Piezas en el mensaje ({selected.size}/{pieces.length})
           </legend>
@@ -93,17 +93,20 @@ export function RestorationQuoteMessageButton({
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
-                    className="accent-primary size-4"
+                    className="accent-primary size-4 shrink-0"
                     checked={selected.has(p.id)}
                     onChange={(e) => toggle(p.id, e.target.checked)}
                   />
-                  <span className="font-medium">{p.code}</span>
-                  <span className="truncate">{p.description}</span>
-                  {!isQuoteSelectedByDefault(p.status) ? (
-                    <span className="text-muted-foreground text-xs">
-                      ({PIECE_STATUS_LABELS[p.status]})
-                    </span>
-                  ) : null}
+                  {/* En pantallas angostas la descripción y el estado bajan de línea. */}
+                  <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+                    <span className="font-medium">{p.code}</span>
+                    <span className="min-w-0 truncate">{p.description}</span>
+                    {!isQuoteSelectedByDefault(p.status) ? (
+                      <span className="text-muted-foreground text-xs">
+                        ({PIECE_STATUS_LABELS[p.status]})
+                      </span>
+                    ) : null}
+                  </span>
                 </label>
               </li>
             ))}

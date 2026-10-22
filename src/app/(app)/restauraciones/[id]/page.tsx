@@ -322,7 +322,7 @@ export default async function RestauracionDetallePage({
         pagos, archivos e historial en pestañas. En pantallas anchas, dos columnas: la
         guía a la izquierda (fija al bajar) y las pestañas a la derecha; si no, debajo.
       */}
-      <div className="wide:grid-cols-[20rem_minmax(0,1fr)] grid items-start gap-6">
+      <div className="wide:grid-cols-[20rem_minmax(0,1fr)] grid grid-cols-1 items-start gap-6">
         <section
           aria-labelledby="codigo-guia"
           className={cn(
@@ -537,7 +537,9 @@ export default async function RestauracionDetallePage({
               <p className="text-muted-foreground text-xs font-medium">
                 Notas generales
               </p>
-              <p className="text-sm whitespace-pre-line">{restoration.notes}</p>
+              <p className="text-sm break-words whitespace-pre-line">
+                {restoration.notes}
+              </p>
             </div>
           ) : null}
         </section>
