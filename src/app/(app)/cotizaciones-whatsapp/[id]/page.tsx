@@ -140,7 +140,7 @@ export default async function CotizacionWhatsappPage({
         </Link>
       </Button>
 
-      <div className="wide:grid-cols-[20rem_minmax(0,1fr)] grid items-start gap-6">
+      <div className="wide:grid-cols-[20rem_minmax(0,1fr)] grid grid-cols-1 items-start gap-6">
         <section
           aria-labelledby="codigo-cotizacion"
           className={cn(
@@ -254,7 +254,7 @@ export default async function CotizacionWhatsappPage({
               <p className="text-muted-foreground text-xs font-medium">
                 Descartada
               </p>
-              <p className="text-sm whitespace-pre-line">
+              <p className="text-sm break-words whitespace-pre-line">
                 {quote.discardReason}
               </p>
             </div>
@@ -265,7 +265,9 @@ export default async function CotizacionWhatsappPage({
               <p className="text-muted-foreground text-xs font-medium">
                 Notas generales
               </p>
-              <p className="text-sm whitespace-pre-line">{quote.notes}</p>
+              <p className="text-sm break-words whitespace-pre-line">
+                {quote.notes}
+              </p>
             </div>
           ) : null}
 
