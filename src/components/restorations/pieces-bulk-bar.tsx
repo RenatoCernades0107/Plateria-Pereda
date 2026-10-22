@@ -274,7 +274,7 @@ export function PiecesBulkBar({
     return null;
   };
 
-  const sendToWorkshop = async (workshopId: string) => {
+  const sendToWorkshop = async (workshopId: string | null) => {
     const result = await sendPiecesToWorkshop(ids, workshopId);
     if ("error" in result) return result.error;
     done(`${count}: enviada${n === 1 ? "" : "s"} al taller.`);
