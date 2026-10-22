@@ -1,3 +1,6 @@
+-- (Era 20261022130000: chocaba con la versión de material_y_servicio_por_defecto. Se
+-- puede aplicar aunque parte ya esté aplicada.)
+
 -- La cantidad multiplica el precio (pedido del 2026-10-22): el precio de una pieza o de
 -- una pieza cotizada por WhatsApp es por unidad y el total suma precio × cantidad.
 -- Antes la cantidad era informativa (20261017130000_cantidad_por_pieza.sql).
@@ -25,7 +28,7 @@ $$;
 
 revoke execute on function private.restoration_total(uuid) from public, anon, authenticated;
 
-drop trigger pieces_recalculate_total on public.pieces;
+drop trigger if exists pieces_recalculate_total on public.pieces;
 create trigger pieces_recalculate_total
   after insert or update of price, quantity, status on public.pieces
   for each row execute function private.recalculate_restoration_total();
@@ -60,7 +63,7 @@ begin
 end;
 $$;
 
-drop trigger whatsapp_quote_items_recalculate_total on public.whatsapp_quote_items;
+drop trigger if exists whatsapp_quote_items_recalculate_total on public.whatsapp_quote_items;
 create trigger whatsapp_quote_items_recalculate_total
   after insert or update of price, quantity or delete on public.whatsapp_quote_items
   for each row execute function private.recalculate_whatsapp_quote_total();
@@ -96,6 +99,7 @@ $$;
 
 revoke execute on function private.guard_piece_quantity() from public, anon, authenticated;
 
+drop trigger if exists pieces_guard_quantity on public.pieces;
 create trigger pieces_guard_quantity
   before update of quantity on public.pieces
   for each row execute function private.guard_piece_quantity();
