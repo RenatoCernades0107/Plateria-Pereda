@@ -25,6 +25,7 @@ import {
   canReceiveFromWorkshop,
   canSendForReview,
   canSendToWorkshop,
+  isInReview,
   PIECE_STATUS_LABELS,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
@@ -122,14 +123,26 @@ export const PIECE_COLUMN_LABELS: Record<PieceColumnKey, string> = {
   [READY_COLUMN]: "Lista para entregar",
 };
 
-/** Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. */
+/**
+ * Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. Una
+ * Aprobada en el taller solo a revisar no está en restauración: sigue en su estado
+ * hasta que se deja ahí para el trabajo.
+ */
 export function pieceColumnOf(piece: {
   status: PieceStatus;
   location: PieceLocation;
   readyForDelivery: boolean;
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
 }): PieceColumnKey {
   if (!WORKSHOP_STATUSES.includes(piece.status)) return piece.status;
-  if (piece.location === "en_taller") return IN_WORKSHOP_COLUMN;
+  const inReview = isInReview({
+    reviewSentAt: piece.reviewSentAt ? new Date(piece.reviewSentAt) : null,
+    reviewReturnedAt: piece.reviewReturnedAt
+      ? new Date(piece.reviewReturnedAt)
+      : null,
+  });
+  if (piece.location === "en_taller" && !inReview) return IN_WORKSHOP_COLUMN;
   if (piece.readyForDelivery) return READY_COLUMN;
   return piece.status;
 }
