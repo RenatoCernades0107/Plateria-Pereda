@@ -87,7 +87,13 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
+import {
+  isPieceInReview,
+  LocationBadge,
+  PieceStatusBadge,
+  ReviewBadge,
+  UrgentBadge,
+} from "./status-badges";
 import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
@@ -1083,6 +1089,9 @@ function PieceStatusBadges({
           location={piece.location}
           className={LARGE_BADGE_CLASS}
         />
+        {isPieceInReview(piece) ? (
+          <ReviewBadge className={LARGE_BADGE_CLASS} />
+        ) : null}
         {role && canToggleUrgent(piece, role) ? (
           <UrgentToggle
             variant="label"

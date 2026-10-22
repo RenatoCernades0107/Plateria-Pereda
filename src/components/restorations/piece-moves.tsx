@@ -25,7 +25,6 @@ import {
   canReceiveFromWorkshop,
   canSendForReview,
   canSendToWorkshop,
-  isInReview,
   PIECE_STATUS_LABELS,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
@@ -42,6 +41,7 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
+import { isPieceInReview } from "./status-badges";
 import {
   inReviewAtWorkshop,
   locationAfter,
@@ -136,13 +136,8 @@ export function pieceColumnOf(piece: {
   reviewReturnedAt?: string | null;
 }): PieceColumnKey {
   if (!WORKSHOP_STATUSES.includes(piece.status)) return piece.status;
-  const inReview = isInReview({
-    reviewSentAt: piece.reviewSentAt ? new Date(piece.reviewSentAt) : null,
-    reviewReturnedAt: piece.reviewReturnedAt
-      ? new Date(piece.reviewReturnedAt)
-      : null,
-  });
-  if (piece.location === "en_taller" && !inReview) return IN_WORKSHOP_COLUMN;
+  if (piece.location === "en_taller" && !isPieceInReview(piece))
+    return IN_WORKSHOP_COLUMN;
   if (piece.readyForDelivery) return READY_COLUMN;
   return piece.status;
 }

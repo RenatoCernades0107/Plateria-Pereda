@@ -11,6 +11,7 @@ import {
   MessageCircleQuestionMark,
   PackageCheck,
   PackageSearch,
+  Search,
   Store,
   ThumbsDown,
   WrenchOff,
@@ -23,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { WHATSAPP_BADGE_CLASS } from "@/components/whatsapp-badge";
 import { PAYMENT_STATUS_LABELS, type PaymentStatus } from "@/domain/money";
 import {
+  isInReview,
   PIECE_STATUS_LABELS,
   type PieceStatus,
 } from "@/domain/piece-state-machine";
@@ -203,6 +205,38 @@ export function UrgentBadge({ className }: { className?: string }) {
     >
       <Zap aria-hidden />
       Urgente
+    </Badge>
+  );
+}
+
+/** Fechas de la revisión en taller tal como llegan de la consulta. */
+export type ReviewDatesInput = {
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
+};
+
+/** La pieza está en el taller a revisar (se llevó y aún no vuelve). */
+export const isPieceInReview = (piece: ReviewDatesInput) =>
+  isInReview({
+    reviewSentAt: piece.reviewSentAt ? new Date(piece.reviewSentAt) : null,
+    reviewReturnedAt: piece.reviewReturnedAt
+      ? new Date(piece.reviewReturnedAt)
+      : null,
+  });
+
+/**
+ * "En revisión": va junto a "En taller" cuando la pieza está ahí solo a revisar (no
+ * por trabajo). Neutra como la ubicación, con la lupa de «Llevar al taller a revisar».
+ */
+export function ReviewBadge({ className }: { className?: string }) {
+  return (
+    <Badge
+      variant="outline"
+      data-review
+      className={cn("text-foreground [&>svg]:text-muted-foreground", className)}
+    >
+      <Search aria-hidden />
+      En revisión
     </Badge>
   );
 }
