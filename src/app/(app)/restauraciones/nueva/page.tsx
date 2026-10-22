@@ -72,17 +72,19 @@ export default async function NuevaRestauracionPage({
         // Guía interna u observada (punto 8): admin y ventas.
         canSetKind={can(user.role, "restauraciones.editar")}
         workshops={workshops.data}
-        materials={materials.map(({ id, name, price, active }) => ({
+        materials={materials.map(({ id, name, price, active, isDefault }) => ({
           id,
           name,
           price,
           active,
+          isDefault,
         }))}
-        services={services.map(({ id, name, price, active }) => ({
+        services={services.map(({ id, name, price, active, isDefault }) => ({
           id,
           name,
           price,
           active,
+          isDefault,
         }))}
         paymentMethods={methods.map(({ id, name }) => ({ id, name }))}
       />

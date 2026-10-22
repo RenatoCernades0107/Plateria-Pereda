@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { CATALOGS, isCatalogKind, type CatalogKind } from "@/domain/catalogs";
+import {
+  CATALOGS,
+  isCatalogKind,
+  isPieceCatalogKind,
+  type CatalogKind,
+  type PieceCatalogKind,
+} from "@/domain/catalogs";
 import { createClient } from "@/lib/supabase/server";
 import {
   catalogItemSchema,
@@ -89,8 +95,55 @@ export async function setCatalogItemActive(
   if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
 
   const supabase = await createClient();
-  const { error } = await supabase.from(kind).update({ active }).eq("id", id);
+  // El material o servicio por defecto deja de serlo al desactivarlo (la BD lo exige).
+  const { error } =
+    isPieceCatalogKind(kind) && !active
+      ? await supabase
+          .from(kind)
+          .update({ active, is_default: false })
+          .eq("id", id)
+      : await supabase.from(kind).update({ active }).eq("id", id);
   if (error) return { error: "No se pudo actualizar el ítem." };
+  revalidatePath(CATALOGS[kind].href);
+  return { ok: true };
+}
+
+/**
+ * Marca (o desmarca) el material o servicio que ya viene elegido en cada pieza nueva.
+ * A lo sumo uno por catálogo: primero se quita la marca al anterior.
+ */
+export async function setCatalogItemDefault(
+  kind: PieceCatalogKind,
+  id: string,
+  isDefault: boolean,
+): Promise<CatalogActionResult> {
+  await requirePermission("configuracion.gestionar");
+  if (!isPieceCatalogKind(kind)) return { error: "Catálogo inválido." };
+
+  const supabase = await createClient();
+  if (isDefault) {
+    const { error } = await supabase
+      .from(kind)
+      .update({ is_default: false })
+      .eq("is_default", true)
+      .neq("id", id);
+    if (error) return { error: "No se pudo actualizar el ítem." };
+  }
+  const { data, error } = await supabase
+    .from(kind)
+    .update({ is_default: isDefault })
+    .eq("id", id)
+    .select("id");
+  // 23514: está desactivado.
+  if (error) {
+    return {
+      error:
+        error.code === "23514"
+          ? "Activa el ítem antes de marcarlo por defecto."
+          : "No se pudo actualizar el ítem.",
+    };
+  }
+  if (data.length === 0) return { error: "No se pudo actualizar el ítem." };
   revalidatePath(CATALOGS[kind].href);
   return { ok: true };
 }

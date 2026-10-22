@@ -223,6 +223,7 @@ export type Database = {
           active: boolean;
           created_at: string;
           id: string;
+          is_default: boolean;
           name: string;
           updated_at: string;
         };
@@ -230,6 +231,7 @@ export type Database = {
           active?: boolean;
           created_at?: string;
           id?: string;
+          is_default?: boolean;
           name: string;
           updated_at?: string;
         };
@@ -237,6 +239,7 @@ export type Database = {
           active?: boolean;
           created_at?: string;
           id?: string;
+          is_default?: boolean;
           name?: string;
           updated_at?: string;
         };
@@ -1115,6 +1118,7 @@ export type Database = {
           active: boolean;
           created_at: string;
           id: string;
+          is_default: boolean;
           name: string;
           suggested_price: number | null;
           updated_at: string;
@@ -1123,6 +1127,7 @@ export type Database = {
           active?: boolean;
           created_at?: string;
           id?: string;
+          is_default?: boolean;
           name: string;
           suggested_price?: number | null;
           updated_at?: string;
@@ -1131,6 +1136,7 @@ export type Database = {
           active?: boolean;
           created_at?: string;
           id?: string;
+          is_default?: boolean;
           name?: string;
           suggested_price?: number | null;
           updated_at?: string;

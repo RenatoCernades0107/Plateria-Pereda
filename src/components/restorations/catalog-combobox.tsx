@@ -26,6 +26,8 @@ export type CatalogOption = {
   price: number | null;
   /** Los desactivados solo se muestran si la pieza ya los tiene. */
   active?: boolean;
+  /** Ya viene elegido en cada pieza nueva (Configuración). */
+  isDefault?: boolean;
 };
 
 export type PickedOption = { id: string; name: string };
