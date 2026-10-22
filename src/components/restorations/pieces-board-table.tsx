@@ -371,6 +371,7 @@ function BoardRow({
             <BoardServiceCostCell
               piece={piece}
               cents={piece.serviceCostCents}
+              quantity={piece.quantity}
             />
           </td>
         ) : null}
@@ -383,6 +384,7 @@ function BoardRow({
             <BoardSalePriceCell
               piece={piece}
               cents={piece.priceCents}
+              quantity={piece.quantity}
               editable={editPrice}
             />
           </td>

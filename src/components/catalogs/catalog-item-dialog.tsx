@@ -42,6 +42,7 @@ export type CatalogItemRow = {
   name: string;
   price: number | null;
   active: boolean;
+  isDefault?: boolean;
   shopifyName?: string | null;
 };
 

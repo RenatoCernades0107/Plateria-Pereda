@@ -269,7 +269,7 @@ export function usePieceMoves<P extends StatusPiece>({
     });
 
   /** Revisión en taller: ida (con el taller elegido) y vuelta; el estado no cambia. */
-  const sendToReview = (piece: P, workshopId: string) =>
+  const sendToReview = (piece: P, workshopId: string | null) =>
     new Promise<string | null>((resolve) => {
       startTransition(async () => {
         setOptimistic({
@@ -312,7 +312,7 @@ export function usePieceMoves<P extends StatusPiece>({
     });
 
   /** "Enviar al taller" (con el taller elegido) y "Recibir del taller". */
-  const sendToWorkshop = (piece: P, workshopId: string) =>
+  const sendToWorkshop = (piece: P, workshopId: string | null) =>
     new Promise<string | null>((resolve) => {
       startTransition(async () => {
         const now = new Date().toISOString();

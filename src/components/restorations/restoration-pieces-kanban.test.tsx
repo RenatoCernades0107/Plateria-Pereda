@@ -185,11 +185,14 @@ describe("RestorationPiecesKanban", () => {
     );
   });
 
-  it("muestra el precio a quien ve montos, o «Por definir» si aún no tiene", () => {
+  it("muestra el importe (precio × cantidad) a quien ve montos, o «Por definir» si aún no tiene", () => {
     renderKanban("ventas");
-    expect(
-      within(screen.getByTestId("tarjeta-RES-00012-1")).getByTestId("precio"),
-    ).toHaveTextContent(`Precio: ${formatCents(12_000)}`);
+    // 3 unidades de S/ 120.00: el importe es S/ 360.00 y el c/u va en el título.
+    const price = within(screen.getByTestId("tarjeta-RES-00012-1")).getByTestId(
+      "precio",
+    );
+    expect(price).toHaveTextContent(`Precio: ${formatCents(36_000)}`);
+    expect(within(price).getByTitle(`${formatCents(12_000)} c/u`)).toBeTruthy();
     expect(
       within(screen.getByTestId("tarjeta-RES-00012-4")).getByTestId("precio"),
     ).toHaveTextContent("Por definir");

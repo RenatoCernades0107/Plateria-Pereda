@@ -146,6 +146,17 @@ describe("guidePdfModel", () => {
     expect(withClosed.totalsNote).toBeNull();
   });
 
+  it("el importe y el total multiplican el precio por la cantidad", () => {
+    const model = guidePdfModel(
+      { ...data, pieces: [piece("1", { quantity: 3 })] },
+      new Set(["1"]),
+    );
+    expect(model.rows[0]!.price).toBe("S/ 300.00");
+    expect(model.totals).toEqual([
+      { label: "Total", value: "S/ 300.00", strong: true },
+    ]);
+  });
+
   it("sin ninguna pieza con precio, el subtotal sale por definir", () => {
     const model = guidePdfModel(data, new Set(["2"]));
     expect(model.totals).toEqual([

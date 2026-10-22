@@ -138,6 +138,7 @@ export function PieceFields({
   pricePlaceholder,
   workshopName,
   showPrice = true,
+  quantityLocked = false,
 }: {
   form: AnyForm;
   prefix?: string;
@@ -156,6 +157,11 @@ export function PieceFields({
   workshopName?: string | null;
   /** Guía interna u observada: no se cobra, la pieza no lleva precio. */
   showPrice?: boolean;
+  /**
+   * La cantidad multiplica el precio: con la orden de Shopify creada y la pieza con
+   * precio, cambia el monto de su línea y no se edita aquí (P12).
+   */
+  quantityLocked?: boolean;
 }) {
   const off = (field: PieceEditableField) =>
     editable ? !editable.includes(field) : false;
@@ -213,7 +219,7 @@ export function PieceFields({
             inputMode="numeric"
             placeholder="1"
             // Mismas reglas que la descripción (la BD las bloquea juntas).
-            disabled={off("description")}
+            disabled={off("description") || quantityLocked}
           />
           <MaterialsField
             form={form}
@@ -238,7 +244,7 @@ export function PieceFields({
             <TextField
               form={form}
               name={path("price")}
-              label="Precio (S/)"
+              label="Precio unit. (S/)"
               inputMode="numeric"
               disabled={off("price")}
               placeholder={pricePlaceholder}

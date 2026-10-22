@@ -4,23 +4,16 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
 import { navigateRow } from "@/components/clickable-row";
-import { formatCents } from "@/domain/money";
 import { pieceHref } from "@/domain/restoration-pieces-view";
 import { formatDateTime } from "@/lib/format";
 import { DRAG_SCROLL_CLASS, useDragScroll } from "@/components/use-drag-scroll";
 import { cn } from "@/lib/utils";
 import type { HistoryPiece } from "@/server/restorations/piece-history-queries";
 
+import { PieceCostAmount, PieceSaleAmount } from "./piece-money-cells";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import { RT } from "./responsive-table";
 import { PieceQuantity, PieceStatusBadge, UrgentIcon } from "./status-badges";
-
-const Money = ({ cents, empty }: { cents: number | null; empty: string }) =>
-  cents === null ? (
-    <span className="text-muted-foreground">{empty}</span>
-  ) : (
-    <span className="tabular-nums">{formatCents(cents)}</span>
-  );
 
 // Foto y código quedan fijos al desplazarse de lado (foto de ancho fijo, con el
 // `px-3` de las celdas, para saber dónde empieza el código).
@@ -163,12 +156,19 @@ export function PiecesHistoryTable({
               </td>
               {showCost ? (
                 <td className={cn(cell, "text-right")}>
-                  <Money cents={piece.serviceCostCents} empty="Sin definir" />
+                  <PieceCostAmount
+                    cents={piece.serviceCostCents}
+                    quantity={piece.quantity}
+                    empty="Sin definir"
+                  />
                 </td>
               ) : null}
               {showPrice ? (
                 <td className={cn(cell, "text-right")}>
-                  <Money cents={piece.priceCents} empty="Por definir" />
+                  <PieceSaleAmount
+                    cents={piece.priceCents}
+                    quantity={piece.quantity}
+                  />
                 </td>
               ) : null}
               <td className={cn(cell, "text-muted-foreground max-w-40")}>

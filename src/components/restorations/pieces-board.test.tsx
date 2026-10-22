@@ -384,7 +384,7 @@ describe("PiecesBoard: precio de venta (D58)", () => {
         name: "Editar precio de venta de RES-00001-2",
       }),
     );
-    const input = screen.getByLabelText("Precio de venta (S/)");
+    const input = screen.getByLabelText("Precio de venta unitario (S/)");
     expect(input).toHaveValue("");
     await user.type(input, "80");
     await user.click(screen.getByRole("button", { name: "Guardar precio" }));
@@ -419,7 +419,10 @@ describe("PiecesBoard: precio de venta (D58)", () => {
         name: "Editar precio de venta de RES-00001-2",
       }),
     );
-    await user.type(screen.getByLabelText("Precio de venta (S/)"), "80");
+    await user.type(
+      screen.getByLabelText("Precio de venta unitario (S/)"),
+      "80",
+    );
     await user.click(screen.getByRole("button", { name: "Guardar precio" }));
     expect(setPieceSalePrice).toHaveBeenCalledWith("p2", "80");
   });

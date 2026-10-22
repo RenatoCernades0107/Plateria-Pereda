@@ -49,17 +49,19 @@ export default async function EditarCotizacionWhatsappPage({
         mode={{ kind: "editar-cotizacion", quote: quoteForForm(quote) }}
         defaultDepositPercent={settings.depositPercent}
         workshops={[]}
-        materials={materials.map(({ id, name, price, active }) => ({
+        materials={materials.map(({ id, name, price, active, isDefault }) => ({
           id,
           name,
           price,
           active,
+          isDefault,
         }))}
-        services={services.map(({ id, name, price, active }) => ({
+        services={services.map(({ id, name, price, active, isDefault }) => ({
           id,
           name,
           price,
           active,
+          isDefault,
         }))}
       />
     </div>

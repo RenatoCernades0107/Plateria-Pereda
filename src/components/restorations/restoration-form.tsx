@@ -45,6 +45,7 @@ import {
   depositAmountLiveError,
   expectedDeposit,
   formatCents,
+  lineCents,
   parseMoney,
   percentOf,
   sumCents,
@@ -64,6 +65,7 @@ import {
   COPY_INITIAL_STATUSES,
   copyRestorationSchema,
   MAX_PIECES,
+  MAX_QUANTITY,
   restorationSchema,
   whatsappQuoteSchema,
   type PieceFormInput,
@@ -131,12 +133,44 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
   statusNote: "",
 };
 
+const defaultIds = (options: readonly CatalogOption[]) =>
+  options.filter((o) => o.isDefault && o.active !== false).map((o) => o.id);
+
 /**
- * Total en vivo (lo que paga el cliente): suma los precios válidos; los vacíos o mal
- * escritos cuentan 0, y crece a medida que el admin asigna los precios (D59).
+ * Pieza nueva con el material y el servicio por defecto ya elegidos (los marca el
+ * admin en Configuración); se pueden quitar o cambiar.
  */
-export function liveTotal(pieces: readonly { price?: string }[]) {
-  return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
+export function newPiece(
+  materials: readonly CatalogOption[],
+  services: readonly CatalogOption[],
+  base: PieceFormInput = EMPTY_PIECE,
+): PieceFormInput {
+  return {
+    ...structuredClone(base),
+    materials: defaultIds(materials),
+    services: defaultIds(services),
+  };
+}
+
+/**
+ * Total en vivo (lo que paga el cliente): suma precio × cantidad de cada pieza; los
+ * precios vacíos o mal escritos cuentan 0 (y una cantidad inválida, 1), y crece a
+ * medida que el admin asigna los precios (D59).
+ */
+export function liveTotal(
+  pieces: readonly { price?: string; quantity?: string | number }[],
+) {
+  return sumCents(
+    pieces.map((p) =>
+      lineCents(parseMoney(p.price ?? "") ?? 0, quantityOf(p.quantity)),
+    ),
+  );
+}
+
+/** Cantidad escrita como entero de 1 a 999; vacía o inválida, 1. */
+function quantityOf(text: string | number | undefined): number {
+  const n = Number(String(text ?? "").trim() || "1");
+  return Number.isInteger(n) && n >= 1 && n <= MAX_QUANTITY ? n : 1;
 }
 
 function PieceCard({
@@ -257,7 +291,7 @@ function PieceCard({
           {!charged
             ? "Sin cobro"
             : price !== null
-              ? formatCents(price)
+              ? formatCents(lineCents(price, quantityOf(piece?.quantity)))
               : "Por definir"}
         </span>
         <Button
@@ -435,7 +469,11 @@ const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({
   statusNote: "",
 });
 
-function defaultsFor(mode: RestorationFormMode): FormValues {
+function defaultsFor(
+  mode: RestorationFormMode,
+  materials: readonly CatalogOption[],
+  services: readonly CatalogOption[],
+): FormValues {
   if (mode.kind === "nueva") {
     return {
       kind: "normal",
@@ -448,7 +486,7 @@ function defaultsFor(mode: RestorationFormMode): FormValues {
       depositMethodId: "",
       depositPercent: "",
       notes: "",
-      pieces: [EMPTY_PIECE],
+      pieces: [newPiece(materials, services)],
     };
   }
   const q = mode.quote;
@@ -573,7 +611,7 @@ export function RestorationForm({
             ? copyRestorationSchema
             : restorationSchema) as never,
       )(values, context, options as never) as never,
-    defaultValues: defaultsFor(mode),
+    defaultValues: defaultsFor(mode, materials, services),
   });
   const pieces = useFieldArray({ control: form.control, name: "pieces" });
   const values = useWatch({ control: form.control });
@@ -1001,7 +1039,9 @@ export function RestorationForm({
             variant="outline"
             onClick={() =>
               pieces.append(
-                structuredClone(
+                newPiece(
+                  materials,
+                  services,
                   mode.kind === "copia" ? EMPTY_COPY_PIECE : EMPTY_PIECE,
                 ),
               )

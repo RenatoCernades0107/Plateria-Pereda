@@ -66,7 +66,7 @@ import {
 } from "@/server/restorations/actions";
 import type { PieceDetail } from "@/server/restorations/queries";
 
-import { EMPTY_PIECE } from "./restoration-form";
+import { newPiece } from "./restoration-form";
 import {
   PieceFields,
   type CatalogOption,
@@ -341,7 +341,7 @@ export function PieceDialog({
   const [pending, startTransition] = useTransition();
   const form = useForm<PieceFormInput>({
     resolver: zodResolver(pieceSchema as never),
-    defaultValues: piece ? pieceDefaults(piece) : structuredClone(EMPTY_PIECE),
+    defaultValues: piece ? pieceDefaults(piece) : newPiece(materials, services),
   });
 
   const onSubmit = form.handleSubmit(() => {
@@ -353,7 +353,7 @@ export function PieceDialog({
         : await addPiece(restorationId, values);
       if ("error" in result) return setError(result.error);
       toast.success(piece ? "Pieza actualizada." : "Pieza agregada.");
-      if (!piece) form.reset(structuredClone(EMPTY_PIECE));
+      if (!piece) form.reset(newPiece(materials, services));
       setOpen(false);
     });
   });
@@ -411,6 +411,13 @@ export function PieceDialog({
                 Boolean(piece) || !editable || editable.includes("workshopId")
               }
               workshopName={piece?.workshopName}
+              // Con precio que solo cambia con el flujo de la orden (P12), la cantidad
+              // tampoco: multiplica el precio.
+              quantityLocked={
+                piece?.priceCents != null &&
+                editable !== undefined &&
+                !editable.includes("price")
+              }
             />
             <DialogFooter>
               <Button type="submit" disabled={pending}>

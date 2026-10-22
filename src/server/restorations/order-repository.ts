@@ -1,6 +1,6 @@
 import "server-only";
 
-import { toCents, toDecimalString } from "@/domain/money";
+import { lineCents, toCents, toDecimalString } from "@/domain/money";
 import type { SyncPayment } from "@/domain/payment-sync";
 import { toPieceStatus } from "@/domain/piece-state-machine";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +15,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
+        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -49,7 +49,11 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
         id: p.id,
         code: p.code,
         number: p.number,
-        priceCents: p.price === null ? null : toCents(Number(p.price)),
+        // La línea de la orden lleva cantidad 1 y el importe de la pieza.
+        priceCents:
+          p.price === null
+            ? null
+            : lineCents(toCents(Number(p.price)), p.quantity),
         status: toPieceStatus(p.status),
         approvedAt: p.approved_at,
       })),

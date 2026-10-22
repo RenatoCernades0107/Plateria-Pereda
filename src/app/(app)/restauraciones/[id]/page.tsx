@@ -759,16 +759,19 @@ async function loadEditingData(client: { id: string; kind: string }) {
     name,
     price,
     active,
+    isDefault,
   }: {
     id: string;
     name: string;
     price: number | null;
     active: boolean;
+    isDefault?: boolean;
   }) => ({
     id,
     name,
     price,
     active,
+    isDefault,
   });
   return {
     materials: materials.map(option),

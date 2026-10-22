@@ -21,8 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   formatCents,
+  lineCents,
   parseMoney,
   toDecimalString,
+  unitShareCents,
   type Cents,
 } from "@/domain/money";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ function MoneyEditCell({
   inputId,
   align = "end",
   emptyActionText,
+  shownCents,
+  detail,
   onSave,
 }: {
   cents: Cents | null;
@@ -75,6 +79,10 @@ function MoneyEditCell({
   align?: "start" | "end";
   /** Sin monto, el botón muestra este texto (p. ej. "Definir precio") en vez del lápiz. */
   emptyActionText?: string;
+  /** Monto que se muestra si no es el que se edita (p. ej. el importe × cantidad). */
+  shownCents?: Cents | null;
+  /** Línea pequeña bajo el monto (p. ej. "3 × S/ 26.66"). */
+  detail?: React.ReactNode;
   onSave: (value: string) => Promise<SaveResult>;
 }) {
   const emptyAction = cents === null && emptyActionText !== undefined;
@@ -111,7 +119,11 @@ function MoneyEditCell({
       {emptyAction ? null : cents === null ? (
         <span className="text-muted-foreground">{emptyText}</span>
       ) : (
-        <span className="tabular-nums">{formatCents(cents)}</span>
+        <AmountWithDetail
+          cents={shownCents ?? cents}
+          detail={detail}
+          align={align}
+        />
       )}
       <Dialog
         open={open}
@@ -190,11 +202,15 @@ function MoneyEditCell({
 export function ServiceCostCell({
   piece,
   cents,
+  quantity,
   align,
   emptyAsButton = false,
 }: {
   piece: MoneyPiece;
+  /** Costo de la pieza completa (no se multiplica por la cantidad). */
   cents: Cents | null;
+  /** Con más de una unidad, debajo va el costo por unidad (solo referencia). */
+  quantity?: number;
   align?: "start" | "end";
   /** Sin costo, un botón "Definir costo" en vez de "Por definir" y el lápiz. */
   emptyAsButton?: boolean;
@@ -204,10 +220,11 @@ export function ServiceCostCell({
       cents={cents}
       align={align}
       emptyActionText={emptyAsButton ? "Definir costo" : undefined}
+      detail={costDetail(cents, quantity)}
       emptyText="Por definir"
       fieldLabel="Costo de servicio (S/)"
       title={`Costo de servicio de ${piece.code}`}
-      description="Lo que cobra el taller por esta pieza. Déjalo vacío si aún no se define."
+      description="Lo que cobra el taller por la pieza completa (todas sus unidades). Déjalo vacío si aún no se define."
       buttonLabel={`Editar costo de servicio de ${piece.code}`}
       buttonTitle="Editar costo de servicio"
       submitText="Guardar costo"
@@ -218,12 +235,90 @@ export function ServiceCostCell({
   );
 }
 
-/** Monto de solo lectura de las tablas: el importe o "Por definir". */
-function PlainAmount({ cents }: { cents: Cents | null }) {
-  return cents === null ? (
-    <span className="text-muted-foreground">Por definir</span>
-  ) : (
-    <span className="tabular-nums">{formatCents(cents)}</span>
+/** Monto con una línea pequeña debajo (p. ej. el precio por unidad). */
+function AmountWithDetail({
+  cents,
+  detail,
+  align = "end",
+}: {
+  cents: Cents;
+  detail?: React.ReactNode;
+  align?: "start" | "end";
+}) {
+  if (!detail)
+    return <span className="tabular-nums">{formatCents(cents)}</span>;
+  return (
+    <span
+      className={cn(
+        "inline-flex flex-col",
+        align === "start" ? "items-start" : "items-end",
+      )}
+    >
+      <span className="tabular-nums">{formatCents(cents)}</span>
+      <span
+        className="text-muted-foreground text-xs font-normal tabular-nums"
+        data-testid="monto-detalle"
+      >
+        {detail}
+      </span>
+    </span>
+  );
+}
+
+/** "S/ 10.00 c/u" bajo el costo de la pieza completa, si tiene varias unidades. */
+function costDetail(cents: Cents | null, quantity?: number) {
+  return cents !== null && quantity && quantity > 1
+    ? `${formatCents(unitShareCents(cents, quantity))} c/u`
+    : undefined;
+}
+
+/**
+ * Precio de venta de solo lectura (2026-10-22): el importe de la pieza (precio ×
+ * cantidad, con techo al sol) y, con varias unidades, el precio por unidad debajo.
+ */
+export function PieceSaleAmount({
+  cents,
+  quantity,
+  align,
+}: {
+  /** Precio por unidad; null si está por definir. */
+  cents: Cents | null;
+  quantity?: number;
+  align?: "start" | "end";
+}) {
+  if (cents === null)
+    return <span className="text-muted-foreground">Por definir</span>;
+  return (
+    <AmountWithDetail
+      cents={lineCents(cents, quantity)}
+      detail={
+        quantity && quantity > 1 ? `${formatCents(cents)} c/u` : undefined
+      }
+      align={align}
+    />
+  );
+}
+
+/** Costo de servicio de solo lectura: el de la pieza completa y, debajo, por unidad. */
+export function PieceCostAmount({
+  cents,
+  quantity,
+  align,
+  empty = "Por definir",
+}: {
+  cents: Cents | null;
+  quantity?: number;
+  align?: "start" | "end";
+  empty?: string;
+}) {
+  if (cents === null)
+    return <span className="text-muted-foreground">{empty}</span>;
+  return (
+    <AmountWithDetail
+      cents={cents}
+      detail={costDetail(cents, quantity)}
+      align={align}
+    />
   );
 }
 
@@ -235,11 +330,14 @@ function PlainAmount({ cents }: { cents: Cents | null }) {
 export function BoardServiceCostCell({
   piece,
   cents,
+  quantity,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
+  quantity?: number;
 }) {
-  if (cents !== null) return <PlainAmount cents={cents} />;
+  if (cents !== null)
+    return <PieceCostAmount cents={cents} quantity={quantity} />;
   return <ServiceCostCell piece={piece} cents={cents} />;
 }
 
@@ -251,20 +349,25 @@ export function BoardServiceCostCell({
 export function SalePriceCell({
   piece,
   cents,
+  quantity,
   hasOrder,
   editable,
   align,
   emptyAsButton = false,
 }: {
   piece: MoneyPiece;
+  /** Precio por unidad (lo que se edita). */
   cents: Cents | null;
+  /** Se muestra el importe (precio × cantidad) y el precio por unidad debajo. */
+  quantity?: number;
   hasOrder: boolean;
   editable: boolean;
   align?: "start" | "end";
   /** Sin precio, un botón "Definir precio" en vez de "Por definir" y el lápiz. */
   emptyAsButton?: boolean;
 }) {
-  if (!editable) return <PlainAmount cents={cents} />;
+  if (!editable)
+    return <PieceSaleAmount cents={cents} quantity={quantity} align={align} />;
   if (hasOrder && cents !== null) {
     return (
       <div
@@ -273,7 +376,7 @@ export function SalePriceCell({
           align === "start" ? "items-start" : "items-end",
         )}
       >
-        <span className="tabular-nums">{formatCents(cents)}</span>
+        <PieceSaleAmount cents={cents} quantity={quantity} align={align} />
         <PriceChangeDialog
           restorationId={piece.restorationId}
           piece={{ id: piece.id, code: piece.code, priceCents: cents }}
@@ -286,10 +389,20 @@ export function SalePriceCell({
       cents={cents}
       align={align}
       emptyActionText={emptyAsButton ? "Definir precio" : undefined}
+      shownCents={cents === null ? null : lineCents(cents, quantity)}
+      detail={
+        cents !== null && quantity && quantity > 1
+          ? `${formatCents(cents)} c/u`
+          : undefined
+      }
       emptyText="Por definir"
-      fieldLabel="Precio de venta (S/)"
+      fieldLabel="Precio de venta unitario (S/)"
       title={`Precio de venta de ${piece.code}`}
-      description="Precio que se cobra al cliente por esta pieza. Déjalo vacío si aún no se asigna."
+      description={
+        quantity && quantity > 1
+          ? `Precio por unidad: se cobra × ${quantity} (redondeado hacia arriba al sol). Déjalo vacío si aún no se asigna.`
+          : "Precio por unidad que se cobra al cliente. Déjalo vacío si aún no se asigna."
+      }
       buttonLabel={`Editar precio de venta de ${piece.code}`}
       buttonTitle="Editar precio de venta"
       submitText="Guardar precio"
@@ -308,14 +421,23 @@ export function SalePriceCell({
 export function BoardSalePriceCell({
   piece,
   cents,
+  quantity,
   editable,
 }: {
   piece: MoneyPiece;
   cents: Cents | null;
+  quantity?: number;
   editable: boolean;
 }) {
-  if (!editable || cents !== null) return <PlainAmount cents={cents} />;
+  if (!editable || cents !== null)
+    return <PieceSaleAmount cents={cents} quantity={quantity} />;
   return (
-    <SalePriceCell piece={piece} cents={cents} hasOrder={false} editable />
+    <SalePriceCell
+      piece={piece}
+      cents={cents}
+      quantity={quantity}
+      hasOrder={false}
+      editable
+    />
   );
 }

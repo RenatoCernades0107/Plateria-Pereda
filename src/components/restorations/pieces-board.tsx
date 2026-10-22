@@ -24,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import {
   salePriceEditing,
@@ -41,7 +40,7 @@ import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PieceDialog } from "./edit-dialogs";
 import type { CatalogOption, WorkshopOption } from "./piece-fields";
-import { SalePriceCell } from "./piece-money-cells";
+import { PieceSaleAmount, SalePriceCell } from "./piece-money-cells";
 import { RT } from "./responsive-table";
 import { materialSummary, PiecePhoto } from "./piece-photo";
 import {
@@ -208,6 +207,7 @@ function PieceRow({
             <SalePriceCell
               piece={{ id: piece.id, code: piece.code, restorationId }}
               cents={piece.priceCents}
+              quantity={piece.quantity}
               hasOrder={priceChange}
               editable
             />
@@ -220,9 +220,11 @@ function PieceRow({
               Por definir
             </span>
           ) : (
-            <span className="tabular-nums">
-              {formatCents(piece.priceCents)}
-            </span>
+            // El importe (precio × cantidad) y, con varias unidades, el c/u debajo.
+            <PieceSaleAmount
+              cents={piece.priceCents}
+              quantity={piece.quantity}
+            />
           )}
         </td>
       ) : null}
