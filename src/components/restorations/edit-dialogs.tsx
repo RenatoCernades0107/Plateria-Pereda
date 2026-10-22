@@ -411,6 +411,13 @@ export function PieceDialog({
                 Boolean(piece) || !editable || editable.includes("workshopId")
               }
               workshopName={piece?.workshopName}
+              // Con precio que solo cambia con el flujo de la orden (P12), la cantidad
+              // tampoco: multiplica el precio.
+              quantityLocked={
+                piece?.priceCents != null &&
+                editable !== undefined &&
+                !editable.includes("price")
+              }
             />
             <DialogFooter>
               <Button type="submit" disabled={pending}>

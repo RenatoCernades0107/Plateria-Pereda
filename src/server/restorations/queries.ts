@@ -44,7 +44,7 @@ export type PieceDetail = {
   urgent: boolean;
   /** Aprobada u Observada ya de vuelta del taller ("Lista para entregar"). */
   readyForDelivery: boolean;
-  /** Cantidad (informativa: el precio y el costo son de la pieza completa). */
+  /** Cantidad: el precio de venta es por unidad (el total suma precio × cantidad). */
   quantity: number;
   description: string;
   measure: string;
@@ -555,7 +555,7 @@ export type BoardPiece = {
   readyForDelivery: boolean;
   /** Rechazada o sin arreglo que sigue en la tienda (por devolver al cliente). */
   toReturn: boolean;
-  /** Cantidad (informativa). */
+  /** Cantidad (el precio es por unidad). */
   quantity: number;
   /** Desde cuándo está en su ubicación actual (ISO); null si no se sabe. */
   locationSince: string | null;

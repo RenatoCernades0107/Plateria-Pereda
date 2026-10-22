@@ -45,6 +45,7 @@ import {
   depositAmountLiveError,
   expectedDeposit,
   formatCents,
+  lineCents,
   parseMoney,
   percentOf,
   sumCents,
@@ -64,6 +65,7 @@ import {
   COPY_INITIAL_STATUSES,
   copyRestorationSchema,
   MAX_PIECES,
+  MAX_QUANTITY,
   restorationSchema,
   whatsappQuoteSchema,
   type PieceFormInput,
@@ -132,11 +134,24 @@ const EMPTY_COPY_PIECE: PieceFormInput = {
 };
 
 /**
- * Total en vivo (lo que paga el cliente): suma los precios válidos; los vacíos o mal
- * escritos cuentan 0, y crece a medida que el admin asigna los precios (D59).
+ * Total en vivo (lo que paga el cliente): suma precio × cantidad de cada pieza; los
+ * precios vacíos o mal escritos cuentan 0 (y una cantidad inválida, 1), y crece a
+ * medida que el admin asigna los precios (D59).
  */
-export function liveTotal(pieces: readonly { price?: string }[]) {
-  return sumCents(pieces.map((p) => parseMoney(p.price ?? "") ?? 0));
+export function liveTotal(
+  pieces: readonly { price?: string; quantity?: string | number }[],
+) {
+  return sumCents(
+    pieces.map((p) =>
+      lineCents(parseMoney(p.price ?? "") ?? 0, quantityOf(p.quantity)),
+    ),
+  );
+}
+
+/** Cantidad escrita como entero de 1 a 999; vacía o inválida, 1. */
+function quantityOf(text: string | number | undefined): number {
+  const n = Number(String(text ?? "").trim() || "1");
+  return Number.isInteger(n) && n >= 1 && n <= MAX_QUANTITY ? n : 1;
 }
 
 function PieceCard({
@@ -257,7 +272,7 @@ function PieceCard({
           {!charged
             ? "Sin cobro"
             : price !== null
-              ? formatCents(price)
+              ? formatCents(lineCents(price, quantityOf(piece?.quantity)))
               : "Por definir"}
         </span>
         <Button

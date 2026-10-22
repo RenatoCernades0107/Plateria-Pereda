@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatCents } from "@/domain/money";
+import { formatCents, lineCents } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import {
   salePriceEditing,
@@ -220,6 +220,16 @@ function PieceRow({
           ) : (
             <span className="tabular-nums">
               {formatCents(piece.priceCents)}
+              {/* El precio es por unidad: con varias, el importe debajo. */}
+              {piece.quantity > 1 ? (
+                <span
+                  className="text-muted-foreground block text-xs"
+                  data-testid="importe-pieza"
+                >
+                  c/u ·{" "}
+                  {formatCents(lineCents(piece.priceCents, piece.quantity))}
+                </span>
+              ) : null}
             </span>
           )}
         </td>

@@ -46,6 +46,15 @@ export function sumCents(values: readonly Cents[]): Cents {
   return values.reduce((total, value) => total + value, 0);
 }
 
+/**
+ * Monto de una pieza: precio por unidad × cantidad (2026-10-22). Sin cantidad (o
+ * una inválida) cuenta como 1, igual que en la BD.
+ */
+export function lineCents(unitCents: Cents, quantity?: number | null): Cents {
+  const units = quantity && quantity > 0 ? quantity : 1;
+  return unitCents * units;
+}
+
 /** `percent` % de un monto, redondeado a céntimos (50 % de S/ 333.33 = S/ 166.67). */
 export function percentOf(cents: Cents, percent: number): Cents {
   return roundHalfAwayFromZero((cents * percent) / 100);

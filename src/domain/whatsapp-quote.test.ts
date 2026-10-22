@@ -65,7 +65,7 @@ describe("mensaje de cotización", () => {
     `);
   });
 
-  it("con cantidad mayor que 1 dice (x2); el precio es de la pieza completa", () => {
+  it("con cantidad mayor que 1 dice (x2) y el precio por unidad se multiplica", () => {
     const pieces = data().pieces.map((p, i) =>
       i === 0 ? { ...p, quantity: 6 } : { ...p, quantity: 1 },
     );
@@ -74,10 +74,10 @@ describe("mensaje de cotización", () => {
       data({ paymentType: "contado", pieces }),
     );
     expect(text).toContain(
-      "*1. Fuente de plata (x6)*\n     ▸ Pulido\n     *S/ 1,200.50*",
+      "*1. Fuente de plata (x6)*\n     ▸ Pulido\n     *6 x S/ 1,200.50 = S/ 7,203.00*",
     );
     expect(text).toContain("*2. Candelabro*\n     *S/ 350.00*");
-    expect(text).toContain("*Total: S/ 1,550.50*");
+    expect(text).toContain("*Total: S/ 7,553.00*");
   });
 
   it("a cuenta", () => {
@@ -287,7 +287,7 @@ describe("formato de cada pieza", () => {
         "",
         "*2. Ceniceros (x3)*",
         "     ▸ Limpieza profunda, pulido y baño de plata 1000",
-        "     *S/ 80.00*",
+        "     *3 x S/ 80.00 = S/ 240.00*",
       ].join("\n"),
     );
   });
@@ -342,13 +342,13 @@ describe("cotización referencial de WhatsApp", () => {
 
       1. Fuente de plata
       Cantidad: 2 unidades
-      Precio aproximado: S/ 1,200.50
+      Precio aproximado: 2 x S/ 1,200.50 = S/ 2,401.00
 
       2. Candelabro
       Cantidad: 1 unidad
       Precio aproximado: por definir
 
-      TOTAL REFERENCIAL: S/ 1,200.50 aprox.
+      TOTAL REFERENCIAL: S/ 2,401.00 aprox.
 
       📌 Esta cotización es referencial y podrá variar una vez que las piezas sean evaluadas físicamente en nuestro taller.
 

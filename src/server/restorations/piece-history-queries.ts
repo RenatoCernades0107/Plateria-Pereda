@@ -19,7 +19,7 @@ export type HistoryPiece = {
   /** Vacío si quien mira no ve clientes (logística). */
   clientName: string;
   description: string;
-  /** Cantidad (informativa). */
+  /** Cantidad (el precio es por unidad). */
   quantity: number;
   status: PieceStatus;
   location: PieceLocation;
