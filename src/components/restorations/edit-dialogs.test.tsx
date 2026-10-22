@@ -98,8 +98,10 @@ describe("PieceDialog", () => {
       screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Precio (S/)")).toHaveValue("1200.50");
-    expect(within(dialog).getByLabelText("Precio (S/)")).toBeDisabled();
+    expect(within(dialog).getByLabelText("Precio unit. (S/)")).toHaveValue(
+      "1200.50",
+    );
+    expect(within(dialog).getByLabelText("Precio unit. (S/)")).toBeDisabled();
     expect(within(dialog).getByLabelText("Medida")).toBeDisabled();
     expect(
       within(dialog).getByText("Solo el administrador cambia el precio."),
@@ -152,7 +154,7 @@ describe("PieceDialog", () => {
       screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
     );
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).queryByLabelText("Precio (S/)")).toBeNull();
+    expect(within(dialog).queryByLabelText("Precio unit. (S/)")).toBeNull();
     const quantity = within(dialog).getByLabelText("Cant.");
     expect(quantity).toHaveValue("3");
     await user.clear(quantity);
@@ -190,7 +192,7 @@ describe("PieceDialog", () => {
       "Material",
       "Peso (g)",
       "Medida",
-      "Precio (S/)",
+      "Precio unit. (S/)",
     ].map((label) => dialog.getByLabelText(label));
     order.slice(1).forEach((field, i) => {
       expect(
@@ -207,7 +209,7 @@ describe("PieceDialog", () => {
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
     const dialog = screen.getByRole("dialog");
     await user.type(within(dialog).getByLabelText("Descripción"), "Azucarera");
-    await user.type(within(dialog).getByLabelText("Precio (S/)"), "64.5");
+    await user.type(within(dialog).getByLabelText("Precio unit. (S/)"), "64.5");
     await user.click(
       within(dialog).getByRole("button", { name: "Agregar pieza" }),
     );
@@ -311,7 +313,7 @@ describe("PieceDialog: precio de venta sin asignar (D58)", () => {
       screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
     );
     const dialog = screen.getByRole("dialog");
-    const price = within(dialog).getByLabelText("Precio (S/)");
+    const price = within(dialog).getByLabelText("Precio unit. (S/)");
     expect(price).toHaveValue("");
     expect(price).toHaveAttribute("placeholder", "Por definir");
     await user.click(

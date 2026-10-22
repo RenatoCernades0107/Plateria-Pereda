@@ -9,7 +9,7 @@ import {
 import { PieceQuantity } from "@/components/restorations/status-badges";
 import { RT } from "@/components/restorations/responsive-table";
 import { Badge } from "@/components/ui/badge";
-import { formatCents } from "@/domain/money";
+import { formatCents, lineCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 import type { WhatsappQuoteItem } from "@/server/whatsapp-quotes/queries";
 
@@ -30,12 +30,30 @@ function ItemState({ order }: { order: WhatsappQuoteItem["order"] }) {
   );
 }
 
-/** Precio cotizado; sin precio, "Por definir" (la pieza pasará a Consulta). */
-function ItemPrice({ cents }: { cents: number | null }) {
-  return cents === null ? (
-    <span className="text-muted-foreground font-normal">Por definir</span>
-  ) : (
-    formatCents(cents)
+/**
+ * Importe cotizado (precio × cantidad); con varias unidades, el precio por unidad
+ * debajo. Sin precio, "Por definir" (la pieza pasará a Consulta).
+ */
+function ItemPrice({
+  cents,
+  quantity,
+}: {
+  cents: number | null;
+  quantity: number;
+}) {
+  if (cents === null)
+    return (
+      <span className="text-muted-foreground font-normal">Por definir</span>
+    );
+  return (
+    <>
+      {formatCents(lineCents(cents, quantity))}
+      {quantity > 1 ? (
+        <span className="text-muted-foreground block text-xs font-normal">
+          {quantity} × {formatCents(cents)}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -143,7 +161,7 @@ export function QuoteItemsTable({
                   )}
                   data-label="Precio"
                 >
-                  <ItemPrice cents={item.priceCents} />
+                  <ItemPrice cents={item.priceCents} quantity={item.quantity} />
                 </td>
               </tr>
             );

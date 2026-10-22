@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 export type WhatsappQuoteItem = {
   id: string;
   number: number;
-  /** Unidades (informativa: el precio es de la línea completa). */
+  /** Unidades: el total de la cotización suma precio × cantidad. */
   quantity: number;
   description: string;
   measure: string;

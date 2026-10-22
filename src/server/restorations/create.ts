@@ -14,7 +14,7 @@ export type CreatedRestoration = { id: string; code: string };
 export function pieceToRpc(piece: PieceInput) {
   return {
     workshop_id: piece.workshopId,
-    // Informativa: el precio y el costo son de la pieza completa.
+    // El precio de venta es por unidad (el total suma precio × cantidad).
     quantity: piece.quantity,
     description: piece.description,
     measure: piece.measure,

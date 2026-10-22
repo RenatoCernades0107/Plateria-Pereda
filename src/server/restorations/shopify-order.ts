@@ -42,7 +42,10 @@ export type OrderPiece = {
   id: string;
   code: string;
   number: number;
-  /** null: precio de venta sin asignar (D58); la orden espera a que lo tenga. */
+  /**
+   * Importe de la pieza (precio × cantidad): su línea va con cantidad 1. null: precio
+   * de venta sin asignar (D58); la orden espera a que lo tenga.
+   */
   priceCents: Cents | null;
   status: PieceStatus;
   approvedAt: string | null;

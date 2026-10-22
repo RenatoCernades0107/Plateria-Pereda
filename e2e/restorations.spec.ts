@@ -40,7 +40,7 @@ async function fillPiece(
     piece.service ?? "Limpieza",
     { multiple: true },
   );
-  await card.getByLabel("Precio (S/)").fill(piece.price);
+  await card.getByLabel("Precio unit. (S/)").fill(piece.price);
 }
 
 test.describe("Restauraciones", () => {
@@ -261,8 +261,8 @@ test.describe("Restauraciones", () => {
     });
     await card.getByLabel("Descripción").fill("Tetera sin precio");
     // Ventas asigna el precio (2026-10-21); aquí lo deja por definir.
-    await expect(card.getByLabel("Precio (S/)")).toBeEnabled();
-    await expect(card.getByLabel("Precio (S/)")).toHaveAttribute(
+    await expect(card.getByLabel("Precio unit. (S/)")).toBeEnabled();
+    await expect(card.getByLabel("Precio unit. (S/)")).toHaveAttribute(
       "placeholder",
       "Por definir",
     );
@@ -302,7 +302,7 @@ test.describe("Restauraciones", () => {
     await page.goto(url);
     await pieceAction(page, `${code}-1`, "Editar");
     const dialog = page.getByRole("dialog");
-    await dialog.getByLabel("Precio (S/)").fill("90");
+    await dialog.getByLabel("Precio unit. (S/)").fill("90");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByText("Pieza actualizada.")).toBeVisible();
     await expect(page.getByTestId("monto-total")).toContainText("90.00");
@@ -318,7 +318,7 @@ test.describe("Restauraciones", () => {
     await pieceAction(page, `${code}-1`, "Editar");
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descripción").fill("Fuente ovalada restaurada");
-    await dialog.getByLabel("Precio (S/)").fill("1300");
+    await dialog.getByLabel("Precio unit. (S/)").fill("1300");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByText("Pieza actualizada.")).toBeVisible();
     await expect(page.getByTestId(`pieza-${code}-1`)).toContainText(
@@ -341,7 +341,7 @@ test.describe("Restauraciones", () => {
       multiple: true,
     });
     await dialog.getByLabel("Descripción").fill("Azucarera");
-    await dialog.getByLabel("Precio (S/)").fill("64.50");
+    await dialog.getByLabel("Precio unit. (S/)").fill("64.50");
     await dialog.getByRole("button", { name: "Agregar pieza" }).click();
     await expect(page.getByTestId(`pieza-${code}-4`)).toContainText(
       "Azucarera",
@@ -372,7 +372,7 @@ test.describe("Restauraciones", () => {
     const code = (await page.getByRole("heading", { level: 1 }).textContent())!;
     await pieceAction(page, `${code}-2`, "Editar");
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByLabel("Precio (S/)")).toBeDisabled();
+    await expect(dialog.getByLabel("Precio unit. (S/)")).toBeDisabled();
     await expect(
       dialog.getByText(
         "Con la orden de Shopify creada, el precio se cambia con «Cambiar precio» (con motivo).",

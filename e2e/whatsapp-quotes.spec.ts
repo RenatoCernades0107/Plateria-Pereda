@@ -36,7 +36,7 @@ async function fillPiece(
     multiple: true,
   });
   await card.getByLabel("Descripción").fill(piece.description);
-  await card.getByLabel("Precio (S/)").fill(piece.price);
+  await card.getByLabel("Precio unit. (S/)").fill(piece.price);
 }
 
 test.describe("Cotizaciones de WhatsApp (P46)", () => {
@@ -150,7 +150,7 @@ test.describe("Cotizaciones de WhatsApp (P46)", () => {
     await expect(page.getByText("Elige un cliente")).toBeVisible();
     await pickClient(page, clientName);
     // Llega el precio cotizado; ventas también puede cambiarlo (2026-10-21).
-    const price = page.getByTestId("pieza-1").getByLabel("Precio (S/)");
+    const price = page.getByTestId("pieza-1").getByLabel("Precio unit. (S/)");
     await expect(price).toHaveValue("100.00");
     await expect(price).toBeEnabled();
     // Cada pieza elige su estado inicial (P49): nacen en Consulta y piden nota.

@@ -106,7 +106,8 @@ const weight = z
 
 /**
  * Cantidad de unidades de la pieza (p. ej. "6 cucharitas"): entero de 1 a 999,
- * vacío = 1. Es informativa: el precio y el costo son de la pieza completa.
+ * vacío = 1. El precio de venta es por unidad (el total suma precio × cantidad); el
+ * costo de servicio es de la pieza completa.
  */
 export const MAX_QUANTITY = 999;
 const QUANTITY_ERROR = `La cantidad debe ser un número entero entre 1 y ${MAX_QUANTITY}`;

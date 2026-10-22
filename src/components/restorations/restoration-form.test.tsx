@@ -90,6 +90,16 @@ describe("liveTotal", () => {
   it("sin precios todavía el total es 0 (D59)", () => {
     expect(liveTotal([{ price: "" }, { price: "" }])).toBe(0);
   });
+
+  it("multiplica cada precio por su cantidad (vacía o inválida cuenta 1)", () => {
+    expect(
+      liveTotal([
+        { price: "50", quantity: "3" },
+        { price: "10", quantity: "" },
+        { price: "10", quantity: "abc" },
+      ]),
+    ).toBe(17000);
+  });
 });
 
 describe("newPiece", () => {
@@ -128,7 +138,7 @@ describe("RestorationForm", () => {
     const deposit = screen.getByTestId("adelanto-en-vivo");
 
     await user.type(
-      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio unit. (S/)"),
       "100",
     );
     expect(total).toHaveTextContent("S/ 100.00");
@@ -142,7 +152,7 @@ describe("RestorationForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Agregar pieza" }));
     await user.type(
-      within(screen.getByTestId("pieza-2")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-2")).getByLabelText("Precio unit. (S/)"),
       "25.50",
     );
     expect(total).toHaveTextContent("S/ 125.50");
@@ -163,7 +173,7 @@ describe("RestorationForm", () => {
     expect(total).toHaveTextContent("S/ 0.00");
 
     await user.type(
-      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio unit. (S/)"),
       "100",
     );
     expect(total).toHaveTextContent("S/ 100.00");
@@ -174,7 +184,7 @@ describe("RestorationForm", () => {
     const card = within(screen.getByTestId("pieza-1"));
     const labels = card
       .getAllByText(
-        /^(Servicio|Cant\.|Material|Peso \(g\)|Medida|Precio \(S\/\)|Descripción|Notas de la pieza|Taller|Urgente)$/,
+        /^(Servicio|Cant\.|Material|Peso \(g\)|Medida|Precio unit\. \(S\/\)|Descripción|Notas de la pieza|Taller|Urgente)$/,
       )
       .map((el) => el.textContent);
     expect(labels).toEqual([
@@ -185,7 +195,7 @@ describe("RestorationForm", () => {
       "Material",
       "Peso (g)",
       "Medida",
-      "Precio (S/)",
+      "Precio unit. (S/)",
       "Taller",
       "Urgente",
     ]);
@@ -226,8 +236,8 @@ describe("RestorationForm", () => {
     const card = within(screen.getByTestId("pieza-1"));
     await user.click(card.getByLabelText("Servicio"));
     await user.click(screen.getByRole("option", { name: "Limpieza" }));
-    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
-    expect(card.getByLabelText("Precio (S/)")).toHaveAttribute(
+    expect(card.getByLabelText("Precio unit. (S/)")).toHaveValue("");
+    expect(card.getByLabelText("Precio unit. (S/)")).toHaveAttribute(
       "placeholder",
       "Por definir",
     );
@@ -245,7 +255,7 @@ describe("RestorationForm", () => {
   it("sin permiso el precio de venta no se edita (D58)", () => {
     renderForm(undefined, false);
     const card = within(screen.getByTestId("pieza-1"));
-    expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
+    expect(card.getByLabelText("Precio unit. (S/)")).toBeDisabled();
     expect(
       card.getByText(
         "Solo el administrador, ventas y logística asignan el precio de venta.",
@@ -260,11 +270,11 @@ describe("RestorationForm", () => {
     const whatsapp = screen.getByLabelText(/El pedido vino por WhatsApp/);
     await user.click(whatsapp);
     const card = within(screen.getByTestId("pieza-1"));
-    expect(card.getByLabelText("Precio (S/)")).toBeEnabled();
-    await user.type(card.getByLabelText("Precio (S/)"), "100");
+    expect(card.getByLabelText("Precio unit. (S/)")).toBeEnabled();
+    await user.type(card.getByLabelText("Precio unit. (S/)"), "100");
     await user.click(whatsapp);
-    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
-    expect(card.getByLabelText("Precio (S/)")).toBeDisabled();
+    expect(card.getByLabelText("Precio unit. (S/)")).toHaveValue("");
+    expect(card.getByLabelText("Precio unit. (S/)")).toBeDisabled();
   });
 
   it("muestra los errores en cada pieza y no envía datos incompletos", async () => {
@@ -305,7 +315,7 @@ describe("RestorationForm", () => {
     expect(screen.queryByLabelText("Adelanto (S/) (opcional)")).toBeNull();
     expect(screen.getByTestId("adelanto-en-vivo")).toHaveTextContent("—");
     await user.type(
-      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio unit. (S/)"),
       "80",
     );
 
@@ -389,7 +399,7 @@ describe("RestorationForm", () => {
     );
 
     await user.type(
-      within(screen.getByTestId("pieza-1")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-1")).getByLabelText("Precio unit. (S/)"),
       "100",
     );
     await user.click(
@@ -473,7 +483,7 @@ describe("RestorationForm · tipo de guía (punto 8)", () => {
     const user = userEvent.setup();
     renderForm(undefined, true, true, true);
     const card = within(screen.getByTestId("pieza-1"));
-    await user.type(card.getByLabelText("Precio (S/)"), "100");
+    await user.type(card.getByLabelText("Precio unit. (S/)"), "100");
 
     // Cancelar deja la guía normal.
     await user.click(screen.getByLabelText(/Guía interna/));
@@ -489,7 +499,7 @@ describe("RestorationForm · tipo de guía (punto 8)", () => {
     dialog = within(screen.getByRole("dialog"));
     await user.click(dialog.getByRole("button", { name: "Sí, guía interna" }));
     expect(screen.getByLabelText(/Guía interna/)).toBeChecked();
-    expect(card.queryByLabelText("Precio (S/)")).toBeNull();
+    expect(card.queryByLabelText("Precio unit. (S/)")).toBeNull();
     expect(card.getByTestId("precio-pieza")).toHaveTextContent("Sin cobro");
     expect(card.getByText("Pasa a Aprobada")).toBeInTheDocument();
     expect(screen.queryByLabelText("Tipo de pago")).toBeNull();
@@ -511,7 +521,7 @@ describe("RestorationForm · tipo de guía (punto 8)", () => {
 
     // Desmarcar vuelve a la guía normal (con precio y pago).
     await user.click(screen.getByLabelText(/Guía observada/));
-    expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+    expect(card.getByLabelText("Precio unit. (S/)")).toHaveValue("");
     expect(screen.getByLabelText("Tipo de pago")).toBeInTheDocument();
   });
 });
@@ -543,7 +553,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
     await user.click(within(piece).getByLabelText("Servicio"));
     await user.click(screen.getByRole("option", { name: "Limpieza" }));
-    await user.type(within(piece).getByLabelText("Precio (S/)"), "100");
+    await user.type(within(piece).getByLabelText("Precio unit. (S/)"), "100");
     expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 100.00");
     await user.click(
       screen.getByRole("button", { name: "Registrar cotización" }),
@@ -569,7 +579,7 @@ describe("RestorationForm · cotización por WhatsApp (P46)", () => {
     renderForm();
     const piece = screen.getByTestId("pieza-1");
     await user.type(within(piece).getByLabelText("Descripción"), "Fuente");
-    await user.type(within(piece).getByLabelText("Precio (S/)"), "100");
+    await user.type(within(piece).getByLabelText("Precio unit. (S/)"), "100");
     await user.click(
       screen.getByRole("button", { name: "Registrar restauración" }),
     );
@@ -773,12 +783,12 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     const user = userEvent.setup();
     renderForm({ kind: "copia", quote: linkedQuote }, false);
     const fuente = within(screen.getByTestId("pieza-1"));
-    expect(fuente.getByLabelText("Precio (S/)")).toHaveValue("100.00");
-    expect(fuente.getByLabelText("Precio (S/)")).toBeDisabled();
+    expect(fuente.getByLabelText("Precio unit. (S/)")).toHaveValue("100.00");
+    expect(fuente.getByLabelText("Precio unit. (S/)")).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Duplicar pieza 1" }));
     expect(
-      within(screen.getByTestId("pieza-2")).getByLabelText("Precio (S/)"),
+      within(screen.getByTestId("pieza-2")).getByLabelText("Precio unit. (S/)"),
     ).toHaveValue("");
     expect(screen.getByTestId("total-en-vivo")).toHaveTextContent("S/ 160.00");
   });
@@ -790,7 +800,7 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
     // Sin precio pasa a Consulta sola; con precio se elige el estado.
     const card = within(screen.getByTestId("pieza-3"));
     expect(card.getByTestId("pasa-a-consulta")).toBeVisible();
-    await user.type(card.getByLabelText("Precio (S/)"), "50");
+    await user.type(card.getByLabelText("Precio unit. (S/)"), "50");
     expect(card.getByLabelText("Estado inicial")).toHaveTextContent("Consulta");
   });
 
@@ -825,7 +835,7 @@ describe("RestorationForm · estado inicial al copiar (P49)", () => {
         within(item as HTMLElement).getByText("Por definir"),
       ).toBeVisible();
       const card = within(screen.getByTestId("pieza-1"));
-      expect(card.getByLabelText("Precio (S/)")).toHaveValue("");
+      expect(card.getByLabelText("Precio unit. (S/)")).toHaveValue("");
       // Sin precio no pide estado inicial ni nota: pasa a Consulta sola.
       expect(card.getByTestId("pasa-a-consulta")).toBeVisible();
       expect(card.queryByLabelText("Estado inicial")).toBeNull();

@@ -1,6 +1,7 @@
 import {
   expectedDeposit,
   formatCents,
+  lineCents,
   PAYMENT_TYPE_LABELS,
   sumCents,
   type Cents,
@@ -17,13 +18,13 @@ import {
  * Mensaje de cotización por WhatsApp (Todo.md §8 Paso 7.5). Cada pieza es un bloque
  * separado por una línea en blanco: el número y la descripción en negrita, un
  * servicio por línea ("▸") y el precio en negrita en su propia línea. Con cantidad
- * mayor que 1 la descripción lleva "(x2)"; el precio es de la pieza completa (no se
- * multiplica).
+ * mayor que 1 la descripción lleva "(x2)" y el precio es por unidad: la línea dice
+ * "2 x S/ 50.00 = S/ 100.00" y el total suma precio × cantidad.
  */
 
 export type QuotePiece = {
   description: string;
-  /** Unidades (informativa): con más de una, el mensaje dice "x2". El precio es de la pieza completa. */
+  /** Unidades: con más de una, el mensaje dice "x2" y el precio (por unidad) se multiplica. */
   quantity?: number;
   /** Nombre del servicio (del catálogo o texto libre); puede faltar. */
   service: string | null;
@@ -32,7 +33,7 @@ export type QuotePiece = {
    * `service` tal cual (los nombres pueden llevar comas, así que no se separa).
    */
   services?: readonly string[];
-  /** null: precio de venta sin asignar (D58); el mensaje dice "por definir" y suma 0. */
+  /** Precio por unidad. null: sin asignar (D58); el mensaje dice "por definir" y suma 0. */
   priceCents: Cents | null;
   status: PieceStatus;
 };
@@ -103,7 +104,9 @@ export function quoteAmounts(
   totalCents: Cents;
   depositCents: Cents;
 } {
-  const total = sumCents(chargedPieces(data).map((p) => p.priceCents ?? 0));
+  const total = sumCents(
+    chargedPieces(data).map((p) => lineCents(p.priceCents ?? 0, p.quantity)),
+  );
   return {
     totalCents: total,
     depositCents: expectedDeposit(total, data.paymentType, data.depositPercent),
@@ -135,6 +138,14 @@ const INDENT = "     ";
 /** Paréntesis largo al final de la descripción: va fuera de la negrita. */
 const LONG_DETAIL = /^(.+?)\s+(\([^()]{25,}\))$/;
 
+/** Precio de la pieza: "S/ 50.00" o, con varias unidades, "2 x S/ 50.00 = S/ 100.00". */
+function priceText(unitCents: Cents, quantity?: number): string {
+  const unit = `S/ ${amount(unitCents)}`;
+  return quantity && quantity > 1
+    ? `${quantity} x ${unit} = S/ ${amount(lineCents(unitCents, quantity))}`
+    : unit;
+}
+
 /**
  * Bloque de una pieza:
  *   *1. Juego de té* (tetera, azucarero y lechera)
@@ -155,7 +166,7 @@ function pieceBlock(p: QuotePiece, number: number): string {
   const price =
     p.priceCents === null
       ? `${INDENT}*Precio por definir*`
-      : `${INDENT}*S/ ${amount(p.priceCents)}*`;
+      : `${INDENT}*${priceText(p.priceCents, p.quantity)}*`;
   return [title, ...services, price].join("\n");
 }
 
@@ -168,7 +179,7 @@ function pieceBlock(p: QuotePiece, number: number): string {
 function referencePieceBlock(p: QuotePiece, number: number): string {
   const quantity = p.quantity && p.quantity > 0 ? p.quantity : 1;
   const price =
-    p.priceCents === null ? "por definir" : `S/ ${amount(p.priceCents)}`;
+    p.priceCents === null ? "por definir" : priceText(p.priceCents, quantity);
   return [
     `${number}. ${p.description.trim()}`,
     `Cantidad: ${quantity} ${quantity === 1 ? "unidad" : "unidades"}`,

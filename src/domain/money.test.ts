@@ -8,6 +8,7 @@ import {
   depositPercentOf,
   expectedDeposit,
   formatCents,
+  lineCents,
   MAX_CENTS,
   parseMoney,
   PAYMENT_TYPE_LABELS,
@@ -183,5 +184,18 @@ describe("depositAmountLiveError", () => {
     );
     expect(depositAmountLiveError("150", 0)).toBeNull();
     expect(depositAmountLiveError("abc", 10000)).toBeNull();
+  });
+});
+
+describe("lineCents", () => {
+  it("multiplica el precio por unidad por la cantidad", () => {
+    expect(lineCents(5000, 3)).toBe(15000);
+    expect(lineCents(5000, 1)).toBe(5000);
+  });
+
+  it("sin cantidad (o una inválida) cuenta 1, como la BD", () => {
+    expect(lineCents(5000)).toBe(5000);
+    expect(lineCents(5000, null)).toBe(5000);
+    expect(lineCents(5000, 0)).toBe(5000);
   });
 });

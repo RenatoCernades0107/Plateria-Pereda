@@ -1,7 +1,7 @@
 import { formatDate } from "@/lib/format";
 
 import { DOCUMENT_LABELS, type DocumentType } from "./documents";
-import { formatCents, type Cents, type PaymentType } from "./money";
+import { formatCents, lineCents, type Cents, type PaymentType } from "./money";
 import {
   isClosedStatus,
   PIECE_STATUS_LABELS,
@@ -25,7 +25,7 @@ import {
 export type GuidePdfPiece = {
   id: string;
   code: string;
-  /** Unidades (informativa: el precio es de la pieza completa). */
+  /** Unidades: el importe de la pieza es precio × cantidad. */
   quantity: number;
   description: string;
   materialName: string;
@@ -35,7 +35,7 @@ export type GuidePdfPiece = {
   status: PieceStatus;
   location: PieceLocation;
   notes: string;
-  /** null si no tiene precio de venta o si quien exporta no ve montos (P42). */
+  /** Precio por unidad. null si no tiene precio de venta o si quien exporta no ve montos (P42). */
   priceCents: Cents | null;
 };
 
@@ -112,6 +112,7 @@ export type GuidePdfRow = {
   service: string;
   status: string;
   location: string;
+  /** Importe de la pieza (precio × cantidad). */
   price: string | null;
   notes: string;
 };
@@ -186,7 +187,12 @@ export function guidePdfModel(
     totals.push({
       label: priced.length && !pending ? "Total" : "Subtotal",
       value: priced.length
-        ? formatCents(priced.reduce((sum, p) => sum + p.priceCents!, 0))
+        ? formatCents(
+            priced.reduce(
+              (sum, p) => sum + lineCents(p.priceCents!, p.quantity),
+              0,
+            ),
+          )
         : "Por definir",
       strong: true,
     });
@@ -256,7 +262,7 @@ export function guidePdfModel(
           ? "No se cobra"
           : p.priceCents === null
             ? "Por definir"
-            : formatCents(p.priceCents),
+            : formatCents(lineCents(p.priceCents, p.quantity)),
       notes: p.notes.trim(),
     })),
     totals,
