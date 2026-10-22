@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   deposit: vi.fn(),
   revalidate: vi.fn(),
+  copyFiles: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({
@@ -23,8 +24,13 @@ vi.mock("@/server/payments/initial-deposit", async (importOriginal) => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 vi.mock("@/server/shopify-sync/run", () => ({ scheduleShopifySync: vi.fn() }));
+vi.mock("@/server/files/copy", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/files/copy")>()),
+  copyQuoteFilesToRestoration: mocks.copyFiles,
+}));
 
 const { createRestorationFromQuote } = await import("./actions");
+const { PHOTOS_NOT_COPIED } = await import("@/server/files/copy");
 
 const QUOTE_ID = "00000000-0000-0000-0000-0000000000c1";
 const ITEM_ID = "00000000-0000-0000-0000-0000000000d1";
@@ -61,6 +67,7 @@ describe("createRestorationFromQuote · piezas sin precio", () => {
       .mockResolvedValue({ data: { id: "r1", code: "RES-00010" } });
     mocks.deposit.mockReset().mockResolvedValue(true);
     mocks.revalidate.mockReset();
+    mocks.copyFiles.mockReset().mockResolvedValue(0);
   });
 
   it.each(["admin", "ventas"] as const)(
@@ -113,5 +120,24 @@ describe("createRestorationFromQuote · piezas sin precio", () => {
       }),
     ).toEqual({ error: "Revisa los datos ingresados." });
     expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("copia las fotos de la cotización a la restauración creada", async () => {
+    await createRestorationFromQuote(QUOTE_ID, input);
+    expect(mocks.copyFiles).toHaveBeenCalledWith(
+      expect.anything(),
+      QUOTE_ID,
+      "r1",
+    );
+  });
+
+  it("si alguna foto no se copia, la restauración queda y se avisa", async () => {
+    mocks.copyFiles.mockResolvedValue(2);
+    expect(await createRestorationFromQuote(QUOTE_ID, input)).toEqual({
+      ok: true,
+      id: "r1",
+      code: "RES-00010",
+      photosWarning: PHOTOS_NOT_COPIED,
+    });
   });
 });

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 
 import { logoFileError, settingsSchema } from "./settings";
 
@@ -13,6 +16,7 @@ const valid = {
   quoteValidityDays: "15",
   depositPercent: "50",
   whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE,
+  whatsappQuoteTemplate: DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   terms: "",
 };
 
@@ -67,6 +71,11 @@ describe("settingsSchema", () => {
       { whatsappTemplate: "Hola {clienet}, total {totl}" },
       "whatsappTemplate",
       "Variables desconocidas: {clienet}, {totl}",
+    ],
+    [
+      { whatsappQuoteTemplate: "Total {totl}" },
+      "whatsappQuoteTemplate",
+      "Variables desconocidas: {totl}",
     ],
   ])("rechaza %j", (input, path, message) => {
     expect(errorsOf(input)[path]).toBe(message);

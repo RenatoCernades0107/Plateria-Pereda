@@ -2,7 +2,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 
 import { SettingsForm } from "./settings-form";
 
@@ -21,6 +24,7 @@ const defaults = {
   quoteValidityDays: 15,
   depositPercent: 50,
   whatsappTemplate: "Hola {cliente}",
+  whatsappQuoteTemplate: "Cotización {piezas}",
   terms: "",
 };
 
@@ -53,11 +57,9 @@ describe("SettingsForm", () => {
     render(<SettingsForm defaultValues={defaults} />);
 
     await user.type(screen.getByLabelText("RUC"), "123");
-    await user.clear(
-      screen.getByLabelText("Mensaje de cotización por WhatsApp"),
-    );
+    await user.clear(screen.getByLabelText("Mensaje de la guía por WhatsApp"));
     await user.type(
-      screen.getByLabelText("Mensaje de cotización por WhatsApp"),
+      screen.getByLabelText("Mensaje de la guía por WhatsApp"),
       "Hola {{clienet}",
     );
     await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
@@ -75,11 +77,37 @@ describe("SettingsForm", () => {
     const user = userEvent.setup();
     render(<SettingsForm defaultValues={defaults} />);
     await user.click(
-      screen.getByRole("button", { name: "Restaurar mensaje original" }),
+      screen.getByRole("button", {
+        name: "Restaurar el mensaje original: Mensaje de la guía por WhatsApp",
+      }),
     );
     expect(
-      screen.getByLabelText("Mensaje de cotización por WhatsApp"),
+      screen.getByLabelText("Mensaje de la guía por WhatsApp"),
     ).toHaveValue(DEFAULT_WHATSAPP_TEMPLATE);
+    // El de las cotizaciones de WhatsApp es aparte.
+    expect(
+      screen.getByLabelText("Mensaje de cotización de WhatsApp"),
+    ).toHaveValue("Cotización {piezas}");
+  });
+
+  it("restaura y guarda aparte el mensaje de las cotizaciones de WhatsApp", async () => {
+    const user = userEvent.setup();
+    render(<SettingsForm defaultValues={defaults} />);
+    await user.click(
+      screen.getByRole("button", {
+        name: "Restaurar el mensaje original: Mensaje de cotización de WhatsApp",
+      }),
+    );
+    expect(
+      screen.getByLabelText("Mensaje de cotización de WhatsApp"),
+    ).toHaveValue(DEFAULT_WHATSAPP_QUOTE_TEMPLATE);
+    await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        whatsappTemplate: "Hola {cliente}",
+        whatsappQuoteTemplate: DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+      }),
+    );
   });
 
   it("muestra el error del servidor", async () => {

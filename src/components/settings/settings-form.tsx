@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   DEFAULT_WHATSAPP_TEMPLATE,
   WHATSAPP_PLACEHOLDERS,
 } from "@/domain/whatsapp-template";
@@ -76,6 +77,68 @@ function TextFields({
       )}
     />
   ));
+}
+
+/** Plantilla de un mensaje de WhatsApp, con su botón para volver a la original. */
+function TemplateField({
+  form,
+  name,
+  label,
+  defaultTemplate,
+  description,
+}: {
+  form: ReturnType<typeof useForm<SettingsFormInput, unknown, SettingsInput>>;
+  name: "whatsappTemplate" | "whatsappQuoteTemplate";
+  label: string;
+  defaultTemplate: string;
+  description: string;
+}) {
+  return (
+    <FormField
+      control={form.control}
+      name={name}
+      render={({ field }) => (
+        <FormItem>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <FormLabel>
+              <WhatsAppIcon className="text-whatsapp-strong size-4" />
+              {label}
+            </FormLabel>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto p-0"
+              aria-label={`Restaurar el mensaje original: ${label}`}
+              onClick={() =>
+                form.setValue(name, defaultTemplate, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
+            >
+              Restaurar mensaje original
+            </Button>
+          </div>
+          <FormControl>
+            <Textarea rows={10} className="font-mono" {...field} />
+          </FormControl>
+          <FormDescription>{description}</FormDescription>
+          <ul className="text-muted-foreground grid gap-x-4 text-sm sm:grid-cols-2">
+            {Object.entries(WHATSAPP_PLACEHOLDERS).map(
+              ([placeholder, help]) => (
+                <li key={placeholder}>
+                  <code className="text-foreground">{`{${placeholder}}`}</code>{" "}
+                  {help}
+                </li>
+              ),
+            )}
+          </ul>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
 }
 
 export function SettingsForm({
@@ -155,52 +218,31 @@ export function SettingsForm({
                 ]}
               />
             </div>
-            <FormField
-              control={form.control}
+            <TemplateField
+              form={form}
               name="whatsappTemplate"
-              render={({ field }) => (
-                <FormItem>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <FormLabel>
-                      <WhatsAppIcon className="text-whatsapp-strong size-4" />
-                      Mensaje de cotización por WhatsApp
-                    </FormLabel>
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0"
-                      onClick={() =>
-                        form.setValue(
-                          "whatsappTemplate",
-                          DEFAULT_WHATSAPP_TEMPLATE,
-                          { shouldDirty: true, shouldValidate: true },
-                        )
-                      }
-                    >
-                      Restaurar mensaje original
-                    </Button>
-                  </div>
-                  <FormControl>
-                    <Textarea rows={10} className="font-mono" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Escribe las variables entre llaves; se reemplazan al armar
-                    el mensaje de cada restauración.
-                  </FormDescription>
-                  <ul className="text-muted-foreground grid gap-x-4 text-sm sm:grid-cols-2">
-                    {Object.entries(WHATSAPP_PLACEHOLDERS).map(
-                      ([name, help]) => (
-                        <li key={name}>
-                          <code className="text-foreground">{`{${name}}`}</code>{" "}
-                          {help}
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                  <FormMessage />
-                </FormItem>
-              )}
+              label="Mensaje de la guía por WhatsApp"
+              defaultTemplate={DEFAULT_WHATSAPP_TEMPLATE}
+              description="Escribe las variables entre llaves; se reemplazan al armar el mensaje de cada restauración."
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cotizaciones de WhatsApp</CardTitle>
+            <CardDescription>
+              Mensaje propio de las cotizaciones de WhatsApp (CWA), aparte del
+              de las guías.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TemplateField
+              form={form}
+              name="whatsappQuoteTemplate"
+              label="Mensaje de cotización de WhatsApp"
+              defaultTemplate={DEFAULT_WHATSAPP_QUOTE_TEMPLATE}
+              description="Escribe las variables entre llaves; se reemplazan al armar el mensaje de cada cotización de WhatsApp. En {piezas} cada pieza va con su cantidad y su precio aproximado."
             />
           </CardContent>
         </Card>

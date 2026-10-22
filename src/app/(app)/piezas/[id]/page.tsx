@@ -294,7 +294,7 @@ export default async function PiezaDetallePage({
           </h2>
           <FilesPanel
             stacked
-            restorationId={restoration.id}
+            owner={{ kind: "restoration", id: restoration.id }}
             files={pieceFiles}
             targets={fileTargets}
             canUpload={canUpload}

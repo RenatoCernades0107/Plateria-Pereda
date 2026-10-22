@@ -37,7 +37,10 @@ import {
 } from "@/domain/files";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { deleteRestorationFile } from "@/server/files/actions";
+import {
+  deleteRestorationFile,
+  deleteWhatsappQuoteFile,
+} from "@/server/files/actions";
 import type { RestorationFile } from "@/server/files/queries";
 
 import type { FileTarget } from "./types";
@@ -186,7 +189,10 @@ function useDeleteFile(file: RestorationFile, onDone: () => void) {
   const [pending, startTransition] = useTransition();
   const remove = () =>
     startTransition(async () => {
-      const result = await deleteRestorationFile(file.id);
+      const result =
+        file.owner === "whatsappQuote"
+          ? await deleteWhatsappQuoteFile(file.id)
+          : await deleteRestorationFile(file.id);
       if ("error" in result) return setError(result.error);
       toast.success("Archivo borrado.");
       onDone();

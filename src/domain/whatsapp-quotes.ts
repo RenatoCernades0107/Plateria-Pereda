@@ -1,3 +1,4 @@
+import type { ChipTone, FilterChip } from "./filter-presets";
 import { calendarDaysBetween } from "./piece-days";
 
 /**
@@ -67,6 +68,14 @@ export function quoteAge(createdAt: Date, now: Date): string {
 /** Filtros del listado `/cotizaciones-whatsapp?…`. */
 export const WHATSAPP_QUOTES_PAGE_SIZE = 25;
 
+export const WHATSAPP_QUOTE_SORTS = [
+  "created_at",
+  "code",
+  "client",
+  "total",
+] as const;
+export type WhatsappQuoteSort = (typeof WHATSAPP_QUOTE_SORTS)[number];
+
 export type WhatsappQuoteFilters = {
   /** Código, cliente, nombre o teléfono anotados, o descripción de una pieza. */
   q: string;
@@ -75,6 +84,9 @@ export type WhatsappQuoteFilters = {
   /** Fecha de registro en Lima, "AAAA-MM-DD" (inclusive). */
   from: string | null;
   to: string | null;
+  /** Orden del listado (como en restauraciones): por defecto, las más recientes. */
+  sort: WhatsappQuoteSort;
+  dir: "asc" | "desc";
   page: number;
 };
 
@@ -100,6 +112,7 @@ export function parseWhatsappQuoteFilters(
   const page = Number.parseInt(first(params.pagina), 10);
   const status = first(params.estado);
   const client = first(params.cliente);
+  const sort = first(params.orden);
   return {
     q: first(params.q).trim().slice(0, 100),
     status: (WHATSAPP_QUOTE_STATUSES as readonly string[]).includes(status)
@@ -108,6 +121,10 @@ export function parseWhatsappQuoteFilters(
     clientId: UUID.test(client) ? client.toLowerCase() : null,
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
+    sort: (WHATSAPP_QUOTE_SORTS as readonly string[]).includes(sort)
+      ? (sort as WhatsappQuoteSort)
+      : "created_at",
+    dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
   };
 }
@@ -123,6 +140,8 @@ export function whatsappQuoteFiltersHref(
   if (next.clientId) params.set("cliente", next.clientId);
   if (next.from) params.set("desde", next.from);
   if (next.to) params.set("hasta", next.to);
+  if (next.sort !== "created_at") params.set("orden", next.sort);
+  if (next.dir !== "desc") params.set("dir", next.dir);
   if (next.page > 1) params.set("pagina", String(next.page));
   const query = params.toString();
   return query ? `/cotizaciones-whatsapp?${query}` : "/cotizaciones-whatsapp";
@@ -141,5 +160,54 @@ export function listWhatsappQuotesArgs(
     p_to: filters.to ?? undefined,
     p_limit: limit,
     p_offset: (filters.page - 1) * limit,
+    p_sort: filters.sort,
+    p_dir: filters.dir,
   };
+}
+
+/** Al ordenar por otra columna se vuelve a la primera página; la misma columna invierte. */
+export function whatsappQuoteSortChange(
+  filters: WhatsappQuoteFilters,
+  sort: WhatsappQuoteSort,
+): Partial<WhatsappQuoteFilters> {
+  const dir =
+    filters.sort === sort
+      ? filters.dir === "asc"
+        ? "desc"
+        : "asc"
+      : sort === "created_at" || sort === "total"
+        ? "desc"
+        : "asc";
+  return { sort, dir, page: 1 };
+}
+
+const STATUS_CHIP_TONES: Record<WhatsappQuoteStatus, ChipTone> = {
+  cotizada: "attention",
+  pedida_parcial: "info",
+  pedida: "success",
+  descartada: "default",
+};
+
+/**
+ * Chips de un clic por estado (como los de restauraciones). Con uno activo, el chip
+ * lo quita. `counts`: cuántas da cada estado con los demás filtros.
+ */
+export function whatsappQuoteStatusChips(
+  filters: WhatsappQuoteFilters,
+  counts: Partial<Record<WhatsappQuoteStatus, number>> = {},
+): FilterChip[] {
+  return WHATSAPP_QUOTE_STATUSES.map((status) => {
+    const active = filters.status === status;
+    return {
+      key: status,
+      label: WHATSAPP_QUOTE_STATUS_LABELS[status],
+      active,
+      href: whatsappQuoteFiltersHref(filters, {
+        status: active ? null : status,
+        page: 1,
+      }),
+      tone: STATUS_CHIP_TONES[status],
+      count: counts[status],
+    };
+  });
 }

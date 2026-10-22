@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "./whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "./whatsapp-template";
 import {
   buildQuoteMessage,
   isQuoteSelectedByDefault,
@@ -306,5 +309,52 @@ describe("piezas elegidas a mano", () => {
     expect(text).toContain("1. Candelabro");
     expect(text).toContain("2. Bandeja rota");
     expect(text).not.toContain("Fuente de plata");
+  });
+});
+
+describe("cotización referencial de WhatsApp", () => {
+  it("usa su propia plantilla: nombre, cantidad y precio aproximado por pieza", () => {
+    expect(
+      buildQuoteMessage(
+        DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+        data({
+          code: "CWA-00001",
+          pieceStyle: "referencial",
+          pieces: [
+            {
+              description: "Fuente de plata",
+              quantity: 2,
+              service: "Pulido",
+              priceCents: 120_050,
+              status: "registrada",
+            },
+            {
+              description: "Candelabro",
+              service: null,
+              priceCents: null,
+              status: "registrada",
+            },
+          ],
+        }),
+      ),
+    ).toMatchInlineSnapshot(`
+      "Te compartimos la cotización referencial de restauración, según las fotografías enviadas.
+
+      1. Fuente de plata
+      Cantidad: 2 unidades
+      Precio aproximado: S/ 1,200.50
+
+      2. Candelabro
+      Cantidad: 1 unidad
+      Precio aproximado: por definir
+
+      TOTAL REFERENCIAL: S/ 1,200.50 aprox.
+
+      📌 Esta cotización es referencial y podrá variar una vez que las piezas sean evaluadas físicamente en nuestro taller.
+
+      Estaremos encantados de recibir las piezas para evaluarlas y confirmar la cotización. Si lo deseas, también contamos con servicio de recojo.
+
+      Cualquier consulta, estaré encantada de atenderte. ☺️"
+    `);
   });
 });

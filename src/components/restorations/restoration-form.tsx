@@ -417,10 +417,15 @@ export type RestorationFormMode =
 
 /**
  * Detalle de la restauración recién registrada; si el adelanto no se pudo registrar
- * como pago, el detalle lo avisa (`adelanto=pendiente`).
+ * como pago (`adelanto=pendiente`) o no se copiaron todas las fotos de la cotización
+ * (`fotos=pendiente`), el detalle lo avisa.
  */
-const createdUrl = (result: { id: string; warning?: string }) =>
-  `/restauraciones/${result.id}?registrada=1${result.warning ? "&adelanto=pendiente" : ""}`;
+const createdUrl = (result: {
+  id: string;
+  warning?: string;
+  photosWarning?: string;
+}) =>
+  `/restauraciones/${result.id}?registrada=1${result.warning ? "&adelanto=pendiente" : ""}${result.photosWarning ? "&fotos=pendiente" : ""}`;
 
 /** Pieza cotizada como pieza del formulario de la copia (aún no llegó a la tienda). */
 const copyPiece = (item: QuoteItemForForm): PieceFormInput => ({

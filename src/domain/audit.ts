@@ -295,6 +295,9 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       quote_validity_days: { label: "Vigencia de cotizaciones (días)" },
       deposit_percent: { label: "Adelanto por defecto (%)" },
       whatsapp_template: { label: "Plantilla de WhatsApp" },
+      whatsapp_quote_template: {
+        label: "Plantilla de WhatsApp de cotizaciones",
+      },
       terms: { label: "Términos y condiciones" },
     },
   },

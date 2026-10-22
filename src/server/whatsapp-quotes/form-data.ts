@@ -46,7 +46,8 @@ export function quoteForForm(quote: WhatsappQuoteDetail): QuoteForForm {
         price: item.priceCents === null ? "" : toDecimalString(item.priceCents),
         urgent: false,
         notes: item.notes,
-        quoteItemId: null,
+        // Al editar, la pieza conserva su id (y sus fotos).
+        quoteItemId: item.id,
       },
     })),
   };

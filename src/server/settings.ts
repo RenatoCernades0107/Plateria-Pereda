@@ -2,7 +2,10 @@ import "server-only";
 
 import { cache } from "react";
 
-import { DEFAULT_WHATSAPP_TEMPLATE } from "@/domain/whatsapp-template";
+import {
+  DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  DEFAULT_WHATSAPP_TEMPLATE,
+} from "@/domain/whatsapp-template";
 import { createClient } from "@/lib/supabase/server";
 
 export const BRANDING_BUCKET = "branding";
@@ -21,6 +24,10 @@ export type Settings = {
   customWhatsappTemplate: string | null;
   /** Plantilla que se aplica (la guardada o la de la aplicación). */
   whatsappTemplate: string;
+  /** Plantilla de las cotizaciones de WhatsApp guardada; null si se usa la de la aplicación. */
+  customWhatsappQuoteTemplate: string | null;
+  /** Plantilla de las cotizaciones de WhatsApp que se aplica. */
+  whatsappQuoteTemplate: string;
   terms: string;
 };
 
@@ -45,6 +52,9 @@ export const getSettings = cache(async (): Promise<Settings> => {
     depositPercent: Number(data.deposit_percent),
     customWhatsappTemplate: data.whatsapp_template,
     whatsappTemplate: data.whatsapp_template ?? DEFAULT_WHATSAPP_TEMPLATE,
+    customWhatsappQuoteTemplate: data.whatsapp_quote_template,
+    whatsappQuoteTemplate:
+      data.whatsapp_quote_template ?? DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
     terms: data.terms,
   };
 });

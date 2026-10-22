@@ -75,6 +75,7 @@ export function ClientWorkTabs({
         <TabsContent value="cotizaciones-whatsapp" className="space-y-2">
           <WhatsappQuotesList
             quotes={quotes}
+            filters={quoteFilters}
             now={new Date()}
             emptyMessage="El cliente no tiene cotizaciones de WhatsApp."
           />
