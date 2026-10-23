@@ -704,13 +704,18 @@ export class LiveShopifyGateway implements ShopifyGateway {
     return { amount, currencyCode: await this.shopCurrency() };
   }
 
-  private async getOrder(id: string) {
+  async getOrder(id: string): Promise<ShopifyOrder | null> {
     const data = await this.client.request<{ order: OrderNode | null }>(
       ORDER_GET,
       { id },
     );
-    if (!data.order) throw new ShopifyNotFoundError(id);
-    return toOrder(data.order);
+    return data.order ? toOrder(data.order) : null;
+  }
+
+  private async requireOrder(id: string) {
+    const order = await this.getOrder(id);
+    if (!order) throw new ShopifyNotFoundError(id);
+    return order;
   }
 
   async createOrder(input: OrderInput): Promise<ShopifyOrder> {
@@ -722,6 +727,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
       orderCreate: { order: OrderNode | null; userErrors: UserErrors };
     }>(ORDER_CREATE, {
       order: {
+        ...(input.name && { name: input.name }),
         customerId: input.customerId,
         ...(input.companyLocationId && {
           companyLocationId: input.companyLocationId,
@@ -749,7 +755,7 @@ export class LiveShopifyGateway implements ShopifyGateway {
   }
 
   async editOrder(orderId: string, edit: OrderEdit): Promise<ShopifyOrder> {
-    const current = await this.getOrder(orderId);
+    const current = await this.requireOrder(orderId);
     const begin = await this.client.request<{
       orderEditBegin: {
         calculatedOrder: {
@@ -948,6 +954,6 @@ export class LiveShopifyGateway implements ShopifyGateway {
       });
       assertNoUserErrors(result.fulfillmentCreate.userErrors);
     }
-    return this.getOrder(orderId);
+    return this.requireOrder(orderId);
   }
 }

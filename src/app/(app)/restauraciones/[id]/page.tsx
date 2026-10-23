@@ -689,10 +689,25 @@ export default async function RestauracionDetallePage({
                         restorationId={restoration.id}
                         paidCents={money.paidCents}
                         methods={paymentMethods}
+                        // Un pedido por pago: se elige qué pago se devuelve.
+                        refundablePayments={
+                          restoration.hasOrder
+                            ? null
+                            : payments
+                                .filter(
+                                  (p) =>
+                                    p.kind === "pago" && p.refundableCents > 0,
+                                )
+                                .map((p) => ({
+                                  id: p.id,
+                                  label: `${p.orderName ?? p.orderTitle ?? "Pago"} · ${p.methodName}`,
+                                  refundableCents: p.refundableCents,
+                                }))
+                        }
                       />
                     ) : null}
                     {can(user.role, "pagos.corregir") &&
-                    restoration.hasOrder ? (
+                    (restoration.hasOrder || payments.length > 0) ? (
                       <ResyncPaymentsButton restorationId={restoration.id} />
                     ) : null}
                   </div>

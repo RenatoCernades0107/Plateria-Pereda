@@ -595,9 +595,17 @@ export class FakeShopifyGateway implements ShopifyGateway {
         { field: ["lineItems"], message: "Line items can't be blank" },
       ]);
     }
+    if (
+      input.name &&
+      [...state().orders.values()].some((o) => o.name === input.name)
+    ) {
+      throw new ShopifyUserError([
+        { field: ["name"], message: "Name has already been taken" },
+      ]);
+    }
     const order: FakeOrder = {
       id: nextId("Order"),
-      name: `#${1000 + state().orders.size + 1}`,
+      name: input.name ?? `#${1000 + state().orders.size + 1}`,
       tags: [...input.tags],
       lines: input.lines.map(toLine),
       customerId: input.customerId,
@@ -625,6 +633,12 @@ export class FakeShopifyGateway implements ShopifyGateway {
     const order = [...state().orders.values()].find((o) =>
       o.tags.includes(tag),
     );
+    return order ? publicOrder(order) : null;
+  }
+
+  async getOrder(orderId: string) {
+    this.track("getOrder", [orderId]);
+    const order = state().orders.get(orderId);
     return order ? publicOrder(order) : null;
   }
 

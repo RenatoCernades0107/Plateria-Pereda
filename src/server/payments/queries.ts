@@ -2,7 +2,9 @@ import "server-only";
 
 import { toCents, type Cents } from "@/domain/money";
 import type { PaymentKind } from "@/domain/payments";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
+import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
 
 export type PaymentRecord = {
   id: string;
@@ -14,6 +16,18 @@ export type PaymentRecord = {
   source: "sistema" | "shopify";
   /** Ya llegó a Shopify; si no, queda pendiente de envío (11.2). */
   syncedToShopify: boolean;
+  /**
+   * Pedido de Shopify del pago (un pedido por pago): el nombre que se le da
+   * ("Adelanto Guía RES-00043 A1"), el que muestra Shopify y el enlace al admin. null
+   * en las guías con la orden de piezas.
+   */
+  orderTitle: string | null;
+  orderName: string | null;
+  orderUrl: string | null;
+  /** Reembolso: el pago que devuelve. */
+  refundedPaymentId: string | null;
+  /** Pago: lo que aún se puede reembolsar de él. */
+  refundableCents: Cents;
   createdByName: string | null;
   createdAt: string;
 };
@@ -26,23 +40,41 @@ export async function listPayments(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, kind, amount, method_name, paid_on, reason, source, shopify_synced_at, created_by_name, created_at",
+      "id, kind, amount, method_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
     )
     .eq("restoration_id", restorationId)
     .order("created_at");
   if (error) throw error;
-  return data.map((p) => ({
-    id: p.id,
-    kind: p.kind,
-    amountCents: toCents(Number(p.amount)),
-    methodName: p.method_name,
-    paidOn: p.paid_on,
-    reason: p.reason,
-    source: p.source,
-    syncedToShopify: p.shopify_synced_at !== null,
-    createdByName: p.created_by_name,
-    createdAt: p.created_at,
-  }));
+  const refunded = new Map<string, Cents>();
+  for (const p of data) {
+    if (p.refunded_payment_id)
+      refunded.set(
+        p.refunded_payment_id,
+        (refunded.get(p.refunded_payment_id) ?? 0) + toCents(Number(p.amount)),
+      );
+  }
+  const shop = serverEnv().SHOPIFY_STORE_DOMAIN;
+  return data.map((p) => {
+    const amountCents = toCents(Number(p.amount));
+    return {
+      id: p.id,
+      kind: p.kind,
+      amountCents,
+      methodName: p.method_name,
+      paidOn: p.paid_on,
+      reason: p.reason,
+      source: p.source,
+      syncedToShopify: p.shopify_synced_at !== null,
+      orderTitle: p.shopify_order_title,
+      orderName: p.shopify_order_name,
+      orderUrl: shopifyOrderAdminUrl(shop, p.shopify_order_id),
+      refundedPaymentId: p.refunded_payment_id,
+      refundableCents:
+        p.kind === "pago" ? amountCents - (refunded.get(p.id) ?? 0) : 0,
+      createdByName: p.created_by_name,
+      createdAt: p.created_at,
+    };
+  });
 }
 
 /** ¿Falta cobrar el saldo para entregar? (P45). Sin montos: también para logística. */

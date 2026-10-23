@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { toDecimalString } from "@/domain/money";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
@@ -14,7 +15,8 @@ import {
 import { orderWebhookHandlers } from "./payment-webhooks";
 import { restorationOrderHandlers } from "./shopify-order";
 
-// Pagos registrados en el sistema y su envío a Shopify (Paso 11.2, §7.5, P43).
+// Pagos registrados en el sistema y su envío a Shopify (Paso 11.2, §7.5, P43): un
+// pedido pagado por pago (2026-10-19) y, en las guías antiguas, su orden de piezas.
 const RUN = `${Date.now()}`.slice(-8);
 const created: { clients: string[]; restorations: string[] } = {
   clients: [],
@@ -86,6 +88,43 @@ const approve = (ids: string[]) =>
 const orderOf = (code: string) =>
   fakeShopify.snapshot().orders.find((o) => o.tags.includes(code))!;
 
+/** Pedidos de los pagos de la guía, en orden. */
+const paymentOrders = (code: string) =>
+  fakeShopify.snapshot().orders.filter((o) => o.tags.includes(code));
+
+/**
+ * Guía antigua: ya tenía su orden con una línea por pieza (antes del 2026-10-19). Se
+ * crea en el Shopify falso y se guarda en la restauración, antes de cobrar.
+ */
+async function legacy(r: { id: string; code: string }) {
+  const order = await new FakeShopifyGateway().createOrder({
+    customerId,
+    lines: [300_00, 100_00].map((cents, i) => ({
+      title: `Restauración ${r.code}-${i + 1}`,
+      price: toDecimalString(cents),
+      quantity: 1,
+    })),
+    tags: ["restauracion", r.code],
+  });
+  const { error } = await createAdminClient()
+    .from("restorations")
+    .update({ shopify_order_id: order.id, shopify_order_name: order.name })
+    .eq("id", r.id);
+  if (error) throw error;
+  return order;
+}
+
+const paymentRows = async (restorationId: string) => {
+  const { data } = await createAdminClient()
+    .from("payments")
+    .select(
+      "id, kind, amount, method_name, shopify_order_name, shopify_order_id",
+    )
+    .eq("restoration_id", restorationId)
+    .order("created_at");
+  return data!;
+};
+
 const synced = async (restorationId: string) => {
   const { data } = await createAdminClient()
     .from("payments")
@@ -137,48 +176,170 @@ afterAll(async () => {
   await admin.from("clients").delete().in("id", created.clients);
 });
 
-describe("pagos y Shopify (11.2)", () => {
-  it("aprobar con adelanto crea la orden «Parcialmente pagada»; el saldo la deja «Pagada»", async () => {
+describe("un pedido de Shopify por pago (2026-10-19)", () => {
+  it("cada pago es un pedido «Pagado»: A1, A2… y el que completa el total es el Saldo", async () => {
     const r = await seed();
     expect((await approve(r.pieceIds)).error).toBeNull();
-    // El adelanto se registra antes de procesar la orden (mismo paso que aprobar).
     expect((await pay(r.id, 200, "Yape")).error).toBeNull();
     await process_();
-    expect(orderOf(r.code).financials).toMatchObject({
-      financialStatus: "PARTIALLY_PAID",
-      received: "200.00",
-    });
-    expect(await synced(r.id)).toEqual([[200, true]]);
+    expect(
+      paymentOrders(r.code).map((o) => [o.name, o.financials.financialStatus]),
+    ).toEqual([[`Adelanto Guía ${r.code} A1`, "PAID"]]);
 
-    expect((await pay(r.id, 200)).error).toBeNull();
+    // Un pago en dos métodos: dos pedidos; el segundo completa el total.
+    const { error } = await ventas.from("payments").insert([
+      { restoration_id: r.id, amount: 100, method_name: "Efectivo" },
+      { restoration_id: r.id, amount: 100, method_name: "Plin" },
+    ]);
+    expect(error).toBeNull();
     await process_();
-    expect(orderOf(r.code).financials).toMatchObject({
-      financialStatus: "PAID",
-      received: "400.00",
-    });
+    expect(
+      paymentOrders(r.code).map((o) => [
+        o.name,
+        o.lines.map((l) => [l.title, l.price]),
+        o.financials.financialStatus,
+        o.transactions.map((t) => t.gateway),
+      ]),
+    ).toEqual([
+      [
+        `Adelanto Guía ${r.code} A1`,
+        [[`Adelanto Guía ${r.code} A1`, "200.00"]],
+        "PAID",
+        ["Yape"],
+      ],
+      [
+        `Adelanto Guía ${r.code} A2`,
+        [[`Adelanto Guía ${r.code} A2`, "100.00"]],
+        "PAID",
+        ["Efectivo"],
+      ],
+      [
+        `Saldo Guía ${r.code}`,
+        [[`Saldo Guía ${r.code}`, "100.00"]],
+        "PAID",
+        ["Plin"],
+      ],
+    ]);
     expect(await synced(r.id)).toEqual([
       [200, true],
-      [200, true],
+      [100, true],
+      [100, true],
     ]);
+    const rows = await paymentRows(r.id);
+    expect(rows.map((p) => p.shopify_order_id)).toEqual(
+      paymentOrders(r.code).map((o) => o.id),
+    );
+    expect(rows.map((p) => p.shopify_order_name)).toEqual(
+      paymentOrders(r.code).map((o) => o.name),
+    );
     const { data } = await createAdminClient()
       .from("restorations")
-      .select("payment_status")
+      .select("payment_status, shopify_order_id")
       .eq("id", r.id)
       .single();
-    expect(data!.payment_status).toBe("pagado");
+    // Sin orden con las piezas.
+    expect(data).toEqual({ payment_status: "pagado", shopify_order_id: null });
   });
 
-  it("un pago intermedio queda pendiente y llega con el que completa el saldo", async () => {
+  it("el adelanto se cobra aunque la guía aún no esté aprobada", async () => {
+    const r = await seed();
+    expect((await pay(r.id, 50, "Yape")).error).toBeNull();
+    await process_();
+    expect(paymentOrders(r.code).map((o) => o.name)).toEqual([
+      `Adelanto Guía ${r.code} A1`,
+    ]);
+  });
+
+  it("el reembolso se hace en el pedido del pago elegido, una sola vez", async () => {
+    const r = await seed();
+    await approve(r.pieceIds);
+    await pay(r.id, 200, "Yape");
+    await pay(r.id, 100);
+    await process_();
+    const [yape] = await paymentRows(r.id);
+    const admin = await signIn("admin@pereda.test");
+    // Sin decir qué pago devuelve, la BD lo rechaza.
+    expect(
+      (
+        await admin.from("payments").insert({
+          restoration_id: r.id,
+          kind: "reembolso",
+          amount: 50,
+          method_name: "Yape",
+          reason: "Cobro de más",
+        })
+      ).error?.message,
+    ).toBe("Elige el pago que se reembolsa");
+    const { error } = await admin.from("payments").insert({
+      restoration_id: r.id,
+      kind: "reembolso",
+      amount: 50,
+      method_name: "Yape",
+      reason: "Cobro de más",
+      refunded_payment_id: yape!.id,
+    });
+    expect(error).toBeNull();
+    await process_();
+    expect(
+      paymentOrders(r.code).map((o) => [o.name, o.financials.received]),
+    ).toEqual([
+      [`Adelanto Guía ${r.code} A1`, "150.00"],
+      [`Adelanto Guía ${r.code} A2`, "100.00"],
+    ]);
+    // Repetir la conciliación no reembolsa dos veces.
+    await createAdminClient().from("shopify_sync_jobs").insert({
+      kind: "payment.sync",
+      entity_table: "restorations",
+      entity_id: r.id,
+    });
+    await process_();
+    expect(paymentOrders(r.code)[0]!.financials.received).toBe("150.00");
+    expect((await synced(r.id)).every(([, sent]) => sent)).toBe(true);
+  });
+
+  it("entregada toda la guía, los pedidos de sus pagos quedan preparados", async () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
     await process_();
+    const admin = createAdminClient();
+    const deliver = (id: string) =>
+      admin
+        .from("pieces")
+        .update({ status: "entregada", delivered_at: new Date().toISOString() })
+        .eq("id", id);
+    await pay(r.id, 200);
+    expect((await deliver(r.pieceIds[0]!)).error).toBeNull();
+    await process_();
+    expect(
+      paymentOrders(r.code).flatMap((o) => o.lines.map((l) => l.fulfilled)),
+    ).toEqual([false, false]);
+    expect((await deliver(r.pieceIds[1]!)).error).toBeNull();
+    await process_();
+    expect(
+      paymentOrders(r.code).flatMap((o) => o.lines.map((l) => l.fulfilled)),
+    ).toEqual([true, true]);
+  });
+});
+
+describe("guía antigua con su orden de piezas (11.2)", () => {
+  it("un pago intermedio queda pendiente y llega con el que completa el saldo", async () => {
+    const r = await seed();
+    await legacy(r);
+    await approve(r.pieceIds);
+    await pay(r.id, 200, "Yape");
+    await process_();
+    // Nada de pedidos por pago: la orden de piezas sigue conciliándose como antes.
+    expect(paymentOrders(r.code)).toHaveLength(1);
+    expect(orderOf(r.code).financials).toMatchObject({
+      financialStatus: "PENDING",
+      received: "0.00",
+    });
 
     await pay(r.id, 100);
     await process_();
-    expect(orderOf(r.code).financials.received).toBe("200.00");
     expect(await synced(r.id)).toEqual([
-      [200, true],
+      [200, false],
       [100, false],
     ]);
 
@@ -189,36 +350,15 @@ describe("pagos y Shopify (11.2)", () => {
       received: "400.00",
     });
     expect((await synced(r.id)).every(([, sent]) => sent)).toBe(true);
-    // Shopify recibe el resto de una vez, con el método del último pago.
+    // Shopify recibe el total de una vez, con el método del último pago.
     expect(orderOf(r.code).transactions.at(-1)).toMatchObject({
       gateway: "Plin",
     });
-  });
-
-  it("el reembolso del admin de lo ya cobrado se reembolsa en Shopify", async () => {
-    const r = await seed();
-    await approve(r.pieceIds);
-    await pay(r.id, 200, "Yape");
-    await process_();
-    const admin = await signIn("admin@pereda.test");
-    const { error } = await admin.from("payments").insert({
-      restoration_id: r.id,
-      kind: "reembolso",
-      amount: 50,
-      method_name: "Yape",
-      reason: "Cobro de más",
-    });
-    expect(error).toBeNull();
-    await process_();
-    expect(orderOf(r.code).financials.received).toBe("150.00");
-    // Repetir la conciliación no reembolsa dos veces.
-    await createAdminClient().from("shopify_sync_jobs").insert({
-      kind: "payment.sync",
-      entity_table: "restorations",
-      entity_id: r.id,
-    });
-    await process_();
-    expect(orderOf(r.code).financials.received).toBe("150.00");
+    expect((await paymentRows(r.id)).map((p) => p.shopify_order_name)).toEqual([
+      null,
+      null,
+      null,
+    ]);
   });
 });
 
@@ -257,8 +397,9 @@ describe("pagos hechos en Shopify (11.3)", () => {
         .single()
     ).data;
 
-  it("un pago parcial hecho en el POS queda en el registro y el estado es Parcial", async () => {
+  it("guía antigua: un pago parcial hecho en el POS queda en el registro y el estado es Parcial", async () => {
     const r = await seed();
+    await legacy(r);
     await approve(r.pieceIds);
     await process_();
     const { id: orderId } = fakeShopify.externalTransaction(
@@ -281,16 +422,17 @@ describe("pagos hechos en Shopify (11.3)", () => {
     });
   });
 
-  it("un pago enviado por el sistema no se duplica al llegar su webhook", async () => {
+  it("un pago enviado por el sistema no se duplica al llegar el webhook de su pedido", async () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
     await process_();
     await pay(r.id, 200);
     await process_();
-    const orderId = orderOf(r.code).id;
-    await fire("orders/paid", { admin_graphql_api_id: orderId });
-    await fire("orders/updated", { admin_graphql_api_id: orderId });
+    for (const { id: orderId } of paymentOrders(r.code)) {
+      await fire("orders/paid", { admin_graphql_api_id: orderId });
+      await fire("orders/updated", { admin_graphql_api_id: orderId });
+    }
     expect((await payments(r.id)).map(([, , source]) => source)).toEqual([
       "sistema",
       "sistema",
@@ -298,29 +440,54 @@ describe("pagos hechos en Shopify (11.3)", () => {
     expect(await status(r.id)).toEqual({ paid: 400, payment_status: "pagado" });
   });
 
-  it("un reembolso hecho en Shopify recalcula el saldo y el estado", async () => {
+  it("un reembolso hecho en Shopify en el pedido de un pago entra con su pago y recalcula el estado", async () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
     await process_();
+    const [yape] = await paymentRows(r.id);
     const { id: orderId } = fakeShopify.externalTransaction(
-      r.code,
+      `pago-${yape!.id}`,
       "-200.00",
       "Yape",
     );
+    await fire("refunds/create", { order_id: orderId.split("/").pop() });
     await fire("refunds/create", { order_id: orderId.split("/").pop() });
     expect(await payments(r.id)).toEqual([
       ["pago", 200, "sistema", "Yape"],
       ["reembolso", 200, "shopify", "Yape"],
     ]);
+    const { data } = await createAdminClient()
+      .from("payments")
+      .select("refunded_payment_id")
+      .eq("restoration_id", r.id)
+      .eq("kind", "reembolso")
+      .single();
+    expect(data!.refunded_payment_id).toBe(yape!.id);
     expect(await status(r.id)).toEqual({
       paid: 0,
       payment_status: "reembolsado",
     });
   });
 
-  it("si cambian el cliente de la orden en Shopify, la restauración lo muestra (D31)", async () => {
+  it("un pago hecho en Shopify sobre el pedido de un pago ya no entra al registro", async () => {
     const r = await seed();
+    await approve(r.pieceIds);
+    await pay(r.id, 200, "Yape");
+    await process_();
+    const [yape] = await paymentRows(r.id);
+    const { id: orderId } = fakeShopify.externalTransaction(
+      `pago-${yape!.id}`,
+      "50.00",
+      "cash",
+    );
+    await fire("orders/paid", { admin_graphql_api_id: orderId });
+    expect(await payments(r.id)).toEqual([["pago", 200, "sistema", "Yape"]]);
+  });
+
+  it("guía antigua: si cambian el cliente de la orden en Shopify, la restauración lo muestra (D31)", async () => {
+    const r = await seed();
+    await legacy(r);
     await approve(r.pieceIds);
     await process_();
     const other = await new FakeShopifyGateway().createCustomer({

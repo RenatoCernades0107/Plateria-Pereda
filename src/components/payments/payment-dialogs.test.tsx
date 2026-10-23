@@ -126,6 +126,67 @@ describe("diálogos de pagos (11.2)", () => {
     });
   });
 
+  it("Reembolsar con un pedido por pago: elige el pago y no pasa de lo que queda de él", async () => {
+    const user = userEvent.setup();
+    actions.refundPayment.mockResolvedValue({ ok: true });
+    render(
+      <RefundDialog
+        restorationId="r1"
+        paidCents={15000}
+        methods={METHODS}
+        refundablePayments={[
+          {
+            id: "pay1",
+            label: "Adelanto Guía RES-00043 A1 · Yape",
+            refundableCents: 10000,
+          },
+          {
+            id: "pay2",
+            label: "Saldo Guía RES-00043 · Efectivo",
+            refundableCents: 5000,
+          },
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Reembolsar" }));
+    const dialog = screen.getByRole("dialog");
+    const submit = within(dialog).getByRole("button", {
+      name: "Registrar reembolso",
+    });
+    await user.click(submit);
+    expect(dialog).toHaveTextContent("Elige el pago que se reembolsa.");
+
+    await user.click(
+      within(dialog).getByRole("combobox", { name: "Pago que se devuelve" }),
+    );
+    await user.click(
+      await screen.findByRole("option", { name: /Saldo Guía RES-00043/ }),
+    );
+    // Por defecto, todo lo que queda de ese pago.
+    expect(within(dialog).getByLabelText("Monto (S/)")).toHaveValue("50.00");
+    await chooseMethod(user, "Efectivo");
+    await user.clear(within(dialog).getByLabelText("Monto (S/)"));
+    await user.type(within(dialog).getByLabelText("Monto (S/)"), "60");
+    await user.type(
+      within(dialog).getByLabelText("Motivo (obligatorio)"),
+      "Error",
+    );
+    await user.click(submit);
+    expect(dialog).toHaveTextContent(
+      "El reembolso supera lo que queda de ese pago (S/ 50.00).",
+    );
+    await user.clear(within(dialog).getByLabelText("Monto (S/)"));
+    await user.type(within(dialog).getByLabelText("Monto (S/)"), "20");
+    await user.click(submit);
+    expect(actions.refundPayment).toHaveBeenLastCalledWith("r1", {
+      methodId: METHODS[1]!.id,
+      amountCents: 2000,
+      paidOn: expect.any(String),
+      reason: "Error",
+      paymentId: "pay2",
+    });
+  });
+
   it("Aprobar la última pieza: con pago o sin pago", async () => {
     const user = userEvent.setup();
     actions.approveWithPayment.mockResolvedValue({ ok: true });

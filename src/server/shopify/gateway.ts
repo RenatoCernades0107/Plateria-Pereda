@@ -61,6 +61,8 @@ export interface ShopifyGateway {
    * a los 30 s, así que la orden ya aparece.
    */
   findOrderByTag(tag: string): Promise<ShopifyOrder | null>;
+  /** La orden por su id; null si ya no existe. */
+  getOrder(orderId: string): Promise<ShopifyOrder | null>;
   getOrderFinancials(orderId: string): Promise<OrderFinancials>;
   /** Transacciones actuales de la orden (pagos hechos en el POS o el panel, 11.3). */
   getOrderTransactions(orderId: string): Promise<OrderTransaction[]>;

@@ -16,6 +16,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatCents, type Cents } from "@/domain/money";
 import { refundPayment } from "@/server/payments/actions";
@@ -27,20 +34,32 @@ import {
   type MethodOption,
 } from "./payment-fields";
 
+/** Pago que se puede reembolsar: su pedido de Shopify y lo que queda de él. */
+export type RefundablePayment = {
+  id: string;
+  label: string;
+  refundableCents: Cents;
+};
+
 /**
  * Corrección de pagos (§7.5): un pago no se edita; el admin registra un reembolso con
- * motivo, que queda en la auditoría y llega a Shopify si allá ya estaba cobrado.
+ * motivo, que queda en la auditoría y llega a Shopify si allá ya estaba cobrado. Con
+ * un pedido por pago se elige qué pago se devuelve: se reembolsa en su pedido.
  */
 export function RefundDialog({
   restorationId,
   paidCents,
   methods,
+  refundablePayments = null,
 }: {
   restorationId: string;
   paidCents: Cents;
   methods: MethodOption[];
+  /** null: guía con la orden de piezas (el reembolso no dice de qué pago). */
+  refundablePayments?: RefundablePayment[] | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [paymentId, setPaymentId] = useState("");
   const [draft, setDraft] = useState(() => newDraft(null));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +67,17 @@ export function RefundDialog({
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
+    const target = refundablePayments?.find((p) => p.id === paymentId);
+    if (refundablePayments && !target)
+      return setError("Elige el pago que se reembolsa.");
     const read = readDraft(draft, null);
     if ("error" in read) return setError(read.error);
-    if (read.totalCents > paidCents)
+    const maxCents = target ? target.refundableCents : paidCents;
+    if (read.totalCents > maxCents)
       return setError(
-        `El reembolso supera lo pagado (${formatCents(paidCents)}).`,
+        target
+          ? `El reembolso supera lo que queda de ese pago (${formatCents(maxCents)}).`
+          : `El reembolso supera lo pagado (${formatCents(paidCents)}).`,
       );
     if (!reason.trim()) return setError("Escribe el motivo del reembolso.");
     const row = read.input.rows[0]!;
@@ -63,6 +88,7 @@ export function RefundDialog({
         amountCents: row.amountCents,
         paidOn: read.input.paidOn,
         reason,
+        ...(target && { paymentId: target.id }),
       });
       if ("error" in result) return setError(result.error);
       toast.success(`Reembolso de ${formatCents(row.amountCents)} registrado.`);
@@ -76,6 +102,7 @@ export function RefundDialog({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
+          setPaymentId("");
           setDraft(newDraft(null));
           setReason("");
           setError(null);
@@ -98,6 +125,40 @@ export function RefundDialog({
             </DialogDescription>
           </DialogHeader>
           {error ? <FormAlert>{error}</FormAlert> : null}
+          {refundablePayments ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="reembolso-pago">Pago que se devuelve</Label>
+              <Select
+                value={paymentId}
+                onValueChange={(id) => {
+                  setPaymentId(id);
+                  const target = refundablePayments.find((p) => p.id === id);
+                  // Por defecto, todo lo que queda de ese pago.
+                  if (target)
+                    setDraft((d) => ({
+                      ...d,
+                      rows: [
+                        {
+                          ...d.rows[0]!,
+                          amount: (target.refundableCents / 100).toFixed(2),
+                        },
+                      ],
+                    }));
+                }}
+              >
+                <SelectTrigger id="reembolso-pago" className="w-full">
+                  <SelectValue placeholder="Elige el pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  {refundablePayments.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label} · quedan {formatCents(p.refundableCents)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
           <PaymentFields
             draft={draft}
             onChange={setDraft}

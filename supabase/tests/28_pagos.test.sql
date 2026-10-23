@@ -52,8 +52,9 @@ select throws_ok(
   '23514', 'El monto supera el saldo pendiente', 'no se paga más que el saldo'
 );
 select throws_ok(
-  $$ insert into public.payments (restoration_id, kind, amount, method_name, reason) values
-       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 50, 'Efectivo', 'Error') $$,
+  $$ insert into public.payments (restoration_id, kind, amount, method_name, reason, refunded_payment_id) values
+       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 50, 'Efectivo', 'Error',
+        (select id from public.payments where restoration_id = '00000000-0000-0000-0000-00000000dd30' and method_name = 'Yape')) $$,
   '42501', null, 'ventas no registra reembolsos'
 );
 select throws_ok(
@@ -94,14 +95,18 @@ select is((select count(*)::int from public.payments), 0, 'logística no lee pag
 -- El admin corrige con un reembolso con motivo.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000dd3","role":"authenticated"}', true);
 select throws_ok(
-  $$ insert into public.payments (restoration_id, kind, amount, method_name) values
-       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 50, 'Efectivo') $$,
+  $$ insert into public.payments (restoration_id, kind, amount, method_name, refunded_payment_id) values
+       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 50, 'Efectivo',
+        (select id from public.payments where restoration_id = '00000000-0000-0000-0000-00000000dd30' and method_name = 'Yape')) $$,
   '23514', null, 'el reembolso exige motivo'
 );
 select lives_ok(
-  $$ insert into public.payments (restoration_id, kind, amount, method_name, reason) values
-       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 400, 'Efectivo', 'Se anuló el trabajo') $$,
-  'el admin reembolsa todo'
+  $$ insert into public.payments (restoration_id, kind, amount, method_name, reason, refunded_payment_id) values
+       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 200, 'Yape', 'Se anuló el trabajo',
+        (select id from public.payments where restoration_id = '00000000-0000-0000-0000-00000000dd30' and method_name = 'Yape')),
+       ('00000000-0000-0000-0000-00000000dd30', 'reembolso', 200, 'Efectivo', 'Se anuló el trabajo',
+        (select id from public.payments where restoration_id = '00000000-0000-0000-0000-00000000dd30' and method_name = 'Efectivo' and kind = 'pago')) $$,
+  'el admin reembolsa todo (cada pago en su pedido)'
 );
 select results_eq(
   $$ select paid, payment_status::text from public.restorations

@@ -14,6 +14,11 @@ const payment = (overrides: Partial<PaymentRecord>): PaymentRecord => ({
   reason: "",
   source: "sistema",
   syncedToShopify: true,
+  orderTitle: null,
+  orderName: null,
+  orderUrl: null,
+  refundedPaymentId: null,
+  refundableCents: 0,
   createdByName: "Vera Ventas",
   createdAt: "2026-10-12T15:00:00Z",
   ...overrides,
@@ -62,6 +67,41 @@ describe("PaymentsList (11.4)", () => {
     expect(within(rows[3]!).getByText("Reembolso")).toBeInTheDocument();
     expect(rows[3]).toHaveTextContent("Cobro de más");
     expect(rows[3]).toHaveTextContent("−S/ 30.00");
+  });
+
+  it("con un pedido por pago muestra el pedido de cada uno, con enlace a Shopify", () => {
+    render(
+      <PaymentsList
+        payments={[
+          payment({
+            orderTitle: "Adelanto Guía RES-00043 A1",
+            orderName: "Adelanto Guía RES-00043 A1",
+            orderUrl: "https://pereda.myshopify.com/admin/orders/77",
+          }),
+          payment({
+            id: "p2",
+            syncedToShopify: false,
+            orderTitle: "Saldo Guía RES-00043",
+          }),
+          payment({
+            id: "p3",
+            kind: "reembolso",
+            amountCents: 5000,
+            reason: "Cobro de más",
+            refundedPaymentId: "p1",
+          }),
+        ]}
+      />,
+    );
+    const rows = screen.getAllByTestId("pago");
+    expect(within(rows[0]!).getByTestId("pedido-shopify")).toHaveAttribute(
+      "href",
+      "https://pereda.myshopify.com/admin/orders/77",
+    );
+    expect(rows[0]).toHaveTextContent("Adelanto Guía RES-00043 A1");
+    expect(rows[1]).toHaveTextContent("Pendiente de envío");
+    expect(rows[1]).toHaveTextContent("Saldo Guía RES-00043");
+    expect(rows[2]).toHaveTextContent("De Adelanto Guía RES-00043 A1");
   });
 
   it("sin pagos lo dice", () => {

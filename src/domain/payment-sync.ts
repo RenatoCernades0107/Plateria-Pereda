@@ -2,13 +2,13 @@ import type { Cents } from "./money";
 import type { PaymentKind } from "./payments";
 
 /**
- * Envío de los pagos del sistema a la orden de Shopify (Paso 11.2, §7.5, P43). En el
- * plan Grow la API no acepta pagos parciales en una orden ya creada, así que:
- *   * los pagos registrados antes de la orden van incluidos al crearla;
- *   * con la orden creada se concilia: si el sistema ya cubrió el total se registra
- *     el pago completo; si se reembolsó más de lo que Shopify cree cobrado se
- *     reembolsa la diferencia; los pagos intermedios esperan.
- * Conciliar contra lo que Shopify ya tiene hace que repetir el job no cambie nada.
+ * Envío de los pagos del sistema a la orden de piezas de Shopify de las guías antiguas
+ * (Paso 11.2, §7.5, P43; las nuevas tienen un pedido por pago, `payment-orders.ts`).
+ * En el plan Grow la API no acepta pagos parciales en una orden ya creada, así que se
+ * concilia: si el sistema ya cubrió el total se registra el pago completo; si se
+ * reembolsó más de lo que Shopify cree cobrado se reembolsa la diferencia; los pagos
+ * intermedios esperan. Conciliar contra lo que Shopify ya tiene hace que repetir el
+ * job no cambie nada.
  */
 
 export type SyncPayment = {
@@ -31,29 +31,6 @@ export function netPaid(payments: readonly SyncPayment[]): Cents {
 
 const lastOf = (payments: readonly SyncPayment[], kind: PaymentKind) =>
   payments.filter((p) => p.kind === kind).at(-1);
-
-/**
- * Transacciones con las que se crea la orden: cada pago con su método o, si hubo
- * reembolsos, lo neto con el método del último pago. Nunca más que el total de la
- * orden (Shopify lo rechaza).
- */
-export function orderCreatePayments(
-  payments: readonly SyncPayment[],
-  orderTotal: Cents,
-): { gateway: string; amountCents: Cents }[] {
-  const pending = payments.filter((p) => !p.synced);
-  const net = netPaid(pending);
-  if (net <= 0) return [];
-  const list = pending.some((p) => p.kind === "reembolso")
-    ? [{ gateway: lastOf(pending, "pago")!.gateway, amountCents: net }]
-    : pending.map((p) => ({ gateway: p.gateway, amountCents: p.amountCents }));
-  let room = orderTotal;
-  return list.flatMap((p) => {
-    const amountCents = Math.min(p.amountCents, room);
-    room -= amountCents;
-    return amountCents > 0 ? [{ ...p, amountCents }] : [];
-  });
-}
 
 export type PaymentSyncPlan =
   | { kind: "none"; markSynced: boolean }

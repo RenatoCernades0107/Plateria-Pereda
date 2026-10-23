@@ -146,6 +146,8 @@ export async function approveWithPayment(
 }
 
 const refundSchema = z.object({
+  /** Pago que se devuelve (un pedido de Shopify por pago); la BD lo exige ahí. */
+  paymentId: z.guid().optional(),
   methodId: z.guid(),
   amountCents: cents,
   paidOn: date,
@@ -153,7 +155,10 @@ const refundSchema = z.object({
 });
 export type RefundInput = z.input<typeof refundSchema>;
 
-/** Corrige un pago con un reembolso: solo el admin, con motivo (§7.5). */
+/**
+ * Corrige un pago con un reembolso: solo el admin, con motivo (§7.5). Con un pedido
+ * por pago dice qué pago devuelve, y se reembolsa en su pedido.
+ */
 export async function refundPayment(
   restorationId: string,
   input: RefundInput,
@@ -173,6 +178,7 @@ export async function refundPayment(
     method_name: "-",
     paid_on: parsed.data.paidOn,
     reason: parsed.data.reason,
+    refunded_payment_id: parsed.data.paymentId ?? null,
   });
   if (error) return fail(error, "No se pudo registrar el reembolso.");
   scheduleShopifySync();
@@ -203,8 +209,9 @@ export async function deliverWithBalance(
 }
 
 /**
- * "Resincronizar pagos" (admin, Paso 11.4): vuelve a leer las transacciones de la
- * orden en Shopify y concilia (importa lo hecho en el POS, envía lo pendiente).
+ * "Resincronizar pagos" (admin, Paso 11.4): vuelve a leer Shopify y concilia. Con la
+ * orden de piezas importa lo hecho en el POS y envía lo pendiente; con un pedido por
+ * pago crea los pedidos que falten, envía los reembolsos e importa los hechos allá.
  */
 export async function resyncPayments(
   restorationId: string,
@@ -215,11 +222,11 @@ export async function resyncPayments(
   const supabase = await createClient();
   const { data } = await supabase
     .from("restorations")
-    .select("shopify_order_id")
+    .select("shopify_order_id, payments(id)")
     .eq("id", restorationId)
     .maybeSingle();
-  if (!data?.shopify_order_id)
-    return { error: "La restauración aún no tiene orden en Shopify." };
+  if (!data?.shopify_order_id && !data?.payments?.length)
+    return { error: "La restauración aún no tiene pagos en Shopify." };
   // Encolar desde fuera de un webhook es solo de la clave secreta.
   const { error } = await createAdminClient().rpc("enqueue_payment_sync", {
     p_restoration_id: restorationId,

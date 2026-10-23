@@ -345,7 +345,11 @@ export type Database = {
           paid_on: string;
           payment_method_id: string | null;
           reason: string;
+          refunded_payment_id: string | null;
           restoration_id: string;
+          shopify_order_id: string | null;
+          shopify_order_name: string | null;
+          shopify_order_title: string | null;
           shopify_synced_at: string | null;
           shopify_transaction_id: string | null;
           source: Database["public"]["Enums"]["payment_source"];
@@ -361,7 +365,11 @@ export type Database = {
           paid_on?: string;
           payment_method_id?: string | null;
           reason?: string;
+          refunded_payment_id?: string | null;
           restoration_id: string;
+          shopify_order_id?: string | null;
+          shopify_order_name?: string | null;
+          shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
           source?: Database["public"]["Enums"]["payment_source"];
@@ -377,7 +385,11 @@ export type Database = {
           paid_on?: string;
           payment_method_id?: string | null;
           reason?: string;
+          refunded_payment_id?: string | null;
           restoration_id?: string;
+          shopify_order_id?: string | null;
+          shopify_order_name?: string | null;
+          shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
           source?: Database["public"]["Enums"]["payment_source"];
@@ -388,6 +400,13 @@ export type Database = {
             columns: ["payment_method_id"];
             isOneToOne: false;
             referencedRelation: "payment_methods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_refunded_payment_id_fkey";
+            columns: ["refunded_payment_id"];
+            isOneToOne: false;
+            referencedRelation: "payments";
             referencedColumns: ["id"];
           },
           {

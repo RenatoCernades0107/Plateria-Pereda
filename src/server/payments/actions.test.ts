@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   rpcError: null as { code?: string; message?: string } | null,
   missing: null as string | null,
   orderId: "gid://shopify/Order/1" as string | null,
+  payments: [] as { id: string }[],
   kind: "normal" as string,
   scheduled: 0,
 }));
@@ -31,7 +32,11 @@ const client = {
     select: () => ({
       eq: () => ({
         maybeSingle: async () => ({
-          data: { shopify_order_id: mocks.orderId, kind: mocks.kind },
+          data: {
+            shopify_order_id: mocks.orderId,
+            kind: mocks.kind,
+            payments: mocks.payments,
+          },
         }),
       }),
     }),
@@ -66,6 +71,7 @@ describe("acciones de pagos (11.2)", () => {
     mocks.rpcError = null;
     mocks.missing = null;
     mocks.orderId = "gid://shopify/Order/1";
+    mocks.payments = [];
     mocks.kind = "normal";
     mocks.scheduled = 0;
   });
@@ -205,7 +211,7 @@ describe("acciones de pagos (11.2)", () => {
     });
   });
 
-  it("resincroniza solo con la orden creada (11.4)", async () => {
+  it("resincroniza con la orden de piezas o con pagos (11.4)", async () => {
     expect(await resyncPayments("x")).toHaveProperty("error");
     expect(await resyncPayments(R)).toEqual({ ok: true });
     expect(mocks.calls[0]).toEqual([
@@ -219,7 +225,27 @@ describe("acciones de pagos (11.2)", () => {
     });
     mocks.orderId = null;
     expect(await resyncPayments(R)).toEqual({
-      error: "La restauración aún no tiene orden en Shopify.",
+      error: "La restauración aún no tiene pagos en Shopify.",
+    });
+    // Un pedido por pago: sin orden de piezas, con pagos.
+    mocks.rpcError = null;
+    mocks.payments = [{ id: "pay1" }];
+    expect(await resyncPayments(R)).toEqual({ ok: true });
+  });
+
+  it("el reembolso dice qué pago devuelve", async () => {
+    expect(
+      await refundPayment(R, {
+        paymentId: M,
+        methodId: M,
+        amountCents: 500,
+        paidOn: "2026-10-12",
+        reason: "Cobro de más",
+      }),
+    ).toEqual({ ok: true });
+    expect(mocks.calls[0]![2]).toMatchObject({
+      kind: "reembolso",
+      refunded_payment_id: M,
     });
   });
 });
