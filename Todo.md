@@ -266,8 +266,9 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - **IGV:** ya no existe en el sistema (se maneja fuera, 2026-10-16): el total es la suma de los precios tal como se escriben, sin preguntar ni sumar IGV. _(Reemplaza la regla de P13.)_
 - Tipo de pago: **Al contado** (paga el total al aprobar), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto; cualquier cliente, lo eligen ventas o admin). Se cambia solo mientras no haya pagos registrados (P28).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
-- Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha. Siempre en la misma orden de Shopify (N1).
-- **Envío a Shopify** (plan Grow: la API no acepta pagos parciales en una orden ya creada; P43, a validar en el spike):
+- Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha.
+- **Envío a Shopify desde el 2026-10-19 (P43):** cada pago es su **propio pedido, ya pagado** (uno por método): una línea por el monto, con el mismo texto como número de pedido y como línea: `Adelanto Guía RES-00043 A1`, `… A2`… y `Saldo Guía RES-00043` para el que completa el total. Ya no se crea la orden con las piezas. Un reembolso se hace en el pedido del pago que el admin elige; los reembolsos hechos en Shopify sobre esos pedidos llegan por webhook, los pagos hechos allá ya no. Al entregarse toda la guía los pedidos quedan preparados (P44).
+- **Envío a Shopify de las guías que ya tenían la orden con las piezas** (antes del 2026-10-19; plan Grow: la API no acepta pagos parciales en una orden ya creada):
   - Los pagos registrados al aprobar (adelanto) se incluyen al **crear la orden** → "Parcialmente pagada".
   - El pago que **completa el saldo** se registra como pago completo → "Pagada".
   - Los pagos intermedios (registrados con la orden ya creada y sin completar el saldo) quedan "pendientes de envío" y llegan a Shopify con el pago que completa el saldo.

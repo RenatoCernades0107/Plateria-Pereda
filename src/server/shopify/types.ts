@@ -102,6 +102,8 @@ export type CustomLine = { title: string; price: Money; quantity: number };
 export type PaymentInput = { amount: Money; gateway: string };
 
 export type OrderInput = {
+  /** Nombre del pedido en lugar del número de Shopify (#1001); debe ser único. */
+  name?: string;
   /** Cliente (persona o contacto de la empresa) que hace el pedido. */
   customerId: string;
   /** Ubicación de la Company cuando la orden es a nombre de una empresa (P14). */

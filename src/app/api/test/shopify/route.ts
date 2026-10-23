@@ -19,6 +19,21 @@ const actionSchema = z.discriminatedUnion("action", [
     amount: z.string(),
     gateway: z.string(),
   }),
+  // Orden ya existente (p. ej., la orden de piezas de una guía antigua).
+  z.object({
+    action: z.literal("order"),
+    input: z.object({
+      customerId: z.string(),
+      lines: z.array(
+        z.object({
+          title: z.string(),
+          price: z.string(),
+          quantity: z.number().int().positive(),
+        }),
+      ),
+      tags: z.array(z.string()),
+    }),
+  }),
   // Crea un cliente que existe solo en Shopify (para probar el buscador e importaciones).
   z.object({
     action: z.literal("customer"),
@@ -41,6 +56,7 @@ const actionSchema = z.discriminatedUnion("action", [
       "assignCustomerAsContact",
       "createOrder",
       "findOrderByTag",
+      "getOrder",
       "getOrderFinancials",
       "editOrder",
       "recordFullPayment",
@@ -75,6 +91,9 @@ export async function POST(request: NextRequest) {
       action.amount,
       action.gateway,
     );
+    return NextResponse.json({ ok: true, order });
+  } else if (action.action === "order") {
+    const order = await new FakeShopifyGateway().createOrder(action.input);
     return NextResponse.json({ ok: true, order });
   } else if (action.action === "customer") {
     const customer = await new FakeShopifyGateway().createCustomer(

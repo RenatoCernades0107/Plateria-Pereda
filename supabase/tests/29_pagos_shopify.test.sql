@@ -36,11 +36,19 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 -- Envío a Shopify.
 insert into public.payments (restoration_id, amount, method_name)
   values ('00000000-0000-0000-0000-00000000ee30', 50, 'Yape');
-select is((select count(*)::int from sync_jobs), 0, 'sin orden, el pago no encola nada (irá al crear la orden)');
+select results_eq(
+  $$ select entity_id from sync_jobs $$,
+  $$ values ('00000000-0000-0000-0000-00000000ee30') $$,
+  'sin orden de piezas, el pago encola su pedido en Shopify'
+);
 select is(
   (select shopify_synced_at from public.payments where restoration_id = '00000000-0000-0000-0000-00000000ee30'),
   null, 'y queda pendiente de envío'
 );
+reset role;
+delete from public.shopify_sync_jobs where entity_id = '00000000-0000-0000-0000-00000000ee30';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ee1","role":"authenticated"}', true);
 insert into public.payments (restoration_id, amount, method_name)
   values ('00000000-0000-0000-0000-00000000ee40', 50, 'Efectivo');
 insert into public.payments (restoration_id, amount, method_name)

@@ -116,7 +116,7 @@ select is(
 );
 select is(
   (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r1)),
-  1, 'con todas las piezas aprobadas se encola la orden de Shopify'
+  0, 'con todas las piezas aprobadas ya no se crea la orden con las piezas (un pedido por pago)'
 );
 select results_eq(
   $$ select status::text, client_id::text from public.whatsapp_quotes where id = (select id from q) $$,
@@ -328,7 +328,7 @@ select lives_ok(
 reset role;
 select is(
   (select count(*)::int from public.shopify_sync_jobs where kind = 'order.create' and entity_id = (select id::text from r3)),
-  1, 'y entonces se encola la orden de Shopify'
+  0, 'y tampoco entonces se crea la orden con las piezas (un pedido por pago)'
 );
 set local role authenticated;
 

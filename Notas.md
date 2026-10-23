@@ -448,6 +448,14 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 - **Respuesta (2026-10-03):** ✅ De acuerdo. Hoy la guía se llena **en papel** y solo el pago se registra en el POS de Shopify (iPhone y Android), poniendo los datos de la guía en un texto libre. El objetivo es digitalizar la guía con un formulario adecuado y registrar los pagos desde el sistema.
   - **Ejemplo del flujo:** total S/ 400. Al aprobar, el cliente paga el adelanto de S/ 200 por Yape; el asesor lo registra en el sistema y la orden se crea en Shopify con S/ 200 pagados ("Parcialmente pagada"). El día del recojo paga S/ 200 en efectivo; el asesor lo registra en el sistema y este le avisa a Shopify que se pagó el resto, así que la orden queda "Pagada". Nadie tiene que entrar a Shopify.
   - **Único límite:** si el saldo se paga en partes (S/ 100 y luego S/ 100), el primer pago queda solo en el sistema hasta que llegue el segundo; entonces Shopify recibe los S/ 200 juntos.
+- **Cambio (2026-10-19):** ✅ **Un pedido de Shopify por pago**, ya **pagado**: así Shopify nunca muestra órdenes "Parcialmente pagadas" ni pagos esperando. Reemplaza los puntos 2 a 5 para las guías nuevas.
+  - Cada pago registrado en el sistema crea un pedido con una sola línea por el monto (sin impuestos), pagado con su método. Si un pago se reparte en varios métodos, es un pedido por método. Se crea en cuanto se registra, aunque la guía aún no esté aprobada.
+  - El **número del pedido** y el título de su línea son el mismo: `Adelanto Guía RES-00043 A1`, `Adelanto Guía RES-00043 A2`… según van llegando; el pago que completa el total es `Saldo Guía RES-00043` (sin número; si luego sube el precio y otro pago vuelve a completarlo, `Saldo Guía RES-00043 2`).
+  - **Ya no se crea la orden con las piezas.** Las guías que ya la tenían siguen como antes, conciliándose contra ella.
+  - **Reembolsos:** el admin elige qué pago devuelve y no puede pasar de lo que queda de ese pago; se reembolsa en su pedido. Un reembolso hecho directamente en Shopify sobre uno de estos pedidos llega al sistema por webhook; un **pago** hecho en Shopify ya no entra al registro.
+  - **Preparación (P44):** los pedidos de pago quedan "Preparados" cuando se entregan todas las piezas que se cobran.
+  - En la pestaña Pagos, cada pago muestra su pedido con enlace a Shopify.
+  - Ejemplo: total S/ 400. Adelanto de S/ 200 por Yape → pedido `Adelanto Guía RES-00043 A1` por S/ 200, pagado. Al recoger paga S/ 200 en efectivo → pedido `Saldo Guía RES-00043` por S/ 200, pagado. Al entregar, los dos quedan preparados.
 
 ### P44 · ¿Marcamos la pieza como "Preparada" en Shopify al entregarla?
 - **Contexto:** sus ventas del POS quedan "Pagado · Preparado · Archivado" (orden #4063). Si el sistema no marca las entregas, las órdenes de restauración quedan "No preparadas" para siempre y se mezclan con los pedidos pendientes de preparar.

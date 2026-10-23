@@ -44,7 +44,7 @@ const process_ = () =>
     batchSize: 50,
   });
 
-describe("orden de Shopify al aprobar (9.1)", () => {
+describe("orden de piezas en Shopify (9.1–9.3)", () => {
   afterAll(async () => {
     const admin = createAdminClient();
     await admin
@@ -63,7 +63,7 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     await admin.from("clients").delete().in("id", created.clients);
   });
 
-  it("aprobar la última pieza y asignar el último precio encola la orden; el job la crea y guarda los ids", async () => {
+  it("aprobar y asignar los precios ya no crea la orden con las piezas (un pedido por pago)", async () => {
     fakeShopify.reset();
     const customer = await new FakeShopifyGateway().createCustomer({
       firstName: "Orden",
@@ -128,64 +128,48 @@ describe("orden de Shopify al aprobar (9.1)", () => {
     ) => client.from("pieces").update({ price }).eq("id", id).select("id");
 
     expect((await approve([pieces![0]!.id])).error).toBeNull();
-    expect((await jobs()).data).toEqual([]);
     expect((await approve([pieces![1]!.id])).error).toBeNull();
-    // Todas aprobadas, pero sin precios: la orden espera (D58).
-    expect((await jobs()).data).toEqual([]);
-
     // Ventas asigna un precio y el admin el otro.
     expect((await setPrice(ventas, pieces![0]!.id, 100)).error).toBeNull();
     const pricing = await signIn("admin@pereda.test");
-    expect((await jobs()).data).toEqual([]);
     expect((await setPrice(pricing, pieces![1]!.id, 33.33)).error).toBeNull();
-    expect((await jobs()).data).toHaveLength(1);
-
+    expect((await jobs()).data).toEqual([]);
     await process_();
-    const [job] = (await jobs()).data!;
-    expect(job!.status).toBe("ok");
+    expect(fakeShopify.snapshot().orders).toEqual([]);
 
-    const order = fakeShopify
-      .snapshot()
-      .orders.find((o) => o.tags.includes(restoration!.code))!;
-    // Sin IGV: cada línea lleva el precio de la pieza.
-    expect(order.lines.map((l) => [l.title, l.price])).toEqual([
-      [`Restauración ${pieces![0]!.code}`, "100.00"],
-      [`Restauración ${pieces![1]!.code}`, "33.33"],
-    ]);
-    expect(order.customerId).toBe(customer.id);
-
-    const { data: saved } = await admin
-      .from("restorations")
-      .select(
-        "shopify_order_id, shopify_order_name, total, pieces(shopify_line_item_id)",
-      )
-      .eq("id", restoration!.id)
-      .single();
-    expect(saved).toMatchObject({
-      shopify_order_id: order.id,
-      shopify_order_name: order.name,
-      total: 133.33,
+    // Guía antigua: ya tenía su orden de piezas (antes del 2026-10-19).
+    const order = await new FakeShopifyGateway().createOrder({
+      customerId: customer.id,
+      lines: [
+        {
+          title: `Restauración ${pieces![0]!.code}`,
+          price: "100.00",
+          quantity: 1,
+        },
+        {
+          title: `Restauración ${pieces![1]!.code}`,
+          price: "33.33",
+          quantity: 1,
+        },
+      ],
+      tags: ["restauracion", restoration!.code],
     });
-    expect(saved!.pieces.map((p) => p.shopify_line_item_id).sort()).toEqual(
-      order.lines.map((l) => l.id).sort(),
-    );
+    expect(
+      (
+        await admin
+          .from("restorations")
+          .update({
+            shopify_order_id: order.id,
+            shopify_order_name: order.name,
+          })
+          .eq("id", restoration!.id)
+      ).error,
+    ).toBeNull();
     shared = {
       id: restoration!.id,
       code: restoration!.code,
       pieceIds: pieces!.map((p) => p.id),
     };
-
-    // Reprocesar no duplica: la restauración ya tiene su orden.
-    await admin
-      .from("shopify_sync_jobs")
-      .update({ status: "pending", next_attempt_at: new Date().toISOString() })
-      .eq("id", job!.id);
-    await process_();
-    expect(
-      fakeShopify
-        .snapshot()
-        .orders.filter((o) => o.tags.includes(restoration!.code)),
-    ).toHaveLength(1);
   });
 
   const orderOf = (code: string) =>
@@ -211,6 +195,7 @@ describe("orden de Shopify al aprobar (9.1)", () => {
   });
 
   it("entregar una pieza encola order.fulfill y su línea queda preparada (9.3)", async () => {
+    await process_();
     // Con el saldo cobrado (P45); el pago completa la orden en Shopify.
     const { data: r } = await createAdminClient()
       .from("restorations")

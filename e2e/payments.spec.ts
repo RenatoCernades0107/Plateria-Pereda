@@ -9,7 +9,8 @@ import { expect, test } from "./fixtures";
 import { openPieceActions, pieceAction } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
-// Pagos desde el sistema y su envío a Shopify (Paso 11.2, §7.5, P43, P45).
+// Pagos desde el sistema y su envío a Shopify (Paso 11.2, §7.5, P43, P45): un pedido
+// pagado por pago (2026-10-19).
 test.describe.configure({ mode: "serial" });
 
 const run = `${Date.now()}`.slice(-6);
@@ -17,14 +18,57 @@ const clientIds: string[] = [];
 const restorationIds: string[] = [];
 
 type FakeOrder = {
+  id: string;
+  name: string;
   tags: string[];
+  lines: { title: string; price: string; fulfilled: boolean }[];
   financials: { financialStatus: string; received: string };
 };
 
-async function fakeOrder(request: APIRequestContext, code: string) {
+/** Pedidos de los pagos de la guía, en orden. */
+async function fakeOrders(request: APIRequestContext, code: string) {
   const response = await request.get("/api/test/shopify");
   const state = (await response.json()) as { orders: FakeOrder[] };
-  return state.orders.find((o) => o.tags.includes(code));
+  return state.orders.filter((o) => o.tags.includes(code));
+}
+
+const summary = async (request: APIRequestContext, code: string) =>
+  (await fakeOrders(request, code)).map((o) => [
+    o.name,
+    o.financials.financialStatus,
+    o.financials.received,
+  ]);
+
+/** Webhook firmado como lo manda Shopify. */
+async function sendWebhook(
+  request: APIRequestContext,
+  topic: string,
+  webhookId: string,
+  payload: object,
+) {
+  const body = JSON.stringify(payload);
+  const response = await request.post("/api/webhooks/shopify", {
+    data: body,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Topic": topic,
+      "X-Shopify-Shop-Domain": FAKE_SHOP_DOMAIN,
+      "X-Shopify-Webhook-Id": webhookId,
+      "X-Shopify-Hmac-Sha256": signWebhook(body, FAKE_WEBHOOK_SECRET),
+    },
+  });
+  expect(response.status()).toBe(200);
+}
+
+/** Aprueba la única pieza registrando el adelanto sugerido con ese método. */
+async function approveWithDeposit(page: Page, code: string, method: string) {
+  await pieceAction(page, `${code}-1`, "Aprobar");
+  await (
+    await fillPayment(page, method)
+  )
+    .getByRole("button", { name: "Aprobar y registrar pago" })
+    .click();
+  await expect(page.getByTestId(`pieza-${code}-1`)).toContainText("Aprobada");
 }
 
 /** Cliente que existe en el Shopify falso (la orden necesita un comprador real). */
@@ -113,7 +157,7 @@ test.describe("Pagos", () => {
     await admin.from("clients").delete().in("id", clientIds);
   });
 
-  test("adelanto al aprobar y saldo antes de entregar → Pagado en el sistema y en Shopify", async ({
+  test("adelanto al aprobar y saldo antes de entregar → dos pedidos «Pagados» en Shopify", async ({
     page,
     request,
     loginAs,
@@ -135,16 +179,10 @@ test.describe("Pagos", () => {
       .click();
     await expect(card).toContainText("Aprobada");
     await expect(page.getByTestId("estado-pago")).toHaveText("Pago parcial");
+    // El adelanto es su propio pedido, ya pagado.
     await expect
-      .poll(async () => (await fakeOrder(request, r.code))?.financials, {
-        timeout: 30_000,
-      })
-      .toEqual(
-        expect.objectContaining({
-          financialStatus: "PARTIALLY_PAID",
-          received: "100.00",
-        }),
-      );
+      .poll(() => summary(request, r.code), { timeout: 30_000 })
+      .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
 
     // Vuelve del taller; antes de entregar se cobra el saldo.
     await markReady(r.pieceId);
@@ -158,20 +196,33 @@ test.describe("Pagos", () => {
     await expect(page.getByTestId("estado-pago")).toHaveText("Pagado");
     await expect(page.getByTestId("pago")).toHaveCount(2);
     await expect
-      .poll(async () => (await fakeOrder(request, r.code))?.financials, {
-        timeout: 30_000,
-      })
-      .toEqual(
-        expect.objectContaining({
-          financialStatus: "PAID",
-          received: "200.00",
-        }),
-      );
+      .poll(() => summary(request, r.code), { timeout: 30_000 })
+      .toEqual([
+        [`Adelanto Guía ${r.code} A1`, "PAID", "100.00"],
+        [`Saldo Guía ${r.code}`, "PAID", "100.00"],
+      ]);
+    await page.reload();
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago").nth(0)).toContainText(
+      `Adelanto Guía ${r.code} A1`,
+    );
+    await expect(page.getByTestId("pago").nth(1)).toContainText(
+      `Saldo Guía ${r.code}`,
+    );
 
-    // Pagado: se entrega sin confirmar nada.
+    // Pagado: se entrega sin confirmar nada, y los pedidos quedan preparados.
     await page.getByRole("tab", { name: /Piezas/ }).click();
     await pieceAction(page, `${r.code}-1`, "Entregar");
     await expect(card).toContainText("Entregada");
+    await expect
+      .poll(
+        async () =>
+          (await fakeOrders(request, r.code)).flatMap((o) =>
+            o.lines.map((l) => l.fulfilled),
+          ),
+        { timeout: 30_000 },
+      )
+      .toEqual([true, true]);
   });
 
   test("logística no ve pagos ni «Registrar pago»", async ({
@@ -224,119 +275,39 @@ test.describe("Pagos", () => {
     await expect(card).toContainText("Entregada");
   });
 
-  test("un pago hecho en el POS llega por webhook: pagado, saldo y «Parcial» (11.3)", async ({
+  test("un reembolso hecho en Shopify en el pedido del adelanto llega por webhook (11.3)", async ({
     page,
     request,
     loginAs,
   }) => {
     const r = await seedRestoration(
       await seedClient(request, `Pos${run}`),
-      "contado",
-    );
-    await loginAs("ventas");
-    await page.goto(`/restauraciones/${r.id}`);
-    const card = page.getByTestId(`pieza-${r.code}-1`);
-    await pieceAction(page, `${r.code}-1`, "Aprobar");
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: "Aprobar sin pago" })
-      .click();
-    await expect(card).toContainText("Aprobada");
-    await expect(page.getByTestId("orden-shopify")).toBeVisible({
-      timeout: 30_000,
-    });
-
-    // Alguien cobra S/ 80 en el POS y Shopify avisa con un webhook firmado.
-    const response = await request.post("/api/test/shopify", {
-      data: {
-        action: "transaction",
-        tag: r.code,
-        amount: "80.00",
-        gateway: "cash",
-      },
-    });
-    const { order } = (await response.json()) as { order: { id: string } };
-    const webhookId = `e2e-pos-${run}`;
-    const body = JSON.stringify({ admin_graphql_api_id: order.id });
-    expect(
-      (
-        await request.post("/api/webhooks/shopify", {
-          data: body,
-          headers: {
-            "Content-Type": "application/json",
-            "X-Shopify-Topic": "orders/updated",
-            "X-Shopify-Shop-Domain": FAKE_SHOP_DOMAIN,
-            "X-Shopify-Webhook-Id": webhookId,
-            "X-Shopify-Hmac-Sha256": signWebhook(body, FAKE_WEBHOOK_SECRET),
-          },
-        })
-      ).status(),
-    ).toBe(200);
-
-    await expect
-      .poll(
-        async () => {
-          await page.reload();
-          return page.getByTestId("estado-pago").textContent();
-        },
-        { timeout: 30_000 },
-      )
-      .toBe("Pago parcial");
-    await expect(page.getByTestId("monto-pagado")).toContainText("S/ 80.00");
-    await expect(page.getByTestId("monto-saldo")).toContainText("S/ 120.00");
-    await page.getByRole("tab", { name: "Pagos" }).click();
-    await expect(page.getByTestId("pago")).toContainText("Hecho en Shopify");
-    await adminClient()
-      .from("shopify_webhook_events")
-      .delete()
-      .eq("webhook_id", webhookId);
-  });
-
-  test("historial para ventas y admin; «Resincronizar pagos» trae lo hecho en Shopify (11.4)", async ({
-    page,
-    request,
-    loginAs,
-  }) => {
-    const r = await seedRestoration(
-      await seedClient(request, `Resync${run}`),
       "a_cuenta",
     );
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
-    await pieceAction(page, `${r.code}-1`, "Aprobar");
-    await (
-      await fillPayment(page, "Yape")
-    )
-      .getByRole("button", { name: "Aprobar y registrar pago" })
-      .click();
-    await expect(page.getByTestId("orden-shopify")).toBeVisible({
-      timeout: 30_000,
-    });
-    await page.getByRole("tab", { name: "Pagos" }).click();
-    await expect(page.getByTestId("pago")).toContainText("Yape");
-    await expect(page.getByTestId("pago")).toContainText("En Shopify");
-    // Ventas ve el historial, pero no resincroniza.
-    await expect(
-      page.getByRole("button", { name: "Resincronizar pagos" }),
-    ).toHaveCount(0);
+    await approveWithDeposit(page, r.code, "Yape");
+    await expect
+      .poll(async () => (await fakeOrders(request, r.code)).length, {
+        timeout: 30_000,
+      })
+      .toBe(1);
+    const [order] = await fakeOrders(request, r.code);
 
-    // Un pago en el POS cuyo webhook no llegó.
+    // Alguien devuelve S/ 40 desde el panel de Shopify y Shopify avisa.
     await request.post("/api/test/shopify", {
       data: {
         action: "transaction",
-        tag: r.code,
-        amount: "30.00",
-        gateway: "cash",
+        tag: order!.tags.find((t) => t.startsWith("pago-")),
+        amount: "-40.00",
+        gateway: "Yape",
       },
     });
-    await loginAs("admin");
-    await page.goto(`/restauraciones/${r.id}`);
-    await page.getByRole("tab", { name: "Pagos" }).click();
-    await expect(page.getByTestId("pago")).toHaveCount(1);
-    await page.getByRole("button", { name: "Resincronizar pagos" }).click();
-    await expect(
-      page.getByText("Resincronizando los pagos con Shopify."),
-    ).toBeVisible();
+    const webhookId = `e2e-reembolso-${run}`;
+    await sendWebhook(request, "refunds/create", webhookId, {
+      order_id: order!.id.split("/").pop(),
+    });
+
     await expect
       .poll(
         async () => {
@@ -345,11 +316,81 @@ test.describe("Pagos", () => {
         },
         { timeout: 30_000 },
       )
-      .toBe("S/ 130.00");
+      .toBe("S/ 60.00");
     await page.getByRole("tab", { name: "Pagos" }).click();
     await expect(page.getByTestId("pago")).toHaveCount(2);
     await expect(page.getByTestId("pago").nth(1)).toContainText(
       "Hecho en Shopify",
+    );
+    await expect(page.getByTestId("pago").nth(1)).toContainText(
+      `De Adelanto Guía ${r.code} A1`,
+    );
+    await adminClient()
+      .from("shopify_webhook_events")
+      .delete()
+      .eq("webhook_id", webhookId);
+  });
+
+  test("historial con el pedido de cada pago; el admin reembolsa eligiendo el pedido", async ({
+    page,
+    request,
+    loginAs,
+  }) => {
+    const r = await seedRestoration(
+      await seedClient(request, `Reembolso${run}`),
+      "a_cuenta",
+    );
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    await approveWithDeposit(page, r.code, "Yape");
+    await expect
+      .poll(() => summary(request, r.code), { timeout: 30_000 })
+      .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
+    await page.reload();
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toContainText("Yape");
+    await expect(page.getByTestId("pago")).toContainText(
+      `Adelanto Guía ${r.code} A1`,
+    );
+    // Ventas ve el historial, pero no reembolsa ni resincroniza.
+    await expect(page.getByRole("button", { name: "Reembolsar" })).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByRole("button", { name: "Resincronizar pagos" }),
+    ).toHaveCount(0);
+
+    await loginAs("admin");
+    await page.goto(`/restauraciones/${r.id}`);
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(
+      page.getByRole("button", { name: "Resincronizar pagos" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Reembolsar" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog
+      .getByRole("combobox", { name: "Pago que se devuelve" })
+      .click();
+    await page
+      .getByRole("option", { name: new RegExp(`Adelanto Guía ${r.code} A1`) })
+      .click();
+    // Por defecto, todo lo que queda de ese pago.
+    await expect(dialog.getByLabel("Monto (S/)")).toHaveValue("100.00");
+    await dialog.getByRole("combobox", { name: "Método" }).click();
+    await page.getByRole("option", { name: "Yape" }).click();
+    await dialog.getByLabel("Monto (S/)").fill("30");
+    await dialog.getByLabel("Motivo (obligatorio)").fill("Cobro de más");
+    await dialog.getByRole("button", { name: "Registrar reembolso" }).click();
+    await expect(
+      page.getByText("Reembolso de S/ 30.00 registrado."),
+    ).toBeVisible();
+    await expect
+      .poll(() => summary(request, r.code), { timeout: 30_000 })
+      .toEqual([[`Adelanto Guía ${r.code} A1`, "PARTIALLY_REFUNDED", "70.00"]]);
+    await page.reload();
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago").nth(1)).toContainText(
+      `De Adelanto Guía ${r.code} A1`,
     );
   });
 });

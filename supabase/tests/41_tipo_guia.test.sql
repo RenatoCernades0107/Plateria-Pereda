@@ -185,7 +185,7 @@ update public.pieces set price = 70
 where restoration_id = (select id from created where label = 'normal');
 select is(
   (select count(*)::int from order_jobs where entity_id = (select id::text from created where label = 'normal')),
-  1, 'normal otra vez y con precios: se encola la orden'
+  0, 'normal otra vez y con precios: ya no se crea la orden con las piezas (un pedido por pago)'
 );
 
 -- Normal → Observada: todas las vivas pasan a Observada, sin precio ni costo.

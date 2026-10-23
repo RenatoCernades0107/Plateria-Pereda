@@ -4,7 +4,9 @@ import { expect, test } from "./fixtures";
 import { pieceAction, pieceActionNames, pieceRow } from "./support/pieces";
 import { adminClient } from "./support/supabase";
 
-// Orden de Shopify (Fase 9: crear, editar y preparar), con el Shopify falso.
+// Shopify con el Shopify falso: desde el 2026-10-19 un pedido pagado por pago (ya no
+// se crea la orden con las piezas); las guías antiguas siguen editando y preparando
+// su orden de piezas (Fase 9).
 test.describe.configure({ mode: "serial" });
 
 const run = `${Date.now()}`.slice(-6);
@@ -25,6 +27,8 @@ async function fakeOrders(request: APIRequestContext, tag: string) {
   return state.orders.filter((o) => o.tags.includes(tag));
 }
 
+const customers = new Map<string, string>();
+
 /** Cliente que existe en el Shopify falso (la orden necesita un comprador real). */
 async function seedClient(request: APIRequestContext, name: string) {
   const response = await request.post("/api/test/shopify", {
@@ -43,19 +47,54 @@ async function seedClient(request: APIRequestContext, name: string) {
     .single();
   if (error) throw error;
   clientIds.push(data.id);
+  customers.set(data.id, customer.id);
   return data.id;
 }
 
+/**
+ * Guía antigua: ya tenía su orden con una línea por pieza (antes del 2026-10-19). Se
+ * crea en el Shopify falso y se guarda en la restauración.
+ */
+async function legacyOrder(
+  request: APIRequestContext,
+  clientId: string,
+  r: { id: string; code: string },
+  prices: string[],
+) {
+  const response = await request.post("/api/test/shopify", {
+    data: {
+      action: "order",
+      input: {
+        customerId: customers.get(clientId),
+        lines: prices.map((price, i) => ({
+          title: `Restauración ${r.code}-${i + 1}`,
+          price,
+          quantity: 1,
+        })),
+        tags: ["restauracion", r.code],
+      },
+    },
+  });
+  const { order } = (await response.json()) as {
+    order: { id: string; name: string };
+  };
+  const { error } = await adminClient()
+    .from("restorations")
+    .update({ shopify_order_id: order.id, shopify_order_name: order.name })
+    .eq("id", r.id);
+  if (error) throw error;
+}
+
 /** Restauración con dos piezas (S/ 100 y S/ 50). */
-async function seedRestoration(clientId: string) {
+async function seedRestoration(
+  clientId: string,
+  // Al crédito: sin adelanto al aprobar ni saldo que bloquee la entrega (11.2).
+  paymentType: "credito" | "contado" = "credito",
+) {
   const admin = adminClient();
   const { data: r, error } = await admin
     .from("restorations")
-    .insert({
-      client_id: clientId,
-      // Al crédito: sin adelanto al aprobar ni saldo que bloquee la entrega (11.2).
-      payment_type: "credito",
-    })
+    .insert({ client_id: clientId, payment_type: paymentType })
     .select("id, code")
     .single();
   if (error) throw error;
@@ -77,19 +116,20 @@ async function approve(page: Page, pieceCode: string) {
   await expect(pieceRow(page, pieceCode)).toContainText("Aprobada");
 }
 
-test.describe("Orden de Shopify al aprobar", () => {
+test.describe("Shopify al aprobar y cobrar", () => {
   test.afterAll(async () => {
     const admin = adminClient();
     await admin
       .from("shopify_sync_jobs")
       .delete()
       .in("entity_id", restorationIds);
+    await admin.from("payments").delete().in("restoration_id", restorationIds);
     await admin.from("pieces").delete().in("restoration_id", restorationIds);
     await admin.from("restorations").delete().in("id", restorationIds);
     await admin.from("clients").delete().in("id", clientIds);
   });
 
-  test("aprobar todas las piezas crea la orden con sus líneas; una aprobación parcial no", async ({
+  test("aprobar todas las piezas ya no crea la orden con las piezas", async ({
     page,
     request,
     loginAs,
@@ -103,50 +143,59 @@ test.describe("Orden de Shopify al aprobar", () => {
     await expect(page.getByTestId("estado-restauracion")).toHaveText(
       "Parcialmente aprobada",
     );
+    await approve(page, `${r.code}-2`);
+    await expect(page.getByTestId("estado-restauracion")).toHaveText(
+      "Aprobada",
+    );
+    await page.reload();
     await expect(page.getByTestId("orden-shopify")).toHaveCount(0);
     expect(await fakeOrders(request, r.code)).toEqual([]);
-
-    await approve(page, `${r.code}-2`);
-    await expect(page.getByTestId("orden-shopify")).toContainText(
-      /Orden #\d+/,
-      { timeout: 20_000 },
-    );
-    await expect(page.getByTestId("estado-shopify")).toHaveText(
-      "Shopify: Sincronizado",
-    );
-
-    const [order, ...others] = await fakeOrders(request, r.code);
-    expect(others).toEqual([]);
-    // Sin IGV: cada línea lleva el precio de la pieza.
-    expect(order!.lines.map((l) => [l.title, l.price])).toEqual([
-      [`Restauración ${r.code}-1`, "100.00"],
-      [`Restauración ${r.code}-2`, "50.00"],
-    ]);
-    expect(order!.financials.total).toBe("150.00");
-    expect(order!.tags).toEqual(["restauracion", r.code]);
-    await expect(page.getByTestId("orden-shopify")).toHaveText(
-      `Orden ${order!.name}`,
-    );
   });
 
-  test("si Shopify falla queda en error y Reintentar crea la orden una sola vez", async ({
+  test("si Shopify falla al crear el pedido de un pago queda en error y Reintentar lo crea una sola vez", async ({
     page,
     request,
     loginAs,
   }) => {
-    const r = await seedRestoration(await seedClient(request, `Falla${run}`));
+    const r = await seedRestoration(
+      await seedClient(request, `Falla${run}`),
+      "contado",
+    );
+    await loginAs("ventas");
+    await page.goto(`/restauraciones/${r.id}`);
+    await approve(page, `${r.code}-1`);
+    // La última pieza puede ofrecer registrar el adelanto (según la selección de la
+    // tabla al aprobar): si lo ofrece, sin pago.
+    await page.reload();
+    await pieceAction(page, `${r.code}-2`, "Aprobar");
+    const withoutPayment = page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Aprobar sin pago" });
+    const approved = pieceRow(page, `${r.code}-2`).getByText("Aprobada", {
+      exact: true,
+    });
+    await expect(withoutPayment.or(approved).first()).toBeVisible();
+    if (await withoutPayment.isVisible()) await withoutPayment.click();
+    await expect(approved).toBeVisible();
+
     await request.post("/api/test/shopify", {
       data: {
         action: "fail",
         method: "createOrder",
         kind: "user",
         message: "Rechazo de prueba",
+        // Solo el pedido de esta guía (otros archivos corren a la vez).
+        match: r.code,
       },
     });
-    await loginAs("ventas");
-    await page.goto(`/restauraciones/${r.id}`);
-    await approve(page, `${r.code}-1`);
-    await approve(page, `${r.code}-2`);
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await page.getByRole("button", { name: "Registrar pago" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Método" }).click();
+    await page.getByRole("option", { name: "Yape" }).click();
+    await dialog.getByLabel("Monto (S/)").fill("60");
+    await dialog.getByRole("button", { name: "Guardar pago" }).click();
+    await expect(page.getByText("Pago de S/ 60.00 registrado.")).toBeVisible();
     await expect(page.getByTestId("estado-shopify")).toHaveText(
       "Shopify: Error",
       { timeout: 20_000 },
@@ -157,11 +206,19 @@ test.describe("Orden de Shopify al aprobar", () => {
     await expect(
       page.getByText("Reintentando la sincronización con Shopify."),
     ).toBeVisible();
-    await expect(page.getByTestId("orden-shopify")).toContainText(
-      /Orden #\d+/,
-      { timeout: 20_000 },
+    await expect
+      .poll(
+        async () => (await fakeOrders(request, r.code)).map((o) => o.name),
+        {
+          timeout: 20_000,
+        },
+      )
+      .toEqual([`Adelanto Guía ${r.code} A1`]);
+    await page.reload();
+    await page.getByRole("tab", { name: "Pagos" }).click();
+    await expect(page.getByTestId("pago")).toContainText(
+      `Adelanto Guía ${r.code} A1`,
     );
-    expect(await fakeOrders(request, r.code)).toHaveLength(1);
   });
 
   test("logística no ve la orden ni su sincronización", async ({
@@ -169,7 +226,7 @@ test.describe("Orden de Shopify al aprobar", () => {
     loginAs,
   }) => {
     await loginAs("logistica");
-    await page.goto(`/restauraciones/${restorationIds[0]}`);
+    await page.goto(`/restauraciones/${restorationIds[1]}`);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^RES-/);
     await expect(page.getByTestId("estado-shopify")).toHaveCount(0);
   });
@@ -211,7 +268,7 @@ async function seedReadyPiece(clientId: string) {
 const orderTotal = async (request: APIRequestContext, code: string) =>
   (await fakeOrders(request, code))[0]?.financials.total;
 
-test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
+test.describe("Guía antigua: cambios a su orden de piezas (Pasos 9.2 y 9.3)", () => {
   test.afterAll(async () => {
     const admin = adminClient();
     await admin
@@ -234,9 +291,9 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await page.goto(`/restauraciones/${r.id}`);
     await approve(page, `${r.code}-1`);
     await approve(page, `${r.code}-2`);
-    await expect(page.getByTestId("orden-shopify")).toBeVisible({
-      timeout: 30_000,
-    });
+    await legacyOrder(request, clientId, r, ["100.00", "50.00"]);
+    await page.reload();
+    await expect(page.getByTestId("orden-shopify")).toBeVisible();
     // 100.00 + 50.00.
     expect(await orderTotal(request, r.code)).toBe("150.00");
 
@@ -262,9 +319,9 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
     await page.goto(`/restauraciones/${r.id}`);
     await approve(page, `${r.code}-1`);
     await approve(page, `${r.code}-2`);
-    await expect(page.getByTestId("orden-shopify")).toBeVisible({
-      timeout: 30_000,
-    });
+    await legacyOrder(request, clientId, r, ["100.00", "50.00"]);
+    await page.reload();
+    await expect(page.getByTestId("orden-shopify")).toBeVisible();
     // Ventas también cambia el precio con la orden creada (2026-10-21).
     expect(await pieceActionNames(page, `${r.code}-1`)).toContain(
       "Cambiar precio",
@@ -295,8 +352,7 @@ test.describe("Cambios posteriores a la orden (Pasos 9.2 y 9.3)", () => {
   }) => {
     const clientId = await seedClient(request, `Entrega${run}`);
     const r = await seedReadyPiece(clientId);
-    // La orden aún no existe: al entregar se procesa el outbox, se crea la orden
-    // y la pieza ya entregada queda preparada.
+    await legacyOrder(request, clientId, r, ["90.00"]);
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     const card = page.getByTestId(`pieza-${r.code}-1`);

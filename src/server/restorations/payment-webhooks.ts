@@ -7,8 +7,13 @@ import type { WebhookHandler } from "@/server/shopify-webhooks/types";
 
 /** Lo que los webhooks de la orden necesitan de la BD y del outbox. */
 export interface OrderWebhookRepository {
-  /** Restauración de la orden; null si la orden no es de una restauración. */
-  findRestorationByOrder(orderId: string): Promise<string | null>;
+  /**
+   * Restauración de la orden: su orden de piezas (guías antiguas) o el pedido de uno de
+   * sus pagos (`paymentOrder`). null si la orden no es de una restauración.
+   */
+  findRestorationByOrder(
+    orderId: string,
+  ): Promise<{ restorationId: string; paymentOrder: boolean } | null>;
   /** Encola la conciliación de pagos (`payment.sync`). */
   enqueuePaymentSync(restorationId: string): Promise<void>;
   /** Cambio del cliente de la orden hecho en Shopify (D31). */
@@ -30,7 +35,8 @@ export const ORDER_PAYMENT_TOPICS = [
  * pagos: solo identifican la restauración y encolan `payment.sync`, que lee de Shopify
  * las transacciones actuales (webhooks duplicados o desordenados dan el mismo
  * resultado). Las órdenes que no son de restauraciones se ignoran. `orders/updated`
- * además aplica el cambio de cliente.
+ * de la orden de piezas además aplica el cambio de cliente; el de un pedido de pago
+ * no cambia el cliente de la guía.
  */
 export function orderWebhookHandlers(
   repo: OrderWebhookRepository,
@@ -41,9 +47,10 @@ export function orderWebhookHandlers(
     return async (event) => {
       const orderId = webhookOrderId(topic, event.payload);
       if (!orderId) throw new Error("El webhook no trae el id de la orden");
-      const restorationId = await repo.findRestorationByOrder(orderId);
-      if (!restorationId) return;
-      if (topic === "orders/updated") {
+      const found = await repo.findRestorationByOrder(orderId);
+      if (!found) return;
+      const { restorationId } = found;
+      if (topic === "orders/updated" && !found.paymentOrder) {
         const customer = webhookOrderCustomer(event.payload);
         if (customer) await repo.applyOrderCustomer(restorationId, customer);
       }

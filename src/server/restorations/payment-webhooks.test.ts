@@ -9,9 +9,14 @@ import {
 
 const ORDER = "gid://shopify/Order/77";
 
-function setup(restorationId: string | null = "r1") {
+function setup(
+  found: { restorationId: string; paymentOrder: boolean } | null = {
+    restorationId: "r1",
+    paymentOrder: false,
+  },
+) {
   const repo: OrderWebhookRepository = {
-    findRestorationByOrder: vi.fn(async () => restorationId),
+    findRestorationByOrder: vi.fn(async () => found),
     enqueuePaymentSync: vi.fn(async () => {}),
     applyOrderCustomer: vi.fn(async () => true),
   };
@@ -67,6 +72,21 @@ describe("webhooks de la orden (11.3)", () => {
       email: null,
       phone: null,
     });
+    expect(repo.enqueuePaymentSync).toHaveBeenCalledWith("r1");
+  });
+
+  it("el pedido de un pago encola la conciliación pero no cambia el cliente", async () => {
+    const { repo, handlers } = setup({
+      restorationId: "r1",
+      paymentOrder: true,
+    });
+    await handlers["orders/updated"]!(
+      event("orders/updated", {
+        id: 77,
+        customer: { id: 5, first_name: "Luis", last_name: "Rojas" },
+      }),
+    );
+    expect(repo.applyOrderCustomer).not.toHaveBeenCalled();
     expect(repo.enqueuePaymentSync).toHaveBeenCalledWith("r1");
   });
 

@@ -271,7 +271,7 @@ select results_eq(
 select is(public.piece_previous_status('00000000-0000-0000-0000-0000000048e3'), 'registrada'::public.piece_status,
   '"Retroceder estado" no ve pasos fantasma: el anterior vuelve a ser Registrada');
 
--- 7. La aprobación que crea la orden de Shopify no se deshace (se usa "Retroceder").
+-- 7. Aprobar ya no crea la orden de Shopify (un pedido por pago): se deshace.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000048a3","role":"authenticated"}', true);
 select lives_ok(
   $$ select * from public.change_piece_status(
@@ -281,18 +281,20 @@ select lives_ok(
 select lives_ok(
   $$ select * from public.change_piece_status(
        array['00000000-0000-0000-0000-0000000048e2', '00000000-0000-0000-0000-0000000048e3']::uuid[], 'aprobada') $$,
-  'el admin aprueba las últimas piezas (se encola la orden)'
+  'el admin aprueba las últimas piezas (ya no se encola la orden)'
 );
 select is(
-  public.piece_move_undo_ids(array['00000000-0000-0000-0000-0000000048e2', '00000000-0000-0000-0000-0000000048e3']::uuid[]),
-  '{}'::bigint[], 'una aprobación que encola la orden no ofrece deshacer'
+  cardinality(public.piece_move_undo_ids(
+    array['00000000-0000-0000-0000-0000000048e2', '00000000-0000-0000-0000-0000000048e3']::uuid[])),
+  2, 'la aprobación ofrece deshacer'
 );
-select throws_ok(
+select lives_ok(
   format('select * from public.undo_piece_move(%L)', (
     select array_agg(h.id) from public.piece_status_history h
-    where h.piece_id = '00000000-0000-0000-0000-0000000048e3' and h.to_status = 'aprobada'
+    where h.piece_id in ('00000000-0000-0000-0000-0000000048e2', '00000000-0000-0000-0000-0000000048e3')
+      and h.to_status = 'aprobada'
   )),
-  '23514', null, 'ni se puede deshacer llamando a la BD'
+  'y se deshace'
 );
 
 select * from finish();

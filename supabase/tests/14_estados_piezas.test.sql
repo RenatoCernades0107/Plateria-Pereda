@@ -77,7 +77,7 @@ select is(
 select is(
   (select count(*)::int from public.shopify_sync_jobs
    where kind = 'order.create' and entity_id = '00000000-0000-0000-0000-00000000aa30'),
-  1, 'se encola la creación de la orden de Shopify'
+  0, 'ya no se crea la orden con las piezas en Shopify (un pedido por pago)'
 );
 
 set local role authenticated;
@@ -189,7 +189,7 @@ select results_eq(
 select is(
   (select count(*)::int from public.shopify_sync_jobs
    where kind = 'order.create' and entity_id = '00000000-0000-0000-0000-00000000aa30'),
-  1, 'la orden se encola una sola vez'
+  0, 'ni al anular una pieza'
 );
 
 -- Observación: la pieza queda Sin enviar hasta que se reenvía al taller (P50).

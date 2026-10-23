@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  netPaid,
-  orderCreatePayments,
-  planPaymentSync,
-  type SyncPayment,
-} from "./payment-sync";
+import { netPaid, planPaymentSync, type SyncPayment } from "./payment-sync";
 
 let n = 0;
 const pay = (
@@ -24,31 +19,6 @@ const refund = (
   gateway = "Efectivo",
   synced = false,
 ): SyncPayment => ({ ...pay(amountCents, gateway, synced), kind: "reembolso" });
-
-describe("orderCreatePayments: pagos incluidos al crear la orden", () => {
-  it("cada pago con su método", () => {
-    expect(orderCreatePayments([pay(10000, "Yape"), pay(5000)], 40000)).toEqual(
-      [
-        { gateway: "Yape", amountCents: 10000 },
-        { gateway: "Efectivo", amountCents: 5000 },
-      ],
-    );
-  });
-
-  it("con reembolsos, lo neto con el método del último pago", () => {
-    expect(
-      orderCreatePayments([pay(20000, "Yape"), refund(5000)], 40000),
-    ).toEqual([{ gateway: "Yape", amountCents: 15000 }]);
-    expect(orderCreatePayments([pay(5000), refund(5000)], 40000)).toEqual([]);
-  });
-
-  it("nunca más que el total de la orden", () => {
-    expect(orderCreatePayments([pay(30000), pay(20000)], 40000)).toEqual([
-      { gateway: "Efectivo", amountCents: 30000 },
-      { gateway: "Efectivo", amountCents: 10000 },
-    ]);
-  });
-});
 
 describe("planPaymentSync: con la orden creada", () => {
   it("el pago que completa el saldo se registra como pago completo", () => {

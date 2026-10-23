@@ -4,14 +4,16 @@ import {
   ShopifyUnavailableError,
   ShopifyUserError,
 } from "@/server/shopify/errors";
+import { toDecimalString } from "@/domain/money";
 import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
 import type { SyncJob } from "@/server/shopify-sync/jobs";
 
 import {
-  buildOrderInput,
-  lineIdsByPiece,
+  billablePieces,
+  lineTitle,
   orderBuyer,
   restorationOrderHandlers,
+  type OrderPayment,
   type OrderRestoration,
   type RestorationOrderRepository,
 } from "./shopify-order";
@@ -72,20 +74,23 @@ const job: SyncJob = {
   maxAttempts: 8,
 };
 
-function memoryRepo(data: OrderRestoration | null) {
-  const known = new Set<string>();
+/** Repositorio en memoria: lee y escribe en `data` (como la BD al releerla). */
+function memoryRepo(
+  data: OrderRestoration | null,
+  /** Transacciones ya contadas (en la BD persisten entre jobs). */
+  known = new Set<string>(),
+) {
   const lineUpdates = new Map<string, string | null>();
-  const saved: {
-    order: { id: string; name: string };
-    lineIds: Record<string, string>;
-  }[] = [];
+  const savedOrders = new Map<string, { id: string; name: string }>();
   const repo: RestorationOrderRepository = {
-    getOrderData: async () => data,
-    saveOrder: async (_id, order, lineIds) => {
-      saved.push({ order, lineIds });
-      if (data) {
-        data.shopifyOrderId = order.id;
-        data.shopifyOrderName = order.name;
+    getOrderData: async () => data && structuredClone(data),
+    savePaymentOrder: async (paymentId, order) => {
+      if (savedOrders.has(paymentId)) return;
+      savedOrders.set(paymentId, order);
+      const payment = data?.payments.find((p) => p.id === paymentId);
+      if (payment) {
+        payment.orderId = order.id;
+        payment.synced = true;
       }
     },
     saveLineIds: async (lines) => {
@@ -95,33 +100,27 @@ function memoryRepo(data: OrderRestoration | null) {
     rememberTransactions: async (_id, ids) => {
       for (const id of ids) known.add(id);
     },
-    importPayments: async () => {},
+    importPayments: async (_id, payments) => {
+      for (const p of payments) {
+        known.add(p.transactionId);
+        data?.payments.push({
+          id: p.transactionId,
+          kind: p.kind,
+          amountCents: p.amountCents,
+          gateway: p.methodName,
+          synced: true,
+          source: "shopify",
+          refundedPaymentId: p.refundedPaymentId ?? null,
+        });
+      }
+    },
     markPaymentsSynced: async (ids) => {
       for (const p of data?.payments ?? [])
         if (ids.includes(p.id)) p.synced = true;
     },
   };
-  return { repo, saved, lineUpdates };
+  return { repo, savedOrders, lineUpdates, known };
 }
-
-describe("buildOrderInput", () => {
-  it("una línea por pieza que se cobra, en orden, con etiquetas y enlace", () => {
-    expect(buildOrderInput(restoration(), APP_URL)).toEqual({
-      customerId: "gid://shopify/Customer/1",
-      lines: [
-        { title: "Restauración RES-00001-1", price: "1200.50", quantity: 1 },
-        { title: "Restauración RES-00001-2", price: "50.00", quantity: 1 },
-      ],
-      tags: ["restauracion", "RES-00001"],
-      note: "Restauración RES-00001: https://pereda.example/restauraciones/r1",
-    });
-  });
-
-  it("cada línea lleva el precio de la pieza, sin IGV", () => {
-    const input = buildOrderInput(restoration(), APP_URL);
-    expect(input.lines.map((l) => l.price)).toEqual(["1200.50", "50.00"]);
-  });
-});
 
 describe("orderBuyer", () => {
   const company = {
@@ -167,157 +166,36 @@ describe("orderBuyer", () => {
   });
 });
 
-describe("lineIdsByPiece", () => {
-  it("relaciona cada pieza con su línea por el título", () => {
-    expect(
-      lineIdsByPiece(restoration().pieces, {
-        lines: [
-          {
-            id: "L1",
-            title: "Restauración RES-00001-1",
-            price: "1",
-            quantity: 1,
-            fulfilled: false,
-          },
-          {
-            id: "L2",
-            title: "Restauración RES-00001-2",
-            price: "1",
-            quantity: 1,
-            fulfilled: false,
-          },
-        ],
-      }),
-    ).toEqual({ p1: "L1", p2: "L2" });
-  });
-});
-
 describe("order.create", () => {
   const gateway = new FakeShopifyGateway();
-  let customerId: string;
+  beforeEach(() => fakeShopify.reset());
 
-  beforeEach(async () => {
-    fakeShopify.reset();
-    customerId = (
-      await gateway.createCustomer({ firstName: "Ana", lastName: "Pérez" })
-    ).id;
+  it("ya no se crea la orden con las piezas: el job queda omitido", async () => {
+    const { repo } = memoryRepo(restoration());
+    await expect(
+      restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
+        job,
+        gateway,
+      ),
+    ).resolves.toEqual({ skipped: true });
+    expect(fakeShopify.snapshot().orders).toEqual([]);
   });
 
-  const withCustomer = (overrides: Partial<OrderRestoration> = {}) =>
-    restoration({
-      client: {
-        kind: "persona",
-        shopifyCustomerId: customerId,
-        shopifyCompanyLocationId: null,
-      },
-      ...overrides,
-    });
-
-  it("crea la orden y guarda su id, su número y las líneas", async () => {
-    const { repo, saved } = memoryRepo(withCustomer());
-    const handlers = restorationOrderHandlers(repo, () => APP_URL);
-    const result = await handlers["order.create"]!(job, gateway);
-
-    const [order] = fakeShopify.snapshot().orders;
-    expect(order).toMatchObject({
-      customerId,
-      tags: ["restauracion", "RES-00001"],
-      financials: { total: "1250.50" },
-    });
-    expect(result).toEqual({
-      shopifyOrderId: order!.id,
-      shopifyOrderName: order!.name,
-      linked: false,
-      payments: "none",
-    });
-    expect(saved).toEqual([
-      {
-        order: { id: order!.id, name: order!.name },
-        lineIds: {
-          p1: order!.lines[0]!.id,
-          p2: order!.lines[1]!.id,
-        },
-      },
-    ]);
-  });
-
-  it("si la orden ya existe con la etiqueta, la vincula sin crear otra", async () => {
-    const first = memoryRepo(withCustomer());
-    await restorationOrderHandlers(first.repo, () => APP_URL)["order.create"]!(
-      job,
-      gateway,
+  it("una guía antigua con su orden devuelve la que tiene", async () => {
+    const { repo } = memoryRepo(
+      restoration({ shopifyOrderId: "gid://x", shopifyOrderName: "#1001" }),
     );
-    // Un corte después de crearla y antes de guardarla: el reintento la encuentra.
-    const retry = memoryRepo(withCustomer());
-    const result = await restorationOrderHandlers(retry.repo, () => APP_URL)[
-      "order.create"
-    ]!(job, gateway);
-    expect(fakeShopify.snapshot().orders).toHaveLength(1);
-    expect(result).toMatchObject({ linked: true });
-    expect(retry.saved).toHaveLength(1);
-  });
-
-  it("si la restauración ya tiene orden no llama a Shopify", async () => {
-    const { repo, saved } = memoryRepo(
-      withCustomer({ shopifyOrderId: "gid://x", shopifyOrderName: "#1001" }),
-    );
-    const result = await restorationOrderHandlers(repo, () => APP_URL)[
-      "order.create"
-    ]!(job, gateway);
-    expect(result).toEqual({
+    await expect(
+      restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
+        job,
+        gateway,
+      ),
+    ).resolves.toEqual({
       shopifyOrderId: "gid://x",
       shopifyOrderName: "#1001",
     });
-    expect(saved).toEqual([]);
     expect(fakeShopify.snapshot().orders).toEqual([]);
   });
-
-  it("si ya no está lista (se agregó una pieza) no crea la orden", async () => {
-    const data = withCustomer();
-    data.pieces.push({
-      id: "p4",
-      code: "RES-00001-4",
-      number: 4,
-      priceCents: 10_00,
-      status: "registrada",
-      approvedAt: null,
-    });
-    const { repo } = memoryRepo(data);
-    expect(
-      await restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
-        job,
-        gateway,
-      ),
-    ).toEqual({ skipped: true });
-    expect(fakeShopify.snapshot().orders).toEqual([]);
-  });
-
-  it("si falta el precio de venta de una pieza aprobada no crea la orden (D58)", async () => {
-    const data = withCustomer();
-    data.pieces[0]!.priceCents = null;
-    const { repo } = memoryRepo(data);
-    expect(
-      await restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
-        job,
-        gateway,
-      ),
-    ).toEqual({ skipped: true });
-    expect(fakeShopify.snapshot().orders).toEqual([]);
-  });
-
-  it.each(["interno", "observado"] as const)(
-    "una guía %s no se cobra: no crea la orden",
-    async (restorationKind) => {
-      const { repo } = memoryRepo({ ...withCustomer(), restorationKind });
-      expect(
-        await restorationOrderHandlers(repo, () => APP_URL)["order.create"]!(
-          job,
-          gateway,
-        ),
-      ).toEqual({ skipped: true });
-      expect(fakeShopify.snapshot().orders).toEqual([]);
-    },
-  );
 
   it("si la restauración no existe falla sin reintentos", async () => {
     const { repo } = memoryRepo(null);
@@ -352,10 +230,21 @@ describe("order.edit y order.fulfill (Pasos 9.2 y 9.3)", () => {
 
   const order = () => fakeShopify.snapshot().orders[0];
 
+  /** Una guía antigua: su orden con una línea por pieza ya está en Shopify. */
   async function created() {
+    const legacy = await gateway.createOrder({
+      customerId: data.client.shopifyCustomerId!,
+      lines: billablePieces(data.pieces).map((p) => ({
+        title: lineTitle(p.code),
+        price: toDecimalString(p.priceCents),
+        quantity: 1,
+      })),
+      tags: ["restauracion", data.code],
+    });
+    data.shopifyOrderId = legacy.id;
+    data.shopifyOrderName = legacy.name;
     const memory = memoryRepo(data);
     const handlers = restorationOrderHandlers(memory.repo, () => APP_URL);
-    await handlers["order.create"]!(jobOf("order.create"), gateway);
     return { handlers, ...memory };
   }
 
@@ -413,12 +302,13 @@ describe("order.edit y order.fulfill (Pasos 9.2 y 9.3)", () => {
     ).resolves.toMatchObject({ unchanged: true });
   });
 
-  it("sin orden creada, editar se reintenta", async () => {
+  it("sin orden de piezas no hay nada que editar", async () => {
     await expect(
       restorationOrderHandlers(memoryRepo(data).repo, () => APP_URL)[
         "order.edit"
       ]!(jobOf("order.edit"), gateway),
-    ).rejects.toBeInstanceOf(ShopifyUnavailableError);
+    ).resolves.toEqual({ skipped: true });
+    expect(fakeShopify.snapshot().orders).toEqual([]);
   });
 
   it("order.fulfill prepara las piezas entregadas una sola vez (P44)", async () => {
@@ -435,10 +325,228 @@ describe("order.edit y order.fulfill (Pasos 9.2 y 9.3)", () => {
       ["Restauración RES-00001-2", true],
     ]);
   });
+});
 
-  it("si la orden se crea tarde, las piezas ya entregadas quedan preparadas", async () => {
+describe("un pedido de Shopify por pago (2026-10-19)", () => {
+  const gateway = new FakeShopifyGateway();
+  const syncJob: SyncJob = { ...job, kind: "payment.sync" };
+  const fulfillJob: SyncJob = { ...job, kind: "order.fulfill" };
+  let data: OrderRestoration;
+  let known: Set<string>;
+  const repoOf = (d = data) => memoryRepo(d, known);
+
+  const pago = (
+    id: string,
+    amountCents: number,
+    orderTitle: string,
+    gatewayName = "Efectivo",
+  ): OrderPayment => ({
+    id,
+    kind: "pago",
+    amountCents,
+    gateway: gatewayName,
+    synced: false,
+    source: "sistema",
+    orderTitle,
+    orderId: null,
+    refundedPaymentId: null,
+  });
+
+  const reembolso = (
+    id: string,
+    amountCents: number,
+    refundedPaymentId: string | null,
+  ): OrderPayment => ({
+    id,
+    kind: "reembolso",
+    amountCents,
+    gateway: "Efectivo",
+    synced: false,
+    source: "sistema",
+    orderTitle: null,
+    orderId: null,
+    refundedPaymentId,
+  });
+
+  beforeEach(async () => {
+    fakeShopify.reset();
+    known = new Set();
+    const customer = await gateway.createCustomer({
+      firstName: "Ana",
+      lastName: "Pérez",
+    });
+    data = restoration({
+      client: {
+        kind: "persona",
+        shopifyCustomerId: customer.id,
+        shopifyCompanyLocationId: null,
+      },
+      payments: [
+        pago("pay1", 300_00, "Adelanto Guía RES-00001 A1"),
+        pago("pay2", 100_00, "Adelanto Guía RES-00001 A2", "Yape"),
+      ],
+    });
+  });
+
+  const orders = () => fakeShopify.snapshot().orders;
+  const run = (memory: ReturnType<typeof memoryRepo>, j = syncJob) =>
+    restorationOrderHandlers(memory.repo, () => APP_URL)[j.kind]!(j, gateway);
+
+  it("cada pago es un pedido pagado, con su nombre como número de pedido y como línea", async () => {
+    const memory = repoOf();
+    await expect(run(memory)).resolves.toEqual({
+      created: 2,
+      refunded: 0,
+      imported: 0,
+    });
+    expect(
+      orders().map((o) => ({
+        name: o.name,
+        lines: o.lines.map((l) => [l.title, l.price, l.quantity]),
+        tags: o.tags,
+        note: o.note,
+        status: o.financials.financialStatus,
+      })),
+    ).toEqual([
+      {
+        name: "Adelanto Guía RES-00001 A1",
+        lines: [["Adelanto Guía RES-00001 A1", "300.00", 1]],
+        tags: ["restauracion", "RES-00001", "pago-pay1"],
+        note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
+        status: "PAID",
+      },
+      {
+        name: "Adelanto Guía RES-00001 A2",
+        lines: [["Adelanto Guía RES-00001 A2", "100.00", 1]],
+        tags: ["restauracion", "RES-00001", "pago-pay2"],
+        note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
+        status: "PAID",
+      },
+    ]);
+    expect(orders()[1]!.transactions.map((t) => t.gateway)).toEqual(["Yape"]);
+    expect([...memory.savedOrders.keys()]).toEqual(["pay1", "pay2"]);
+    expect(data.payments.every((p) => p.synced)).toBe(true);
+  });
+
+  it("con el id real de un pago (UUID) la etiqueta cabe en Shopify (máx. 40)", async () => {
+    const id = "6bd07cdd-cec7-4bd8-9af6-8694a1e6c932";
+    data.payments = [pago(id, 50_00, "Adelanto Guía RES-00001 A1")];
+    await expect(run(repoOf())).resolves.toMatchObject({ created: 1 });
+    const tag = orders()[0]!.tags.at(-1)!;
+    expect(tag).toBe("pago-6bd07cddcec74bd89af68694a1e6c932");
+    expect(tag.length).toBeLessThanOrEqual(40);
+    // Un reintento lo encuentra por esa misma etiqueta.
+    data.payments[0]!.orderId = null;
+    await run(repoOf());
+    expect(orders()).toHaveLength(1);
+  });
+
+  it("repetir el job no crea otro pedido; un reintento tras un corte lo encuentra por su etiqueta", async () => {
+    await run(repoOf());
+    await expect(run(repoOf())).resolves.toMatchObject({ created: 0 });
+    // Corte: Shopify creó el pedido pero el sistema no lo guardó.
+    const lost = structuredClone(data);
+    for (const p of lost.payments) p.orderId = null;
+    const retry = repoOf(lost);
+    await run(retry);
+    expect(orders()).toHaveLength(2);
+    expect(retry.savedOrders.get("pay1")?.id).toBe(orders()[0]!.id);
+  });
+
+  it("el saldo es otro pedido con su propio nombre", async () => {
+    await run(repoOf());
+    data.payments.push(pago("pay3", 850_50, "Saldo Guía RES-00001"));
+    await run(repoOf());
+    expect(orders().map((o) => o.name)).toEqual([
+      "Adelanto Guía RES-00001 A1",
+      "Adelanto Guía RES-00001 A2",
+      "Saldo Guía RES-00001",
+    ]);
+  });
+
+  it("los pagos de una guía antigua (sin nombre de pedido) no crean pedidos", async () => {
+    data.payments = [{ ...pago("old", 50_00, ""), orderTitle: null }];
+    await expect(run(repoOf())).resolves.toMatchObject({ created: 0 });
+    expect(orders()).toEqual([]);
+  });
+
+  it("sin el cliente en Shopify el job se reintenta", async () => {
+    data.client.shopifyCustomerId = null;
+    await expect(run(repoOf())).rejects.toBeInstanceOf(ShopifyUnavailableError);
+  });
+
+  it("el reembolso se hace en el pedido del pago que devuelve, una sola vez", async () => {
+    await run(repoOf());
+    data.payments.push(reembolso("ref1", 40_00, "pay2"));
+    await expect(run(repoOf())).resolves.toMatchObject({
+      refunded: 1,
+      imported: 0,
+    });
+    await expect(run(repoOf())).resolves.toMatchObject({
+      refunded: 0,
+      imported: 0,
+    });
+    expect(orders().map((o) => [o.name, o.financials.received])).toEqual([
+      ["Adelanto Guía RES-00001 A1", "300.00"],
+      ["Adelanto Guía RES-00001 A2", "60.00"],
+    ]);
+    expect(orders()[1]!.transactions.at(-1)?.gateway).toBe("Yape");
+    expect(data.payments.find((p) => p.id === "ref1")?.synced).toBe(true);
+  });
+
+  it("un reembolso antiguo sin pago queda solo en el sistema", async () => {
+    await run(repoOf());
+    data.payments.push(reembolso("ref0", 10_00, null));
+    await expect(run(repoOf())).resolves.toMatchObject({
+      refunded: 0,
+    });
+    expect(data.payments.find((p) => p.id === "ref0")?.synced).toBe(true);
+    expect(orders()[0]!.financials.received).toBe("300.00");
+  });
+
+  it("un reembolso hecho en Shopify entra al registro con su pago; un pago hecho allá no", async () => {
+    await run(repoOf());
+    fakeShopify.externalTransaction("pago-pay1", "-25.00", "cash");
+    fakeShopify.externalTransaction("pago-pay2", "5.00", "cash");
+    await expect(run(repoOf())).resolves.toMatchObject({ imported: 1 });
+    await expect(run(repoOf())).resolves.toMatchObject({ imported: 0 });
+    expect(data.payments.at(-1)).toMatchObject({
+      kind: "reembolso",
+      amountCents: 25_00,
+      source: "shopify",
+      refundedPaymentId: "pay1",
+    });
+  });
+
+  it("order.fulfill prepara los pedidos solo al entregarse toda la guía", async () => {
+    await run(repoOf());
     data.pieces[0]!.status = "entregada";
-    await created();
-    expect(order()?.lines.map((l) => l.fulfilled)).toEqual([false, true]);
+    await expect(run(repoOf(), fulfillJob)).resolves.toEqual({
+      delivered: false,
+      fulfilled: 0,
+    });
+    data.pieces[1]!.status = "entregada";
+    await expect(run(repoOf(), fulfillJob)).resolves.toEqual({
+      delivered: true,
+      fulfilled: 2,
+    });
+    await expect(run(repoOf(), fulfillJob)).resolves.toEqual({
+      delivered: true,
+      fulfilled: 0,
+    });
+    expect(orders().flatMap((o) => o.lines.map((l) => l.fulfilled))).toEqual([
+      true,
+      true,
+    ]);
+  });
+
+  it("un pago registrado con la guía ya entregada nace preparado", async () => {
+    for (const p of data.pieces)
+      if (p.status === "aprobada") p.status = "entregada";
+    await run(repoOf());
+    expect(orders().flatMap((o) => o.lines.map((l) => l.fulfilled))).toEqual([
+      true,
+      true,
+    ]);
   });
 });

@@ -1,12 +1,11 @@
 import "server-only";
 
 import { lineCents, toCents, toDecimalString } from "@/domain/money";
-import type { SyncPayment } from "@/domain/payment-sync";
 import { toPieceStatus } from "@/domain/piece-state-machine";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import type { OrderWebhookRepository } from "./payment-webhooks";
-import type { RestorationOrderRepository } from "./shopify-order";
+import type { OrderPayment, RestorationOrderRepository } from "./shopify-order";
 
 /** Restauraciones en Supabase con la clave secreta (lo usa el outbox, sin sesión). */
 export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
@@ -15,7 +14,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, shopify_synced_at, created_at, payment_methods(shopify_name))",
+        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, source, shopify_synced_at, shopify_order_title, shopify_order_id, refunded_payment_id, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -65,33 +64,33 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
       contact,
       payments: [...r.payments]
         .sort((a, b) => a.created_at.localeCompare(b.created_at))
-        .map((p): SyncPayment => ({
+        .map((p): OrderPayment => ({
           id: p.id,
           kind: p.kind,
           amountCents: toCents(Number(p.amount)),
           // Nombre del método en la tienda (D34); si no lo tiene, el del sistema.
           gateway: p.payment_methods?.shopify_name || p.method_name,
           synced: p.shopify_synced_at !== null,
+          source: p.source,
+          orderTitle: p.shopify_order_title,
+          orderId: p.shopify_order_id,
+          refundedPaymentId: p.refunded_payment_id,
         })),
     };
   },
 
-  async saveOrder(restorationId, order, lineIds) {
-    const admin = createAdminClient();
-    // Solo si aún no tiene orden: dos procesadores no se pisan.
-    const { error } = await admin
-      .from("restorations")
-      .update({ shopify_order_id: order.id, shopify_order_name: order.name })
-      .eq("id", restorationId)
+  async savePaymentOrder(paymentId, order) {
+    // Solo si aún no tiene pedido: dos procesadores no se pisan.
+    const { error } = await createAdminClient()
+      .from("payments")
+      .update({
+        shopify_order_id: order.id,
+        shopify_order_name: order.name,
+        shopify_synced_at: new Date().toISOString(),
+      })
+      .eq("id", paymentId)
       .is("shopify_order_id", null);
     if (error) throw error;
-    for (const [pieceId, lineId] of Object.entries(lineIds)) {
-      const { error: lineError } = await admin
-        .from("pieces")
-        .update({ shopify_line_item_id: lineId })
-        .eq("id", pieceId);
-      if (lineError) throw lineError;
-    }
   },
 
   async markPaymentsSynced(paymentIds) {
@@ -139,6 +138,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
         reason: p.kind === "reembolso" ? "Reembolso hecho en Shopify" : "",
         source: "shopify" as const,
         shopify_transaction_id: p.transactionId,
+        refunded_payment_id: p.refundedPaymentId ?? null,
       })),
       { onConflict: "shopify_transaction_id", ignoreDuplicates: true },
     );
@@ -177,13 +177,24 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
 /** Webhooks de la orden (11.3), con la clave secreta. */
 export const supabaseOrderWebhookRepository: OrderWebhookRepository = {
   async findRestorationByOrder(orderId) {
-    const { data, error } = await createAdminClient()
+    const admin = createAdminClient();
+    const { data, error } = await admin
       .from("restorations")
       .select("id")
       .eq("shopify_order_id", orderId)
       .maybeSingle();
     if (error) throw error;
-    return data?.id ?? null;
+    if (data) return { restorationId: data.id, paymentOrder: false };
+    // O el pedido de uno de sus pagos.
+    const { data: payment, error: paymentError } = await admin
+      .from("payments")
+      .select("restoration_id")
+      .eq("shopify_order_id", orderId)
+      .maybeSingle();
+    if (paymentError) throw paymentError;
+    return payment
+      ? { restorationId: payment.restoration_id, paymentOrder: true }
+      : null;
   },
 
   async enqueuePaymentSync(restorationId) {
