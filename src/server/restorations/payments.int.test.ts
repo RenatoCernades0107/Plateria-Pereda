@@ -12,6 +12,7 @@ import {
   supabaseOrderWebhookRepository,
   supabaseRestorationOrderRepository,
 } from "./order-repository";
+import { paymentOrderTag } from "./payment-orders";
 import { orderWebhookHandlers } from "./payment-webhooks";
 import { restorationOrderHandlers } from "./shopify-order";
 
@@ -447,7 +448,7 @@ describe("pagos hechos en Shopify (11.3)", () => {
     await process_();
     const [yape] = await paymentRows(r.id);
     const { id: orderId } = fakeShopify.externalTransaction(
-      `pago-${yape!.id}`,
+      paymentOrderTag(yape!.id),
       "-200.00",
       "Yape",
     );
@@ -477,7 +478,7 @@ describe("pagos hechos en Shopify (11.3)", () => {
     await process_();
     const [yape] = await paymentRows(r.id);
     const { id: orderId } = fakeShopify.externalTransaction(
-      `pago-${yape!.id}`,
+      paymentOrderTag(yape!.id),
       "50.00",
       "cash",
     );

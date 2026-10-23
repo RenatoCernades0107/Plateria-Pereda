@@ -428,6 +428,19 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     expect(data.payments.every((p) => p.synced)).toBe(true);
   });
 
+  it("con el id real de un pago (UUID) la etiqueta cabe en Shopify (máx. 40)", async () => {
+    const id = "6bd07cdd-cec7-4bd8-9af6-8694a1e6c932";
+    data.payments = [pago(id, 50_00, "Adelanto Guía RES-00001 A1")];
+    await expect(run(repoOf())).resolves.toMatchObject({ created: 1 });
+    const tag = orders()[0]!.tags.at(-1)!;
+    expect(tag).toBe("pago-6bd07cddcec74bd89af68694a1e6c932");
+    expect(tag.length).toBeLessThanOrEqual(40);
+    // Un reintento lo encuentra por esa misma etiqueta.
+    data.payments[0]!.orderId = null;
+    await run(repoOf());
+    expect(orders()).toHaveLength(1);
+  });
+
   it("repetir el job no crea otro pedido; un reintento tras un corte lo encuentra por su etiqueta", async () => {
     await run(repoOf());
     await expect(run(repoOf())).resolves.toMatchObject({ created: 0 });

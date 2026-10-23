@@ -55,8 +55,12 @@ export function orderBuyer(
   };
 }
 
-/** Etiqueta única del pedido de un pago (para no duplicarlo si un reintento ya lo creó). */
-export const paymentOrderTag = (paymentId: string) => `pago-${paymentId}`;
+/**
+ * Etiqueta única del pedido de un pago (para no duplicarlo si un reintento ya lo creó).
+ * Shopify no acepta etiquetas de más de 40 caracteres: el id va sin guiones (37).
+ */
+export const paymentOrderTag = (paymentId: string) =>
+  `pago-${paymentId.replaceAll("-", "")}`;
 
 /** Pagos del sistema que tienen (o tendrán) su propio pedido. */
 const ownOrderPayments = (data: OrderRestoration) =>

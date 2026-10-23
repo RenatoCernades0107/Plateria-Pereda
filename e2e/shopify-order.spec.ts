@@ -164,14 +164,19 @@ test.describe("Shopify al aprobar y cobrar", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     await approve(page, `${r.code}-1`);
-    // Con la página al día, la última pieza ofrece registrar el adelanto: sin pago.
+    // La última pieza puede ofrecer registrar el adelanto (según la selección de la
+    // tabla al aprobar): si lo ofrece, sin pago.
     await page.reload();
     await pieceAction(page, `${r.code}-2`, "Aprobar");
-    await page
+    const withoutPayment = page
       .getByRole("dialog")
-      .getByRole("button", { name: "Aprobar sin pago" })
-      .click();
-    await expect(pieceRow(page, `${r.code}-2`)).toContainText("Aprobada");
+      .getByRole("button", { name: "Aprobar sin pago" });
+    const approved = pieceRow(page, `${r.code}-2`).getByText("Aprobada", {
+      exact: true,
+    });
+    await expect(withoutPayment.or(approved).first()).toBeVisible();
+    if (await withoutPayment.isVisible()) await withoutPayment.click();
+    await expect(approved).toBeVisible();
 
     await request.post("/api/test/shopify", {
       data: {

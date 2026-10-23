@@ -595,6 +595,12 @@ export class FakeShopifyGateway implements ShopifyGateway {
         { field: ["lineItems"], message: "Line items can't be blank" },
       ]);
     }
+    // Como en Shopify: cada etiqueta, de 1 a 40 caracteres.
+    if (input.tags.some((t) => t.length === 0 || t.length > 40)) {
+      throw new ShopifyUserError([
+        { field: ["tags"], message: "Order tags is invalid" },
+      ]);
+    }
     if (
       input.name &&
       [...state().orders.values()].some((o) => o.name === input.name)
