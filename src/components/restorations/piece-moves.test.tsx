@@ -11,7 +11,7 @@ import {
   undoPieceMove,
 } from "@/server/restorations/status-actions";
 
-import { UNDO_TOAST_MS } from "./piece-moves";
+import { pieceColumnOf, UNDO_TOAST_MS } from "./piece-moves";
 import type { StatusPiece } from "./piece-status-actions";
 import { RestorationPiecesKanban } from "./restoration-pieces-kanban";
 
@@ -100,6 +100,34 @@ const lastSuccessOptions = () =>
   vi.mocked(toast.success).mock.calls.at(-1)?.[1] as ToastOptions | undefined;
 
 const column = (key: string) => screen.getByTestId(`columna-${key}`);
+
+describe("pieceColumnOf", () => {
+  const base = {
+    status: "aprobada" as const,
+    location: "en_taller" as const,
+    readyForDelivery: false,
+  };
+
+  it("una Aprobada en el taller por trabajo va a «En restauración»", () => {
+    expect(pieceColumnOf(base)).toBe("en_restauracion");
+  });
+
+  it("una Aprobada en el taller solo a revisar sigue en «Aprobada»", () => {
+    expect(
+      pieceColumnOf({ ...base, reviewSentAt: "2026-10-03T15:00:00Z" }),
+    ).toBe("aprobada");
+  });
+
+  it("al dejarla para el trabajo (revisión cerrada) pasa a «En restauración»", () => {
+    expect(
+      pieceColumnOf({
+        ...base,
+        reviewSentAt: "2026-10-03T15:00:00Z",
+        reviewReturnedAt: "2026-10-04T15:00:00Z",
+      }),
+    ).toBe("en_restauracion");
+  });
+});
 
 describe("usePieceMoves: «Deshacer» en el aviso", () => {
   beforeEach(() => {

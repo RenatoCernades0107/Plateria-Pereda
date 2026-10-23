@@ -51,6 +51,8 @@ import {
 import { PriceChangeDialog } from "./price-change-dialog";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import {
+  isPieceInReview,
+  ReviewBadge,
   LocationBadge,
   PieceQuantity,
   PieceStatusBadge,
@@ -230,6 +232,7 @@ function PieceRow({
         <div className="flex flex-col items-start gap-1">
           <PieceStatusBadge status={live.status} />
           <LocationBadge location={live.location} />
+          {isPieceInReview(live) ? <ReviewBadge /> : null}
           {pending ? (
             <Loader2
               className="text-muted-foreground size-4 animate-spin"

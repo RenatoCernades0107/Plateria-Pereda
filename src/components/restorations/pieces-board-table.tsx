@@ -48,6 +48,8 @@ import { ProviderReportButton } from "./provider-report-button";
 import { usePieceActions, type PieceAction } from "./piece-status-actions";
 import { RT } from "./responsive-table";
 import {
+  isPieceInReview,
+  ReviewBadge,
   LocationBadge,
   PieceStatusBadge,
   StatusAge,
@@ -346,6 +348,7 @@ function BoardRow({
         <td className={labeled} data-label="Ubicación">
           <div className="flex flex-col items-start gap-1">
             <LocationBadge location={live.location} />
+            {isPieceInReview(live) ? <ReviewBadge /> : null}
             {/* Recién movida (optimista): cuenta desde hoy. */}
             <LocationDays
               days={live.location === piece.location ? piece.locationDays : 0}

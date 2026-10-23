@@ -41,12 +41,15 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
+import { isPieceInReview } from "./status-badges";
 import {
+  inReviewAtWorkshop,
   locationAfter,
   needsDialog,
   requirementsFor,
   REVIEW_LABELS,
   ReviewDialog,
+  sendLabel,
   snapshotOf,
   StatusChangeDialog,
   WORKSHOP_LABELS,
@@ -120,14 +123,21 @@ export const PIECE_COLUMN_LABELS: Record<PieceColumnKey, string> = {
   [READY_COLUMN]: "Lista para entregar",
 };
 
-/** Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. */
+/**
+ * Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. Una
+ * Aprobada en el taller solo a revisar no está en restauración: sigue en su estado
+ * hasta que se deja ahí para el trabajo.
+ */
 export function pieceColumnOf(piece: {
   status: PieceStatus;
   location: PieceLocation;
   readyForDelivery: boolean;
+  reviewSentAt?: string | null;
+  reviewReturnedAt?: string | null;
 }): PieceColumnKey {
   if (!WORKSHOP_STATUSES.includes(piece.status)) return piece.status;
-  if (piece.location === "en_taller") return IN_WORKSHOP_COLUMN;
+  if (piece.location === "en_taller" && !isPieceInReview(piece))
+    return IN_WORKSHOP_COLUMN;
   if (piece.readyForDelivery) return READY_COLUMN;
   return piece.status;
 }
@@ -313,13 +323,20 @@ export function usePieceMoves<P extends StatusPiece>({
           workshopId,
           firstSentAt: piece.firstSentAt ?? now,
           lastSentAt: now,
+          ...(inReviewAtWorkshop(piece) ? { reviewReturnedAt: now } : {}),
         });
         const result = await sendPiecesToWorkshop([piece.id], workshopId);
         if ("error" in result) {
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          notifyDone(piece, `${piece.code}: enviada al taller.`, result);
+          notifyDone(
+            piece,
+            inReviewAtWorkshop(piece)
+              ? `${piece.code}: se queda en el taller para el trabajo.`
+              : `${piece.code}: enviada al taller.`,
+            result,
+          );
           resolve(null);
         }
       });
@@ -351,7 +368,7 @@ export function usePieceMoves<P extends StatusPiece>({
     if (canSendToWorkshop(snapshot, role))
       list.push({
         key: "enviar_taller",
-        label: WORKSHOP_LABELS.send,
+        label: sendLabel(piece),
         onSelect: () => setSending(piece),
       });
     if (canReceiveFromReview(snapshot, role))

@@ -67,6 +67,7 @@ import {
   canSendToWorkshop,
   canUndoStatus,
   isClosedStatus,
+  isInReview,
   PIECE_STATUS_LABELS,
   type PieceStatus,
   type PieceTransition,
@@ -86,7 +87,13 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
+import {
+  isPieceInReview,
+  LocationBadge,
+  PieceStatusBadge,
+  ReviewBadge,
+  UrgentBadge,
+} from "./status-badges";
 import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
@@ -342,7 +349,20 @@ export const REVIEW_LABELS = {
 export const WORKSHOP_LABELS = {
   send: "Enviar al taller",
   back: "Recibir del taller",
+  /** «Enviar al taller» de una pieza que ya está ahí en revisión: se queda a trabajar. */
+  stay: "Dejar en taller para trabajo",
 } as const;
+
+/**
+ * La pieza ya está en el taller en revisión: «Enviar al taller» cierra la revisión y
+ * la deja ahí por trabajo, en el mismo taller.
+ */
+export const inReviewAtWorkshop = (piece: StatusPiece) =>
+  isInReview(snapshotOf(piece));
+
+/** Texto de «Enviar al taller» para la pieza (o «Dejar en taller…» si está en revisión). */
+export const sendLabel = (piece: StatusPiece) =>
+  inReviewAtWorkshop(piece) ? WORKSHOP_LABELS.stay : WORKSHOP_LABELS.send;
 
 /** El taller que comparten todas las piezas (para proponerlo en el diálogo). */
 const sharedWorkshop = (pieces: readonly StatusPiece[]) => {
@@ -356,7 +376,9 @@ const sharedWorkshop = (pieces: readonly StatusPiece[]) => {
  * «Enviar al taller»). La ubicación pasa a En taller hasta que se marca que volvió.
  * Propone el taller que ya tienen asignado. Al enviar varias piezas que ya tienen
  * taller (de talleres distintos), propone «Cada una a su taller asignado»:
- * `onConfirm(null)` y cada pieza va al suyo.
+ * `onConfirm(null)` y cada pieza va al suyo. Si todas están ahí en revisión, el
+ * envío las deja en ese taller por trabajo («Dejar en taller para trabajo») y no se
+ * elige otro.
  */
 export function ReviewDialog({
   open,
@@ -385,6 +407,11 @@ export function ReviewDialog({
   const [pending, startTransition] = useTransition();
   if (pieces.length === 0) return null;
 
+  const stay =
+    kind === "envio" && shared !== null && pieces.every(inReviewAtWorkshop);
+  const stayWorkshop = stay
+    ? (workshops.find((w) => w.id === shared)?.name ?? "el taller")
+    : null;
   const subject =
     pieces.length === 1 ? pieces[0]!.code : `${pieces.length} piezas`;
   const submit = () => {
@@ -412,32 +439,42 @@ export function ReviewDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {kind === "envio" ? WORKSHOP_LABELS.send : REVIEW_LABELS.send}:{" "}
-            {subject}
+            {stay
+              ? WORKSHOP_LABELS.stay
+              : kind === "envio"
+                ? WORKSHOP_LABELS.send
+                : REVIEW_LABELS.send}
+            : {subject}
           </DialogTitle>
           <DialogDescription>
-            {kind === "envio"
-              ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» (en restauración) hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
-              : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que marques que volvió. Si el cliente aprueba, se envía a restaurar al mismo taller.`}
+            {stay
+              ? `La revisión termina y ${pieces.length === 1 ? "la pieza se queda" : "las piezas se quedan"} en ${stayWorkshop} para el trabajo. El estado no cambia; sigue «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
+              : kind === "envio"
+                ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» (en restauración) hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
+                : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que marques que volvió. Si el cliente aprueba, se envía a restaurar al mismo taller.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {error ? <FormAlert>{error}</FormAlert> : null}
-          <WorkshopSelect
-            id={kind === "envio" ? "envio-taller" : "revision-taller"}
-            value={workshopId}
-            onChange={setWorkshopId}
-            workshops={workshops}
-            ownOption={ownOption}
-          />
+          {stay ? null : (
+            <WorkshopSelect
+              id={kind === "envio" ? "envio-taller" : "revision-taller"}
+              value={workshopId}
+              onChange={setWorkshopId}
+              workshops={workshops}
+              ownOption={ownOption}
+            />
+          )}
         </div>
         <DialogFooter>
           <Button onClick={submit} disabled={pending}>
             {pending
               ? "Guardando…"
-              : kind === "envio"
-                ? "Confirmar: enviar al taller"
-                : "Confirmar: llevar al taller"}
+              : stay
+                ? "Confirmar: dejar en taller"
+                : kind === "envio"
+                  ? "Confirmar: enviar al taller"
+                  : "Confirmar: llevar al taller"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -665,13 +702,18 @@ export function usePieceActions({
           readyForDelivery: false,
           lastSentAt: now,
           firstSentAt: piece.firstSentAt ?? now,
+          ...(inReviewAtWorkshop(piece) ? { reviewReturnedAt: now } : {}),
         });
         const result = await sendPiecesToWorkshop([piece.id], workshopId);
         if ("error" in result) {
           toast.error(result.error);
           resolve(result.error);
         } else {
-          toast.success(`${piece.code}: enviada al taller.`);
+          toast.success(
+            inReviewAtWorkshop(piece)
+              ? `${piece.code}: se queda en el taller para el trabajo.`
+              : `${piece.code}: enviada al taller.`,
+          );
           resolve(null);
         }
       });
@@ -710,7 +752,7 @@ export function usePieceActions({
   if (send) {
     actions.push({
       key: "enviar_taller",
-      label: WORKSHOP_LABELS.send,
+      label: sendLabel(piece),
       disabled: pending,
       destructive: false,
       onSelect: () => setSendDialog(true),
@@ -1060,6 +1102,9 @@ function PieceStatusBadges({
           location={piece.location}
           className={LARGE_BADGE_CLASS}
         />
+        {isPieceInReview(piece) ? (
+          <ReviewBadge className={LARGE_BADGE_CLASS} />
+        ) : null}
         {role && canToggleUrgent(piece, role) ? (
           <UrgentToggle
             variant="label"

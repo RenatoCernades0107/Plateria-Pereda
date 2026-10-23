@@ -27,7 +27,13 @@ import {
   usePieceMoves,
 } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
-import { LocationBadge, PieceQuantity, UrgentBadge } from "./status-badges";
+import {
+  isPieceInReview,
+  LocationBadge,
+  PieceQuantity,
+  ReviewBadge,
+  UrgentBadge,
+} from "./status-badges";
 
 /**
  * Piezas de una restauración en un tablero kanban por estado (detalle, `?vista=kanban`).
@@ -160,6 +166,7 @@ export function RestorationPiecesKanban({
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {piece.urgent ? <UrgentBadge /> : null}
               <LocationBadge location={piece.location} />
+              {isPieceInReview(piece) ? <ReviewBadge /> : null}
               <span className="text-muted-foreground">
                 {piece.workshopName ?? "Sin taller"}
               </span>

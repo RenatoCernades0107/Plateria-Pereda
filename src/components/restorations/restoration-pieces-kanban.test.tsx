@@ -150,6 +150,41 @@ describe("RestorationPiecesKanban", () => {
     );
   });
 
+  it("la Aprobada en revisión sigue en «Aprobada» con «En taller» y «En revisión»", () => {
+    render(
+      <RestorationPiecesKanban
+        restorationId="r1"
+        pieces={[
+          piece(1, {
+            status: "aprobada",
+            location: "en_taller",
+            arrivedAt: "2026-10-02T15:00:00Z",
+            workshopId: "w1",
+            workshopName: "Taller Norte",
+            reviewSentAt: SENT,
+          }),
+        ]}
+        role="ventas"
+        workshops={[{ id: "w1", name: "Taller Norte" }]}
+      />,
+    );
+    const card = within(screen.getByTestId("columna-aprobada")).getByTestId(
+      "tarjeta-RES-00012-1",
+    );
+    expect(card).toHaveTextContent("En taller");
+    expect(card).toHaveTextContent("En revisión");
+    expect(screen.getByTestId("columna-en_restauracion")).toHaveTextContent(
+      "Sin piezas",
+    );
+  });
+
+  it("una pieza en restauración no lleva «En revisión»", () => {
+    renderKanban("ventas");
+    expect(screen.getByTestId("tarjeta-RES-00012-2")).not.toHaveTextContent(
+      "En revisión",
+    );
+  });
+
   it("muestra el importe (precio × cantidad) a quien ve montos, o «Por definir» si aún no tiene", () => {
     renderKanban("ventas");
     // 3 unidades de S/ 120.00: el importe es S/ 360.00 y el c/u va en el título.
