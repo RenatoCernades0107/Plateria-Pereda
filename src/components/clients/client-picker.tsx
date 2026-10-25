@@ -195,7 +195,7 @@ export function ClientPicker({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[--radix-popover-trigger-width] min-w-80 p-0"
+          className="w-[--radix-popover-trigger-width] min-w-[min(20rem,calc(100vw-2rem))] p-0"
           align="start"
         >
           <Command shouldFilter={false}>

@@ -64,7 +64,7 @@ export function FilesPanel({
   return (
     <div
       className={cn(
-        "wide:grid-cols-1 grid items-start gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]",
+        "wide:grid-cols-1 grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(17rem,22rem)_minmax(0,1fr)]",
         className,
       )}
     >

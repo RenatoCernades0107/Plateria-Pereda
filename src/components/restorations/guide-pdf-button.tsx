@@ -120,7 +120,7 @@ export function GuidePdfButton({
               Elige las piezas que van en el PDF de {data.code}.
             </DialogDescription>
           </DialogHeader>
-          <fieldset className="space-y-2">
+          <fieldset className="min-w-0 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <legend className="text-muted-foreground text-xs font-medium">
                 Piezas en el PDF ({selected.size}/{allIds.length})
@@ -146,9 +146,13 @@ export function GuidePdfButton({
                       checked={selected.has(p.id)}
                       onChange={(e) => toggle(p.id, e.target.checked)}
                     />
-                    <span className="font-medium">{p.code}</span>
-                    <span className="truncate">{p.description}</span>
-                    <span className="text-muted-foreground ml-auto shrink-0 text-xs">
+                    <span className="font-medium whitespace-nowrap">
+                      {p.code}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {p.description}
+                    </span>
+                    <span className="text-muted-foreground shrink-0 text-xs">
                       {PIECE_STATUS_LABELS[p.status]}
                     </span>
                   </label>
