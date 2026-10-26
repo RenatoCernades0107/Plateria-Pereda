@@ -75,7 +75,7 @@ describe("PaymentsList (11.4)", () => {
         payments={[
           payment({
             orderTitle: "Adelanto Guía RES-00043 A1",
-            orderName: "Adelanto Guía RES-00043 A1",
+            orderName: "#1045",
             orderUrl: "https://pereda.myshopify.com/admin/orders/77",
           }),
           payment({
@@ -98,7 +98,9 @@ describe("PaymentsList (11.4)", () => {
       "href",
       "https://pereda.myshopify.com/admin/orders/77",
     );
+    // La descripción del pedido es el texto del enlace; el número es el de Shopify.
     expect(rows[0]).toHaveTextContent("Adelanto Guía RES-00043 A1");
+    expect(rows[0]).toHaveTextContent("Pedido #1045");
     expect(rows[1]).toHaveTextContent("Pendiente de envío");
     expect(rows[1]).toHaveTextContent("Saldo Guía RES-00043");
     expect(rows[2]).toHaveTextContent("De Adelanto Guía RES-00043 A1");

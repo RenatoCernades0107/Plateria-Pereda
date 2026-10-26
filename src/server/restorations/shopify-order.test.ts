@@ -392,7 +392,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   const run = (memory: ReturnType<typeof memoryRepo>, j = syncJob) =>
     restorationOrderHandlers(memory.repo, () => APP_URL)[j.kind]!(j, gateway);
 
-  it("cada pago es un pedido pagado, con su nombre como número de pedido y como línea", async () => {
+  it("cada pago es un pedido pagado, con el número de Shopify y su descripción como línea", async () => {
     const memory = repoOf();
     await expect(run(memory)).resolves.toEqual({
       created: 2,
@@ -401,7 +401,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     });
     expect(
       orders().map((o) => ({
-        name: o.name,
+        number: o.name,
         lines: o.lines.map((l) => [l.title, l.price, l.quantity]),
         tags: o.tags,
         note: o.note,
@@ -409,14 +409,14 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       })),
     ).toEqual([
       {
-        name: "Adelanto Guía RES-00001 A1",
+        number: "#1001",
         lines: [["Adelanto Guía RES-00001 A1", "300.00", 1]],
         tags: ["restauracion", "RES-00001", "pago-pay1"],
         note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
         status: "PAID",
       },
       {
-        name: "Adelanto Guía RES-00001 A2",
+        number: "#1002",
         lines: [["Adelanto Guía RES-00001 A2", "100.00", 1]],
         tags: ["restauracion", "RES-00001", "pago-pay2"],
         note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
@@ -453,11 +453,11 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     expect(retry.savedOrders.get("pay1")?.id).toBe(orders()[0]!.id);
   });
 
-  it("el saldo es otro pedido con su propio nombre", async () => {
+  it("el saldo es otro pedido con su propia descripción", async () => {
     await run(repoOf());
     data.payments.push(pago("pay3", 850_50, "Saldo Guía RES-00001"));
     await run(repoOf());
-    expect(orders().map((o) => o.name)).toEqual([
+    expect(orders().map((o) => o.lines[0]!.title)).toEqual([
       "Adelanto Guía RES-00001 A1",
       "Adelanto Guía RES-00001 A2",
       "Saldo Guía RES-00001",
@@ -486,7 +486,9 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       refunded: 0,
       imported: 0,
     });
-    expect(orders().map((o) => [o.name, o.financials.received])).toEqual([
+    expect(
+      orders().map((o) => [o.lines[0]!.title, o.financials.received]),
+    ).toEqual([
       ["Adelanto Guía RES-00001 A1", "300.00"],
       ["Adelanto Guía RES-00001 A2", "60.00"],
     ]);

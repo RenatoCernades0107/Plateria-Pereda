@@ -601,17 +601,9 @@ export class FakeShopifyGateway implements ShopifyGateway {
         { field: ["tags"], message: "Order tags is invalid" },
       ]);
     }
-    if (
-      input.name &&
-      [...state().orders.values()].some((o) => o.name === input.name)
-    ) {
-      throw new ShopifyUserError([
-        { field: ["name"], message: "Name has already been taken" },
-      ]);
-    }
     const order: FakeOrder = {
       id: nextId("Order"),
-      name: input.name ?? `#${1000 + state().orders.size + 1}`,
+      name: `#${1000 + state().orders.size + 1}`,
       tags: [...input.tags],
       lines: input.lines.map(toLine),
       customerId: input.customerId,

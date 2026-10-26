@@ -75,7 +75,11 @@ export function isFullyDelivered(data: Pick<OrderRestoration, "pieces">) {
   return charged.length > 0 && charged.every((p) => p.status === "entregada");
 }
 
-/** Datos del pedido de un pago: una línea por el monto, ya pagado con su método. */
+/**
+ * Datos del pedido de un pago: una línea por el monto, ya pagado con su método. El
+ * número del pedido es el de Shopify (#1045); la descripción ("Adelanto Guía
+ * RES-00043 A1", "Saldo Guía RES-00043") es el título de la línea.
+ */
 export function paymentOrderInput(
   data: OrderRestoration,
   payment: OrderPayment & { orderTitle: string },
@@ -83,7 +87,6 @@ export function paymentOrderInput(
 ): OrderInput {
   const amount = toDecimalString(payment.amountCents);
   return {
-    name: payment.orderTitle,
     ...orderBuyer(data),
     lines: [{ title: payment.orderTitle, price: amount, quantity: 1 }],
     tags: ["restauracion", data.code, paymentOrderTag(payment.id)],

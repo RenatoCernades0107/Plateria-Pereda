@@ -727,7 +727,6 @@ export class LiveShopifyGateway implements ShopifyGateway {
       orderCreate: { order: OrderNode | null; userErrors: UserErrors };
     }>(ORDER_CREATE, {
       order: {
-        ...(input.name && { name: input.name }),
         customerId: input.customerId,
         ...(input.companyLocationId && {
           companyLocationId: input.companyLocationId,
