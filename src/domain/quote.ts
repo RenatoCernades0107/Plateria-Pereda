@@ -159,3 +159,20 @@ export function formatQuoteDate(date: string): string {
   const [, y, m, d] = match;
   return `${d}/${m}/${y}`;
 }
+
+const longDateFormat = new Intl.DateTimeFormat("es-PE", {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Fecha calendario "AAAA-MM-DD" → "17 de agosto de 2026" (para el PDF, Paso 14.5). */
+export function formatQuoteDateLong(date: string): string {
+  const match = ISO_DATE.exec(date);
+  if (!match) return date;
+  const [, y, m, d] = match;
+  return longDateFormat.format(
+    new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))),
+  );
+}
