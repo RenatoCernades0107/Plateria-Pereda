@@ -199,7 +199,7 @@ select is((select count(*)::int from public.notifications), 0, 'las guías inter
 -- Configuración: todos leen, solo admin edita.
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000050a2","role":"authenticated"}', true);
-select is((select count(*)::int from public.alert_settings), 4, 'todos leen la configuración de alertas');
+select is((select count(*)::int from public.alert_settings), 5, 'todos leen la configuración de alertas');
 update public.alert_settings set enabled = true;
 reset role;
 select is(

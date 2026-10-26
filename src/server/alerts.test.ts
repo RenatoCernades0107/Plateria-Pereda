@@ -24,7 +24,7 @@ vi.mock("@/lib/supabase/server", () => ({
 const { getAlertSettings, listAlertRecipients } = await import("./alerts");
 
 describe("getAlertSettings", () => {
-  it("devuelve las cuatro alertas en orden, con el mensaje por defecto si no hay propio", async () => {
+  it("devuelve las cinco alertas en orden, con el mensaje por defecto si no hay propio", async () => {
     mocks.settings.mockResolvedValue({
       error: null,
       data: [
@@ -48,6 +48,7 @@ describe("getAlertSettings", () => {
       "aprobacion_total",
       "pieza_en_espera",
       "guia_en_espera",
+      "guia_lista",
     ]);
     expect(settings[0]).toEqual({
       kind: "aprobacion_parcial",
