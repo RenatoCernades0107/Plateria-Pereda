@@ -4,6 +4,7 @@ import {
   addDays,
   canChangeQuoteStatus,
   formatQuoteDate,
+  formatQuoteDateLong,
   isQuoteExpired,
   limaDateOf,
   lineDiscount,
@@ -179,5 +180,12 @@ describe("formatQuoteDate", () => {
   it("muestra la fecha calendario sin correrla por la zona horaria", () => {
     expect(formatQuoteDate("2026-10-04")).toBe("04/10/2026");
     expect(formatQuoteDate("2028-02-29")).toBe("29/02/2028");
+  });
+});
+
+describe("formatQuoteDateLong", () => {
+  it("en letras para el encabezado del PDF (Paso 14.5)", () => {
+    expect(formatQuoteDateLong("2026-08-17")).toBe("17 de agosto de 2026");
+    expect(formatQuoteDateLong("2028-02-29")).toBe("29 de febrero de 2028");
   });
 });

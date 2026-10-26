@@ -291,10 +291,10 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - Commit: `docs(notas): registra respuestas y decisiones`
 
 #### Paso 0.2 — Cuentas y accesos
-- [ ] Repositorio en GitHub (cuenta del desarrollador) con rama `main` protegida (PR + CI en verde).
-- [ ] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
+- [x] Repositorio en GitHub (cuenta del desarrollador) con rama `main` protegida (PR + CI en verde).
+- [x] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
 - [ ] Pedir a la Platería que cree la app de producción en el Dev Dashboard de su organización (o que le dé acceso al desarrollador para crearla), con los permisos mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products`, `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders` (P44).
-- [ ] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
+- [x] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
 - [x] Logo (PNG, en `public/`) y colores de marca. Pendiente: logo en SVG para el PDF de cotizaciones.
 - Tests: No aplica (configuración de cuentas).
 
@@ -358,7 +358,7 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - [x] Workflow `ci.yml` en cada push (todas las ramas) y manual; cancela corridas anteriores de la misma rama. Tras `supabase start`, `pnpm env:local` genera el `.env.local` para la integración y E2E:
   - Job `checks`: instalación con caché, lint, typecheck, formato, unit con cobertura, build.
   - Job `db-e2e`: Supabase CLI, `supabase start` (sin Studio, Realtime, imgproxy ni edge functions), `supabase db lint`, `supabase test db`, verificación de que los tipos generados no tienen diferencias, tests de integración, Playwright (sube el reporte si falla).
-- [ ] Protección de la rama `main` exigiendo CI en verde. **Manual** (Settings → Branches en GitHub), cuando exista `main`.
+- [x] Protección de la rama `main` exigiendo CI en verde. **Manual** (Settings → Branches en GitHub), cuando exista `main`.
 - **Unit / E2E:** No aplica (el pipeline ejecuta las suites existentes).
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
@@ -1254,23 +1254,25 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - **IGV (P13 ✅, 2026-10-09):** la cotización pregunta siempre "¿El precio incluye IGV?" (Sí / No); si no lo incluye, cada línea (con su descuento) se cobra + 18 % y el total suma esas líneas; subtotal y descuentos quedan sin IGV y el formulario muestra la fila "IGV (18 %)". Se cambia solo en borrador; duplicar la conserva. Migración `20261009140000_igv_cotizaciones.sql` (`quotes.prices_include_igv`, `save_quote` lee `p_quote.prices_include_igv`), `quoteTotals(lines, pricesIncludeIgv)`, pgTAP `25_igv_cotizaciones`, unit y E2E. El PDF (14.5) deberá mostrar el mismo desglose.
 
 #### Paso 14.5 — PDF de la cotización ⛔ P36 ⛔ P37 ⛔ P38 (IGV según P13)
-- [ ] Plantilla con `@react-pdf/renderer`: logo, datos de la empresa, código, fechas de emisión y vigencia, datos del cliente (y "Atención:" contacto), tabla de productos (imagen, descripción, personalización, cantidad, precio unitario, subtotal), total, condiciones; fuente embebida (tildes y ñ); varias páginas si hay muchas líneas.
-- [ ] Route Handler `/api/cotizaciones/[id]/pdf` (verifica sesión y permiso); nombre de archivo `COT-000001-<cliente>.pdf`.
+- [x] Plantilla al formato de la cotización en papel de la tienda (foto de referencia, 2026-10-26): fecha y ciudad, código, logo, datos del cliente (y "Atención:" contacto), dirección de la empresa, tabla de productos (SKU, descripción, cantidad, precio, total), Sub Total/Total Venta, monto en letras ("Son:"), vigencia, "LOS PRECIOS NO INCLUYEN IGV" (ya no hay IGV en el sistema, P13 revisado 2026-10-16), notas y condiciones, firma.
+- [~] Sin Route Handler ni `@react-pdf/renderer`: se generó en el cliente con jsPDF, igual que la guía de restauración (Paso 10), para no duplicar el patrón ya construido; no hay nombre `COT-000001-<cliente>.pdf` (queda `cotizacion-COT-000001.pdf`, como `guia-RES-00001.pdf`) ni verificación de sesión en un endpoint aparte (la gatea `cotizador.usar` al armar los datos en el server component).
 - **Unit:**
-  - [ ] Renderizar a buffer y extraer el texto: contiene cliente, líneas, total y vigencia.
-  - [ ] Muchas líneas → varias páginas.
-  - [ ] Caracteres especiales (tildes, ñ, S/).
+  - [x] El texto del PDF contiene cliente, líneas, total, vigencia y el monto en letras (`quote-pdf-draw.test.ts`, sobre el buffer de jsPDF, como `guide-pdf-draw.test.ts`).
+  - [ ] Muchas líneas → varias páginas (sin probar; el dibujo pagina igual que la guía).
+  - [x] Caracteres especiales (tildes, ñ, S/).
 - **E2E:**
-  - [ ] "Descargar PDF" dispara la descarga con el nombre correcto y el texto incluye total y vigencia.
-  - [ ] Sin sesión → 401.
+  - [x] "Exportar PDF" dispara la descarga con el nombre correcto (`quotes.spec.ts`).
+  - [ ] Sin sesión → 401: no aplica (sin Route Handler).
+- Hecho (2026-10-26): `src/domain/amount-in-words.ts` (monto en letras, español), `src/domain/quote-pdf.ts` (modelo) y `src/components/quotes/quote-pdf-draw.ts` (dibujo con jsPDF). Botón en `/cotizaciones/[id]`.
 - Commit: `feat(cotizador): genera PDF de la cotización`
 
 #### Paso 14.6 — Compartir la cotización ⛔ P39
-- [ ] En celular: compartir el PDF con el menú del teléfono (Web Share API) para enviarlo directo por WhatsApp; en desktop: descargar + abrir WhatsApp con un mensaje breve.
+- [x] En celular: compartir el PDF con el menú del teléfono (Web Share API) para enviarlo directo por WhatsApp; en desktop: descargar + abrir WhatsApp con un mensaje breve.
 - **Unit:**
-  - [ ] Detección de soporte de Web Share con archivos y fallback.
+  - [x] Detección de soporte de Web Share con archivos y fallback (`web-share.test.ts`).
 - **E2E:**
-  - [ ] En desktop se ofrece descarga + enlace de WhatsApp; `@mobile` el botón "Compartir" está disponible (Web Share simulado).
+  - [x] En desktop se ofrece descarga + enlace de WhatsApp; `@mobile` el botón "Compartir" está disponible (Web Share simulado) (`quotes.spec.ts`).
+- Hecho (2026-10-26): `src/components/quotes/web-share.ts` (`canShareFiles`) y el botón "Compartir por WhatsApp" de `quote-pdf-button.tsx`.
 - Commit: `feat(cotizador): permite compartir la cotización`
 
 ### Fase 15 — Calidad transversal

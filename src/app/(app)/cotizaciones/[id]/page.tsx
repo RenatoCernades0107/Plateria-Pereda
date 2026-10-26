@@ -7,12 +7,16 @@ import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { PageHeader } from "@/components/page-header";
 import { QuoteActions } from "@/components/quotes/quote-actions";
 import { QuoteForm } from "@/components/quotes/quote-form";
+import { QuotePdfButton } from "@/components/quotes/quote-pdf-button";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
+import { limaDateOf } from "@/domain/quote";
+import { quotePdfLineFromDraft, type QuotePdfData } from "@/domain/quote-pdf";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
 import { getQuote } from "@/server/quotes/queries";
+import { getSettings } from "@/server/settings";
 
 export async function generateMetadata({
   params,
@@ -32,6 +36,30 @@ export default async function CotizacionPage({
   if (!quote) notFound();
 
   const draft = quote.status === "borrador";
+  const canExportPdf = quote.lines.length > 0;
+  const company = await getSettings();
+  const client = quote.client;
+  // "Sr(es):" es la empresa cuando se cotiza a un contacto; "Contacto:" es quien
+  // atiende (el mismo nombre si no hay un contacto aparte, como en la cotización
+  // impresa de la tienda).
+  const clientName =
+    client.source === "local" && client.kind === "contacto"
+      ? client.companyName
+      : client.name;
+  const pdfData: QuotePdfData = {
+    company: {
+      name: company.legalName || "Platería Pereda",
+      address: company.address,
+    },
+    code: quote.code,
+    issueDate: quote.issueDate ?? limaDateOf(new Date()),
+    validityDays: quote.validityDays,
+    clientName,
+    contactName: client.name,
+    lines: quote.lines.map(quotePdfLineFromDraft),
+    notes: quote.notes,
+    terms: quote.terms,
+  };
 
   return (
     <div className="space-y-4">
@@ -68,7 +96,12 @@ export default async function CotizacionPage({
             ) : null}
           </div>
         </div>
-        <QuoteActions id={quote.id} status={quote.status} />
+        <div className="flex flex-wrap gap-2">
+          {canExportPdf ? (
+            <QuotePdfButton data={pdfData} phone={client.phone} />
+          ) : null}
+          <QuoteActions id={quote.id} status={quote.status} />
+        </div>
       </div>
       <QuoteForm
         // Al cambiar de estado se reinicia con los datos guardados.

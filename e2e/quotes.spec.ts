@@ -156,6 +156,35 @@ test.describe("Cotizaciones", () => {
       "Grabado: Ana",
     );
 
+    // Exportar PDF (Paso 14.5): descarga con el nombre esperado.
+    const pdfDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Exportar PDF" }).click();
+    expect((await pdfDownload).suggestedFilename()).toBe(
+      `cotizacion-${firstQuoteCode}.pdf`,
+    );
+
+    // Compartir por WhatsApp (Paso 14.6): sin Web Share (escritorio), descarga
+    // el PDF y abre WhatsApp con un mensaje (el cliente de Shopify tiene teléfono).
+    // Se corta la navegación real a wa.me: en un navegador de verdad redirige a
+    // api.whatsapp.com y el popup ya no tiene la URL que abrió la app.
+    let whatsappRequestUrl: string | null = null;
+    await page.context().route("https://wa.me/**", async (route) => {
+      whatsappRequestUrl = route.request().url();
+      await route.abort();
+    });
+    const [shareDownload, popup] = await Promise.all([
+      page.waitForEvent("download"),
+      page.waitForEvent("popup"),
+      page.getByRole("button", { name: "Compartir por WhatsApp" }).click(),
+    ]);
+    expect(shareDownload.suggestedFilename()).toBe(
+      `cotizacion-${firstQuoteCode}.pdf`,
+    );
+    expect(whatsappRequestUrl).toContain("wa.me");
+    expect(decodeURIComponent(whatsappRequestUrl!)).toContain(firstQuoteCode);
+    await popup.close();
+    await page.context().unroute("https://wa.me/**");
+
     // Aparece en el listado al buscar por el cliente.
     await page.goto("/cotizaciones");
     await page.getByLabel("Código o cliente").fill(`Cotiza${run}`);
@@ -235,6 +264,34 @@ test.describe("Cotizaciones", () => {
     await page.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(page.getByText("Borrador guardado.")).toBeVisible();
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/);
+
+    // Compartir por WhatsApp (Paso 14.6): con Web Share simulado, usa el menú
+    // nativo del teléfono en vez de descargar y abrir WhatsApp.
+    await page.evaluate(() => {
+      (window as unknown as { __shareCalls: number }).__shareCalls = 0;
+      Object.defineProperty(navigator, "canShare", {
+        value: () => true,
+        configurable: true,
+      });
+      Object.defineProperty(navigator, "share", {
+        value: async () => {
+          (window as unknown as { __shareCalls: number }).__shareCalls++;
+        },
+        configurable: true,
+      });
+    });
+    const shareButton = page.getByRole("button", {
+      name: "Compartir por WhatsApp",
+    });
+    await expect(shareButton).toBeVisible();
+    await shareButton.click();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as unknown as { __shareCalls: number }).__shareCalls,
+        ),
+      )
+      .toBe(1);
 
     await page.goto(`/cotizaciones?q=Cotiza${run}`);
     await expect(
