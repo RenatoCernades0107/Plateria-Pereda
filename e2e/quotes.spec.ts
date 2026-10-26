@@ -165,6 +165,13 @@ test.describe("Cotizaciones", () => {
 
     // Compartir por WhatsApp (Paso 14.6): sin Web Share (escritorio), descarga
     // el PDF y abre WhatsApp con un mensaje (el cliente de Shopify tiene teléfono).
+    // Se corta la navegación real a wa.me: en un navegador de verdad redirige a
+    // api.whatsapp.com y el popup ya no tiene la URL que abrió la app.
+    let whatsappRequestUrl: string | null = null;
+    await page.context().route("https://wa.me/**", async (route) => {
+      whatsappRequestUrl = route.request().url();
+      await route.abort();
+    });
     const [shareDownload, popup] = await Promise.all([
       page.waitForEvent("download"),
       page.waitForEvent("popup"),
@@ -173,9 +180,10 @@ test.describe("Cotizaciones", () => {
     expect(shareDownload.suggestedFilename()).toBe(
       `cotizacion-${firstQuoteCode}.pdf`,
     );
-    expect(popup.url()).toContain("wa.me");
-    expect(decodeURIComponent(popup.url())).toContain(firstQuoteCode);
+    expect(whatsappRequestUrl).toContain("wa.me");
+    expect(decodeURIComponent(whatsappRequestUrl!)).toContain(firstQuoteCode);
     await popup.close();
+    await page.context().unroute("https://wa.me/**");
 
     // Aparece en el listado al buscar por el cliente.
     await page.goto("/cotizaciones");
