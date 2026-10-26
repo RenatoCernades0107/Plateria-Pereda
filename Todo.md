@@ -291,10 +291,10 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - Commit: `docs(notas): registra respuestas y decisiones`
 
 #### Paso 0.2 — Cuentas y accesos
-- [ ] Repositorio en GitHub (cuenta del desarrollador) con rama `main` protegida (PR + CI en verde).
-- [ ] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
+- [x] Repositorio en GitHub (cuenta del desarrollador) con rama `main` protegida (PR + CI en verde).
+- [x] Tienda de desarrollo de Shopify en la organización del desarrollador + app de prueba creada en el Dev Dashboard.
 - [ ] Pedir a la Platería que cree la app de producción en el Dev Dashboard de su organización (o que le dé acceso al desarrollador para crearla), con los permisos mínimos: `read_customers`, `write_customers`, `read_orders`, `write_orders`, `read_draft_orders`, `write_draft_orders`, `write_order_edits`, `read_products`, `read_merchant_managed_fulfillment_orders` y `write_merchant_managed_fulfillment_orders` (P44).
-- [ ] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
+- [x] Proyectos de Supabase (Free) y Vercel (Hobby) a nombre del desarrollador; pasan a Pro antes del lanzamiento (Fase 16).
 - [x] Logo (PNG, en `public/`) y colores de marca. Pendiente: logo en SVG para el PDF de cotizaciones.
 - Tests: No aplica (configuración de cuentas).
 
@@ -358,7 +358,7 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 - [x] Workflow `ci.yml` en cada push (todas las ramas) y manual; cancela corridas anteriores de la misma rama. Tras `supabase start`, `pnpm env:local` genera el `.env.local` para la integración y E2E:
   - Job `checks`: instalación con caché, lint, typecheck, formato, unit con cobertura, build.
   - Job `db-e2e`: Supabase CLI, `supabase start` (sin Studio, Realtime, imgproxy ni edge functions), `supabase db lint`, `supabase test db`, verificación de que los tipos generados no tienen diferencias, tests de integración, Playwright (sube el reporte si falla).
-- [ ] Protección de la rama `main` exigiendo CI en verde. **Manual** (Settings → Branches en GitHub), cuando exista `main`.
+- [x] Protección de la rama `main` exigiendo CI en verde. **Manual** (Settings → Branches en GitHub), cuando exista `main`.
 - **Unit / E2E:** No aplica (el pipeline ejecuta las suites existentes).
 - Commit: `ci: agrega pipeline de lint, tests unitarios, de BD y E2E`
 
