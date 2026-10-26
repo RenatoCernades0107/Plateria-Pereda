@@ -184,7 +184,10 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     expect((await pay(r.id, 200, "Yape")).error).toBeNull();
     await process_();
     expect(
-      paymentOrders(r.code).map((o) => [o.name, o.financials.financialStatus]),
+      paymentOrders(r.code).map((o) => [
+        o.lines[0]!.title,
+        o.financials.financialStatus,
+      ]),
     ).toEqual([[`Adelanto Guía ${r.code} A1`, "PAID"]]);
 
     // Un pago en dos métodos: dos pedidos; el segundo completa el total.
@@ -196,7 +199,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     await process_();
     expect(
       paymentOrders(r.code).map((o) => [
-        o.name,
+        o.lines[0]!.title,
         o.lines.map((l) => [l.title, l.price]),
         o.financials.financialStatus,
         o.transactions.map((t) => t.gateway),
@@ -246,7 +249,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     const r = await seed();
     expect((await pay(r.id, 50, "Yape")).error).toBeNull();
     await process_();
-    expect(paymentOrders(r.code).map((o) => o.name)).toEqual([
+    expect(paymentOrders(r.code).map((o) => o.lines[0]!.title)).toEqual([
       `Adelanto Guía ${r.code} A1`,
     ]);
   });
@@ -282,7 +285,10 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     expect(error).toBeNull();
     await process_();
     expect(
-      paymentOrders(r.code).map((o) => [o.name, o.financials.received]),
+      paymentOrders(r.code).map((o) => [
+        o.lines[0]!.title,
+        o.financials.received,
+      ]),
     ).toEqual([
       [`Adelanto Guía ${r.code} A1`, "150.00"],
       [`Adelanto Guía ${r.code} A2`, "100.00"],

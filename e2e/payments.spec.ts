@@ -34,7 +34,7 @@ async function fakeOrders(request: APIRequestContext, code: string) {
 
 const summary = async (request: APIRequestContext, code: string) =>
   (await fakeOrders(request, code)).map((o) => [
-    o.name,
+    o.lines[0]!.title,
     o.financials.financialStatus,
     o.financials.received,
   ]);

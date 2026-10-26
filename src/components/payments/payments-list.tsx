@@ -16,10 +16,10 @@ import { formatCents } from "@/domain/money";
 import { formatDate } from "@/lib/format";
 import type { PaymentRecord } from "@/server/payments/queries";
 
-/** Estado de envío a Shopify de cada pago (§7.5); con su pedido, el nombre de este. */
+/** Estado de envío a Shopify de cada pago (§7.5); con su pedido, su descripción. */
 export function shopifyLabel(p: PaymentRecord): string {
   if (p.source === "shopify") return "Hecho en Shopify";
-  if (p.orderName) return p.orderName;
+  if (p.orderName) return p.orderTitle ?? p.orderName;
   return p.syncedToShopify ? "En Shopify" : "Pendiente de envío";
 }
 
@@ -28,19 +28,26 @@ function ShopifyCell({ payment: p }: { payment: PaymentRecord }) {
   const label = shopifyLabel(p);
   if (p.orderUrl)
     return (
-      <Badge variant="outline" asChild className={SHOPIFY_BADGE_CLASS}>
-        <a
-          href={p.orderUrl}
-          target="_blank"
-          rel="noreferrer"
-          title="Abrir el pedido en Shopify (pestaña nueva)"
-          data-testid="pedido-shopify"
-        >
-          <ShopifyIcon />
-          {label}
-          <ExternalLink aria-hidden />
-        </a>
-      </Badge>
+      <>
+        <Badge variant="outline" asChild className={SHOPIFY_BADGE_CLASS}>
+          <a
+            href={p.orderUrl}
+            target="_blank"
+            rel="noreferrer"
+            title="Abrir el pedido en Shopify (pestaña nueva)"
+            data-testid="pedido-shopify"
+          >
+            <ShopifyIcon />
+            {label}
+            <ExternalLink aria-hidden />
+          </a>
+        </Badge>
+        {p.orderName ? (
+          <span className="text-muted-foreground block text-xs">
+            Pedido {p.orderName}
+          </span>
+        ) : null}
+      </>
     );
   const pending = p.source === "sistema" && !p.syncedToShopify;
   return (
@@ -68,7 +75,7 @@ export function PaymentsList({ payments }: { payments: PaymentRecord[] }) {
   const byId = new Map(payments.map((p) => [p.id, p]));
   const refundedOf = (p: PaymentRecord) => {
     const target = p.refundedPaymentId && byId.get(p.refundedPaymentId);
-    return target ? (target.orderName ?? target.orderTitle) : null;
+    return target ? (target.orderTitle ?? target.orderName) : null;
   };
   return (
     <Table aria-label="Historial de pagos">
