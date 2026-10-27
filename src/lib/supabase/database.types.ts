@@ -347,6 +347,8 @@ export type Database = {
           reason: string;
           refunded_payment_id: string | null;
           restoration_id: string;
+          shopify_draft_order_id: string | null;
+          shopify_draft_order_name: string | null;
           shopify_order_id: string | null;
           shopify_order_name: string | null;
           shopify_order_title: string | null;
@@ -367,6 +369,8 @@ export type Database = {
           reason?: string;
           refunded_payment_id?: string | null;
           restoration_id: string;
+          shopify_draft_order_id?: string | null;
+          shopify_draft_order_name?: string | null;
           shopify_order_id?: string | null;
           shopify_order_name?: string | null;
           shopify_order_title?: string | null;
@@ -387,6 +391,8 @@ export type Database = {
           reason?: string;
           refunded_payment_id?: string | null;
           restoration_id?: string;
+          shopify_draft_order_id?: string | null;
+          shopify_draft_order_name?: string | null;
           shopify_order_id?: string | null;
           shopify_order_name?: string | null;
           shopify_order_title?: string | null;

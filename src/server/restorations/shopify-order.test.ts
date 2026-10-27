@@ -93,6 +93,10 @@ function memoryRepo(
         payment.synced = true;
       }
     },
+    savePaymentDraft: async (paymentId, draft) => {
+      const payment = data?.payments.find((p) => p.id === paymentId);
+      if (payment && !payment.draftOrderId) payment.draftOrderId = draft.id;
+    },
     saveLineIds: async (lines) => {
       for (const l of lines) lineUpdates.set(l.pieceId, l.lineId);
     },
@@ -391,47 +395,84 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   const orders = () => fakeShopify.snapshot().orders;
   const run = (memory: ReturnType<typeof memoryRepo>, j = syncJob) =>
     restorationOrderHandlers(memory.repo, () => APP_URL)[j.kind]!(j, gateway);
+  /** El empleado convierte en pedido cada borrador (sin cobrarlo). */
+  const employeeCreatesOrders = () => {
+    for (const d of fakeShopify.snapshot().drafts)
+      fakeShopify.completeDraft(d.tags.at(-1)!);
+  };
+  /** Crea los borradores, el empleado los convierte en pedido y el job los cobra. */
+  const syncToOrders = async () => {
+    await run(repoOf());
+    employeeCreatesOrders();
+    return run(repoOf());
+  };
 
-  it("cada pago es un pedido pagado, con el número de Shopify y su descripción como línea", async () => {
+  it("cada pago es un borrador; al crearlo el empleado, el pedido se cobra con su método", async () => {
     const memory = repoOf();
     await expect(run(memory)).resolves.toEqual({
-      created: 2,
+      created: 0,
+      drafts: 2,
+      pendingDrafts: 2,
       refunded: 0,
       imported: 0,
     });
+    expect(orders()).toEqual([]);
     expect(
-      orders().map((o) => ({
-        number: o.name,
-        lines: o.lines.map((l) => [l.title, l.price, l.quantity]),
-        tags: o.tags,
-        note: o.note,
-        status: o.financials.financialStatus,
+      fakeShopify.snapshot().drafts.map((d) => ({
+        name: d.name,
+        lines: d.lines.map((l) => [l.title, l.price, l.quantity]),
+        tags: d.tags,
       })),
     ).toEqual([
       {
-        number: "#1001",
+        name: "#D1",
         lines: [["Adelanto Guía RES-00001 A1", "300.00", 1]],
         tags: ["restauracion", "RES-00001", "pago-pay1"],
-        note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
-        status: "PAID",
       },
       {
-        number: "#1002",
+        name: "#D2",
         lines: [["Adelanto Guía RES-00001 A2", "100.00", 1]],
         tags: ["restauracion", "RES-00001", "pago-pay2"],
-        note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
-        status: "PAID",
       },
     ]);
+    expect(fakeShopify.snapshot().drafts[0]!.note).toBe(
+      "Guía RES-00001: https://pereda.example/restauraciones/r1\nCobro de S/ 300.00 con Efectivo, ya registrado en el sistema: crea el pedido sin tomar el pago.",
+    );
+    expect(data.payments.map((p) => p.draftOrderId)).toEqual([
+      expect.stringContaining("DraftOrder"),
+      expect.stringContaining("DraftOrder"),
+    ]);
+    expect(data.payments.some((p) => p.synced)).toBe(false);
+
+    // Repetir el job sin que el empleado haya creado el pedido no duplica borradores.
+    await run(repoOf());
+    expect(fakeShopify.snapshot().drafts).toHaveLength(2);
+
+    employeeCreatesOrders();
+    await expect(run(memory)).resolves.toMatchObject({ created: 2 });
+    expect(orders().map((o) => [o.name, o.financials.financialStatus])).toEqual(
+      [
+        ["#1001", "PAID"],
+        ["#1002", "PAID"],
+      ],
+    );
     expect(orders()[1]!.transactions.map((t) => t.gateway)).toEqual(["Yape"]);
     expect([...memory.savedOrders.keys()]).toEqual(["pay1", "pay2"]);
     expect(data.payments.every((p) => p.synced)).toBe(true);
   });
 
+  it("si el empleado ya cobró el pedido, el sistema no lo cobra otra vez", async () => {
+    await run(repoOf());
+    employeeCreatesOrders();
+    fakeShopify.externalTransaction("pago-pay1", "300.00", "cash");
+    await run(repoOf());
+    expect(orders()[0]!.transactions).toHaveLength(1);
+  });
+
   it("con el id real de un pago (UUID) la etiqueta cabe en Shopify (máx. 40)", async () => {
     const id = "6bd07cdd-cec7-4bd8-9af6-8694a1e6c932";
     data.payments = [pago(id, 50_00, "Adelanto Guía RES-00001 A1")];
-    await expect(run(repoOf())).resolves.toMatchObject({ created: 1 });
+    await expect(syncToOrders()).resolves.toMatchObject({ created: 1 });
     const tag = orders()[0]!.tags.at(-1)!;
     expect(tag).toBe("pago-6bd07cddcec74bd89af68694a1e6c932");
     expect(tag.length).toBeLessThanOrEqual(40);
@@ -439,10 +480,11 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     data.payments[0]!.orderId = null;
     await run(repoOf());
     expect(orders()).toHaveLength(1);
+    expect(fakeShopify.snapshot().drafts).toHaveLength(1);
   });
 
   it("repetir el job no crea otro pedido; un reintento tras un corte lo encuentra por su etiqueta", async () => {
-    await run(repoOf());
+    await syncToOrders();
     await expect(run(repoOf())).resolves.toMatchObject({ created: 0 });
     // Corte: Shopify creó el pedido pero el sistema no lo guardó.
     const lost = structuredClone(data);
@@ -454,9 +496,9 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   });
 
   it("el saldo es otro pedido con su propia descripción", async () => {
-    await run(repoOf());
+    await syncToOrders();
     data.payments.push(pago("pay3", 850_50, "Saldo Guía RES-00001"));
-    await run(repoOf());
+    await syncToOrders();
     expect(orders().map((o) => o.lines[0]!.title)).toEqual([
       "Adelanto Guía RES-00001 A1",
       "Adelanto Guía RES-00001 A2",
@@ -468,6 +510,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     data.payments = [{ ...pago("old", 50_00, ""), orderTitle: null }];
     await expect(run(repoOf())).resolves.toMatchObject({ created: 0 });
     expect(orders()).toEqual([]);
+    expect(fakeShopify.snapshot().drafts).toEqual([]);
   });
 
   it("sin el cliente en Shopify el job se reintenta", async () => {
@@ -476,7 +519,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   });
 
   it("el reembolso se hace en el pedido del pago que devuelve, una sola vez", async () => {
-    await run(repoOf());
+    await syncToOrders();
     data.payments.push(reembolso("ref1", 40_00, "pay2"));
     await expect(run(repoOf())).resolves.toMatchObject({
       refunded: 1,
@@ -497,7 +540,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   });
 
   it("un reembolso antiguo sin pago queda solo en el sistema", async () => {
-    await run(repoOf());
+    await syncToOrders();
     data.payments.push(reembolso("ref0", 10_00, null));
     await expect(run(repoOf())).resolves.toMatchObject({
       refunded: 0,
@@ -507,7 +550,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   });
 
   it("un reembolso hecho en Shopify entra al registro con su pago; un pago hecho allá no", async () => {
-    await run(repoOf());
+    await syncToOrders();
     fakeShopify.externalTransaction("pago-pay1", "-25.00", "cash");
     fakeShopify.externalTransaction("pago-pay2", "5.00", "cash");
     await expect(run(repoOf())).resolves.toMatchObject({ imported: 1 });
@@ -521,7 +564,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   });
 
   it("order.fulfill prepara los pedidos solo al entregarse toda la guía", async () => {
-    await run(repoOf());
+    await syncToOrders();
     data.pieces[0]!.status = "entregada";
     await expect(run(repoOf(), fulfillJob)).resolves.toEqual({
       delivered: false,
@@ -545,7 +588,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   it("un pago registrado con la guía ya entregada nace preparado", async () => {
     for (const p of data.pieces)
       if (p.status === "aprobada") p.status = "entregada";
-    await run(repoOf());
+    await syncToOrders();
     expect(orders().flatMap((o) => o.lines.map((l) => l.fulfilled))).toEqual([
       true,
       true,

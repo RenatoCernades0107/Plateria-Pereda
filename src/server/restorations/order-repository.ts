@@ -14,7 +14,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, source, shopify_synced_at, shopify_order_title, shopify_order_id, refunded_payment_id, created_at, payment_methods(shopify_name))",
+        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_draft_order_id, refunded_payment_id, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -74,6 +74,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
           source: p.source,
           orderTitle: p.shopify_order_title,
           orderId: p.shopify_order_id,
+          draftOrderId: p.shopify_draft_order_id,
           refundedPaymentId: p.refunded_payment_id,
         })),
     };
@@ -90,6 +91,18 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
       })
       .eq("id", paymentId)
       .is("shopify_order_id", null);
+    if (error) throw error;
+  },
+
+  async savePaymentDraft(paymentId, draft) {
+    const { error } = await createAdminClient()
+      .from("payments")
+      .update({
+        shopify_draft_order_id: draft.id,
+        shopify_draft_order_name: draft.name,
+      })
+      .eq("id", paymentId)
+      .is("shopify_draft_order_id", null);
     if (error) throw error;
   },
 
@@ -195,6 +208,16 @@ export const supabaseOrderWebhookRepository: OrderWebhookRepository = {
     return payment
       ? { restorationId: payment.restoration_id, paymentOrder: true }
       : null;
+  },
+
+  async findRestorationByDraft(draftId) {
+    const { data, error } = await createAdminClient()
+      .from("payments")
+      .select("restoration_id")
+      .eq("shopify_draft_order_id", draftId)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.restoration_id ?? null;
   },
 
   async enqueuePaymentSync(restorationId) {

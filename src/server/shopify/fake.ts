@@ -20,6 +20,7 @@ import type {
   ShopifyCompany,
   ShopifyCompanyContact,
   ShopifyCustomer,
+  ShopifyDraftOrder,
   ShopifyOrder,
   ShopifyOrderLine,
   ShopifyProduct,
@@ -30,6 +31,14 @@ type FakeOrder = ShopifyOrder & {
   note: string;
   /** Pagos (positivos) y reembolsos (negativos) en céntimos. */
   transactions: FakeTransaction[];
+};
+
+type FakeDraftOrder = ShopifyDraftOrder & {
+  customerId: string;
+  companyLocationId?: string;
+  tags: string[];
+  lines: ShopifyOrderLine[];
+  note: string;
 };
 
 type FakeTransaction = {
@@ -54,6 +63,7 @@ type FakeState = {
   customers: Map<string, ShopifyCustomer>;
   companies: Map<string, FakeCompany>;
   orders: Map<string, FakeOrder>;
+  drafts: Map<string, FakeDraftOrder>;
   products: ShopifyProduct[];
   /**
    * Fallos forzados por método. Se guarda la descripción y el error se crea al lanzarlo:
@@ -153,6 +163,7 @@ function createState(): FakeState {
     customers: new Map(),
     companies: new Map(),
     orders: new Map(),
+    drafts: new Map(),
     products: structuredClone(SEED_PRODUCTS),
     failures: new Map(),
     idempotency: new Map(),
@@ -187,6 +198,29 @@ export const fakeShopify = {
     order.transactions.push(transaction(toCents(amount), gateway));
     return { id: order.id, financials: financials(order) };
   },
+  /**
+   * El empleado convierte en pedido el borrador con esa etiqueta, sin cobrarlo: el
+   * pedido nace con sus etiquetas y queda pendiente de pago. Devuelve el pedido.
+   */
+  completeDraft(tag: string) {
+    const draft = [...state().drafts.values()].find((d) =>
+      d.tags.includes(tag),
+    );
+    if (!draft) throw new ShopifyNotFoundError(tag);
+    if (draft.orderId) return publicOrder(getOrder(draft.orderId));
+    const order: FakeOrder = {
+      id: nextId("Order"),
+      name: `#${1000 + state().orders.size + 1}`,
+      tags: [...draft.tags],
+      lines: draft.lines.map((l) => ({ ...l, id: nextId("LineItem") })),
+      customerId: draft.customerId,
+      note: draft.note,
+      transactions: [],
+    };
+    state().orders.set(order.id, order);
+    draft.orderId = order.id;
+    return publicOrder(order);
+  },
   /** La próxima llamada a `method` falla con ese tipo de error. */
   failNext(
     method: GatewayMethod,
@@ -206,6 +240,7 @@ export const fakeShopify = {
         ...o,
         financials: financials(o),
       })),
+      drafts: [...s.drafts.values()],
       calls: s.calls,
     };
   },
@@ -220,6 +255,42 @@ function toError({ kind, message }: { kind: FailureKind; message?: string }) {
   return new ShopifyUserError([
     { field: null, message: message ?? "Datos rechazados" },
   ]);
+}
+
+function validateOrderInput(
+  input: Parameters<ShopifyGateway["createOrder"]>[0],
+) {
+  if (!state().customers.has(input.customerId)) {
+    throw new ShopifyUserError([
+      { field: ["customerId"], message: "Customer does not exist" },
+    ]);
+  }
+  if (input.companyLocationId) {
+    const company = [...state().companies.values()].find(
+      (c) => c.locationId === input.companyLocationId,
+    );
+    if (!company) throw new ShopifyNotFoundError(input.companyLocationId);
+    if (!company.orderers.includes(input.customerId)) {
+      throw new ShopifyUserError([
+        {
+          field: ["order"],
+          message:
+            "Order could not be created, because the customer has no role in this company.",
+        },
+      ]);
+    }
+  }
+  if (input.lines.length === 0) {
+    throw new ShopifyUserError([
+      { field: ["lineItems"], message: "Line items can't be blank" },
+    ]);
+  }
+  // Como en Shopify: cada etiqueta, de 1 a 40 caracteres.
+  if (input.tags.some((t) => t.length === 0 || t.length > 40)) {
+    throw new ShopifyUserError([
+      { field: ["tags"], message: "Order tags is invalid" },
+    ]);
+  }
 }
 
 function nextId(kind: string) {
@@ -311,6 +382,10 @@ function financials(order: FakeOrder): OrderFinancials {
     received: fromCents(received),
     outstanding: fromCents(Math.max(total - received, 0)),
   };
+}
+
+function publicDraft(d: FakeDraftOrder): ShopifyDraftOrder {
+  return { id: d.id, name: d.name, orderId: d.orderId };
 }
 
 function publicOrder(order: FakeOrder): ShopifyOrder {
@@ -570,37 +645,7 @@ export class FakeShopifyGateway implements ShopifyGateway {
 
   async createOrder(input: Parameters<ShopifyGateway["createOrder"]>[0]) {
     this.track("createOrder", [input]);
-    if (!state().customers.has(input.customerId)) {
-      throw new ShopifyUserError([
-        { field: ["customerId"], message: "Customer does not exist" },
-      ]);
-    }
-    if (input.companyLocationId) {
-      const company = [...state().companies.values()].find(
-        (c) => c.locationId === input.companyLocationId,
-      );
-      if (!company) throw new ShopifyNotFoundError(input.companyLocationId);
-      if (!company.orderers.includes(input.customerId)) {
-        throw new ShopifyUserError([
-          {
-            field: ["order"],
-            message:
-              "Order could not be created, because the customer has no role in this company.",
-          },
-        ]);
-      }
-    }
-    if (input.lines.length === 0) {
-      throw new ShopifyUserError([
-        { field: ["lineItems"], message: "Line items can't be blank" },
-      ]);
-    }
-    // Como en Shopify: cada etiqueta, de 1 a 40 caracteres.
-    if (input.tags.some((t) => t.length === 0 || t.length > 40)) {
-      throw new ShopifyUserError([
-        { field: ["tags"], message: "Order tags is invalid" },
-      ]);
-    }
+    validateOrderInput(input);
     const order: FakeOrder = {
       id: nextId("Order"),
       name: `#${1000 + state().orders.size + 1}`,
@@ -624,6 +669,31 @@ export class FakeShopifyGateway implements ShopifyGateway {
     }
     state().orders.set(order.id, order);
     return publicOrder(order);
+  }
+
+  async createDraftOrder(input: Parameters<ShopifyGateway["createOrder"]>[0]) {
+    this.track("createDraftOrder", [input]);
+    validateOrderInput(input);
+    const draft: FakeDraftOrder = {
+      id: nextId("DraftOrder"),
+      name: `#D${state().drafts.size + 1}`,
+      orderId: null,
+      customerId: input.customerId,
+      companyLocationId: input.companyLocationId,
+      tags: [...input.tags],
+      lines: input.lines.map(toLine),
+      note: input.note ?? "",
+    };
+    state().drafts.set(draft.id, draft);
+    return publicDraft(draft);
+  }
+
+  async findDraftOrderByTag(tag: string) {
+    this.track("findDraftOrderByTag", [tag]);
+    const draft = [...state().drafts.values()].find((d) =>
+      d.tags.includes(tag),
+    );
+    return draft ? publicDraft(draft) : null;
   }
 
   async findOrderByTag(tag: string) {

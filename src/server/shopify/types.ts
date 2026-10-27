@@ -123,6 +123,16 @@ export type RefundInput = PaymentInput & {
   note?: string;
 };
 
+/**
+ * Borrador de pedido: el empleado lo abre en Shopify y lo convierte en pedido, y así
+ * queda como "Employee" (la API no permite asignarlo). `orderId`: el pedido creado.
+ */
+export type ShopifyDraftOrder = {
+  id: string;
+  name: string;
+  orderId: string | null;
+};
+
 export type ShopifyOrderLine = {
   id: string;
   title: string;

@@ -1,4 +1,5 @@
 import {
+  webhookDraftOrderId,
   webhookOrderCustomer,
   webhookOrderId,
   type OrderCustomer,
@@ -14,6 +15,8 @@ export interface OrderWebhookRepository {
   findRestorationByOrder(
     orderId: string,
   ): Promise<{ restorationId: string; paymentOrder: boolean } | null>;
+  /** Restauración del pago que tiene ese borrador de Shopify; null si no es de ninguno. */
+  findRestorationByDraft(draftId: string): Promise<string | null>;
   /** Encola la conciliación de pagos (`payment.sync`). */
   enqueuePaymentSync(restorationId: string): Promise<void>;
   /** Cambio del cliente de la orden hecho en Shopify (D31). */
@@ -28,6 +31,8 @@ export const ORDER_PAYMENT_TOPICS = [
   "orders/updated",
   "order_transactions/create",
   "refunds/create",
+  // El empleado convirtió el borrador del pago en pedido.
+  "draft_orders/update",
 ] as const;
 
 /**
@@ -45,6 +50,15 @@ export function orderWebhookHandlers(
 ): Record<string, WebhookHandler> {
   const handle = (topic: string): WebhookHandler => {
     return async (event) => {
+      if (topic.startsWith("draft_orders/")) {
+        const draftId = webhookDraftOrderId(event.payload);
+        if (!draftId) throw new Error("El webhook no trae el id del borrador");
+        const restorationId = await repo.findRestorationByDraft(draftId);
+        if (!restorationId) return;
+        await repo.enqueuePaymentSync(restorationId);
+        await processOutbox();
+        return;
+      }
       const orderId = webhookOrderId(topic, event.payload);
       if (!orderId) throw new Error("El webhook no trae el id de la orden");
       const found = await repo.findRestorationByOrder(orderId);

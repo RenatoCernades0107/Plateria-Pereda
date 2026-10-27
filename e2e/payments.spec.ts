@@ -32,6 +32,41 @@ async function fakeOrders(request: APIRequestContext, code: string) {
   return state.orders.filter((o) => o.tags.includes(code));
 }
 
+type FakeDraft = { id: string; tags: string[]; orderId: string | null };
+
+/**
+ * El empleado abre el borrador de cada pago en Shopify y crea el pedido (sin cobrarlo);
+ * Shopify avisa por webhook y el sistema registra el cobro en el pedido.
+ */
+async function employeeCreatesOrders(
+  request: APIRequestContext,
+  code: string,
+  count: number,
+) {
+  const drafts = async () => {
+    const response = await request.get("/api/test/shopify");
+    const state = (await response.json()) as { drafts: FakeDraft[] };
+    return state.drafts.filter((d) => d.tags.includes(code));
+  };
+  await expect
+    .poll(async () => (await drafts()).length, { timeout: 30_000 })
+    .toBe(count);
+  for (const draft of (await drafts()).filter((d) => !d.orderId)) {
+    await request.post("/api/test/shopify", {
+      data: {
+        action: "complete-draft",
+        tag: draft.tags.find((t) => t.startsWith("pago-")),
+      },
+    });
+    await sendWebhook(
+      request,
+      "draft_orders/update",
+      `e2e-borrador-${draft.id.split("/").pop()}`,
+      { admin_graphql_api_id: draft.id },
+    );
+  }
+}
+
 const summary = async (request: APIRequestContext, code: string) =>
   (await fakeOrders(request, code)).map((o) => [
     o.lines[0]!.title,
@@ -179,7 +214,8 @@ test.describe("Pagos", () => {
       .click();
     await expect(card).toContainText("Aprobada");
     await expect(page.getByTestId("estado-pago")).toHaveText("Pago parcial");
-    // El adelanto es su propio pedido, ya pagado.
+    // El adelanto es su propio borrador: el empleado crea el pedido y queda pagado.
+    await employeeCreatesOrders(request, r.code, 1);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
@@ -195,6 +231,7 @@ test.describe("Pagos", () => {
     await expect(page.getByText("Pago de S/ 100.00 registrado.")).toBeVisible();
     await expect(page.getByTestId("estado-pago")).toHaveText("Pagado");
     await expect(page.getByTestId("pago")).toHaveCount(2);
+    await employeeCreatesOrders(request, r.code, 2);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([
@@ -287,6 +324,7 @@ test.describe("Pagos", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     await approveWithDeposit(page, r.code, "Yape");
+    await employeeCreatesOrders(request, r.code, 1);
     await expect
       .poll(async () => (await fakeOrders(request, r.code)).length, {
         timeout: 30_000,
@@ -343,6 +381,7 @@ test.describe("Pagos", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     await approveWithDeposit(page, r.code, "Yape");
+    await employeeCreatesOrders(request, r.code, 1);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
