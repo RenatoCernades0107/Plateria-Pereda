@@ -13,6 +13,7 @@ export const ALERT_KINDS = [
   "aprobacion_total",
   "pieza_en_espera",
   "guia_en_espera",
+  "guia_lista",
 ] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
@@ -22,6 +23,7 @@ export const ALERT_ROLES: Record<AlertKind, readonly AppRole[]> = {
   aprobacion_total: ["admin", "logistica"],
   pieza_en_espera: ["admin", "ventas"],
   guia_en_espera: ["admin", "ventas"],
+  guia_lista: ["admin", "ventas"],
 };
 
 export const ALERT_LABELS: Record<AlertKind, string> = {
@@ -29,6 +31,7 @@ export const ALERT_LABELS: Record<AlertKind, string> = {
   aprobacion_total: "Guía aprobada",
   pieza_en_espera: "Pieza en espera del cliente",
   guia_en_espera: "Guía en espera del cliente",
+  guia_lista: "Guía lista para entregar",
 };
 
 export const ALERT_DESCRIPTIONS: Record<AlertKind, string> = {
@@ -38,6 +41,8 @@ export const ALERT_DESCRIPTIONS: Record<AlertKind, string> = {
   pieza_en_espera: "Una o más piezas pasan a «Espera respuesta cliente».",
   guia_en_espera:
     "Todas las piezas de la guía quedan esperando la respuesta del cliente. Quien la recibe no recibe además la de pieza en espera.",
+  guia_lista:
+    "Todas las piezas de la guía ya volvieron del taller (o se entregaron): es hora de avisarle al cliente.",
 };
 
 /** Grupos de la pantalla de configuración. */
@@ -55,6 +60,11 @@ export const ALERT_GROUPS: readonly {
     title: "Espera de respuesta del cliente",
     description: "Para que ventas haga seguimiento al cliente.",
     kinds: ["pieza_en_espera", "guia_en_espera"],
+  },
+  {
+    title: "Guía lista para entregar",
+    description: "Para avisarle al cliente que ya puede recoger su pedido.",
+    kinds: ["guia_lista"],
   },
 ];
 
@@ -81,6 +91,8 @@ export const DEFAULT_ALERT_TEMPLATES: Record<AlertKind, string> = {
     "{usuario} pasó {piezas} a esperar la respuesta de {cliente}. En espera: {en_espera} de {total} piezas de la guía.",
   guia_en_espera:
     "Todas las piezas de la guía ({total}) esperan la respuesta de {cliente}. Es buen momento para hacerle seguimiento.",
+  guia_lista:
+    "La guía quedó lista: las {total} piezas ya volvieron y se pueden entregar a {cliente} (últimas en volver: {piezas}). Avísale para que las recoja.",
 };
 
 export const ALERT_TEMPLATE_MAX = 1000;
@@ -208,5 +220,12 @@ export const ALERT_PREVIEW: Record<AlertKind, Omit<AlertInput, "kind">> = {
     actorName: "Lalo (logística)",
     counts: { live: 3, approved: 0, waiting: 3 },
     pieces: [{ code: "RES-00124-3", description: "Azucarera" }],
+  },
+  guia_lista: {
+    restorationCode: "RES-00125",
+    clientName: "Lucía Torres",
+    actorName: "Lalo (logística)",
+    counts: { live: 3, approved: 3, waiting: 0 },
+    pieces: [{ code: "RES-00125-3", description: "Bandeja" }],
   },
 };

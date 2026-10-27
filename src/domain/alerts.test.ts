@@ -71,6 +71,22 @@ describe("alertas", () => {
     );
   });
 
+  it("arma la alerta de guía lista", () => {
+    const alert = renderAlert(
+      {
+        ...base,
+        kind: "guia_lista",
+        counts: { live: 3, approved: 3, waiting: 0 },
+        pieces: [{ code: "RES-00012-3", description: "Bandeja" }],
+      },
+      null,
+    );
+    expect(alert.title).toBe("RES-00012 · Guía lista para entregar");
+    expect(alert.body).toBe(
+      "La guía quedó lista: las 3 piezas ya volvieron y se pueden entregar a Ana Díaz (últimas en volver: RES-00012-3 (Bandeja)). Avísale para que las recoja.",
+    );
+  });
+
   it("usa el mensaje propio y rellena lo que falta", () => {
     const alert = renderAlert(
       { ...base, clientName: null, actorName: null, pieces: [] },

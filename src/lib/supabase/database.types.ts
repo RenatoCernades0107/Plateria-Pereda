@@ -2417,7 +2417,8 @@ export type Database = {
         | "aprobacion_parcial"
         | "aprobacion_total"
         | "pieza_en_espera"
-        | "guia_en_espera";
+        | "guia_en_espera"
+        | "guia_lista";
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
@@ -2601,6 +2602,7 @@ export const Constants = {
         "aprobacion_total",
         "pieza_en_espera",
         "guia_en_espera",
+        "guia_lista",
       ],
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],
