@@ -58,7 +58,7 @@ import {
   PieceStatusBadge,
   UrgentIcon,
 } from "./status-badges";
-import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
+import { canToggleUrgent, DeliveryDate, UrgentToggle } from "./urgent-toggle";
 
 export { commonTransitions } from "./pieces-bulk-bar";
 
@@ -185,6 +185,18 @@ function PieceRow({
           <PieceQuantity quantity={piece.quantity} />
           {live.urgent ? <UrgentIcon /> : null}
         </span>
+        {/* Fecha estimada de entrega de la urgente; quien puede marcar urgente la coloca. */}
+        {live.urgent ? (
+          <DeliveryDate
+            piece={{
+              id: piece.id,
+              code: piece.code,
+              estimatedDeliveryDate: live.estimatedDeliveryDate,
+            }}
+            editable={urgentToggle}
+            className="mt-0.5 flex"
+          />
+        ) : null}
       </td>
       <td className={cn(CELL, RT.full, "min-w-40")}>
         <p className="break-words">{piece.description}</p>
@@ -260,7 +272,12 @@ function PieceRow({
         <div className="flex items-center gap-2 max-md:w-full md:justify-end">
           {urgentToggle ? (
             <UrgentToggle
-              piece={{ id: piece.id, code: piece.code, urgent: live.urgent }}
+              piece={{
+                id: piece.id,
+                code: piece.code,
+                urgent: live.urgent,
+                estimatedDeliveryDate: live.estimatedDeliveryDate,
+              }}
             />
           ) : null}
           {primary ? (

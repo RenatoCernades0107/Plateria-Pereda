@@ -32,6 +32,7 @@ export function TextField<T extends FieldValues>({
   multiline = false,
   disabled = false,
   placeholder,
+  min,
 }: {
   form: UseFormReturn<T>;
   name: FieldPath<T>;
@@ -41,6 +42,8 @@ export function TextField<T extends FieldValues>({
   multiline?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  /** Valor mínimo (campos de fecha o número). */
+  min?: string;
 }) {
   return (
     <FormField
@@ -66,6 +69,7 @@ export function TextField<T extends FieldValues>({
                 {...field}
                 disabled={disabled}
                 placeholder={placeholder}
+                min={min}
                 value={String(field.value ?? "")}
               />
             )}

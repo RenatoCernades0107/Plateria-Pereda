@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  DELIVERY_DATE_INVALID,
+  DELIVERY_DATE_REQUIRED,
+  isIsoDate,
+} from "@/domain/delivery-date";
 import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import {
   isRestorationCloseTarget,
@@ -148,18 +153,29 @@ export async function changePiecePrice(
 
 /**
  * Marca o quita "Urgente" a una o varias piezas (admin, ventas y logística; RPC
- * `set_pieces_urgent`). Las piezas pueden ser de varias guías: se refrescan todas.
+ * `set_pieces_urgent`). Al marcar hay que indicar la fecha estimada de entrega
+ * (AAAA-MM-DD); llamarla sobre piezas que ya son urgentes coloca o cambia su fecha. Las
+ * piezas pueden ser de varias guías: se refrescan todas.
  */
 export async function setPiecesUrgent(
   pieceIds: string[],
   urgent: boolean,
+  estimatedDeliveryDate: string | null = null,
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.marcar-urgente");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  if (urgent) {
+    if (!estimatedDeliveryDate) return { error: `${DELIVERY_DATE_REQUIRED}.` };
+    if (!isIsoDate(estimatedDeliveryDate))
+      return { error: `${DELIVERY_DATE_INVALID}.` };
+  }
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_pieces_urgent", {
     p_piece_ids: pieceIds,
     p_urgent: urgent,
+    ...(urgent && estimatedDeliveryDate
+      ? { p_estimated_delivery_date: estimatedDeliveryDate }
+      : {}),
   });
   if (error)
     return fail(

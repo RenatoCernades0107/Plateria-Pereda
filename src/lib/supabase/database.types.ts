@@ -544,6 +544,7 @@ export type Database = {
           created_by: string | null;
           delivered_at: string | null;
           description: string;
+          estimated_delivery_date: string | null;
           first_sent_at: string | null;
           id: string;
           last_returned_at: string | null;
@@ -585,6 +586,7 @@ export type Database = {
           created_by?: string | null;
           delivered_at?: string | null;
           description: string;
+          estimated_delivery_date?: string | null;
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
@@ -626,6 +628,7 @@ export type Database = {
           created_by?: string | null;
           delivered_at?: string | null;
           description?: string;
+          estimated_delivery_date?: string | null;
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
@@ -1662,6 +1665,7 @@ export type Database = {
           created_at: string | null;
           delivered_at: string | null;
           description: string | null;
+          estimated_delivery_date: string | null;
           first_sent_at: string | null;
           id: string | null;
           last_returned_at: string | null;
@@ -2055,6 +2059,7 @@ export type Database = {
           client_name: string;
           code: string;
           description: string;
+          estimated_delivery_date: string;
           first_sent_at: string;
           has_order: boolean;
           id: string;
@@ -2345,7 +2350,11 @@ export type Database = {
         Returns: undefined;
       };
       set_pieces_urgent: {
-        Args: { p_piece_ids: string[]; p_urgent: boolean };
+        Args: {
+          p_estimated_delivery_date?: string;
+          p_piece_ids: string[];
+          p_urgent: boolean;
+        };
         Returns: {
           piece_id: string;
           urgent: boolean;

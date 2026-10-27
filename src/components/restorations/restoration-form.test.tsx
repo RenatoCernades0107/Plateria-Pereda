@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { todayInLima } from "@/domain/delivery-date";
+
 import {
   EMPTY_PIECE,
   liveTotal,
@@ -250,6 +252,30 @@ describe("RestorationForm", () => {
     expect(card.queryByLabelText("Taller")).toBeNull();
     expect(card.queryByText("Taller")).toBeNull();
     expect(card.getByLabelText("Urgente")).toBeInTheDocument();
+  });
+
+  it("al marcar «Urgente» pide la fecha estimada de entrega, obligatoria", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const card = within(screen.getByTestId("pieza-1"));
+    // Sin urgencia no hay fecha de entrega.
+    expect(card.queryByLabelText("Fecha estimada de entrega")).toBeNull();
+    await user.click(card.getByLabelText("Urgente"));
+    const date = card.getByLabelText("Fecha estimada de entrega");
+    expect(date).toHaveAttribute("type", "date");
+    expect(date).toHaveAttribute("min", todayInLima());
+
+    await user.click(
+      screen.getByRole("button", { name: "Registrar restauración" }),
+    );
+    expect(
+      await card.findByText("Indica la fecha estimada de entrega"),
+    ).toBeVisible();
+    expect(mocks.create).not.toHaveBeenCalled();
+
+    // Al quitar la urgencia el campo desaparece.
+    await user.click(card.getByLabelText("Urgente"));
+    expect(card.queryByLabelText("Fecha estimada de entrega")).toBeNull();
   });
 
   it("sin permiso el precio de venta no se edita (D58)", () => {

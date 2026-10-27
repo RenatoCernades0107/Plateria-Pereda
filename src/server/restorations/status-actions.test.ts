@@ -229,11 +229,14 @@ describe("marcar urgente", () => {
   });
 
   it("marca las piezas como urgentes y refresca las vistas", async () => {
-    expect(await setPiecesUrgent(["p1", "p2"], true)).toEqual({ ok: true });
+    expect(await setPiecesUrgent(["p1", "p2"], true, "2026-11-05")).toEqual({
+      ok: true,
+    });
     expect(mocks.permission).toHaveBeenCalledWith("piezas.marcar-urgente");
     expect(mocks.rpc).toHaveBeenCalledWith("set_pieces_urgent", {
       p_piece_ids: ["p1", "p2"],
       p_urgent: true,
+      p_estimated_delivery_date: "2026-11-05",
     });
     expect(mocks.revalidate).toHaveBeenCalledWith(
       "/restauraciones/[id]",
@@ -251,6 +254,19 @@ describe("marcar urgente", () => {
     });
   });
 
+  it("marcar urgente exige la fecha estimada de entrega antes de llamar a la BD", async () => {
+    expect(await setPiecesUrgent(["p1"], true)).toEqual({
+      error: "Indica la fecha estimada de entrega.",
+    });
+    expect(await setPiecesUrgent(["p1"], true, "")).toEqual({
+      error: "Indica la fecha estimada de entrega.",
+    });
+    expect(await setPiecesUrgent(["p1"], true, "2026-02-30")).toEqual({
+      error: "Ingresa una fecha válida.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("exige piezas antes de llamar a la BD", async () => {
     expect(await setPiecesUrgent([], true)).toEqual({
       error: "Elige al menos una pieza.",
@@ -265,7 +281,7 @@ describe("marcar urgente", () => {
         message: "Una pieza cerrada o entregada no se marca como urgente.",
       },
     };
-    expect(await setPiecesUrgent(["p1"], true)).toEqual({
+    expect(await setPiecesUrgent(["p1"], true, "2026-11-05")).toEqual({
       error: "Una pieza cerrada o entregada no se marca como urgente.",
     });
     mocks.result = { error: { code: "XX000", message: "boom" } };

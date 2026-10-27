@@ -42,6 +42,8 @@ export type PieceDetail = {
   location: PieceLocation;
   /** Marca "Urgente" (P47). */
   urgent: boolean;
+  /** Fecha estimada de entrega (AAAA-MM-DD): la llevan las urgentes; null si aún no la tiene. */
+  estimatedDeliveryDate: string | null;
   /** Aprobada u Observada ya de vuelta del taller ("Lista para entregar"). */
   readyForDelivery: boolean;
   /** Cantidad: el precio de venta es por unidad (el total suma precio × cantidad). */
@@ -245,6 +247,7 @@ export async function getRestorationDetail(
       status: toPieceStatus(p.status!),
       location: p.location!,
       urgent: p.urgent ?? false,
+      estimatedDeliveryDate: p.estimated_delivery_date,
       readyForDelivery: p.ready_for_delivery ?? false,
       quantity: p.quantity ?? 1,
       description: p.description ?? "",
@@ -552,6 +555,8 @@ export type BoardPiece = {
   status: PieceStatus;
   location: PieceLocation;
   urgent: boolean;
+  /** Fecha estimada de entrega (AAAA-MM-DD) de las urgentes; null si aún no la tiene. */
+  estimatedDeliveryDate: string | null;
   readyForDelivery: boolean;
   /** Rechazada o sin arreglo que sigue en la tienda (por devolver al cliente). */
   toReturn: boolean;
@@ -628,6 +633,7 @@ export async function listPiecesBoard(
       status: toPieceStatus(p.status),
       location: p.location,
       urgent: p.urgent,
+      estimatedDeliveryDate: p.estimated_delivery_date,
       readyForDelivery: p.ready_for_delivery,
       toReturn: p.to_return ?? false,
       quantity: p.quantity ?? 1,

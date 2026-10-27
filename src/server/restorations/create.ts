@@ -27,6 +27,8 @@ export function pieceToRpc(piece: PieceInput) {
     // Sin precio de venta (D58): queda sin asignar.
     price: piece.priceCents === null ? null : toDecimalString(piece.priceCents),
     urgent: piece.urgent,
+    // Obligatoria si es urgente (la BD lo exige).
+    estimated_delivery_date: piece.estimatedDeliveryDate,
     notes: piece.notes,
     quote_item_id: piece.quoteItemId ?? null,
     // Estado inicial de la copia desde WhatsApp (P49); las demás RPC lo ignoran.

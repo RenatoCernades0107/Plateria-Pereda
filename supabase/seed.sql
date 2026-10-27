@@ -192,9 +192,9 @@ insert into public.restorations (id, client_id, payment_type, notes) values
   ('30000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'contado',
    'Piezas de la familia; la clienta pide cuidado con el grabado del candelabro.');
 insert into public.pieces (id, restoration_id, description, measure, material_id, material_name,
-  service_id, service_name, weight_grams, price, urgent)
+  service_id, service_name, weight_grams, price, urgent, estimated_delivery_date)
 select v.id, '30000000-0000-0000-0000-000000000001', v.description, v.measure, m.id, m.name, s.id, s.name,
-  v.weight, v.price, v.urgent
+  v.weight, v.price, v.urgent, case when v.urgent then current_date + 5 end
 from (values
   ('40000000-0000-0000-0000-000000000001'::uuid, 'Bandeja ovalada con asas', '45 x 30 cm', 'Plata 950', 'Limpieza y pulido', 820.0, 180.0, false, 1),
   ('40000000-0000-0000-0000-000000000002'::uuid, 'Juego de 6 cucharitas', '12 cm', 'Plata 925', 'Baño de plata', 150.0, 220.0, false, 2),
@@ -255,9 +255,9 @@ insert into public.restorations (id, client_id, payment_type, deposit_amount, no
   ('30000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 'a_cuenta', 200,
    'Envía las piezas desde Arequipa; devolver por Olva Courier.');
 insert into public.pieces (id, restoration_id, description, measure, material_id, material_name,
-  service_id, service_name, weight_grams, price, urgent, notes)
+  service_id, service_name, weight_grams, price, urgent, notes, estimated_delivery_date)
 select v.id, '30000000-0000-0000-0000-000000000002', v.description, v.measure, m.id, m.name, s.id, s.name,
-  v.weight, v.price, v.urgent, v.notes
+  v.weight, v.price, v.urgent, v.notes, case when v.urgent then current_date + 3 end
 from (values
   ('40000000-0000-0000-0000-000000000005'::uuid, 'Jarra de agua', '28 cm de alto', 'Plata 950', 'Restauración integral', 1100.0, 650.0, false, 'Abolladura en la base', 1),
   ('40000000-0000-0000-0000-000000000006'::uuid, 'Azucarera con tapa', '14 cm', 'Plata 925', 'Soldadura', 380.0, 150.0, false, 'Asa izquierda suelta', 2),

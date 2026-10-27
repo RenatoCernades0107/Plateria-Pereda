@@ -215,7 +215,7 @@ test.describe("Vista de piezas", () => {
       );
     await admin
       .from("pieces")
-      .update({ urgent: true } as never)
+      .update({ urgent: true, estimated_delivery_date: "2099-12-31" } as never)
       .eq("id", pieces[1]!.id);
 
     await loginAs("logistica");

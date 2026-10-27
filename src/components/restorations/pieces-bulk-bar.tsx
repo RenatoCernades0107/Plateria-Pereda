@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CalendarDays,
   ChevronDown,
   type LucideIcon,
   PackageOpen,
@@ -60,7 +61,7 @@ import {
   type PendingChange,
   type StatusPiece,
 } from "./piece-status-actions";
-import { canToggleUrgent } from "./urgent-toggle";
+import { canToggleUrgent, UrgentDateDialog } from "./urgent-toggle";
 
 /** No se cambia el taller de una pieza entregada o en un estado final. */
 export const WORKSHOP_LOCKED: readonly PieceStatus[] = [
@@ -221,6 +222,8 @@ export function PiecesBulkBar({
 }) {
   const [dialog, setDialog] = useState<PendingChange | null>(null);
   const [sending, setSending] = useState(false);
+  // Fecha de entrega de las urgentes: al marcar urgente y al colocar o cambiar la fecha.
+  const [dateDialog, setDateDialog] = useState<"mark" | "change" | null>(null);
   const [pending, startTransition] = useTransition();
   // Lo elegido en un menú corre al cerrarse, así el diálogo que abra recibe el foco.
   const chosenAction = useRef<(() => void) | null>(null);
@@ -234,8 +237,16 @@ export function PiecesBulkBar({
   const giveBack = howMany((p) => canReturnToClient(p, role));
   // "Urgente": se marca o quita en las piezas abiertas (no cerradas ni entregadas).
   const urgentable = chosen.filter((p) => canToggleUrgent(p, role));
-  const toMark = urgentable.filter((p) => !p.urgent).length;
-  const toUnmark = urgentable.filter((p) => p.urgent).length;
+  const toMark = urgentable.filter((p) => !p.urgent);
+  const alreadyUrgent = urgentable.filter((p) => p.urgent);
+  // Si todas las urgentes elegidas comparten fecha, el diálogo abre con ella.
+  const sharedDate = new Set(
+    alreadyUrgent.map((p) => p.estimatedDeliveryDate ?? ""),
+  );
+  const sharedDeliveryDate =
+    sharedDate.size === 1 ? [...sharedDate][0] || null : null;
+  // Piezas a las que se aplica la fecha del diálogo: las que se marcan, o las urgentes.
+  const dateTargets = dateDialog === "change" ? alreadyUrgent : toMark;
   const assignable =
     workshopPicker && can(role, "piezas.asignar-taller")
       ? chosen.filter((p) => !isWorkshopLocked(p)).length
@@ -402,7 +413,7 @@ export function PiecesBulkBar({
             )
           }
         />
-        {toMark > 0 ? (
+        {toMark.length > 0 ? (
           <BulkButton
             label="Marcar urgente"
             icon={Zap}
@@ -410,37 +421,41 @@ export function PiecesBulkBar({
             chosen={n}
             verb="marcar como urgentes"
             pending={pending}
-            onClick={() =>
-              act(
-                () =>
-                  setPiecesUrgent(
-                    urgentable.map((p) => p.id),
-                    true,
-                  ),
-                `marcada${n === 1 ? "" : "s"} como urgente${n === 1 ? "" : "s"}.`,
-              )
-            }
+            onClick={() => setDateDialog("mark")}
           />
         ) : null}
-        {toUnmark > 0 ? (
-          <BulkButton
-            label="Quitar urgente"
-            icon={ZapOff}
-            able={urgentable.length}
-            chosen={n}
-            verb="quitar de urgentes"
-            pending={pending}
-            onClick={() =>
-              act(
-                () =>
-                  setPiecesUrgent(
-                    urgentable.map((p) => p.id),
-                    false,
-                  ),
-                n === 1 ? "ya no es urgente." : "ya no son urgentes.",
-              )
-            }
-          />
+        {alreadyUrgent.length > 0 ? (
+          <>
+            <BulkButton
+              label="Fecha de entrega"
+              icon={CalendarDays}
+              able={urgentable.length}
+              chosen={n}
+              verb="cambiar la fecha de entrega"
+              pending={pending}
+              onClick={() => setDateDialog("change")}
+            />
+            <BulkButton
+              label="Quitar urgente"
+              icon={ZapOff}
+              able={urgentable.length}
+              chosen={n}
+              verb="quitar de urgentes"
+              pending={pending}
+              onClick={() =>
+                act(
+                  () =>
+                    setPiecesUrgent(
+                      alreadyUrgent.map((p) => p.id),
+                      false,
+                    ),
+                  alreadyUrgent.length === 1
+                    ? "ya no es urgente."
+                    : "ya no son urgentes.",
+                )
+              }
+            />
+          </>
         ) : null}
         <span
           title={statusReason}
@@ -552,6 +567,21 @@ export function PiecesBulkBar({
         pieces={chosen}
         workshops={workshops}
         onConfirm={(input) => applyBulk(dialog!, input)}
+      />
+      {/* Toda pieza urgente lleva fecha de entrega: se pide al marcar y se cambia aquí. */}
+      <UrgentDateDialog
+        key={dateDialog ?? "fecha-cerrada"}
+        open={dateDialog !== null}
+        onOpenChange={(open) => !open && setDateDialog(null)}
+        pieceIds={dateTargets.map((p) => p.id)}
+        subject={
+          dateTargets.length === 1
+            ? (dateTargets[0]?.code ?? "")
+            : `${dateTargets.length} piezas`
+        }
+        initialDate={dateDialog === "change" ? sharedDeliveryDate : null}
+        alreadyUrgent={dateDialog === "change"}
+        onDone={onDone}
       />
       <ReviewDialog
         key={sending ? "envio-masivo-abierto" : "envio-masivo-cerrado"}

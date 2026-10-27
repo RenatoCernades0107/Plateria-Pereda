@@ -523,8 +523,13 @@ test.describe("Estados de las piezas", () => {
       0,
     );
     await dialog.getByLabel("Urgente").check();
+    // Toda pieza urgente lleva fecha estimada de entrega: sin ella no se guarda.
+    await dialog.getByRole("button", { name: "Guardar cambios" }).click();
+    await expect(dialog).toContainText("Indica la fecha estimada de entrega");
+    await dialog.getByLabel("Fecha estimada de entrega").fill("2099-12-31");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(card(page, code)).toContainText("Urgente");
+    await expect(card(page, code)).toContainText("Entrega 31 dic 2099");
   });
 
   test("cambia el estado desde el celular @mobile", async ({

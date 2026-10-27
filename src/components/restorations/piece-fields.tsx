@@ -30,6 +30,7 @@ import {
   WORKSHOP_HINT,
   type PieceEditableField,
 } from "@/domain/restoration-edit";
+import { todayInLima } from "@/domain/delivery-date";
 import { cn } from "@/lib/utils";
 
 export type { CatalogOption };
@@ -170,6 +171,7 @@ export function PieceFields({
     control: form.control,
     name: path("workshopId"),
   }) as string | null | undefined;
+  const urgent = useWatch({ control: form.control, name: path("urgent") });
   const currentWorkshop = workshopId
     ? (workshops.find((w) => w.id === workshopId)?.name ??
       workshopName ??
@@ -317,6 +319,19 @@ export function PieceFields({
               )}
             />
           ) : null}
+        </div>
+      ) : null}
+      {showUrgent && urgent ? (
+        // Una pieza urgente siempre lleva fecha estimada de entrega.
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            form={form}
+            name={path("estimatedDeliveryDate")}
+            label="Fecha estimada de entrega"
+            type="date"
+            min={todayInLima()}
+            disabled={off("urgent")}
+          />
         </div>
       ) : null}
     </div>

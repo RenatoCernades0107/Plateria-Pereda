@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import {
+  DELIVERY_DATE_INVALID,
+  DELIVERY_DATE_REQUIRED,
+  isIsoDate,
+} from "@/domain/delivery-date";
+import {
   DEPOSIT_NEGATIVE_ERROR,
   depositAmountError,
   MAX_CENTS,
@@ -137,6 +142,15 @@ const pieceFields = {
   weight,
   /** Marca "Urgente" (P47): no es un estado. */
   urgent: z.boolean().default(false),
+  /**
+   * Fecha estimada de entrega (AAAA-MM-DD): obligatoria si la pieza es urgente; si no
+   * lo es, se descarta. La BD no acepta fechas pasadas.
+   */
+  estimatedDeliveryDate: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || isIsoDate(v), DELIVERY_DATE_INVALID)
+    .default(""),
   /** Pieza de la cotización de WhatsApp que se está pidiendo (P46). */
   quoteItemId: optionalId.optional(),
   notes: notes(1000),
@@ -145,14 +159,56 @@ const pieceFields = {
   statusNote: notes(1000).optional(),
 };
 
-/** Pieza de una restauración: el precio de venta puede quedar sin asignar (D58). */
-export const pieceSchema = z
-  .object({ ...pieceFields, price: optionalPrice })
-  .transform(({ price: priceCents, weight: weightGrams, ...rest }) => ({
-    ...rest,
-    weightGrams,
-    priceCents,
-  }));
+/**
+ * Pieza de una restauración: el precio de venta puede quedar sin asignar (D58). Una
+ * pieza urgente lleva fecha estimada de entrega; una que no lo es no la guarda (null).
+ * `requireDeliveryDate: false` es para editar una pieza cuya urgencia ya no se puede
+ * cambiar (cerrada o entregada): si es urgente de antes y no tiene fecha, no se
+ * le pide (la BD sigue exigiéndola donde corresponde).
+ */
+function buildPieceSchema({
+  requireDeliveryDate,
+}: {
+  requireDeliveryDate: boolean;
+}) {
+  return z
+    .object({ ...pieceFields, price: optionalPrice })
+    .superRefine((piece, ctx) => {
+      if (
+        requireDeliveryDate &&
+        piece.urgent &&
+        piece.estimatedDeliveryDate === ""
+      )
+        ctx.addIssue({
+          code: "custom",
+          path: ["estimatedDeliveryDate"],
+          message: DELIVERY_DATE_REQUIRED,
+        });
+    })
+    .transform(
+      ({
+        price: priceCents,
+        weight: weightGrams,
+        estimatedDeliveryDate,
+        ...rest
+      }) => ({
+        ...rest,
+        weightGrams,
+        priceCents,
+        estimatedDeliveryDate:
+          rest.urgent && estimatedDeliveryDate !== ""
+            ? estimatedDeliveryDate
+            : null,
+      }),
+    );
+}
+
+export const pieceSchema = buildPieceSchema({ requireDeliveryDate: true });
+
+/** Edición de una pieza cuya urgencia no se puede cambiar: no pide la fecha. */
+export const pieceKeepingUrgencySchema = buildPieceSchema({
+  requireDeliveryDate: false,
+});
 
 /** Pieza de una cotización de WhatsApp: el precio cotizado también es opcional. */
 export const quotePieceSchema = pieceSchema;

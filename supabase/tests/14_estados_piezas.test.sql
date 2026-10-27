@@ -278,7 +278,8 @@ select throws_ok(
   '23514', null, 'una pieza rechazada no se edita'
 );
 select lives_ok(
-  $$ update public.pieces set urgent = true where id = '00000000-0000-0000-0000-00000000aa46' $$,
+  $$ update public.pieces set urgent = true, estimated_delivery_date = current_date + 5
+     where id = '00000000-0000-0000-0000-00000000aa46' $$,
   'ventas marca una pieza como urgente'
 );
 reset role;

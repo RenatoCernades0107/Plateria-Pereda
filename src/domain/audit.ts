@@ -1,3 +1,4 @@
+import { formatDeliveryDate } from "@/domain/delivery-date";
 import { DOCUMENT_LABELS, type DocumentType } from "@/domain/documents";
 import { PAYMENT_TYPE_LABELS, type PaymentType } from "@/domain/money";
 import { formatPhone } from "@/domain/phone";
@@ -272,6 +273,10 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       arrived_at: { label: "Llegada a tienda" },
       approved_at: { label: "Aprobada" },
       urgent: { label: "Urgente" },
+      estimated_delivery_date: {
+        label: "Entrega estimada",
+        format: (value) => formatDeliveryDate(String(value)),
+      },
       first_sent_at: { label: "Primer envío al taller" },
       last_sent_at: { label: "Último envío al taller" },
       last_returned_at: { label: "Última vuelta del taller" },

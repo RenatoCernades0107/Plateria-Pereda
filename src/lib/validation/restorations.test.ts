@@ -5,6 +5,7 @@ import {
   DEPOSIT_METHOD_ERROR,
   invalidInputMessage,
   MAX_PIECES,
+  pieceKeepingUrgencySchema,
   pieceSchema,
   quotePieceSchema,
   restorationSchema,
@@ -69,8 +70,58 @@ describe("pieceSchema", () => {
       weightGrams: 850.5,
       priceCents: 125_050,
       urgent: false,
+      estimatedDeliveryDate: null,
       notes: "",
     });
+  });
+
+  it("una pieza urgente exige la fecha estimada de entrega", () => {
+    expect(errorsOf(pieceSchema, { ...piece, urgent: true })).toEqual({
+      estimatedDeliveryDate: "Indica la fecha estimada de entrega",
+    });
+    expect(
+      errorsOf(pieceSchema, {
+        ...piece,
+        urgent: true,
+        estimatedDeliveryDate: "   ",
+      }),
+    ).toEqual({ estimatedDeliveryDate: "Indica la fecha estimada de entrega" });
+    expect(
+      pieceSchema.parse({
+        ...piece,
+        urgent: true,
+        estimatedDeliveryDate: " 2026-11-05 ",
+      }),
+    ).toMatchObject({ urgent: true, estimatedDeliveryDate: "2026-11-05" });
+  });
+
+  it("la fecha de entrega tiene que existir en el calendario", () => {
+    for (const estimatedDeliveryDate of [
+      "2026-02-30",
+      "05/11/2026",
+      "mañana",
+    ]) {
+      expect(
+        errorsOf(pieceSchema, {
+          ...piece,
+          urgent: true,
+          estimatedDeliveryDate,
+        }),
+      ).toEqual({ estimatedDeliveryDate: "Ingresa una fecha válida" });
+    }
+  });
+
+  it("una pieza que no es urgente no guarda fecha de entrega", () => {
+    expect(
+      pieceSchema.parse({ ...piece, estimatedDeliveryDate: "2026-11-05" })
+        .estimatedDeliveryDate,
+    ).toBeNull();
+  });
+
+  it("al editar una pieza con la urgencia fija, la fecha no se exige", () => {
+    expect(
+      pieceKeepingUrgencySchema.parse({ ...piece, urgent: true }),
+    ).toMatchObject({ urgent: true, estimatedDeliveryDate: null });
   });
 
   it("cantidad: entero de 1 a 999; vacía = 1", () => {
@@ -111,6 +162,7 @@ describe("pieceSchema", () => {
       weightGrams: null,
       priceCents: 0,
       urgent: false,
+      estimatedDeliveryDate: null,
       notes: "",
     });
   });

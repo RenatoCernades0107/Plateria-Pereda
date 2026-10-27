@@ -14,7 +14,7 @@ import {
 import { can } from "@/domain/permissions";
 import {
   invalidInputMessage,
-  pieceSchema,
+  pieceKeepingUrgencySchema,
   restorationEditSchema,
   restorationSchema,
   type PieceFormInput,
@@ -185,7 +185,9 @@ function pieceColumns(
   input: PieceFormInput,
   { withPrice, withWorkshop }: { withPrice: boolean; withWorkshop: boolean },
 ) {
-  const parsed = pieceSchema.safeParse(input);
+  // No exige la fecha de entrega aquí: la BD la pide cuando la urgencia cambia y no
+  // atasca la edición de una pieza urgente cerrada o entregada que no la tenía.
+  const parsed = pieceKeepingUrgencySchema.safeParse(input);
   if (!parsed.success) return null;
   const p = parsed.data;
   return {
@@ -206,6 +208,8 @@ function pieceColumns(
       }),
       notes: p.notes,
       urgent: p.urgent,
+      // Obligatoria si es urgente; sin urgencia se borra (la BD lo exige).
+      estimated_delivery_date: p.estimatedDeliveryDate,
     },
   };
 }
