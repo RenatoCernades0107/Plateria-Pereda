@@ -23,6 +23,7 @@ type FakeOrder = {
   tags: string[];
   lines: { title: string; price: string; fulfilled: boolean }[];
   financials: { financialStatus: string; received: string };
+  branch: string | null;
 };
 
 /** Pedidos de los pagos de la guía, en orden. */
@@ -136,8 +137,15 @@ async function markReady(pieceId: string) {
     .eq("id", pieceId);
 }
 
-async function fillPayment(page: Page, method: string, amount?: string) {
+async function fillPayment(
+  page: Page,
+  method: string,
+  amount?: string,
+  branch = "PEREDA 4TA - CAJA",
+) {
   const dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: "Sucursal" }).click();
+  await page.getByRole("option", { name: branch }).click();
   await dialog.getByRole("combobox", { name: "Método" }).click();
   await page.getByRole("option", { name: method }).click();
   if (amount) await dialog.getByLabel("Monto (S/)").fill(amount);
@@ -183,6 +191,10 @@ test.describe("Pagos", () => {
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
+    // La sucursal elegida va al metafield «Sucursal» del pedido.
+    expect((await fakeOrders(request, r.code))[0]!.branch).toBe(
+      "PEREDA 4TA - CAJA",
+    );
 
     // Vuelve del taller; antes de entregar se cobra el saldo.
     await markReady(r.pieceId);

@@ -191,6 +191,8 @@ test.describe("Shopify al aprobar y cobrar", () => {
     await page.getByRole("tab", { name: "Pagos" }).click();
     await page.getByRole("button", { name: "Registrar pago" }).click();
     const dialog = page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Sucursal" }).click();
+    await page.getByRole("option", { name: "RUS CARMEN - VENTAS2" }).click();
     await dialog.getByRole("combobox", { name: "Método" }).click();
     await page.getByRole("option", { name: "Yape" }).click();
     await dialog.getByLabel("Monto (S/)").fill("60");

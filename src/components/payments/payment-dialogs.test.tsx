@@ -23,6 +23,19 @@ const METHODS = [
   { id: "00000000-0000-4000-8000-000000000003", name: "Efectivo" },
 ];
 
+const BRANCHES = [
+  { id: "00000000-0000-4000-8000-0000000000b1", name: "PEREDA 4TA - CAJA" },
+  { id: "00000000-0000-4000-8000-0000000000b2", name: "RUS CARMEN - VENTAS2" },
+];
+
+async function chooseBranch(
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+) {
+  await user.click(screen.getByRole("combobox", { name: "Sucursal" }));
+  await user.click(await screen.findByRole("option", { name }));
+}
+
 async function chooseMethod(
   user: ReturnType<typeof userEvent.setup>,
   name: string,
@@ -46,6 +59,7 @@ describe("diálogos de pagos (11.2)", () => {
         balanceCents={40000}
         suggested={{ kind: "adelanto", amount: 20000 }}
         methods={METHODS}
+        branches={BRANCHES}
       />,
     );
     await user.click(screen.getByRole("button", { name: "Registrar pago" }));
@@ -53,6 +67,11 @@ describe("diálogos de pagos (11.2)", () => {
     expect(dialog).toHaveTextContent("Adelanto pendiente: S/ 200.00");
     expect(within(dialog).getByLabelText("Monto (S/)")).toHaveValue("200.00");
 
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar pago" }),
+    );
+    expect(dialog).toHaveTextContent("Elige la sucursal.");
+    await chooseBranch(user, "PEREDA 4TA - CAJA");
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar pago" }),
     );
@@ -84,6 +103,7 @@ describe("diálogos de pagos (11.2)", () => {
     );
     expect(actions.registerPayment).toHaveBeenLastCalledWith("r1", {
       paidOn: expect.any(String),
+      branchId: BRANCHES[0]!.id,
       rows: [{ methodId: METHODS[0]!.id, amountCents: 20000 }],
     });
   });
@@ -98,6 +118,10 @@ describe("diálogos de pagos (11.2)", () => {
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog).queryByRole("button", { name: "Otro método" }),
+    ).toBeNull();
+    // El reembolso se hace en el pedido del pago: no pide sucursal.
+    expect(
+      within(dialog).queryByRole("combobox", { name: "Sucursal" }),
     ).toBeNull();
     await chooseMethod(user, "Yape");
     await user.type(within(dialog).getByLabelText("Monto (S/)"), "60");
@@ -200,12 +224,18 @@ describe("diálogos de pagos (11.2)", () => {
         pieceCode="RES-00001-1"
         payment={{
           methods: METHODS,
+          branches: BRANCHES,
           suggested: { kind: "saldo", amount: 40000 },
         }}
         onDone={() => undefined}
       />,
     );
     const dialog = screen.getByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Aprobar y registrar pago" }),
+    );
+    expect(dialog).toHaveTextContent("Elige la sucursal.");
+    await chooseBranch(user, "RUS CARMEN - VENTAS2");
     await user.click(
       within(dialog).getByRole("button", { name: "Aprobar y registrar pago" }),
     );
@@ -225,6 +255,7 @@ describe("diálogos de pagos (11.2)", () => {
     );
     expect(actions.approveWithPayment).toHaveBeenLastCalledWith("r1", ["p1"], {
       paidOn: expect.any(String),
+      branchId: BRANCHES[1]!.id,
       rows: [{ methodId: METHODS[1]!.id, amountCents: 40000 }],
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);

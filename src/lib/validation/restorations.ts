@@ -206,12 +206,16 @@ export const depositAmount = z.preprocess(
 
 /**
  * Mensaje para el usuario cuando falla la validación en el servidor: el del adelanto
- * si es ese el problema (negativo, mal escrito, mayor que el total o sin método); si
+ * si es ese el problema (negativo, mal escrito, mayor que el total, sin método o sin
+ * sucursal); si
  * no, genérico.
  */
 export function invalidInputMessage(error: z.ZodError): string {
   const deposit = error.issues.find(
-    (i) => i.path[0] === "depositAmount" || i.path[0] === "depositMethodId",
+    (i) =>
+      i.path[0] === "depositAmount" ||
+      i.path[0] === "depositMethodId" ||
+      i.path[0] === "depositBranchId",
   );
   return deposit ? `${deposit.message}.` : "Revisa los datos ingresados.";
 }
@@ -276,6 +280,35 @@ function requireDepositMethod(
     });
 }
 
+/**
+ * Sucursal que cobró el adelanto: como el método, solo se pide si hay adelanto (> 0);
+ * va al metafield "Sucursal" del pedido de Shopify del pago.
+ */
+const depositBranchId = optionalId.optional().transform((v) => v ?? null);
+
+export const DEPOSIT_BRANCH_ERROR = "Elige la sucursal que cobró el adelanto";
+
+function requireDepositBranch(
+  v: { depositAmount: unknown; depositBranchId: unknown },
+  ctx: z.RefinementCtx,
+) {
+  if (
+    typeof v.depositAmount === "number" &&
+    v.depositAmount > 0 &&
+    !v.depositBranchId
+  )
+    ctx.addIssue({
+      code: "custom",
+      path: ["depositBranchId"],
+      message: DEPOSIT_BRANCH_ERROR,
+    });
+}
+
+const depositBranchParams = {
+  when: (payload: { issues: readonly { path?: PropertyKey[] }[] }) =>
+    !payload.issues.some((i) => i.path?.[0] === "depositBranchId"),
+};
+
 /** Corre aunque otros campos tengan errores, salvo el propio método mal escrito. */
 const depositMethodParams = {
   when: (payload: { issues: readonly { path?: PropertyKey[] }[] }) =>
@@ -306,14 +339,17 @@ export const restorationSchema = z.discriminatedUnion("paymentType", [
       paymentType: z.literal("a_cuenta"),
       depositAmount,
       depositMethodId,
+      depositBranchId,
     })
     .superRefine(checkDepositAgainstPieces, depositCheckParams)
-    .superRefine(requireDepositMethod, depositMethodParams),
+    .superRefine(requireDepositMethod, depositMethodParams)
+    .superRefine(requireDepositBranch, depositBranchParams),
   z.object({
     ...restorationFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
     depositAmount: z.unknown().transform(() => null),
     depositMethodId: noDepositMethod,
+    depositBranchId: noDepositMethod,
   }),
 ]);
 
@@ -360,14 +396,17 @@ export const copyRestorationSchema = z.discriminatedUnion("paymentType", [
       paymentType: z.literal("a_cuenta"),
       depositAmount,
       depositMethodId,
+      depositBranchId,
     })
     .superRefine(checkDepositAgainstPieces, depositCheckParams)
-    .superRefine(requireDepositMethod, depositMethodParams),
+    .superRefine(requireDepositMethod, depositMethodParams)
+    .superRefine(requireDepositBranch, depositBranchParams),
   z.object({
     ...copyFields,
     paymentType: z.enum(PAYMENT_TYPES).exclude(["a_cuenta"]),
     depositAmount: z.unknown().transform(() => null),
     depositMethodId: noDepositMethod,
+    depositBranchId: noDepositMethod,
   }),
 ]);
 

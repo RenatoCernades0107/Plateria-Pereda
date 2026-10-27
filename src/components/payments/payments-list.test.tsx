@@ -10,6 +10,7 @@ const payment = (overrides: Partial<PaymentRecord>): PaymentRecord => ({
   kind: "pago",
   amountCents: 20000,
   methodName: "Yape",
+  branchName: null,
   paidOn: "2026-10-12",
   reason: "",
   source: "sistema",

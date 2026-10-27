@@ -23,6 +23,7 @@ import {
   newDraft,
   PaymentFields,
   readDraft,
+  type BranchOption,
   type MethodOption,
 } from "./payment-fields";
 
@@ -31,17 +32,19 @@ const SUGGESTION_LABELS: Record<SuggestedPayment["kind"], string> = {
   saldo: "Saldo",
 };
 
-/** "Registrar pago" (ventas y admin, Paso 11.2): monto sugerido, método y fecha. */
+/** "Registrar pago" (ventas y admin, Paso 11.2): sucursal, monto sugerido, método y fecha. */
 export function RegisterPaymentDialog({
   restorationId,
   balanceCents,
   suggested,
   methods,
+  branches,
 }: {
   restorationId: string;
   balanceCents: Cents;
   suggested: SuggestedPayment | null;
   methods: MethodOption[];
+  branches: BranchOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => newDraft(suggested?.amount ?? null));
@@ -94,6 +97,7 @@ export function RegisterPaymentDialog({
             draft={draft}
             onChange={setDraft}
             methods={methods}
+            branches={branches}
             idPrefix="pago"
           />
           <DialogFooter>

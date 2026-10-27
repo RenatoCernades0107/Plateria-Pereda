@@ -59,8 +59,10 @@ const {
 
 const R = "00000000-0000-4000-8000-000000000001";
 const M = "00000000-0000-4000-8000-000000000002";
+const B = "00000000-0000-4000-8000-0000000000b1";
 const pay = {
   paidOn: "2026-10-12",
+  branchId: B,
   rows: [{ methodId: M, amountCents: 10050 }],
 };
 
@@ -110,6 +112,7 @@ describe("acciones de pagos (11.2)", () => {
             amount: 100.5,
             payment_method_id: M,
             method_name: "-",
+            branch_id: B,
             paid_on: "2026-10-12",
           },
         ],
@@ -119,9 +122,9 @@ describe("acciones de pagos (11.2)", () => {
   });
 
   it("valida los datos y traduce los errores de la BD", async () => {
-    expect(await registerPayment(R, { paidOn: "x", rows: [] })).toHaveProperty(
-      "error",
-    );
+    expect(
+      await registerPayment(R, { paidOn: "x", branchId: B, rows: [] }),
+    ).toHaveProperty("error");
     expect(await registerPayment("x", pay)).toHaveProperty("error");
     mocks.error = {
       code: "23514",
@@ -146,7 +149,11 @@ describe("acciones de pagos (11.2)", () => {
     expect(await approveWithPayment(R, ["p1"], null)).toEqual({ ok: true });
     expect(mocks.calls).toHaveLength(1);
     expect(
-      await approveWithPayment(R, ["p1"], { paidOn: "", rows: [] }),
+      await approveWithPayment(R, ["p1"], {
+        paidOn: "",
+        branchId: B,
+        rows: [],
+      }),
     ).toHaveProperty("error");
   });
 

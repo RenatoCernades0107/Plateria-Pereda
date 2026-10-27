@@ -311,6 +311,7 @@ const operations: Record<
         gateway: string;
         amountSet: { shopMoney: { amount: string } };
       }[];
+      metafields?: { namespace: string; key: string; value: string }[];
     };
     const { result, userErrors } = await withUserErrors(() =>
       store.createOrder({
@@ -327,6 +328,9 @@ const operations: Record<
           gateway: t.gateway,
           amount: t.amountSet.shopMoney.amount,
         })),
+        branch: order.metafields?.find(
+          (m) => m.namespace === "custom" && m.key === "sucursal",
+        )?.value,
       }),
     );
     return {

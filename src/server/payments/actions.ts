@@ -27,6 +27,8 @@ const date = z.iso.date();
 
 const paymentSchema = z.object({
   paidOn: date,
+  /** Sucursal que cobró: va al metafield "Sucursal" de cada pedido de Shopify. */
+  branchId: z.guid(),
   rows: z
     .array(z.object({ methodId: z.guid(), amountCents: cents }))
     .min(1)
@@ -71,6 +73,7 @@ async function insertPayments(
       payment_method_id: row.methodId,
       // La BD lo reemplaza por el nombre del método elegido.
       method_name: "-",
+      branch_id: input.branchId,
       paid_on: input.paidOn,
     })),
   );
@@ -87,7 +90,7 @@ export async function registerPayment(
   await requirePermission("pagos.registrar");
   const parsed = paymentSchema.safeParse(input);
   if (!parsed.success || !z.guid().safeParse(restorationId).success)
-    return { error: "Revisa el monto, el método y la fecha." };
+    return { error: "Revisa la sucursal, el monto, el método y la fecha." };
   const supabase = await createClient();
   const uncharged = await unchargedKindError(supabase, restorationId);
   if (uncharged) return { error: uncharged };
@@ -111,7 +114,7 @@ export async function approveWithPayment(
   await requirePermission("pagos.registrar");
   const parsed = input ? paymentSchema.safeParse(input) : null;
   if (parsed && !parsed.success)
-    return { error: "Revisa el monto, el método y la fecha." };
+    return { error: "Revisa la sucursal, el monto, el método y la fecha." };
   const supabase = await createClient();
   if (parsed) {
     const uncharged = await unchargedKindError(supabase, restorationId);

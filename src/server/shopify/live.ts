@@ -22,6 +22,7 @@ import type {
   ShopifyProduct,
   ShopifyProductSummary,
 } from "./types";
+import { BRANCH_METAFIELD } from "./types";
 
 type UserErrors = { field: string[] | null; message: string }[];
 type Amount = { shopMoney: { amount: string } };
@@ -747,6 +748,9 @@ export class LiveShopifyGateway implements ShopifyGateway {
           gateway: p.gateway,
           amountSet: shopMoney(p.amount),
         })),
+        ...(input.branch && {
+          metafields: [{ ...BRANCH_METAFIELD, value: input.branch }],
+        }),
       },
     });
     assertNoUserErrors(data.orderCreate.userErrors);

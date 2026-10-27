@@ -76,6 +76,7 @@ describe("registro de restauraciones", () => {
       depositAmount: "0.18",
       // El adelanto como pago lo registra la acción (createRestoration), no el RPC.
       depositMethodId: "00000000-0000-0000-0000-0000000000aa",
+      depositBranchId: "00000000-0000-0000-0000-0000000000bb",
       notes: "Prueba de integración",
       pieces: [
         {
@@ -206,6 +207,7 @@ describe("registro de restauraciones", () => {
         paymentType: "contado",
         depositAmount: null,
         depositMethodId: null,
+        depositBranchId: null,
         notes: "",
         pieces: [],
       }),

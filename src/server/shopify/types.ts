@@ -115,7 +115,19 @@ export type OrderInput = {
   note?: string;
   /** Pagos que la orden ya trae al crearse (p. ej., el adelanto). */
   payments?: PaymentInput[];
+  /**
+   * Sucursal que cobró: va al metafield de pedido "Sucursal" (`BRANCH_METAFIELD`), que
+   * se muestra como columna en la lista de pedidos.
+   */
+  branch?: string;
 };
+
+/** Metafield de pedido con la sucursal (lo crea `pnpm shopify:metafields`). */
+export const BRANCH_METAFIELD = {
+  namespace: "custom",
+  key: "sucursal",
+  type: "single_line_text_field",
+} as const;
 
 export type RefundInput = PaymentInput & {
   /** Clave estable del reembolso; Shopify la exige en 2026-10. */

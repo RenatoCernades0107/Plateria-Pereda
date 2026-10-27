@@ -92,6 +92,7 @@ export function paymentOrderInput(
     tags: ["restauracion", data.code, paymentOrderTag(payment.id)],
     note: `Guía ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}`,
     payments: [{ gateway: payment.gateway, amount }],
+    ...(payment.branch && { branch: payment.branch }),
   };
 }
 
