@@ -575,6 +575,7 @@ export type Database = {
           urgent: boolean;
           weight_grams: number | null;
           whatsapp_quote_item_id: string | null;
+          workshop_delivery_date: string | null;
           workshop_id: string | null;
         };
         Insert: {
@@ -617,6 +618,7 @@ export type Database = {
           urgent?: boolean;
           weight_grams?: number | null;
           whatsapp_quote_item_id?: string | null;
+          workshop_delivery_date?: string | null;
           workshop_id?: string | null;
         };
         Update: {
@@ -659,6 +661,7 @@ export type Database = {
           urgent?: boolean;
           weight_grams?: number | null;
           whatsapp_quote_item_id?: string | null;
+          workshop_delivery_date?: string | null;
           workshop_id?: string | null;
         };
         Relationships: [
@@ -1692,6 +1695,7 @@ export type Database = {
           updated_at: string | null;
           urgent: boolean | null;
           weight_grams: number | null;
+          workshop_delivery_date: string | null;
           workshop_id: string | null;
         };
         Relationships: [
@@ -2087,6 +2091,7 @@ export type Database = {
           urgent: boolean;
           weight_grams: number;
           workshop_days: number;
+          workshop_delivery_date: string;
           workshop_id: string;
           workshop_name: string;
           workshop_ongoing: boolean;
@@ -2352,8 +2357,10 @@ export type Database = {
       set_pieces_urgent: {
         Args: {
           p_estimated_delivery_date?: string;
+          p_keep_workshop_date?: boolean;
           p_piece_ids: string[];
           p_urgent: boolean;
+          p_workshop_delivery_date?: string;
         };
         Returns: {
           piece_id: string;

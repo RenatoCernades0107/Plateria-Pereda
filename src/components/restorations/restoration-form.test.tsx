@@ -259,9 +259,11 @@ describe("RestorationForm", () => {
     renderForm();
     const card = within(screen.getByTestId("pieza-1"));
     // Sin urgencia no hay fecha de entrega.
-    expect(card.queryByLabelText("Fecha estimada de entrega")).toBeNull();
+    expect(
+      card.queryByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeNull();
     await user.click(card.getByLabelText("Urgente"));
-    const date = card.getByLabelText("Fecha estimada de entrega");
+    const date = card.getByLabelText("Fecha estimada de entrega al cliente");
     expect(date).toHaveAttribute("type", "date");
     expect(date).toHaveAttribute("min", todayInLima());
 
@@ -275,7 +277,9 @@ describe("RestorationForm", () => {
 
     // Al quitar la urgencia el campo desaparece.
     await user.click(card.getByLabelText("Urgente"));
-    expect(card.queryByLabelText("Fecha estimada de entrega")).toBeNull();
+    expect(
+      card.queryByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeNull();
   });
 
   it("sin permiso el precio de venta no se edita (D58)", () => {

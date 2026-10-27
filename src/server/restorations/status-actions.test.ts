@@ -254,6 +254,39 @@ describe("marcar urgente", () => {
     });
   });
 
+  it("lleva la fecha del taller; en bloque puede conservar la de cada pieza", async () => {
+    await setPiecesUrgent(["p1"], true, "2026-11-05", {
+      workshopDeliveryDate: "2026-11-03",
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("set_pieces_urgent", {
+      p_piece_ids: ["p1"],
+      p_urgent: true,
+      p_estimated_delivery_date: "2026-11-05",
+      p_workshop_delivery_date: "2026-11-03",
+    });
+    await setPiecesUrgent(["p1", "p2"], true, "2026-11-05", {
+      keepWorkshopDate: true,
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("set_pieces_urgent", {
+      p_piece_ids: ["p1", "p2"],
+      p_urgent: true,
+      p_estimated_delivery_date: "2026-11-05",
+      p_keep_workshop_date: true,
+    });
+  });
+
+  it("la fecha del taller no puede ser posterior a la del cliente", async () => {
+    mocks.rpc.mockClear();
+    expect(
+      await setPiecesUrgent(["p1"], true, "2026-11-05", {
+        workshopDeliveryDate: "2026-11-06",
+      }),
+    ).toEqual({
+      error: "La fecha del taller no puede ser posterior a la del cliente.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("marcar urgente exige la fecha estimada de entrega antes de llamar a la BD", async () => {
     expect(await setPiecesUrgent(["p1"], true)).toEqual({
       error: "Indica la fecha estimada de entrega.",

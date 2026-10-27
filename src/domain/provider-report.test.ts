@@ -20,7 +20,7 @@ const piece: ProviderReportPiece = {
   measure: "29x36",
   weightGrams: 120,
   serviceCostCents: 4550,
-  estimatedDeliveryDate: "2026-10-30",
+  workshopDeliveryDate: "2026-10-30",
 };
 
 describe("providerReportModel", () => {
@@ -33,7 +33,7 @@ describe("providerReportModel", () => {
           id: "p2",
           code: "RES-00004-2",
           serviceCostCents: null,
-          estimatedDeliveryDate: null,
+          workshopDeliveryDate: null,
         },
       ],
       {
@@ -49,7 +49,7 @@ describe("providerReportModel", () => {
     expect(model.rows[1]).toMatchObject({
       number: 2,
       serviceCost: "—",
-      deliveryDate: "—",
+      workshopDeliveryDate: "—",
     });
     // Sin el número de guía: ya va en el código de la pieza.
     expect(model.rows[0]).toEqual({
@@ -66,7 +66,7 @@ describe("providerReportModel", () => {
       service: "Varios",
       serviceCost: formatCents(4550),
       task: "Soldar gancho de la esquina",
-      deliveryDate: "30 oct",
+      workshopDeliveryDate: "30 oct",
     });
   });
 

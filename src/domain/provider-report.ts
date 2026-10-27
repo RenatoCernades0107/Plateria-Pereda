@@ -34,8 +34,8 @@ export type ProviderReportPiece = {
   weightGrams: number | null;
   /** Lo que cobra el taller; null si aún no se define o si el rol no lo ve. */
   serviceCostCents: Cents | null;
-  /** Fecha estimada de entrega (AAAA-MM-DD) de las urgentes; null si no la tiene. */
-  estimatedDeliveryDate: string | null;
+  /** Fecha estimada de entrega del taller (AAAA-MM-DD); null si no se indicó. */
+  workshopDeliveryDate: string | null;
 };
 
 export type ProviderReportRow = {
@@ -56,8 +56,8 @@ export type ProviderReportRow = {
   serviceCost: string;
   /** "Servicio a realizar" (las notas de la pieza); vacío si no hay. */
   task: string;
-  /** Fecha estimada de entrega (p. ej. `30 oct`); `—` si la pieza no la tiene. */
-  deliveryDate: string;
+  /** Fecha estimada de entrega del taller (p. ej. `30 oct`); `—` si no se indicó. */
+  workshopDeliveryDate: string;
 };
 
 export type ProviderReportModel = {
@@ -114,8 +114,8 @@ export function providerReportModel(
       serviceCost:
         p.serviceCostCents === null ? "—" : formatCents(p.serviceCostCents),
       task: p.notes.trim(),
-      deliveryDate: p.estimatedDeliveryDate
-        ? formatDeliveryDate(p.estimatedDeliveryDate, now)
+      workshopDeliveryDate: p.workshopDeliveryDate
+        ? formatDeliveryDate(p.workshopDeliveryDate, now)
         : "—",
     })),
   };

@@ -46,6 +46,7 @@ const piece: PieceDetail = {
   location: "en_tienda",
   urgent: false,
   estimatedDeliveryDate: null,
+  workshopDeliveryDate: null,
   readyForDelivery: false,
   description: "Fuente",
   measure: "40 cm",
@@ -188,7 +189,7 @@ describe("PieceDialog", () => {
     );
     const dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).queryByLabelText("Fecha estimada de entrega"),
+      within(dialog).queryByLabelText("Fecha estimada de entrega al cliente"),
     ).toBeNull();
     await user.click(within(dialog).getByLabelText("Urgente"));
     await user.click(
@@ -200,7 +201,7 @@ describe("PieceDialog", () => {
     expect(mocks.updatePiece).not.toHaveBeenCalled();
 
     fireEvent.change(
-      within(dialog).getByLabelText("Fecha estimada de entrega"),
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
       { target: { value: "2030-01-15" } },
     );
     await user.click(
@@ -211,6 +212,46 @@ describe("PieceDialog", () => {
       expect.objectContaining({
         urgent: true,
         estimatedDeliveryDate: "2030-01-15",
+        workshopDeliveryDate: "",
+      }),
+    );
+  });
+
+  it("la fecha del taller es opcional y no puede ser posterior a la del cliente", async () => {
+    const user = userEvent.setup();
+    render(<PieceDialog restorationId="r1" piece={piece} {...props} />);
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByLabelText("Urgente"));
+    const client = within(dialog).getByLabelText(
+      "Fecha estimada de entrega al cliente",
+    );
+    const workshop = within(dialog).getByLabelText(
+      "Fecha estimada de entrega del taller (opcional)",
+    );
+    fireEvent.change(client, { target: { value: "2030-01-15" } });
+    fireEvent.change(workshop, { target: { value: "2030-01-16" } });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "La fecha del taller no puede ser posterior a la del cliente",
+      ),
+    ).toBeVisible();
+    expect(mocks.updatePiece).not.toHaveBeenCalled();
+
+    fireEvent.change(workshop, { target: { value: "2030-01-12" } });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({
+        estimatedDeliveryDate: "2030-01-15",
+        workshopDeliveryDate: "2030-01-12",
       }),
     );
   });
@@ -226,7 +267,7 @@ describe("PieceDialog", () => {
     );
     let dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByLabelText("Fecha estimada de entrega"),
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
     ).toHaveValue("");
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),
@@ -251,7 +292,7 @@ describe("PieceDialog", () => {
     );
     dialog = screen.getByRole("dialog");
     expect(
-      within(dialog).getByLabelText("Fecha estimada de entrega"),
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
     ).toBeDisabled();
     await user.click(
       within(dialog).getByRole("button", { name: "Guardar cambios" }),

@@ -1,12 +1,15 @@
 /**
- * Fecha estimada de entrega de las piezas urgentes (2026-10-27): toda pieza urgente la
- * lleva. Es una fecha de calendario (AAAA-MM-DD, sin hora) en la zona de la tienda.
+ * Fechas estimadas de entrega de las piezas urgentes (2026-10-27): al cliente
+ * (obligatoria) y del taller (opcional, nunca posterior a la del cliente). Son fechas de
+ * calendario (AAAA-MM-DD, sin hora) en la zona de la tienda.
  */
 
 const TIME_ZONE = "America/Lima";
 
 export const DELIVERY_DATE_REQUIRED = "Indica la fecha estimada de entrega";
 export const DELIVERY_DATE_INVALID = "Ingresa una fecha válida";
+export const WORKSHOP_DATE_AFTER_CLIENT =
+  "La fecha del taller no puede ser posterior a la del cliente";
 
 const todayFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: TIME_ZONE,

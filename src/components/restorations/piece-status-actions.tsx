@@ -122,6 +122,8 @@ export type StatusPiece = {
   urgent: boolean;
   /** Fecha estimada de entrega (AAAA-MM-DD) de las urgentes; null si no la tiene. */
   estimatedDeliveryDate?: string | null;
+  /** Fecha estimada de entrega del taller (AAAA-MM-DD); null si no se indicó. */
+  workshopDeliveryDate?: string | null;
   /** Revisión en taller: último envío a revisar y última vuelta. */
   reviewSentAt?: string | null;
   reviewReturnedAt?: string | null;
@@ -1115,6 +1117,7 @@ function PieceStatusBadges({
               code: piece.code,
               urgent: piece.urgent,
               estimatedDeliveryDate: piece.estimatedDeliveryDate,
+              workshopDeliveryDate: piece.workshopDeliveryDate,
             }}
           />
         ) : piece.urgent ? (

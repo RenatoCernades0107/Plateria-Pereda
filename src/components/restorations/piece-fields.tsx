@@ -322,12 +322,21 @@ export function PieceFields({
         </div>
       ) : null}
       {showUrgent && urgent ? (
-        // Una pieza urgente siempre lleva fecha estimada de entrega.
+        // Una pieza urgente siempre lleva fecha de entrega al cliente; la del taller es
+        // opcional y no es posterior a la del cliente.
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             form={form}
             name={path("estimatedDeliveryDate")}
-            label="Fecha estimada de entrega"
+            label="Fecha estimada de entrega al cliente"
+            type="date"
+            min={todayInLima()}
+            disabled={off("urgent")}
+          />
+          <TextField
+            form={form}
+            name={path("workshopDeliveryDate")}
+            label="Fecha estimada de entrega del taller (opcional)"
             type="date"
             min={todayInLima()}
             disabled={off("urgent")}

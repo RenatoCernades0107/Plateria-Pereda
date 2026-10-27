@@ -51,6 +51,7 @@ const piece = (n: number, patch: Partial<PieceDetail> = {}): PieceDetail => ({
   location: "sin_enviar",
   urgent: false,
   estimatedDeliveryDate: null,
+  workshopDeliveryDate: null,
   readyForDelivery: false,
   description: `Pieza ${n}`,
   measure: "",
@@ -107,9 +108,17 @@ const renderBoard = (
     />,
   );
 
+const setWorkshopDate = (value: string) =>
+  fireEvent.change(
+    screen.getByLabelText("Fecha estimada de entrega del taller (opcional)"),
+    { target: { value } },
+  );
+
 const setDeliveryDate = (value: string) =>
   fireEvent.change(
-    screen.getByLabelText("Fecha estimada de entrega", { selector: "input" }),
+    screen.getByLabelText("Fecha estimada de entrega al cliente", {
+      selector: "input",
+    }),
     {
       target: { value },
     },
@@ -477,7 +486,10 @@ describe("PiecesBoard: urgente", () => {
     setDeliveryDate("2030-01-15");
     await user.click(screen.getByRole("button", { name: "Marcar urgente" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
   });
 
@@ -503,7 +515,10 @@ describe("PiecesBoard: urgente", () => {
     setDeliveryDate("2030-02-01");
     await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p2"], true, "2030-02-01"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p2"], true, "2030-02-01", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
   });
 
@@ -527,6 +542,61 @@ describe("PiecesBoard: urgente", () => {
     ).toBeNull();
   });
 
+  it("la barra cambia la fecha de varias urgentes sin borrar la del taller de cada una", async () => {
+    const user = userEvent.setup();
+    renderBoard(
+      [
+        piece(1, {
+          urgent: true,
+          estimatedDeliveryDate: "2030-01-15",
+          workshopDeliveryDate: "2030-01-10",
+        }),
+        piece(2, { urgent: true, estimatedDeliveryDate: "2030-01-15" }),
+      ],
+      { role: "admin" },
+    );
+    await user.click(
+      within(bar()).getByRole("button", { name: "Fecha de entrega" }),
+    );
+    expect(
+      screen.getByLabelText("Fecha estimada de entrega del taller (opcional)"),
+    ).toHaveValue("");
+    expect(
+      screen.getByText(
+        "En blanco: cada pieza conserva la fecha del taller que tenga.",
+      ),
+    ).toBeInTheDocument();
+    setDeliveryDate("2030-01-25");
+    await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(
+        ["p1", "p2"],
+        true,
+        "2030-01-25",
+        {
+          workshopDeliveryDate: null,
+          keepWorkshopDate: true,
+        },
+      ),
+    );
+  });
+
+  it("una urgente muestra también la fecha del taller", () => {
+    renderBoard(
+      [
+        piece(1, {
+          urgent: true,
+          estimatedDeliveryDate: "2030-01-15",
+          workshopDeliveryDate: "2030-01-10",
+        }),
+      ],
+      { role: "ventas" },
+    );
+    expect(screen.getByTestId("fecha-entrega")).toHaveTextContent(
+      "Entrega 15 ene 2030 · Taller 10 ene 2030",
+    );
+  });
+
   it("la barra marca (con fecha de entrega), cambia la fecha o quita «Urgente»", async () => {
     const user = userEvent.setup();
     renderBoard(
@@ -543,7 +613,10 @@ describe("PiecesBoard: urgente", () => {
     setDeliveryDate("2030-01-10");
     await user.click(screen.getByRole("button", { name: "Marcar urgente" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-10"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-10", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     // Las urgentes cambian de fecha; el diálogo abre con la que tienen.
@@ -551,12 +624,18 @@ describe("PiecesBoard: urgente", () => {
       within(bar()).getByRole("button", { name: "Fecha de entrega" }),
     );
     expect(
-      screen.getByLabelText("Fecha estimada de entrega", { selector: "input" }),
+      screen.getByLabelText("Fecha estimada de entrega al cliente", {
+        selector: "input",
+      }),
     ).toHaveValue("2030-01-15");
     setDeliveryDate("2030-01-20");
+    setWorkshopDate("2030-01-18");
     await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p2"], true, "2030-01-20"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p2"], true, "2030-01-20", {
+        workshopDeliveryDate: "2030-01-18",
+        keepWorkshopDate: false,
+      }),
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await user.click(

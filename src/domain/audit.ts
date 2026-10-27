@@ -274,7 +274,11 @@ export const AUDIT_ENTITIES: Record<string, EntityDef> = {
       approved_at: { label: "Aprobada" },
       urgent: { label: "Urgente" },
       estimated_delivery_date: {
-        label: "Entrega estimada",
+        label: "Entrega estimada al cliente",
+        format: (value) => formatDeliveryDate(String(value)),
+      },
+      workshop_delivery_date: {
+        label: "Entrega estimada del taller",
         format: (value) => formatDeliveryDate(String(value)),
       },
       first_sent_at: { label: "Primer envío al taller" },

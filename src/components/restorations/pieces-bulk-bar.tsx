@@ -239,12 +239,17 @@ export function PiecesBulkBar({
   const urgentable = chosen.filter((p) => canToggleUrgent(p, role));
   const toMark = urgentable.filter((p) => !p.urgent);
   const alreadyUrgent = urgentable.filter((p) => p.urgent);
-  // Si todas las urgentes elegidas comparten fecha, el diálogo abre con ella.
-  const sharedDate = new Set(
-    alreadyUrgent.map((p) => p.estimatedDeliveryDate ?? ""),
+  // Si todas las urgentes elegidas comparten una fecha, el diálogo abre con ella.
+  const sharedOf = (dates: (string | null | undefined)[]) => {
+    const unique = new Set(dates.map((d) => d ?? ""));
+    return unique.size === 1 ? [...unique][0] || null : null;
+  };
+  const sharedDeliveryDate = sharedOf(
+    alreadyUrgent.map((p) => p.estimatedDeliveryDate),
   );
-  const sharedDeliveryDate =
-    sharedDate.size === 1 ? [...sharedDate][0] || null : null;
+  const sharedWorkshopDate = sharedOf(
+    alreadyUrgent.map((p) => p.workshopDeliveryDate),
+  );
   // Piezas a las que se aplica la fecha del diálogo: las que se marcan, o las urgentes.
   const dateTargets = dateDialog === "change" ? alreadyUrgent : toMark;
   const assignable =
@@ -568,7 +573,7 @@ export function PiecesBulkBar({
         workshops={workshops}
         onConfirm={(input) => applyBulk(dialog!, input)}
       />
-      {/* Toda pieza urgente lleva fecha de entrega: se pide al marcar y se cambia aquí. */}
+      {/* Fechas de entrega de las urgentes: se piden al marcar y se cambian aquí. */}
       <UrgentDateDialog
         key={dateDialog ?? "fecha-cerrada"}
         open={dateDialog !== null}
@@ -580,6 +585,11 @@ export function PiecesBulkBar({
             : `${dateTargets.length} piezas`
         }
         initialDate={dateDialog === "change" ? sharedDeliveryDate : null}
+        initialWorkshopDate={
+          dateDialog === "change" ? sharedWorkshopDate : null
+        }
+        // Varias piezas: la fecha del taller en blanco no borra la que cada una tenga.
+        keepWorkshopDate={dateTargets.length > 1}
         alreadyUrgent={dateDialog === "change"}
         onDone={onDone}
       />

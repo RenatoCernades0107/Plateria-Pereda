@@ -68,7 +68,7 @@ select is(
 select throws_ok(
   $$ update public.pieces set estimated_delivery_date = private.lima_today() + 3
      where id = '00000000-0000-0000-0000-0000000055e3' $$,
-  '23514', 'De una pieza cerrada o entregada no se cambia la fecha estimada de entrega',
+  '23514', 'De una pieza cerrada o entregada no se cambian las fechas estimadas de entrega',
   'una pieza entregada no cambia su fecha'
 );
 

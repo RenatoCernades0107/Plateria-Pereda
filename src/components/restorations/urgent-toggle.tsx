@@ -23,6 +23,7 @@ import {
   isDeliveryOverdue,
   isIsoDate,
   todayInLima,
+  WORKSHOP_DATE_AFTER_CLIENT,
 } from "@/domain/delivery-date";
 import { can } from "@/domain/permissions";
 import { isClosedStatus, type PieceStatus } from "@/domain/piece-state-machine";
@@ -61,6 +62,8 @@ export function UrgentDateDialog({
   pieceIds,
   subject,
   initialDate,
+  initialWorkshopDate,
+  keepWorkshopDate = false,
   alreadyUrgent = false,
   onDone,
 }: {
@@ -68,24 +71,37 @@ export function UrgentDateDialog({
   onOpenChange: (open: boolean) => void;
   pieceIds: string[];
   subject: string;
-  /** Fecha con la que abre (la actual, si ya tiene). */
+  /** Fecha de entrega al cliente con la que abre (la actual, si ya tiene). */
   initialDate?: string | null;
+  /** Fecha de entrega del taller con la que abre (la actual, si ya tiene). */
+  initialWorkshopDate?: string | null;
+  /** Varias piezas: con la fecha del taller en blanco, cada una conserva la suya. */
+  keepWorkshopDate?: boolean;
   /** Las piezas ya son urgentes: solo se coloca o cambia la fecha. */
   alreadyUrgent?: boolean;
   /** Tras guardar (p. ej. vaciar la selección). */
   onDone?: () => void;
 }) {
   const [date, setDate] = useState(initialDate ?? "");
+  const [workshopDate, setWorkshopDate] = useState(initialWorkshopDate ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const inputId = useId();
+  const workshopInputId = useId();
 
   const save = () => {
     if (date === "") return setError(`${DELIVERY_DATE_REQUIRED}.`);
     if (!isIsoDate(date)) return setError(`${DELIVERY_DATE_INVALID}.`);
+    if (workshopDate !== "" && !isIsoDate(workshopDate))
+      return setError(`${DELIVERY_DATE_INVALID}.`);
+    if (workshopDate !== "" && workshopDate > date)
+      return setError(`${WORKSHOP_DATE_AFTER_CLIENT}.`);
     setError(null);
     startTransition(async () => {
-      const result = await setPiecesUrgent(pieceIds, true, date);
+      const result = await setPiecesUrgent(pieceIds, true, date, {
+        workshopDeliveryDate: workshopDate || null,
+        keepWorkshopDate,
+      });
       if ("error" in result) return setError(result.error);
       toast.success(
         alreadyUrgent
@@ -102,12 +118,11 @@ export function UrgentDateDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {alreadyUrgent
-              ? "Fecha estimada de entrega"
-              : "Marcar como urgente"}
+            {alreadyUrgent ? "Fechas de entrega" : "Marcar como urgente"}
           </DialogTitle>
           <DialogDescription>
-            Toda pieza urgente lleva fecha estimada de entrega ({subject}).
+            Toda pieza urgente lleva fecha estimada de entrega al cliente; la
+            del taller es opcional ({subject}).
           </DialogDescription>
         </DialogHeader>
         <form
@@ -120,7 +135,9 @@ export function UrgentDateDialog({
         >
           {error ? <FormAlert>{error}</FormAlert> : null}
           <div className="space-y-2">
-            <Label htmlFor={inputId}>Fecha estimada de entrega</Label>
+            <Label htmlFor={inputId}>
+              Fecha estimada de entrega al cliente
+            </Label>
             <Input
               id={inputId}
               type="date"
@@ -130,6 +147,25 @@ export function UrgentDateDialog({
               disabled={pending}
               autoFocus
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={workshopInputId}>
+              Fecha estimada de entrega del taller (opcional)
+            </Label>
+            <Input
+              id={workshopInputId}
+              type="date"
+              min={todayInLima()}
+              max={date || undefined}
+              value={workshopDate}
+              onChange={(e) => setWorkshopDate(e.target.value)}
+              disabled={pending}
+            />
+            {keepWorkshopDate ? (
+              <p className="text-muted-foreground text-xs">
+                En blanco: cada pieza conserva la fecha del taller que tenga.
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
             <Button type="submit" disabled={pending}>
@@ -156,15 +192,23 @@ export function DeliveryDate({
   editable = false,
   className,
 }: {
-  piece: { id: string; code: string; estimatedDeliveryDate?: string | null };
+  piece: {
+    id: string;
+    code: string;
+    estimatedDeliveryDate?: string | null;
+    workshopDeliveryDate?: string | null;
+  };
   editable?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const date = piece.estimatedDeliveryDate ?? null;
   const overdue = date !== null && isDeliveryOverdue(date);
+  const workshopDate = piece.workshopDeliveryDate ?? null;
   const text = date
-    ? `Entrega ${formatDeliveryDate(date)}`
+    ? `Entrega ${formatDeliveryDate(date)}${
+        workshopDate ? ` · Taller ${formatDeliveryDate(workshopDate)}` : ""
+      }`
     : "Sin fecha de entrega";
   const tone = !date
     ? "text-amber-700 dark:text-amber-300"
@@ -209,6 +253,7 @@ export function DeliveryDate({
         pieceIds={[piece.id]}
         subject={piece.code}
         initialDate={date}
+        initialWorkshopDate={workshopDate}
         alreadyUrgent
       />
     </>
@@ -232,6 +277,7 @@ export function UrgentToggle({
     code: string;
     urgent: boolean;
     estimatedDeliveryDate?: string | null;
+    workshopDeliveryDate?: string | null;
   };
   variant?: "icon" | "label";
   className?: string;
@@ -292,6 +338,7 @@ export function UrgentToggle({
         pieceIds={[piece.id]}
         subject={piece.code}
         initialDate={piece.estimatedDeliveryDate}
+        initialWorkshopDate={piece.workshopDeliveryDate}
       />
     </>
   );

@@ -71,6 +71,7 @@ describe("pieceSchema", () => {
       priceCents: 125_050,
       urgent: false,
       estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     });
   });
@@ -111,11 +112,39 @@ describe("pieceSchema", () => {
     }
   });
 
+  it("la fecha del taller es opcional y no es posterior a la del cliente", () => {
+    const urgent = {
+      ...piece,
+      urgent: true,
+      estimatedDeliveryDate: "2026-11-05",
+    };
+    expect(pieceSchema.parse(urgent).workshopDeliveryDate).toBeNull();
+    expect(
+      pieceSchema.parse({ ...urgent, workshopDeliveryDate: "2026-11-05" })
+        .workshopDeliveryDate,
+    ).toBe("2026-11-05");
+    expect(
+      errorsOf(pieceSchema, { ...urgent, workshopDeliveryDate: "2026-11-06" }),
+    ).toEqual({
+      workshopDeliveryDate:
+        "La fecha del taller no puede ser posterior a la del cliente",
+    });
+    expect(
+      errorsOf(pieceSchema, { ...urgent, workshopDeliveryDate: "2026-02-30" }),
+    ).toEqual({ workshopDeliveryDate: "Ingresa una fecha válida" });
+  });
+
   it("una pieza que no es urgente no guarda fecha de entrega", () => {
     expect(
-      pieceSchema.parse({ ...piece, estimatedDeliveryDate: "2026-11-05" })
-        .estimatedDeliveryDate,
-    ).toBeNull();
+      pieceSchema.parse({
+        ...piece,
+        estimatedDeliveryDate: "2026-11-05",
+        workshopDeliveryDate: "2026-11-03",
+      }),
+    ).toMatchObject({
+      estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
+    });
   });
 
   it("al editar una pieza con la urgencia fija, la fecha no se exige", () => {
@@ -163,6 +192,7 @@ describe("pieceSchema", () => {
       priceCents: 0,
       urgent: false,
       estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     });
   });

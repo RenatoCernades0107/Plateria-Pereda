@@ -301,6 +301,7 @@ function pieceDefaults(piece: PieceDetail): PieceFormInput {
     price: piece.priceCents === null ? "" : toDecimalString(piece.priceCents),
     urgent: piece.urgent,
     estimatedDeliveryDate: piece.estimatedDeliveryDate ?? "",
+    workshopDeliveryDate: piece.workshopDeliveryDate ?? "",
     notes: piece.notes,
   };
 }

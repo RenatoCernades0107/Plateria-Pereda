@@ -210,6 +210,7 @@ function pieceColumns(
       urgent: p.urgent,
       // Obligatoria si es urgente; sin urgencia se borra (la BD lo exige).
       estimated_delivery_date: p.estimatedDeliveryDate,
+      workshop_delivery_date: p.workshopDeliveryDate,
     },
   };
 }

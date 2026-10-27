@@ -6,6 +6,7 @@ import {
   DELIVERY_DATE_INVALID,
   DELIVERY_DATE_REQUIRED,
   isIsoDate,
+  WORKSHOP_DATE_AFTER_CLIENT,
 } from "@/domain/delivery-date";
 import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import {
@@ -153,14 +154,20 @@ export async function changePiecePrice(
 
 /**
  * Marca o quita "Urgente" a una o varias piezas (admin, ventas y logística; RPC
- * `set_pieces_urgent`). Al marcar hay que indicar la fecha estimada de entrega
- * (AAAA-MM-DD); llamarla sobre piezas que ya son urgentes coloca o cambia su fecha. Las
- * piezas pueden ser de varias guías: se refrescan todas.
+ * `set_pieces_urgent`). Al marcar hay que indicar la fecha estimada de entrega al
+ * cliente (AAAA-MM-DD); la del taller es opcional y no puede ser posterior a la del
+ * cliente. Llamarla sobre piezas que ya son urgentes coloca o cambia las fechas: con la
+ * del taller en blanco la borra, salvo `keepWorkshopDate` (cambio en bloque: cada pieza
+ * conserva la suya). Las piezas pueden ser de varias guías: se refrescan todas.
  */
 export async function setPiecesUrgent(
   pieceIds: string[],
   urgent: boolean,
   estimatedDeliveryDate: string | null = null,
+  {
+    workshopDeliveryDate = null,
+    keepWorkshopDate = false,
+  }: { workshopDeliveryDate?: string | null; keepWorkshopDate?: boolean } = {},
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.marcar-urgente");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
@@ -168,13 +175,25 @@ export async function setPiecesUrgent(
     if (!estimatedDeliveryDate) return { error: `${DELIVERY_DATE_REQUIRED}.` };
     if (!isIsoDate(estimatedDeliveryDate))
       return { error: `${DELIVERY_DATE_INVALID}.` };
+    if (workshopDeliveryDate) {
+      if (!isIsoDate(workshopDeliveryDate))
+        return { error: `${DELIVERY_DATE_INVALID}.` };
+      if (workshopDeliveryDate > estimatedDeliveryDate)
+        return { error: `${WORKSHOP_DATE_AFTER_CLIENT}.` };
+    }
   }
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_pieces_urgent", {
     p_piece_ids: pieceIds,
     p_urgent: urgent,
     ...(urgent && estimatedDeliveryDate
-      ? { p_estimated_delivery_date: estimatedDeliveryDate }
+      ? {
+          p_estimated_delivery_date: estimatedDeliveryDate,
+          ...(workshopDeliveryDate
+            ? { p_workshop_delivery_date: workshopDeliveryDate }
+            : {}),
+          ...(keepWorkshopDate ? { p_keep_workshop_date: true } : {}),
+        }
       : {}),
   });
   if (error)

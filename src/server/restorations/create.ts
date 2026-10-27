@@ -29,6 +29,7 @@ export function pieceToRpc(piece: PieceInput) {
     urgent: piece.urgent,
     // Obligatoria si es urgente (la BD lo exige).
     estimated_delivery_date: piece.estimatedDeliveryDate,
+    workshop_delivery_date: piece.workshopDeliveryDate,
     notes: piece.notes,
     quote_item_id: piece.quoteItemId ?? null,
     // Estado inicial de la copia desde WhatsApp (P49); las demás RPC lo ignoran.

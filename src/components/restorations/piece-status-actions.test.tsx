@@ -572,7 +572,9 @@ describe("PieceHeader: urgente", () => {
 
   const setDeliveryDate = (value: string) =>
     fireEvent.change(
-      screen.getByLabelText("Fecha estimada de entrega", { selector: "input" }),
+      screen.getByLabelText("Fecha estimada de entrega al cliente", {
+        selector: "input",
+      }),
       {
         target: { value },
       },
@@ -594,7 +596,10 @@ describe("PieceHeader: urgente", () => {
     setDeliveryDate("2030-01-15");
     await user.click(screen.getByRole("button", { name: "Marcar urgente" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
     expect(mocks.success).toHaveBeenCalledWith(
       "RES-00001-1 marcada como urgente para el 15 ene 2030.",
@@ -614,12 +619,17 @@ describe("PieceHeader: urgente", () => {
       }),
     );
     expect(
-      screen.getByLabelText("Fecha estimada de entrega", { selector: "input" }),
+      screen.getByLabelText("Fecha estimada de entrega al cliente", {
+        selector: "input",
+      }),
     ).toHaveValue("2030-01-15");
     setDeliveryDate("2030-01-20");
     await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-20"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-20", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
   });
 
@@ -635,7 +645,10 @@ describe("PieceHeader: urgente", () => {
     setDeliveryDate("2030-02-01");
     await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
     await waitFor(() =>
-      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-02-01"),
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-02-01", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
   });
 

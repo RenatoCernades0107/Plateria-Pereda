@@ -199,6 +199,7 @@ describe("pieceToRpc", () => {
         priceCents: 120050,
         urgent: true,
         estimatedDeliveryDate: "2026-11-05",
+        workshopDeliveryDate: "2026-11-03",
         notes: "",
       }),
     ).toEqual({
@@ -212,6 +213,7 @@ describe("pieceToRpc", () => {
       price: "1200.50",
       urgent: true,
       estimated_delivery_date: "2026-11-05",
+      workshop_delivery_date: "2026-11-03",
       notes: "",
       quote_item_id: null,
       status: null,
@@ -232,6 +234,7 @@ describe("pieceToRpc", () => {
         priceCents: null,
         urgent: false,
         estimatedDeliveryDate: null,
+        workshopDeliveryDate: null,
         notes: "",
       }).price,
     ).toBeNull();
@@ -250,6 +253,7 @@ describe("pieceToRpc", () => {
         priceCents: 1000,
         urgent: false,
         estimatedDeliveryDate: null,
+        workshopDeliveryDate: null,
         notes: "",
         initialStatus: "en_consulta",
         statusNote: "Consultar al taller",
@@ -272,6 +276,7 @@ describe("withoutSalePrices (D58)", () => {
     weightGrams: null,
     urgent: false,
     estimatedDeliveryDate: null,
+    workshopDeliveryDate: null,
     notes: "",
   };
 
@@ -303,6 +308,7 @@ describe("withoutWorkshops (D60)", () => {
       priceCents: null,
       urgent: false,
       estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     };
     expect(withoutWorkshops([{ ...base, workshopId: "w1" }])).toEqual([

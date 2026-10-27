@@ -4,6 +4,7 @@ import {
   DELIVERY_DATE_INVALID,
   DELIVERY_DATE_REQUIRED,
   isIsoDate,
+  WORKSHOP_DATE_AFTER_CLIENT,
 } from "@/domain/delivery-date";
 import {
   DEPOSIT_NEGATIVE_ERROR,
@@ -143,10 +144,19 @@ const pieceFields = {
   /** Marca "Urgente" (P47): no es un estado. */
   urgent: z.boolean().default(false),
   /**
-   * Fecha estimada de entrega (AAAA-MM-DD): obligatoria si la pieza es urgente; si no
-   * lo es, se descarta. La BD no acepta fechas pasadas.
+   * Fecha estimada de entrega al cliente (AAAA-MM-DD): obligatoria si la pieza es
+   * urgente; si no lo es, se descarta. La BD no acepta fechas pasadas.
    */
   estimatedDeliveryDate: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || isIsoDate(v), DELIVERY_DATE_INVALID)
+    .default(""),
+  /**
+   * Fecha estimada de entrega del taller (AAAA-MM-DD): opcional y no posterior a la del
+   * cliente; también se descarta si la pieza no es urgente.
+   */
+  workshopDeliveryDate: z
     .string()
     .trim()
     .refine((v) => v === "" || isIsoDate(v), DELIVERY_DATE_INVALID)
@@ -184,12 +194,24 @@ function buildPieceSchema({
           path: ["estimatedDeliveryDate"],
           message: DELIVERY_DATE_REQUIRED,
         });
+      if (
+        piece.urgent &&
+        piece.estimatedDeliveryDate !== "" &&
+        piece.workshopDeliveryDate !== "" &&
+        piece.workshopDeliveryDate > piece.estimatedDeliveryDate
+      )
+        ctx.addIssue({
+          code: "custom",
+          path: ["workshopDeliveryDate"],
+          message: WORKSHOP_DATE_AFTER_CLIENT,
+        });
     })
     .transform(
       ({
         price: priceCents,
         weight: weightGrams,
         estimatedDeliveryDate,
+        workshopDeliveryDate,
         ...rest
       }) => ({
         ...rest,
@@ -198,6 +220,10 @@ function buildPieceSchema({
         estimatedDeliveryDate:
           rest.urgent && estimatedDeliveryDate !== ""
             ? estimatedDeliveryDate
+            : null,
+        workshopDeliveryDate:
+          rest.urgent && workshopDeliveryDate !== ""
+            ? workshopDeliveryDate
             : null,
       }),
     );

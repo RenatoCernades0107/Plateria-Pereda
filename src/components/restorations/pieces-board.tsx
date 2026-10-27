@@ -192,6 +192,7 @@ function PieceRow({
               id: piece.id,
               code: piece.code,
               estimatedDeliveryDate: live.estimatedDeliveryDate,
+              workshopDeliveryDate: live.workshopDeliveryDate,
             }}
             editable={urgentToggle}
             className="mt-0.5 flex"
@@ -277,6 +278,7 @@ function PieceRow({
                 code: piece.code,
                 urgent: live.urgent,
                 estimatedDeliveryDate: live.estimatedDeliveryDate,
+                workshopDeliveryDate: live.workshopDeliveryDate,
               }}
             />
           ) : null}
