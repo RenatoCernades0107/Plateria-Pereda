@@ -700,7 +700,7 @@ export default async function RestauracionDetallePage({
                                 )
                                 .map((p) => ({
                                   id: p.id,
-                                  label: `${p.orderName ?? p.orderTitle ?? "Pago"} · ${p.methodName}`,
+                                  label: `${p.orderTitle ?? p.orderName ?? "Pago"} · ${p.methodName}`,
                                   refundableCents: p.refundableCents,
                                 }))
                         }

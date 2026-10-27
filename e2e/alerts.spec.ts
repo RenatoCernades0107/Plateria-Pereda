@@ -113,6 +113,54 @@ test.describe("Alertas", () => {
     await expect(page).toHaveURL(new RegExp(`/restauraciones/${guide.id}`));
   });
 
+  test("ventas recibe en vivo la alerta de guía lista cuando vuelve la última pieza", async ({
+    page,
+    loginAs,
+  }) => {
+    const admin = adminClient();
+    const guide = await seedRestoration(["registrada"]);
+    // Aprobada y en el taller desde hace una hora.
+    const sentAt = new Date(Date.now() - 3_600_000).toISOString();
+    await admin
+      .from("pieces")
+      .update({
+        status: "aprobada",
+        approved_at: sentAt,
+        first_sent_at: sentAt,
+        last_sent_at: sentAt,
+      } as never)
+      .eq("id", guide.pieceIds[0]!);
+
+    await loginAs("ventas");
+    await page.goto("/restauraciones");
+    const bell = page.getByRole("button", { name: /^Alertas/ });
+    await expect(bell).toHaveAttribute("data-live", "true", {
+      timeout: 15_000,
+    });
+
+    const logistica = await userClient(
+      SEED_USERS.logistica.email,
+      SEED_PASSWORD,
+    );
+    const { error } = await logistica.rpc("receive_from_workshop", {
+      p_piece_ids: guide.pieceIds,
+    });
+    if (error) throw error;
+
+    await expect(
+      page.getByRole("status").filter({ hasText: "Nueva alerta" }),
+    ).toContainText(`${guide.code} · Guía lista para entregar`, {
+      timeout: 15_000,
+    });
+    await bell.click();
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("link", { name: new RegExp(guide.code) })
+        .first(),
+    ).toContainText("ya volvieron y se pueden entregar");
+  });
+
   test("el admin personaliza el mensaje y silencia a un usuario", async ({
     page,
     loginAs,

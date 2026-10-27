@@ -208,7 +208,8 @@ test.describe("Shopify al aprobar y cobrar", () => {
     ).toBeVisible();
     await expect
       .poll(
-        async () => (await fakeOrders(request, r.code)).map((o) => o.name),
+        async () =>
+          (await fakeOrders(request, r.code)).map((o) => o.lines[0]!.title),
         {
           timeout: 20_000,
         },
