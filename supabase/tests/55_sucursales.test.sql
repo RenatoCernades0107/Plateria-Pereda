@@ -1,9 +1,9 @@
 begin;
 
-select plan(11);
+select plan(13);
 
 -- Sucursales: catálogo del admin (como los métodos de pago) y sucursal de cada pago,
--- que va al metafield "Sucursal" del pedido de Shopify.
+-- que va como etiqueta del pedido de Shopify.
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000055a01', 'admin@sucursales.test', '{"role":"admin"}', '{"full_name":"Ada Admin"}'),
   ('00000000-0000-0000-0000-000000055a02', 'ventas@sucursales.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
@@ -61,6 +61,14 @@ select lives_ok(
 select throws_ok(
   $$insert into public.branches (name) values (' nueva sucursal ')$$,
   '23505', null, 'no se repite el nombre (sin importar mayúsculas ni espacios)'
+);
+select throws_ok(
+  $$insert into public.branches (name) values ('Con, coma')$$,
+  '23514', null, 'el nombre no lleva comas (va como etiqueta de Shopify)'
+);
+select throws_ok(
+  $$insert into public.branches (name) values (repeat('x', 41))$$,
+  '23514', null, 'el nombre tiene máximo 40 caracteres'
 );
 select lives_ok(
   $$update public.branches set name = 'Sucursal Prueba Renombrada'

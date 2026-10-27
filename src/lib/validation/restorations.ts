@@ -282,7 +282,7 @@ function requireDepositMethod(
 
 /**
  * Sucursal que cobró el adelanto: como el método, solo se pide si hay adelanto (> 0);
- * va al metafield "Sucursal" del pedido de Shopify del pago.
+ * va como etiqueta del pedido de Shopify del pago.
  */
 const depositBranchId = optionalId.optional().transform((v) => v ?? null);
 

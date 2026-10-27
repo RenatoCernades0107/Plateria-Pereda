@@ -28,7 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { CATALOGS, type CatalogKind } from "@/domain/catalogs";
 import {
-  catalogItemSchema,
+  catalogItemSchemaFor,
   type CatalogItemFormInput,
   type CatalogItemInput,
 } from "@/lib/validation/catalogs";
@@ -66,7 +66,7 @@ export function CatalogItemDialog({
     ...(catalog.hasShopifyName && { shopifyName: item?.shopifyName ?? "" }),
   };
   const form = useForm<CatalogItemFormInput, unknown, CatalogItemInput>({
-    resolver: zodResolver(catalogItemSchema),
+    resolver: zodResolver(catalogItemSchemaFor(kind)),
     defaultValues: values,
   });
 

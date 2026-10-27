@@ -23,7 +23,6 @@ type FakeOrder = {
   tags: string[];
   lines: { title: string; price: string; fulfilled: boolean }[];
   financials: { financialStatus: string; received: string };
-  branch: string | null;
 };
 
 /** Pedidos de los pagos de la guía, en orden. */
@@ -191,8 +190,8 @@ test.describe("Pagos", () => {
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
-    // La sucursal elegida va al metafield «Sucursal» del pedido.
-    expect((await fakeOrders(request, r.code))[0]!.branch).toBe(
+    // La sucursal elegida va como etiqueta del pedido.
+    expect((await fakeOrders(request, r.code))[0]!.tags).toContain(
       "PEREDA 4TA - CAJA",
     );
 

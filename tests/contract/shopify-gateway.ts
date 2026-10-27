@@ -337,23 +337,6 @@ export function shopifyGatewayContract(
         });
       });
 
-      it("guarda la sucursal en el metafield del pedido", async () => {
-        await gateway.createOrder({
-          customerId,
-          lines: [
-            { title: "Saldo Guía RES-00001", price: "50.00", quantity: 1 },
-          ],
-          tags: ["pago-sucursal"],
-          payments: [{ amount: "50.00", gateway: "Yape" }],
-          branch: "RUS CARMEN - VENTAS2",
-        });
-        expect(
-          fakeShopify
-            .snapshot()
-            .orders.find((o) => o.tags.includes("pago-sucursal"))?.branch,
-        ).toBe("RUS CARMEN - VENTAS2");
-      });
-
       it("encuentra la orden por la etiqueta de la restauración", async () => {
         const order = await createOrder();
         expect((await gateway.findOrderByTag("RES-00001"))?.id).toBe(order.id);

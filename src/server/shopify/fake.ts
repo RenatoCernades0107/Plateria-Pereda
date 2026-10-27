@@ -28,8 +28,6 @@ import type {
 type FakeOrder = ShopifyOrder & {
   customerId: string;
   note: string;
-  /** Metafield "Sucursal" del pedido; null si no lo tiene. */
-  branch: string | null;
   /** Pagos (positivos) y reembolsos (negativos) en céntimos. */
   transactions: FakeTransaction[];
 };
@@ -610,7 +608,6 @@ export class FakeShopifyGateway implements ShopifyGateway {
       lines: input.lines.map(toLine),
       customerId: input.customerId,
       note: input.note ?? "",
-      branch: input.branch ?? null,
       transactions: (input.payments ?? []).map((p) =>
         transaction(toCents(p.amount), p.gateway),
       ),

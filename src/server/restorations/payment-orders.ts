@@ -89,10 +89,15 @@ export function paymentOrderInput(
   return {
     ...orderBuyer(data),
     lines: [{ title: payment.orderTitle, price: amount, quantity: 1 }],
-    tags: ["restauracion", data.code, paymentOrderTag(payment.id)],
+    tags: [
+      "restauracion",
+      data.code,
+      paymentOrderTag(payment.id),
+      // La sucursal que cobró, tal cual: se ve en la columna «Etiquetas» de Shopify.
+      ...(payment.branch ? [payment.branch] : []),
+    ],
     note: `Guía ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}`,
     payments: [{ gateway: payment.gateway, amount }],
-    ...(payment.branch && { branch: payment.branch }),
   };
 }
 

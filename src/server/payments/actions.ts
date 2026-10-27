@@ -27,7 +27,7 @@ const date = z.iso.date();
 
 const paymentSchema = z.object({
   paidOn: date,
-  /** Sucursal que cobró: va al metafield "Sucursal" de cada pedido de Shopify. */
+  /** Sucursal que cobró: va como etiqueta de cada pedido de Shopify. */
   branchId: z.guid(),
   rows: z
     .array(z.object({ methodId: z.guid(), amountCents: cents }))

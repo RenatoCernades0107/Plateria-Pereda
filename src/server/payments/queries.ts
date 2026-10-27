@@ -11,7 +11,7 @@ export type PaymentRecord = {
   kind: PaymentKind;
   amountCents: Cents;
   methodName: string;
-  /** Sucursal que cobró (va al metafield "Sucursal" del pedido); null si no tiene. */
+  /** Sucursal que cobró (va como etiqueta del pedido); null si no tiene. */
   branchName: string | null;
   paidOn: string;
   reason: string;

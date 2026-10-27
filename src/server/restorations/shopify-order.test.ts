@@ -392,10 +392,13 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   const run = (memory: ReturnType<typeof memoryRepo>, j = syncJob) =>
     restorationOrderHandlers(memory.repo, () => APP_URL)[j.kind]!(j, gateway);
 
-  it("la sucursal del pago va al metafield «Sucursal» de su pedido", async () => {
+  it("la sucursal del pago va como etiqueta de su pedido, tal cual", async () => {
     data.payments[0]!.branch = "PEREDA 4TA - CAJA";
     await run(repoOf());
-    expect(orders().map((o) => o.branch)).toEqual(["PEREDA 4TA - CAJA", null]);
+    expect(orders().map((o) => o.tags)).toEqual([
+      ["restauracion", "RES-00001", "pago-pay1", "PEREDA 4TA - CAJA"],
+      ["restauracion", "RES-00001", "pago-pay2"],
+    ]);
   });
 
   it("cada pago es un pedido pagado, con el número de Shopify y su descripción como línea", async () => {

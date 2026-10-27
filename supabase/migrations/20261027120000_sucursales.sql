@@ -1,20 +1,21 @@
 -- Sucursal de cada pago (pedido del 2026-10-27). La API de Shopify no deja asignar el
 -- "Employee" del pedido, así que al registrar un pago se elige la sucursal que lo cobró
--- y su pedido la lleva en el metafield "Sucursal" (custom.sucursal), que se muestra como
--- columna en la lista de pedidos. Las sucursales son un catálogo que el admin gestiona
+-- y su pedido la lleva como etiqueta (su nombre, p. ej. "PEREDA 4TA - CAJA"), visible
+-- en la columna «Etiquetas» de la lista de pedidos. Shopify limita cada etiqueta a 40
+-- caracteres y las separa por comas: el nombre tiene máximo 40 y no lleva comas. Las sucursales son un catálogo que el admin gestiona
 -- en Configuración, igual que los métodos de pago: se borran mientras ningún pago las
 -- use; si no, se desactivan.
 
 -- 1. Catálogo.
 create table public.branches (
   id uuid primary key default gen_random_uuid(),
-  name text not null check (length(trim(name)) between 1 and 100),
+  name text not null check (length(trim(name)) between 1 and 40 and position(',' in name) = 0),
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 comment on table public.branches is
-  'Sucursales que cobran los pagos; su nombre va al metafield "Sucursal" del pedido de Shopify.';
+  'Sucursales que cobran los pagos; su nombre va como etiqueta del pedido de Shopify.';
 
 create unique index branches_name_key on public.branches (lower(trim(name)));
 
@@ -83,7 +84,7 @@ alter table public.payments
 
 comment on column public.payments.branch_id is 'Sucursal que cobró el pago.';
 comment on column public.payments.branch_name is
-  'Nombre de la sucursal al registrar el pago; va al metafield "Sucursal" del pedido.';
+  'Nombre de la sucursal al registrar el pago; va como etiqueta del pedido.';
 
 create index payments_branch_idx on public.payments (branch_id);
 

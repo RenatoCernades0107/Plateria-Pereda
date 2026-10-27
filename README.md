@@ -69,7 +69,6 @@ Servicios locales:
 | `pnpm shopify:sync`                       | Procesa el outbox de Shopify (con `pnpm dev` corriendo; en producción lo hace Vercel Cron)         |
 | `pnpm shopify:webhook <topic> <fixture>`  | Firma y envía un webhook de prueba a la app local (fixtures en `tests/fixtures/shopify/webhooks/`) |
 | `pnpm shopify:register-webhooks`          | Suscribe la tienda a los webhooks del sistema (`APP_URL` https del entorno)                        |
-| `pnpm shopify:metafields`                 | Crea en la tienda el metafield de pedido «Sucursal» (`custom.sucursal`)                            |
 
 ## Estructura
 

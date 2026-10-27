@@ -60,7 +60,7 @@ export type OrderPayment = SyncPayment & {
   orderTitle?: string | null;
   /** Pedido de Shopify del pago, cuando ya se creó. */
   orderId?: string | null;
-  /** Sucursal que cobró el pago: va al metafield "Sucursal" de su pedido. */
+  /** Sucursal que cobró el pago: va como etiqueta de su pedido. */
   branch?: string | null;
   /** Reembolso: el pago que devuelve. */
   refundedPaymentId?: string | null;
