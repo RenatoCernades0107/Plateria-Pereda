@@ -337,66 +337,6 @@ export function shopifyGatewayContract(
         });
       });
 
-      it("el borrador no cobra nada y se encuentra por su etiqueta; al crearse el pedido apunta a él", async () => {
-        const draft = await gateway.createDraftOrder({
-          customerId,
-          lines: [
-            {
-              title: "Adelanto Guía RES-00001 A1",
-              price: "150.00",
-              quantity: 1,
-            },
-          ],
-          tags: ["RES-00001", "pago-abc"],
-          note: "Cobro ya registrado",
-        });
-        expect(draft).toMatchObject({
-          id: expect.stringMatching(/^gid:\/\/shopify\/DraftOrder\//),
-          orderId: null,
-        });
-        expect(await gateway.findDraftOrderByTag("pago-abc")).toEqual(draft);
-        expect(await gateway.findDraftOrderByTag("pago-zzz")).toBeNull();
-        expect(await gateway.findOrderByTag("pago-abc")).toBeNull();
-
-        // El empleado lo convierte en pedido: conserva las etiquetas, sin pagos.
-        const order = fakeShopify.completeDraft("pago-abc");
-        expect(await gateway.findDraftOrderByTag("pago-abc")).toEqual({
-          ...draft,
-          orderId: order.id,
-        });
-        expect((await gateway.findOrderByTag("pago-abc"))?.id).toBe(order.id);
-        expect(await gateway.getOrderFinancials(order.id)).toMatchObject({
-          financialStatus: "PENDING",
-          outstanding: "150.00",
-        });
-        expect(await gateway.recordFullPayment(order.id, "Yape")).toMatchObject(
-          { financialStatus: "PAID", outstanding: "0.00" },
-        );
-      });
-
-      it("un contacto de empresa hace el borrador a nombre de la empresa", async () => {
-        const company = await gateway.createCompany({
-          name: "Joyería Andina S.A.C.",
-          externalId: "20100047218",
-          address: { address1: "Av. Larco 123", city: "Lima", zoneCode: "LIM" },
-        });
-        const ref = { companyId: company.id, locationId: company.locationId };
-        const contacto = await gateway.createCompanyContact(ref, {
-          firstName: "Rosa",
-          lastName: "Díaz",
-        });
-        await expect(
-          gateway.createDraftOrder({
-            customerId: contacto.customerId,
-            companyLocationId: company.locationId,
-            lines: [
-              { title: "Saldo Guía RES-00002", price: "80.00", quantity: 1 },
-            ],
-            tags: ["pago-emp"],
-          }),
-        ).resolves.toMatchObject({ orderId: null });
-      });
-
       it("encuentra la orden por la etiqueta de la restauración", async () => {
         const order = await createOrder();
         expect((await gateway.findOrderByTag("RES-00001"))?.id).toBe(order.id);

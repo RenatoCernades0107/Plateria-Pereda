@@ -4,10 +4,7 @@ import { toCents, type Cents } from "@/domain/money";
 import type { PaymentKind } from "@/domain/payments";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  shopifyDraftOrderAdminUrl,
-  shopifyOrderAdminUrl,
-} from "@/server/shopify/admin-url";
+import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
 
 export type PaymentRecord = {
   id: string;
@@ -27,12 +24,6 @@ export type PaymentRecord = {
   orderTitle: string | null;
   orderName: string | null;
   orderUrl: string | null;
-  /**
-   * Borrador del pago mientras el empleado no crea el pedido: nombre en Shopify y
-   * enlace al admin. null cuando ya hay pedido (o aún no se envía).
-   */
-  draftName: string | null;
-  draftUrl: string | null;
   /** Reembolso: el pago que devuelve. */
   refundedPaymentId: string | null;
   /** Pago: lo que aún se puede reembolsar de él. */
@@ -49,7 +40,7 @@ export async function listPayments(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, kind, amount, method_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, shopify_draft_order_id, shopify_draft_order_name, refunded_payment_id, created_by_name, created_at",
+      "id, kind, amount, method_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
     )
     .eq("restoration_id", restorationId)
     .order("created_at");
@@ -77,10 +68,6 @@ export async function listPayments(
       orderTitle: p.shopify_order_title,
       orderName: p.shopify_order_name,
       orderUrl: shopifyOrderAdminUrl(shop, p.shopify_order_id),
-      draftName: p.shopify_order_id ? null : p.shopify_draft_order_name,
-      draftUrl: p.shopify_order_id
-        ? null
-        : shopifyDraftOrderAdminUrl(shop, p.shopify_draft_order_id),
       refundedPaymentId: p.refunded_payment_id,
       refundableCents:
         p.kind === "pago" ? amountCents - (refunded.get(p.id) ?? 0) : 0,

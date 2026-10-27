@@ -13,7 +13,6 @@ import type {
   ShopifyCompany,
   ShopifyCompanyContact,
   ShopifyCustomer,
-  ShopifyDraftOrder,
   ShopifyOrder,
   ShopifyProduct,
   ShopifyProductSummary,
@@ -62,13 +61,6 @@ export interface ShopifyGateway {
    * a los 30 s, así que la orden ya aparece.
    */
   findOrderByTag(tag: string): Promise<ShopifyOrder | null>;
-  /**
-   * Crea el borrador del pedido (sin pagos: el cobro lo registra el sistema al crearse
-   * el pedido). Al convertirlo, el pedido conserva las etiquetas.
-   */
-  createDraftOrder(input: OrderInput): Promise<ShopifyDraftOrder>;
-  /** Busca el borrador por etiqueta (también si ya se convirtió en pedido). */
-  findDraftOrderByTag(tag: string): Promise<ShopifyDraftOrder | null>;
   /** La orden por su id; null si ya no existe. */
   getOrder(orderId: string): Promise<ShopifyOrder | null>;
   getOrderFinancials(orderId: string): Promise<OrderFinancials>;

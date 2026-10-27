@@ -10,8 +10,6 @@ const TOPICS = [
   "ORDERS_PAID",
   "ORDER_TRANSACTIONS_CREATE",
   "REFUNDS_CREATE",
-  // El empleado convierte en pedido el borrador de un pago.
-  "DRAFT_ORDERS_UPDATE",
 ];
 
 const {

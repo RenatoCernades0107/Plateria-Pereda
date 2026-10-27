@@ -17,8 +17,6 @@ const payment = (overrides: Partial<PaymentRecord>): PaymentRecord => ({
   orderTitle: null,
   orderName: null,
   orderUrl: null,
-  draftName: null,
-  draftUrl: null,
   refundedPaymentId: null,
   refundableCents: 0,
   createdByName: "Vera Ventas",
@@ -106,28 +104,6 @@ describe("PaymentsList (11.4)", () => {
     expect(rows[1]).toHaveTextContent("Pendiente de envío");
     expect(rows[1]).toHaveTextContent("Saldo Guía RES-00043");
     expect(rows[2]).toHaveTextContent("De Adelanto Guía RES-00043 A1");
-  });
-
-  it("con el borrador pendiente enlaza a Shopify para que el empleado cree el pedido", () => {
-    render(
-      <PaymentsList
-        payments={[
-          payment({
-            syncedToShopify: false,
-            orderTitle: "Adelanto Guía RES-00043 A1",
-            draftName: "#D1",
-            draftUrl: "https://pereda.myshopify.com/admin/draft_orders/5",
-          }),
-        ]}
-      />,
-    );
-    const row = screen.getByTestId("pago");
-    expect(within(row).getByTestId("borrador-shopify")).toHaveAttribute(
-      "href",
-      "https://pereda.myshopify.com/admin/draft_orders/5",
-    );
-    expect(row).toHaveTextContent("Falta crear el pedido");
-    expect(row).toHaveTextContent("Borrador #D1");
   });
 
   it("sin pagos lo dice", () => {

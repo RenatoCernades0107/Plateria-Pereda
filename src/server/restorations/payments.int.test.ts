@@ -54,24 +54,6 @@ const process_ = () =>
     batchSize: 50,
   });
 
-/**
- * Procesa el outbox con los borradores de pago ya convertidos en pedido por el
- * empleado (sin cobrar): el webhook del borrador encola la conciliación, que registra
- * el cobro en cada pedido.
- */
-async function processWithOrders(restorationId: string) {
-  await process_();
-  const drafts = fakeShopify.snapshot().drafts;
-  if (drafts.length === 0) return;
-  for (const d of drafts) fakeShopify.completeDraft(d.tags.at(-1)!);
-  await createAdminClient().from("shopify_sync_jobs").insert({
-    kind: "payment.sync",
-    entity_table: "restorations",
-    entity_id: restorationId,
-  });
-  await process_();
-}
-
 /** "A cuenta" 50 % con dos piezas que suman S/ 400. */
 async function seed() {
   const { data: r, error } = await pricing
@@ -196,11 +178,11 @@ afterAll(async () => {
 });
 
 describe("un pedido de Shopify por pago (2026-10-19)", () => {
-  it("cada pago es un borrador que el empleado convierte en pedido «Pagado»: A1, A2… y el que completa el total es el Saldo", async () => {
+  it("cada pago es un pedido «Pagado»: A1, A2… y el que completa el total es el Saldo", async () => {
     const r = await seed();
     expect((await approve(r.pieceIds)).error).toBeNull();
     expect((await pay(r.id, 200, "Yape")).error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(
       paymentOrders(r.code).map((o) => [
         o.lines[0]!.title,
@@ -214,7 +196,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       { restoration_id: r.id, amount: 100, method_name: "Plin" },
     ]);
     expect(error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(
       paymentOrders(r.code).map((o) => [
         o.lines[0]!.title,
@@ -266,7 +248,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   it("el adelanto se cobra aunque la guía aún no esté aprobada", async () => {
     const r = await seed();
     expect((await pay(r.id, 50, "Yape")).error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(paymentOrders(r.code).map((o) => o.lines[0]!.title)).toEqual([
       `Adelanto Guía ${r.code} A1`,
     ]);
@@ -277,7 +259,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
     await pay(r.id, 100);
-    await processWithOrders(r.id);
+    await process_();
     const [yape] = await paymentRows(r.id);
     const admin = await signIn("admin@pereda.test");
     // Sin decir qué pago devuelve, la BD lo rechaza.
@@ -301,7 +283,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       refunded_payment_id: yape!.id,
     });
     expect(error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(
       paymentOrders(r.code).map((o) => [
         o.lines[0]!.title,
@@ -317,7 +299,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       entity_table: "restorations",
       entity_id: r.id,
     });
-    await processWithOrders(r.id);
+    await process_();
     expect(paymentOrders(r.code)[0]!.financials.received).toBe("150.00");
     expect((await synced(r.id)).every(([, sent]) => sent)).toBe(true);
   });
@@ -326,7 +308,7 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
-    await processWithOrders(r.id);
+    await process_();
     const admin = createAdminClient();
     const deliver = (id: string) =>
       admin
@@ -335,12 +317,12 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
         .eq("id", id);
     await pay(r.id, 200);
     expect((await deliver(r.pieceIds[0]!)).error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(
       paymentOrders(r.code).flatMap((o) => o.lines.map((l) => l.fulfilled)),
     ).toEqual([false, false]);
     expect((await deliver(r.pieceIds[1]!)).error).toBeNull();
-    await processWithOrders(r.id);
+    await process_();
     expect(
       paymentOrders(r.code).flatMap((o) => o.lines.map((l) => l.fulfilled)),
     ).toEqual([true, true]);
@@ -469,7 +451,7 @@ describe("pagos hechos en Shopify (11.3)", () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
-    await processWithOrders(r.id);
+    await process_();
     const [yape] = await paymentRows(r.id);
     const { id: orderId } = fakeShopify.externalTransaction(
       paymentOrderTag(yape!.id),
@@ -499,7 +481,7 @@ describe("pagos hechos en Shopify (11.3)", () => {
     const r = await seed();
     await approve(r.pieceIds);
     await pay(r.id, 200, "Yape");
-    await processWithOrders(r.id);
+    await process_();
     const [yape] = await paymentRows(r.id);
     const { id: orderId } = fakeShopify.externalTransaction(
       paymentOrderTag(yape!.id),

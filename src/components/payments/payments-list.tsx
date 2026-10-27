@@ -20,35 +20,12 @@ import type { PaymentRecord } from "@/server/payments/queries";
 export function shopifyLabel(p: PaymentRecord): string {
   if (p.source === "shopify") return "Hecho en Shopify";
   if (p.orderName) return p.orderTitle ?? p.orderName;
-  if (p.draftName) return "Falta crear el pedido";
   return p.syncedToShopify ? "En Shopify" : "Pendiente de envío";
 }
 
 /** Estado en Shopify; el pedido del pago, con enlace a su admin si lo hay. */
 function ShopifyCell({ payment: p }: { payment: PaymentRecord }) {
   const label = shopifyLabel(p);
-  // Borrador: el empleado de la sucursal lo abre y pulsa "Crear pedido" (Employee).
-  if (p.draftName && p.draftUrl)
-    return (
-      <>
-        <Badge variant="outline" asChild className={SHOPIFY_BADGE_CLASS}>
-          <a
-            href={p.draftUrl}
-            target="_blank"
-            rel="noreferrer"
-            title="Abrir el borrador en Shopify (pestaña nueva) y crear el pedido"
-            data-testid="borrador-shopify"
-          >
-            <ShopifyIcon />
-            {label}
-            <ExternalLink aria-hidden />
-          </a>
-        </Badge>
-        <span className="text-muted-foreground block text-xs">
-          Borrador {p.draftName}
-        </span>
-      </>
-    );
   if (p.orderUrl)
     return (
       <>

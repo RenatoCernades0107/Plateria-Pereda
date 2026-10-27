@@ -696,11 +696,7 @@ export default async function RestauracionDetallePage({
                             : payments
                                 .filter(
                                   (p) =>
-                                    p.kind === "pago" &&
-                                    p.refundableCents > 0 &&
-                                    // El reembolso se hace en el pedido: el empleado
-                                    // debe crearlo antes desde el borrador.
-                                    !p.draftName,
+                                    p.kind === "pago" && p.refundableCents > 0,
                                 )
                                 .map((p) => ({
                                   id: p.id,

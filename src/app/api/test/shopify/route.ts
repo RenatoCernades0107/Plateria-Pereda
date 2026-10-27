@@ -35,8 +35,6 @@ const actionSchema = z.discriminatedUnion("action", [
     }),
   }),
   // Crea un cliente que existe solo en Shopify (para probar el buscador e importaciones).
-  // El empleado convierte en pedido el borrador con esa etiqueta (sin cobrarlo).
-  z.object({ action: z.literal("complete-draft"), tag: z.string() }),
   z.object({
     action: z.literal("customer"),
     input: z.object({
@@ -57,8 +55,6 @@ const actionSchema = z.discriminatedUnion("action", [
       "createCompanyContact",
       "assignCustomerAsContact",
       "createOrder",
-      "createDraftOrder",
-      "findDraftOrderByTag",
       "findOrderByTag",
       "getOrder",
       "getOrderFinancials",
@@ -98,9 +94,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, order });
   } else if (action.action === "order") {
     const order = await new FakeShopifyGateway().createOrder(action.input);
-    return NextResponse.json({ ok: true, order });
-  } else if (action.action === "complete-draft") {
-    const order = fakeShopify.completeDraft(action.tag);
     return NextResponse.json({ ok: true, order });
   } else if (action.action === "customer") {
     const customer = await new FakeShopifyGateway().createCustomer(

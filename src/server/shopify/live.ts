@@ -18,7 +18,6 @@ import type {
   ShopifyCompany,
   ShopifyCompanyContact,
   ShopifyCustomer,
-  ShopifyDraftOrder,
   ShopifyOrder,
   ShopifyProduct,
   ShopifyProductSummary,
@@ -204,26 +203,6 @@ export const ORDER_CREATE = `mutation OrderCreate($order: OrderCreateOrderInput!
   }
 }`;
 
-export const DRAFT_ORDER_FIELDS = `id name order { id }`;
-
-export const DRAFT_ORDER_CREATE = `mutation DraftOrderCreate($input: DraftOrderInput!) {
-  draftOrderCreate(input: $input) {
-    draftOrder { ${DRAFT_ORDER_FIELDS} }
-    userErrors { field message }
-  }
-}`;
-
-export const DRAFT_ORDER_FIND_BY_TAG = `query DraftOrderFindByTag($query: String!) {
-  draftOrders(query: $query, first: 1) { nodes { ${DRAFT_ORDER_FIELDS} } }
-}`;
-
-/** La empresa y el contacto de una ubicación, para el comprador del borrador. */
-export const COMPANY_LOCATION_BUYER = `query CompanyLocationBuyer($id: ID!) {
-  companyLocation(id: $id) {
-    company { id contacts(first: 50) { nodes { id customer { id } } } }
-  }
-}`;
-
 export const ORDER_GET = `query OrderGet($id: ID!) { order(id: $id) { ${ORDER_FIELDS} } }`;
 
 export const ORDER_EDIT_BEGIN = `mutation OrderEditBegin($id: ID!) {
@@ -354,16 +333,6 @@ function toCustomer(node: CustomerNode): ShopifyCustomer {
     note: node.note ?? "",
     updatedAt: node.updatedAt,
   };
-}
-
-type DraftOrderNode = {
-  id: string;
-  name: string;
-  order: { id: string } | null;
-};
-
-function toDraftOrder(node: DraftOrderNode): ShopifyDraftOrder {
-  return { id: node.id, name: node.name, orderId: node.order?.id ?? null };
 }
 
 function toOrder(node: OrderNode): ShopifyOrder {
@@ -782,72 +751,6 @@ export class LiveShopifyGateway implements ShopifyGateway {
     });
     assertNoUserErrors(data.orderCreate.userErrors);
     return toOrder(data.orderCreate.order!);
-  }
-
-  /** Comprador del borrador: el cliente o, en una empresa, su contacto en la ubicación. */
-  private async purchasingEntity(input: OrderInput) {
-    if (!input.companyLocationId) {
-      return { customerId: input.customerId };
-    }
-    const data = await this.client.request<{
-      companyLocation: {
-        company: {
-          id: string;
-          contacts: { nodes: { id: string; customer: { id: string } }[] };
-        };
-      } | null;
-    }>(COMPANY_LOCATION_BUYER, { id: input.companyLocationId });
-    const company = data.companyLocation?.company;
-    const contact = company?.contacts.nodes.find(
-      (c) => c.customer.id === input.customerId,
-    );
-    if (!company || !contact) {
-      throw new ShopifyUserError([
-        {
-          field: ["purchasingEntity"],
-          message: "El contacto no pertenece a la empresa en Shopify",
-        },
-      ]);
-    }
-    return {
-      purchasingCompany: {
-        companyId: company.id,
-        companyContactId: contact.id,
-        companyLocationId: input.companyLocationId,
-      },
-    };
-  }
-
-  async createDraftOrder(input: OrderInput): Promise<ShopifyDraftOrder> {
-    const data = await this.client.request<{
-      draftOrderCreate: {
-        draftOrder: DraftOrderNode | null;
-        userErrors: UserErrors;
-      };
-    }>(DRAFT_ORDER_CREATE, {
-      input: {
-        purchasingEntity: await this.purchasingEntity(input),
-        tags: input.tags,
-        note: input.note,
-        lineItems: input.lines.map((line) => ({
-          title: line.title,
-          quantity: line.quantity,
-          originalUnitPrice: line.price,
-          requiresShipping: false,
-          taxable: true,
-        })),
-      },
-    });
-    assertNoUserErrors(data.draftOrderCreate.userErrors);
-    return toDraftOrder(data.draftOrderCreate.draftOrder!);
-  }
-
-  async findDraftOrderByTag(tag: string): Promise<ShopifyDraftOrder | null> {
-    const data = await this.client.request<{
-      draftOrders: { nodes: DraftOrderNode[] };
-    }>(DRAFT_ORDER_FIND_BY_TAG, { query: `tag:${quote(tag)}` });
-    const node = data.draftOrders.nodes[0];
-    return node ? toDraftOrder(node) : null;
   }
 
   async editOrder(orderId: string, edit: OrderEdit): Promise<ShopifyOrder> {

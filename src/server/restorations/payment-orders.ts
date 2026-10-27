@@ -18,15 +18,10 @@ import type {
 /**
  * Un pedido de Shopify por pago (pedido del 2026-10-19). En el plan Grow la API no
  * acepta pagos parciales en una orden ya creada, así que cada pago del sistema es su
- * propio pedido: una línea por el monto, con el nombre que fijó la BD ("Adelanto Guía
- * RES-00043 A1", "Saldo Guía RES-00043") como nombre de la línea.
- *
- * La API no deja asignar el "Employee" del pedido: lo toma de quien lo crea. Por eso el
- * sistema crea un borrador y el empleado de la sucursal lo abre en Shopify y pulsa
- * "Crear pedido" (sin tomar el pago). El cobro ya está en el sistema: al nacer el
- * pedido, el job lo registra con el método del pago. Los reembolsos se hacen en el
- * pedido del pago que devuelven. Todo se concilia contra lo que ya está en Shopify:
- * repetir el job no cambia nada.
+ * propio pedido, ya pagado: una línea por el monto, con el nombre que fijó la BD
+ * ("Adelanto Guía RES-00043 A1", "Saldo Guía RES-00043") como nombre del pedido y
+ * de la línea. Los reembolsos se hacen en el pedido del pago que devuelven. Todo se
+ * concilia contra lo que ya está en Shopify: repetir el job no cambia nada.
  */
 
 /** Comprador del pedido: la persona, o la empresa (su ubicación) con su contacto (P14). */
@@ -81,10 +76,9 @@ export function isFullyDelivered(data: Pick<OrderRestoration, "pieces">) {
 }
 
 /**
- * Datos del borrador de un pago: una línea por el monto, sin cobro (lo registra el
- * sistema al crearse el pedido). El número del pedido es el de Shopify (#1045); la
- * descripción ("Adelanto Guía RES-00043 A1", "Saldo Guía RES-00043") es el título de
- * la línea y la nota dice con qué método se cobró.
+ * Datos del pedido de un pago: una línea por el monto, ya pagado con su método. El
+ * número del pedido es el de Shopify (#1045); la descripción ("Adelanto Guía
+ * RES-00043 A1", "Saldo Guía RES-00043") es el título de la línea.
  */
 export function paymentOrderInput(
   data: OrderRestoration,
@@ -96,7 +90,8 @@ export function paymentOrderInput(
     ...orderBuyer(data),
     lines: [{ title: payment.orderTitle, price: amount, quantity: 1 }],
     tags: ["restauracion", data.code, paymentOrderTag(payment.id)],
-    note: `Guía ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}\nCobro de S/ ${amount} con ${payment.gateway}, ya registrado en el sistema: crea el pedido sin tomar el pago.`,
+    note: `Guía ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}`,
+    payments: [{ gateway: payment.gateway, amount }],
   };
 }
 
@@ -118,11 +113,10 @@ const unfulfilledLines = (order: Pick<ShopifyOrder, "lines">) =>
   order.lines.filter((l) => !l.fulfilled).map((l) => l.id);
 
 /**
- * Crea el borrador de cada pago que aún no tiene pedido (antes lo busca por su
- * etiqueta: un reintento tras un corte no lo duplica). Cuando el empleado lo convirtió
- * en pedido, registra en él el cobro del sistema. Reembolsa en su pedido lo que el
- * admin devolvió y agrega al registro los reembolsos hechos directamente en Shopify.
- * Los pagos hechos en Shopify ya no entran al registro.
+ * Crea el pedido de cada pago que aún no lo tiene (antes lo busca por su etiqueta: un
+ * reintento tras un corte no lo duplica), reembolsa en su pedido lo que el admin
+ * devolvió y agrega al registro los reembolsos hechos directamente en Shopify. Los
+ * pagos hechos en Shopify ya no entran al registro.
  */
 export async function syncPaymentOrders(
   repo: RestorationOrderRepository,
@@ -132,36 +126,11 @@ export async function syncPaymentOrders(
 ) {
   const delivered = isFullyDelivered(data);
   let created = 0;
-  let drafts = 0;
-  let pendingDrafts = 0;
   for (const payment of ownOrderPayments(data)) {
     if (payment.orderId) continue;
-    const tag = paymentOrderTag(payment.id);
-    let order = await gateway.findOrderByTag(tag);
-    if (!order) {
-      const draft =
-        (await gateway.findDraftOrderByTag(tag)) ??
-        (await gateway.createDraftOrder(
-          paymentOrderInput(data, payment, appUrl),
-        ));
-      if (!payment.draftOrderId) {
-        await repo.savePaymentDraft(payment.id, draft);
-        payment.draftOrderId = draft.id;
-        drafts += 1;
-      }
-      // Shopify indexa el pedido con demora: el borrador ya apunta a él.
-      order = draft.orderId ? await gateway.getOrder(draft.orderId) : null;
-    }
-    // Sin pedido, el empleado aún no lo crea: el webhook del borrador reanuda el job.
-    if (!order) {
-      pendingDrafts += 1;
-      continue;
-    }
-    // El cobro ya está en el sistema: se registra en el pedido si éste no lo trae.
-    const { outstanding } = await gateway.getOrderFinancials(order.id);
-    if (toCents(outstanding) > 0) {
-      await gateway.recordFullPayment(order.id, payment.gateway);
-    }
+    let order =
+      (await gateway.findOrderByTag(paymentOrderTag(payment.id))) ??
+      (await gateway.createOrder(paymentOrderInput(data, payment, appUrl)));
     // Si la guía ya se entregó, el pedido nace preparado.
     const pending = unfulfilledLines(order);
     if (delivered && pending.length > 0) {
@@ -211,13 +180,7 @@ export async function syncPaymentOrders(
   }
   if (imported.length > 0) await repo.importPayments(data.id, imported);
 
-  return {
-    created,
-    drafts,
-    pendingDrafts,
-    refunded,
-    imported: imported.length,
-  };
+  return { created, refunded, imported: imported.length };
 }
 
 /** Entregada toda la guía, los pedidos de sus pagos quedan preparados. */

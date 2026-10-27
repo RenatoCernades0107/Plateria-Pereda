@@ -60,8 +60,6 @@ export type OrderPayment = SyncPayment & {
   orderTitle?: string | null;
   /** Pedido de Shopify del pago, cuando ya se creó. */
   orderId?: string | null;
-  /** Borrador de Shopify del pago, mientras el empleado no lo convierte en pedido. */
-  draftOrderId?: string | null;
   /** Reembolso: el pago que devuelve. */
   refundedPaymentId?: string | null;
 };
@@ -96,11 +94,6 @@ export interface RestorationOrderRepository {
   savePaymentOrder(
     paymentId: string,
     order: { id: string; name: string },
-  ): Promise<void>;
-  /** Guarda el borrador de Shopify de un pago, para esperar su pedido. */
-  savePaymentDraft(
-    paymentId: string,
-    draft: { id: string; name: string },
   ): Promise<void>;
   /** Actualiza el id de línea de las piezas tras editar la orden (null: ya no está). */
   saveLineIds(

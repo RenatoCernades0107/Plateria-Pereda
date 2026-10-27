@@ -92,13 +92,6 @@ export function webhookOrderId(topic: string, payload: unknown): string | null {
   return gid("Order", p.order_id);
 }
 
-/** Borrador de un webhook `draft_orders/*`. */
-export function webhookDraftOrderId(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const p = payload as Record<string, unknown>;
-  return gid("DraftOrder", p.admin_graphql_api_id) ?? gid("DraftOrder", p.id);
-}
-
 export type OrderCustomer = {
   customerId: string;
   firstName: string | null;

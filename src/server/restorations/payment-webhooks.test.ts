@@ -17,7 +17,6 @@ function setup(
 ) {
   const repo: OrderWebhookRepository = {
     findRestorationByOrder: vi.fn(async () => found),
-    findRestorationByDraft: vi.fn(async () => found?.restorationId ?? null),
     enqueuePaymentSync: vi.fn(async () => {}),
     applyOrderCustomer: vi.fn(async () => true),
   };
@@ -49,28 +48,6 @@ describe("webhooks de la orden (11.3)", () => {
     expect(repo.enqueuePaymentSync).toHaveBeenCalledWith("r1");
     expect(processOutbox).toHaveBeenCalled();
     expect(repo.applyOrderCustomer).not.toHaveBeenCalled();
-  });
-
-  it("draft_orders/update encola la conciliación del pago del borrador", async () => {
-    const { repo, processOutbox, handlers } = setup();
-    await handlers["draft_orders/update"]!(
-      event("draft_orders/update", {
-        admin_graphql_api_id: "gid://shopify/DraftOrder/5",
-      }),
-    );
-    expect(repo.findRestorationByDraft).toHaveBeenCalledWith(
-      "gid://shopify/DraftOrder/5",
-    );
-    expect(repo.enqueuePaymentSync).toHaveBeenCalledWith("r1");
-    expect(processOutbox).toHaveBeenCalled();
-  });
-
-  it("un borrador que no es de un pago se ignora", async () => {
-    const { repo, handlers } = setup(null);
-    await handlers["draft_orders/update"]!(
-      event("draft_orders/update", { id: 5 }),
-    );
-    expect(repo.enqueuePaymentSync).not.toHaveBeenCalled();
   });
 
   it("las órdenes que no son de restauraciones se ignoran", async () => {

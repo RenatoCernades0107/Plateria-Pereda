@@ -2,11 +2,7 @@ import { http, HttpResponse, type JsonBodyType } from "msw";
 
 import { ShopifyUserError } from "@/server/shopify/errors";
 import { FakeShopifyGateway, fakeShopify } from "@/server/shopify/fake";
-import type {
-  ShopifyCustomer,
-  ShopifyDraftOrder,
-  ShopifyOrder,
-} from "@/server/shopify/types";
+import type { ShopifyCustomer, ShopifyOrder } from "@/server/shopify/types";
 
 export const TEST_SHOP = "pereda-test.myshopify.com";
 export const TEST_API_VERSION = "2026-10";
@@ -44,12 +40,6 @@ const orderNode = (o: ShopifyOrder) => ({
       originalUnitPriceSet: amount(String(Number(l.price))),
     })),
   },
-});
-
-const draftNode = (d: ShopifyDraftOrder) => ({
-  id: d.id,
-  name: d.name,
-  order: d.orderId ? { id: d.orderId } : null,
 });
 
 async function withUserErrors<T>(run: () => Promise<T>) {
@@ -341,80 +331,6 @@ const operations: Record<
     );
     return {
       data: { orderCreate: { order: result && orderNode(result), userErrors } },
-    };
-  },
-  CompanyLocationBuyer: async (variables: Vars) => {
-    const company = fakeShopify
-      .snapshot()
-      .companies.find((c) => c.locationId === variables.id);
-    return {
-      data: {
-        companyLocation: company && {
-          company: {
-            id: company.id,
-            contacts: {
-              nodes: company.contacts.map((c) => ({
-                id: c.id,
-                customer: { id: c.customerId },
-              })),
-            },
-          },
-        },
-      },
-    };
-  },
-  DraftOrderCreate: async (variables: Vars) => {
-    const input = variables.input as {
-      purchasingEntity: {
-        customerId?: string;
-        purchasingCompany?: {
-          companyContactId: string;
-          companyLocationId: string;
-        };
-      };
-      tags: string[];
-      note?: string;
-      lineItems: {
-        title: string;
-        quantity: number;
-        originalUnitPrice: string;
-      }[];
-    };
-    const company = input.purchasingEntity.purchasingCompany;
-    const contact = company
-      ? fakeShopify
-          .snapshot()
-          .companies.flatMap((c) => c.contacts)
-          .find((c) => c.id === company.companyContactId)
-      : undefined;
-    const { result, userErrors } = await withUserErrors(() =>
-      store.createDraftOrder({
-        customerId:
-          input.purchasingEntity.customerId ?? contact?.customerId ?? "",
-        companyLocationId: company?.companyLocationId,
-        tags: input.tags,
-        note: input.note,
-        lines: input.lineItems.map((l) => ({
-          title: l.title,
-          quantity: l.quantity,
-          price: l.originalUnitPrice,
-        })),
-      }),
-    );
-    return {
-      data: {
-        draftOrderCreate: {
-          draftOrder: result && draftNode(result),
-          userErrors,
-        },
-      },
-    };
-  },
-  DraftOrderFindByTag: async (variables: Vars) => {
-    const tag = /^tag:'(.*)'$/.exec(variables.query as string)?.[1] ?? "";
-    const draft = await store.findDraftOrderByTag(tag.replace(/\\(.)/g, "$1"));
-    return {
-      data: { draftOrders: { nodes: draft ? [draftNode(draft)] : [] } },
     };
   },
   OrderGet: async (variables: Vars) => {
