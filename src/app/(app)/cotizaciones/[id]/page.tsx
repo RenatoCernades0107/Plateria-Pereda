@@ -62,7 +62,7 @@ export default async function CotizacionPage({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl space-y-4">
       {quote.code ? <PageBreadcrumb label={quote.code} /> : null}
       {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
       <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">

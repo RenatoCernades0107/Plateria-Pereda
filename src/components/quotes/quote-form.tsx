@@ -249,10 +249,7 @@ export function QuoteForm({
           disabled={readOnly}
         />
         <FormError id="lineas-error" message={errors?.lines} />
-      </Section>
-
-      <Section id="seccion-totales" title="Totales">
-        <div className="ml-auto max-w-sm space-y-1 text-sm">
+        <div className="ml-auto max-w-56 space-y-1 border-t pt-3 text-sm">
           <dl className="space-y-1">
             <TotalRow
               label="Subtotal"
