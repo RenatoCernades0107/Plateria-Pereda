@@ -21,7 +21,8 @@ type Column = {
     | "service"
     | "serviceCost"
     | "status"
-    | "location";
+    | "location"
+    | "deliveryDate";
   title: string;
   width: number;
   align?: "left" | "center" | "right";
@@ -31,7 +32,8 @@ type Column = {
  * Dibuja el reporte para el proveedor en un A4 horizontal (mm), con la misma tabla que
  * la guía: logo, título y fecha de impresión arriba, y una fila por pieza (foto, código,
  * cantidad, descripción con material y servicio a realizar, medidas, peso, servicio,
- * costo de servicio si el modelo lo lleva, estado y ubicación). El código ya dice la
+ * costo de servicio si el modelo lo lleva, estado, ubicación y fecha estimada de
+ * entrega). El código ya dice la
  * guía, así que no va aparte. Con costo de servicio, al final va su total.
  * Sin precio de venta ni datos del cliente. `logo` y las fotos van como data URL.
  */
@@ -101,6 +103,7 @@ export async function drawProviderReport(
       : []),
     { key: "status", title: "ESTADO", width: 24 },
     { key: "location", title: "UBICACIÓN", width: 22 },
+    { key: "deliveryDate", title: "ENTREGA EST.", width: 22, align: "center" },
   ];
   const description = columns.find((c) => c.key === "description")!;
   description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
@@ -243,6 +246,12 @@ export async function drawProviderReport(
         case "location":
           font("normal", 8);
           pdf.text(location, x + pad, textTop);
+          break;
+        case "deliveryDate":
+          font("normal", 8);
+          pdf.text(row.deliveryDate, x + c.width / 2, textTop, {
+            align: "center",
+          });
           break;
       }
     });

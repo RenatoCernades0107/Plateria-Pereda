@@ -21,6 +21,7 @@ describe("drawProviderReport", () => {
           measure: "4x12 cm",
           weightGrams: 85,
           serviceCostCents: 3000,
+          estimatedDeliveryDate: "2026-10-30",
         },
       ],
       { showServiceCost: true },
@@ -35,6 +36,8 @@ describe("drawProviderReport", () => {
       "4x12 cm",
       "85 g",
       "COSTO SERV.",
+      "ENTREGA EST.",
+      "30 oct",
     ])
       expect(raw).toContain(`(${text})`);
     expect(raw).not.toContain("(N° GUÍA)");
@@ -55,6 +58,7 @@ describe("drawProviderReport", () => {
         measure: "",
         weightGrams: null,
         serviceCostCents: 3000,
+        estimatedDeliveryDate: null,
       },
     ]);
     const raw = (await drawProviderReport(model)).output();

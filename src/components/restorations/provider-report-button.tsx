@@ -64,6 +64,7 @@ export function ProviderReportButton({
           measure: p.measure,
           weightGrams: p.weightGrams,
           serviceCostCents: p.serviceCostCents,
+          estimatedDeliveryDate: p.estimatedDeliveryDate,
         })),
         { generatedBy: data.generatedBy, showServiceCost },
       );
