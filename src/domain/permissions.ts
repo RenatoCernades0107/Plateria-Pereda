@@ -45,6 +45,8 @@ const PERMISSIONS = {
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],
   "dashboard.ver": ["admin", "ventas"],
+  /** Costos de servicio, márgenes y ranking de vendedores del dashboard (D78): solo admin. */
+  "dashboard.margenes": ["admin"],
   "historial.ver": ["admin", "ventas"],
   "usuarios.gestionar": ["admin"],
   "configuracion.gestionar": ["admin"],
