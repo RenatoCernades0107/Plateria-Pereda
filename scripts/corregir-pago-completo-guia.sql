@@ -19,7 +19,7 @@
 --      el mensaje y revierte todo.
 --   3. Si el resultado es el esperado, pon v_aplicar := true y vuelve a correrlo.
 
-do $$
+do $corr$
 declare
   v_codigo constant text := 'RES-00034';         -- código de la guía (GUIA34)
   v_metodo constant text := 'Efectivo';          -- método de pago tal como está en el catálogo
@@ -89,4 +89,4 @@ begin
     v_codigo, v_after.paid, v_after.balance, v_after.payment_status,
     v_payment_id, v_res.balance, v_method.name, v_jobs;
 end;
-$$;
+$corr$;
