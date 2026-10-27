@@ -15,7 +15,7 @@ export default async function NuevaCotizacionPage() {
   const user = await requirePermission("cotizador.usar");
   const settings = await getSettings();
   return (
-    <div className="space-y-4">
+    <div className="max-w-3xl space-y-4">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/cotizaciones">
           <ArrowLeft aria-hidden />
