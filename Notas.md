@@ -11,8 +11,8 @@
 | Estado | Preguntas |
 |---|---|
 | Bloqueantes | Ninguna |
-| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P33–P39 |
-| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, P55, P56, N1, N2 |
+| Pendientes (no bloquean el inicio) | S1–S5, P03–P06, P21, P23, P26, P31, P34–P39 |
+| Respondidas | P01, P02, P07, P08, P09, P10, P11, P12, P13, P14, P15, P16, P18, P19, P20, P27, P22, P24, P40, P41 (b–f con la propuesta), P42, P43, P44, P45, P46, P47, P48, P49, P50, P32, P28, P29, P51, P52, P53, P54, P55, P56, P33, N1, N2 |
 | Respondidas en parte | P17 (→ P41), P25 (propuesta enviada), P30 (→ P42) |
 | Supuestos por confirmar | P46 (supuestos b–c), P47 (supuesto b) |
 
@@ -349,7 +349,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 ### P33 · ¿Qué significa "ventas de restauraciones" y qué filtros/exportaciones necesitan?
 - **Propuesta:** mostrar ambos: **monto vendido** (restauraciones aprobadas, por fecha de aprobación) y **monto cobrado** (pagos recibidos, por fecha de pago), con filtros por rango de fechas y taller. Exportar listados a CSV/Excel.
-- **Respuesta:** _pendiente_
+- **Respuesta (2026-10-27):** ✅ Se muestran **vendido y cobrado** (más el saldo por cobrar de hoy). El dashboard se organiza por áreas (Resumen, Ventas, Pedidos, Clientes, Talleres, Vendedores y Cotizaciones) con un solo rango de fechas, comparación con el periodo anterior y exportación a CSV por pestaña. Ver **D78**.
 
 ---
 
@@ -680,6 +680,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 | D75 | El admin también **borra** métodos de pago, talleres y usuarios, con confirmación, como los materiales y servicios (D68). Solo si nada los usa: un método de pago sin pagos; un taller por el que ninguna pieza pasó (ni ahora ni en su historial); un usuario que no registró nada (restauraciones, piezas, cambios de estado, pagos, archivos, clientes, contactos, cotizaciones ni cambios en la auditoría). Si están en uso, aunque estén desactivados, la BD lo rechaza con un aviso que dice cuántos registros los usan y se desactivan. El admin no se borra a sí mismo y nunca se borra al último admin activo. Logística sigue creando, editando y desactivando talleres, pero no los borra. Reemplaza la parte de D68 "los métodos de pago y los talleres solo se desactivan" | Pedido del 2026-10-21 |
 | D76 | **Alertas** con campana en el encabezado (sin correo ni WhatsApp). 1) Admin y logística: "Guía parcialmente aprobada" cada vez que se aprueban piezas y faltan otras vivas ("2 de 4"), y "Guía aprobada" al aprobar la última. 2) Admin y ventas: "Pieza en espera del cliente" y, si con eso todas las piezas vivas de la guía quedan en espera, "Guía en espera del cliente" en su lugar. Solo guías Normales; quien hace el cambio no recibe su propia alerta; una acción masiva da una sola alerta por guía; Deshacer y Retroceder quitan la pieza de la alerta. Piezas vivas: sin las anuladas, rechazadas ni sin arreglo. El admin, en Configuración → Alertas, activa o desactiva cada una, edita su mensaje (con variables) y elige qué usuarios la reciben. Logística no ve el nombre del cliente ("el cliente") | Pedido del 2026-10-21 |
 | D77 | Alerta **"Guía lista para entregar"** (campana, como D76). Cuando el estado general de una guía Normal pasa a **Lista** (todas sus piezas vivas ya volvieron del taller o se entregaron), la reciben **admin y ventas** (a ventas le toca avisarle al cliente); logística no. Quien hace el cambio no la recibe; una acción masiva da una sola alerta con todas las piezas que volvieron; Deshacer la quita. El admin la activa o desactiva, edita su mensaje y elige qué usuarios la reciben en Configuración → Alertas, igual que las demás | Pedido del 2026-10-26 |
+| D78 | **Dashboard por pestañas** (Fase 13, P33): Resumen, Ventas, Pedidos, Clientes, Talleres, Vendedores y Cotizaciones, con un solo rango de fechas en la URL (atajos o personalizado), comparación con el periodo anterior de la misma duración y CSV por pestaña. **Vendido** = importe (con techo) de las piezas de guías Normales aprobadas en el rango y aún vivas; **cobrado** = pagos − reembolsos por fecha de pago; **saldo por cobrar** (de hoy) = lo aprobado − lo pagado; **vendedor** = quien creó la guía. Costos, márgenes y el ranking de todos los vendedores solo los ve el admin; ventas ve su propio desempeño («Mi desempeño»); logística sigue sin dashboard. Los motivos de descarte salen del texto libre (el catálogo K11 queda para después); las metas mensuales no se hacen | P33, P42, P46 |
 
 ---
 
@@ -687,6 +688,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 | Fecha | Preguntas | Resumen |
 |---|---|---|
+| 2026-10-27 | P33, D78 | Dashboard de métricas por pestañas: vendido y cobrado, pedidos, clientes, talleres, vendedores y cotizaciones; comparación con el periodo anterior y CSV; costos y ranking de vendedores solo para el admin. |
 | 2026-10-26 | D77 | Alerta de guía lista para entregar (admin y ventas), configurable como las demás alertas. |
 | 2026-10-21 | D76 | Alertas en la app: aprobación de guías (admin y logística) y espera del cliente (admin y ventas), configurables por el admin. |
 | 2026-10-21 | D75 | Se pueden borrar métodos de pago, talleres y usuarios (solo el admin) si nada los usa; si no, se desactivan. |

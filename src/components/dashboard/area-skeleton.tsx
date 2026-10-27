@@ -1,19 +1,18 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Esqueleto de la primera carga: el marco del dashboard con sus tarjetas por llegar. */
-export default function DashboardLoading() {
+/**
+ * Esqueleto de lo que va debajo de las pestañas mientras llegan los datos de la primera
+ * carga. Vive dentro de la página (no en `loading.tsx`) para que el permiso se valide
+ * antes de empezar a enviar y logística reciba un 403 de verdad.
+ */
+export function AreaSkeleton() {
   return (
     <div
       className="space-y-5"
       aria-busy="true"
-      aria-label="Cargando el dashboard"
+      aria-label="Cargando las métricas"
+      data-testid="dashboard-cargando"
     >
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-40" />
-        <Skeleton className="h-4 w-80 max-w-full" />
-      </div>
-      <Skeleton className="h-10 w-full max-w-xl rounded-xl" />
-      <Skeleton className="h-9 w-full max-w-2xl" />
       <Skeleton className="h-44 w-full rounded-2xl" />
       <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => (

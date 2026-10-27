@@ -185,70 +185,120 @@ export async function WorkshopsArea({
         {rows.length === 0 ? (
           <PanelEmpty>No hay talleres con actividad.</PanelEmpty>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Taller</TableHead>
-                <TableHead className="text-right">Enviadas</TableHead>
-                <TableHead className="text-right">Devueltas</TableHead>
-                <TableHead className="text-right">Prom. días</TableHead>
-                <TableHead className="text-right">Mediana</TableHead>
-                <TableHead className="text-right">Observadas</TableHead>
-                <TableHead className="text-right">En taller hoy</TableHead>
-                <TableHead>Carga</TableHead>
-                {showCost ? (
-                  <TableHead className="text-right">Costo</TableHead>
-                ) : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Taller</TableHead>
+                    <TableHead className="text-right">Enviadas</TableHead>
+                    <TableHead className="text-right">Devueltas</TableHead>
+                    <TableHead className="text-right">Prom. días</TableHead>
+                    <TableHead className="text-right">Mediana</TableHead>
+                    <TableHead className="text-right">Observadas</TableHead>
+                    <TableHead className="text-right">En taller hoy</TableHead>
+                    <TableHead>Carga</TableHead>
+                    {showCost ? (
+                      <TableHead className="text-right">Costo</TableHead>
+                    ) : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => (
+                    <TableRow key={row.id} data-testid={`taller-${row.id}`}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={pieceBoardHref(boardBase, {
+                            workshopId: row.id,
+                          })}
+                          className="hover:text-primary underline-offset-2 hover:underline"
+                        >
+                          {row.name}
+                        </Link>
+                        {!row.active ? (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            (inactivo)
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.sent}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.returned}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatDays(row.avg_days)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatDays(row.median_days)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.observed}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.in_workshop}
+                      </TableCell>
+                      <TableCell>
+                        <ToneBadge tone={workshopTone(row, data.alert_days)}>
+                          {loadLabel(row, data.alert_days)}
+                        </ToneBadge>
+                      </TableCell>
+                      {showCost ? (
+                        <TableCell className="text-right tabular-nums">
+                          {row.cost !== null ? formatSolesWhole(row.cost) : "—"}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ul className="space-y-3 md:hidden" data-testid="talleres-tarjetas">
               {rows.map((row) => (
-                <TableRow key={row.id} data-testid={`taller-${row.id}`}>
-                  <TableCell className="font-medium">
+                <li key={row.id} className="bg-muted/30 rounded-lg border p-3">
+                  <div className="flex items-start justify-between gap-2">
                     <Link
                       href={pieceBoardHref(boardBase, { workshopId: row.id })}
-                      className="hover:text-primary underline-offset-2 hover:underline"
+                      className="text-heading font-medium underline-offset-2 hover:underline"
                     >
                       {row.name}
                     </Link>
-                    {!row.active ? (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        (inactivo)
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.sent}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.returned}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatDays(row.avg_days)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatDays(row.median_days)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.observed}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {row.in_workshop}
-                  </TableCell>
-                  <TableCell>
                     <ToneBadge tone={workshopTone(row, data.alert_days)}>
                       {loadLabel(row, data.alert_days)}
                     </ToneBadge>
-                  </TableCell>
-                  {showCost ? (
-                    <TableCell className="text-right tabular-nums">
-                      {row.cost !== null ? formatSolesWhole(row.cost) : "—"}
-                    </TableCell>
-                  ) : null}
-                </TableRow>
+                  </div>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    {[
+                      ["Enviadas", String(row.sent)],
+                      ["Devueltas", String(row.returned)],
+                      ["En taller", String(row.in_workshop)],
+                      ["Promedio", formatDays(row.avg_days)],
+                      ["Mediana", formatDays(row.median_days)],
+                      ["Observadas", String(row.observed)],
+                      ...(showCost
+                        ? [
+                            [
+                              "Costo",
+                              row.cost !== null
+                                ? formatSolesWhole(row.cost)
+                                : "—",
+                            ],
+                          ]
+                        : []),
+                    ].map(([term, value]) => (
+                      <div key={term}>
+                        <dt className="text-muted-foreground">{term}</dt>
+                        <dd className="text-heading font-semibold tabular-nums">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
               ))}
-            </TableBody>
-          </Table>
+            </ul>
+          </>
         )}
       </Panel>
     </>

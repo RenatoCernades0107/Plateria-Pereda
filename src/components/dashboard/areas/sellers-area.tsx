@@ -129,57 +129,98 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
         {rows.length === 0 ? (
           <PanelEmpty />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vendedor</TableHead>
-                <TableHead className="text-right">Guías</TableHead>
-                <TableHead className="text-right">Vendido</TableHead>
-                <TableHead className="text-right">Cobrado</TableHead>
-                <TableHead className="text-right">Ticket</TableHead>
-                <TableHead className="text-right">Aprobación</TableHead>
-                <TableHead className="text-right">WhatsApp</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendedor</TableHead>
+                    <TableHead className="text-right">Guías</TableHead>
+                    <TableHead className="text-right">Vendido</TableHead>
+                    <TableHead className="text-right">Cobrado</TableHead>
+                    <TableHead className="text-right">Ticket</TableHead>
+                    <TableHead className="text-right">Aprobación</TableHead>
+                    <TableHead className="text-right">WhatsApp</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow
+                      key={r.id ?? r.name}
+                      data-testid={`vendedor-${r.id ?? "ninguno"}`}
+                    >
+                      <TableCell className="font-medium">
+                        {r.name}
+                        {r.is_self && !own ? (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            (tú)
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.orders}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatSolesWhole(r.sold)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatSolesWhole(r.collected)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatSolesWhole(r.ticket)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatPercent(r.approval_rate, 0)}
+                        <span className="text-muted-foreground ml-1 text-xs">
+                          ({r.approved}/{r.pieces})
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {r.cwa_converted}/{r.cwa_created}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <ul
+              className="space-y-3 md:hidden"
+              data-testid="vendedores-tarjetas"
+            >
               {rows.map((r) => (
-                <TableRow
+                <li
                   key={r.id ?? r.name}
-                  data-testid={`vendedor-${r.id ?? "ninguno"}`}
+                  className="bg-muted/30 rounded-lg border p-3"
                 >
-                  <TableCell className="font-medium">
+                  <p className="text-heading font-medium">
                     {r.name}
                     {r.is_self && !own ? (
-                      <span className="text-muted-foreground ml-2 text-xs">
+                      <span className="text-muted-foreground ml-2 text-xs font-normal">
                         (tú)
                       </span>
                     ) : null}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {r.orders}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatSolesWhole(r.sold)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatSolesWhole(r.collected)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatSolesWhole(r.ticket)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatPercent(r.approval_rate, 0)}
-                    <span className="text-muted-foreground ml-1 text-xs">
-                      ({r.approved}/{r.pieces})
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {r.cwa_converted}/{r.cwa_created}
-                  </TableCell>
-                </TableRow>
+                  </p>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    {[
+                      ["Guías", String(r.orders)],
+                      ["Vendido", formatSolesWhole(r.sold)],
+                      ["Cobrado", formatSolesWhole(r.collected)],
+                      ["Ticket", formatSolesWhole(r.ticket)],
+                      ["Aprobación", formatPercent(r.approval_rate, 0)],
+                      ["WhatsApp", `${r.cwa_converted}/${r.cwa_created}`],
+                    ].map(([term, value]) => (
+                      <div key={term}>
+                        <dt className="text-muted-foreground">{term}</dt>
+                        <dd className="text-heading font-semibold tabular-nums">
+                          {value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
               ))}
-            </TableBody>
-          </Table>
+            </ul>
+          </>
         )}
       </Panel>
     </>

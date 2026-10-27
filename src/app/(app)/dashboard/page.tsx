@@ -1,6 +1,7 @@
 import { Download, Plus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ClientsArea } from "@/components/dashboard/areas/clients-area";
 import { OrdersArea } from "@/components/dashboard/areas/orders-area";
@@ -9,6 +10,7 @@ import { SalesArea } from "@/components/dashboard/areas/sales-area";
 import { SellersArea } from "@/components/dashboard/areas/sellers-area";
 import { SummaryArea } from "@/components/dashboard/areas/summary-area";
 import { WorkshopsArea } from "@/components/dashboard/areas/workshops-area";
+import { AreaSkeleton } from "@/components/dashboard/area-skeleton";
 import {
   DashboardShell,
   type AreaTab,
@@ -87,19 +89,21 @@ export default async function DashboardPage({
         rangeText={formatRange(range)}
         previousText={formatRange(previousRange(range))}
       >
-        {area === "resumen" ? (
-          <SummaryArea range={range} canMargins={canMargins} />
-        ) : null}
-        {area === "ventas" ? (
-          <SalesArea range={range} canMargins={canMargins} />
-        ) : null}
-        {area === "pedidos" ? <OrdersArea range={range} /> : null}
-        {area === "clientes" ? <ClientsArea range={range} /> : null}
-        {area === "talleres" ? (
-          <WorkshopsArea range={range} canMargins={canMargins} />
-        ) : null}
-        {area === "vendedores" ? <SellersArea range={range} /> : null}
-        {area === "cotizaciones" ? <QuotesArea range={range} /> : null}
+        <Suspense fallback={<AreaSkeleton />}>
+          {area === "resumen" ? (
+            <SummaryArea range={range} canMargins={canMargins} />
+          ) : null}
+          {area === "ventas" ? (
+            <SalesArea range={range} canMargins={canMargins} />
+          ) : null}
+          {area === "pedidos" ? <OrdersArea range={range} /> : null}
+          {area === "clientes" ? <ClientsArea range={range} /> : null}
+          {area === "talleres" ? (
+            <WorkshopsArea range={range} canMargins={canMargins} />
+          ) : null}
+          {area === "vendedores" ? <SellersArea range={range} /> : null}
+          {area === "cotizaciones" ? <QuotesArea range={range} /> : null}
+        </Suspense>
       </DashboardShell>
     </div>
   );
