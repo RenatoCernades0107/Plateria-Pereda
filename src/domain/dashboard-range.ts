@@ -95,7 +95,9 @@ export function dayDiff(from: string, to: string): number {
   if (!ISO_DATE.test(from) || !ISO_DATE.test(to)) {
     throw new Error(`Fecha inválida: ${from} / ${to}`);
   }
-  return Math.round((utcDate(to).getTime() - utcDate(from).getTime()) / 86_400_000);
+  return Math.round(
+    (utcDate(to).getTime() - utcDate(from).getTime()) / 86_400_000,
+  );
 }
 
 /** Cantidad de días del rango, contando ambos extremos. */
@@ -115,7 +117,10 @@ function monthEnd(date: string): string {
 }
 
 /** Las fechas de un atajo, según el día de hoy en Lima. */
-export function presetRange(preset: RangePreset, today: string): DashboardRange {
+export function presetRange(
+  preset: RangePreset,
+  today: string,
+): DashboardRange {
   switch (preset) {
     case "hoy":
       return { from: today, to: today, preset };
@@ -246,10 +251,15 @@ const SHORT_YEAR = new Intl.DateTimeFormat("es-PE", {
 });
 
 /** "1 oct – 27 oct 2026" (o "27 oct 2026" si es un solo día). */
-export function formatRange(range: Pick<DashboardRange, "from" | "to">): string {
+export function formatRange(
+  range: Pick<DashboardRange, "from" | "to">,
+): string {
   const clean = (text: string) => text.replace(/\./g, "");
-  if (range.from === range.to) return clean(SHORT_YEAR.format(utcDate(range.to)));
+  if (range.from === range.to)
+    return clean(SHORT_YEAR.format(utcDate(range.to)));
   const sameYear = range.from.slice(0, 4) === range.to.slice(0, 4);
-  const start = sameYear ? SHORT.format(utcDate(range.from)) : SHORT_YEAR.format(utcDate(range.from));
+  const start = sameYear
+    ? SHORT.format(utcDate(range.from))
+    : SHORT_YEAR.format(utcDate(range.from));
   return clean(`${start} – ${SHORT_YEAR.format(utcDate(range.to))}`);
 }

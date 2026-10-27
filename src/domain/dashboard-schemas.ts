@@ -32,9 +32,7 @@ export const summarySchema = z.object({
   cwa_conversion: nullableNum,
   margin: nullableNum,
   margin_pct: nullableNum,
-  series: z.array(
-    z.object({ d: day, vendido: num, cobrado: num, guias: num }),
-  ),
+  series: z.array(z.object({ d: day, vendido: num, cobrado: num, guias: num })),
 });
 export type DashboardSummary = z.infer<typeof summarySchema>;
 

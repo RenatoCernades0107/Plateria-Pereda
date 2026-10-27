@@ -61,7 +61,11 @@ describe("parseDashboardParams", () => {
       TODAY,
     );
     expect(area).toBe("talleres");
-    expect(range).toEqual({ from: "2026-10-01", to: "2026-10-27", preset: "mes" });
+    expect(range).toEqual({
+      from: "2026-10-01",
+      to: "2026-10-27",
+      preset: "mes",
+    });
   });
 
   it("ignora una pestaña o atajo desconocidos", () => {
@@ -107,9 +111,9 @@ describe("parseDashboardParams", () => {
   });
 
   it("toma el primer valor si el parámetro se repite", () => {
-    expect(parseDashboardParams({ area: ["ventas", "pedidos"] }, TODAY).area).toBe(
-      "ventas",
-    );
+    expect(
+      parseDashboardParams({ area: ["ventas", "pedidos"] }, TODAY).area,
+    ).toBe("ventas");
   });
 });
 
@@ -142,9 +146,9 @@ describe("bucketFor", () => {
     [201, "mes"],
     [366, "mes"],
   ] as const)("%i días → %s", (days, bucket) => {
-    expect(bucketFor({ from: "2026-01-01", to: addDaysTo("2026-01-01", days - 1) })).toBe(
-      bucket,
-    );
+    expect(
+      bucketFor({ from: "2026-01-01", to: addDaysTo("2026-01-01", days - 1) }),
+    ).toBe(bucket);
   });
 });
 
@@ -158,12 +162,14 @@ describe("dashboardHref", () => {
   const thirty = presetRange("30d", TODAY);
   it("lo que es por defecto no ensucia la URL", () => {
     expect(dashboardHref({})).toBe("/dashboard");
-    expect(dashboardHref({ area: "resumen", range: thirty })).toBe("/dashboard");
+    expect(dashboardHref({ area: "resumen", range: thirty })).toBe(
+      "/dashboard",
+    );
   });
   it("incluye pestaña y atajo", () => {
-    expect(dashboardHref({ area: "ventas", range: presetRange("mes", TODAY) })).toBe(
-      "/dashboard?area=ventas&rango=mes",
-    );
+    expect(
+      dashboardHref({ area: "ventas", range: presetRange("mes", TODAY) }),
+    ).toBe("/dashboard?area=ventas&rango=mes");
   });
   it("un rango personalizado lleva las fechas", () => {
     expect(
@@ -171,7 +177,9 @@ describe("dashboardHref", () => {
         area: "clientes",
         range: { from: "2026-10-01", to: "2026-10-05", preset: "custom" },
       }),
-    ).toBe("/dashboard?area=clientes&rango=custom&desde=2026-10-01&hasta=2026-10-05");
+    ).toBe(
+      "/dashboard?area=clientes&rango=custom&desde=2026-10-01&hasta=2026-10-05",
+    );
   });
 });
 

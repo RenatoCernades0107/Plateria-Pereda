@@ -63,10 +63,12 @@ describe("dashboard-metrics", () => {
   });
 
   it("el resumen con periodo anterior pide los dos rangos con la misma agrupación", async () => {
-    mocks.rpc.mockImplementation(async (_fn: string, args: { p_from: string }) => ({
-      data: summary(args.p_from === "2026-09-28" ? 300 : 200),
-      error: null,
-    }));
+    mocks.rpc.mockImplementation(
+      async (_fn: string, args: { p_from: string }) => ({
+        data: summary(args.p_from === "2026-09-28" ? 300 : 200),
+        error: null,
+      }),
+    );
     const { current, previous } = await dashboardSummaryWithPrevious(RANGE);
     expect(current.sold).toBe(300);
     expect(previous.sold).toBe(200);
@@ -80,13 +82,27 @@ describe("dashboard-metrics", () => {
   it("un rango largo agrupa por semana", async () => {
     mocks.rpc.mockResolvedValue({
       data: {
-        from: "2026-01-01", to: "2026-06-30", bucket: "semana", sold: 0, collected: 0,
-        collection_rate: null, series: [], by_method: [], by_origin: [],
-        by_payment_type: [], by_service: [], by_material: [], margin: null,
+        from: "2026-01-01",
+        to: "2026-06-30",
+        bucket: "semana",
+        sold: 0,
+        collected: 0,
+        collection_rate: null,
+        series: [],
+        by_method: [],
+        by_origin: [],
+        by_payment_type: [],
+        by_service: [],
+        by_material: [],
+        margin: null,
       },
       error: null,
     });
-    await dashboardSales({ from: "2026-01-01", to: "2026-06-30", preset: "custom" });
+    await dashboardSales({
+      from: "2026-01-01",
+      to: "2026-06-30",
+      preset: "custom",
+    });
     expect(mocks.rpc).toHaveBeenCalledWith("dashboard_sales", {
       p_from: "2026-01-01",
       p_to: "2026-06-30",
@@ -97,8 +113,19 @@ describe("dashboard-metrics", () => {
   it("talleres usa el umbral de alerta de días", async () => {
     mocks.rpc.mockResolvedValue({
       data: {
-        from: "2026-09-28", to: "2026-10-27", alert_days: 7, workshops: [],
-        total: { returned: 0, avg_days: null, median_days: null, in_workshop: 0, over_alert: 0, cost: null, buckets: [] },
+        from: "2026-09-28",
+        to: "2026-10-27",
+        alert_days: 7,
+        workshops: [],
+        total: {
+          returned: 0,
+          avg_days: null,
+          median_days: null,
+          in_workshop: 0,
+          over_alert: 0,
+          cost: null,
+          buckets: [],
+        },
       },
       error: null,
     });
@@ -112,7 +139,12 @@ describe("dashboard-metrics", () => {
 
   it("vendedores no manda agrupación", async () => {
     mocks.rpc.mockResolvedValue({
-      data: { from: "2026-09-28", to: "2026-10-27", scope: "propio", sellers: [] },
+      data: {
+        from: "2026-09-28",
+        to: "2026-10-27",
+        scope: "propio",
+        sellers: [],
+      },
       error: null,
     });
     await dashboardSellers(RANGE);
@@ -123,8 +155,13 @@ describe("dashboard-metrics", () => {
   });
 
   it("propaga el error de la base de datos", async () => {
-    mocks.rpc.mockResolvedValue({ data: null, error: { message: "sin permiso", code: "42501" } });
-    await expect(dashboardSummary(RANGE)).rejects.toMatchObject({ code: "42501" });
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "sin permiso", code: "42501" },
+    });
+    await expect(dashboardSummary(RANGE)).rejects.toMatchObject({
+      code: "42501",
+    });
   });
 
   it("rechaza una respuesta con otra forma", async () => {

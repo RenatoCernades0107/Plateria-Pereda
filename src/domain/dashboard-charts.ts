@@ -29,7 +29,11 @@ const noDot = (text: string) => text.replace(/\./g, "");
  * Etiqueta de una agrupación: "27 oct" (día o inicio de semana) o "oct" (mes).
  * La larga sirve para el tooltip y la tabla: "Semana del 27 oct", "octubre 2026".
  */
-export function bucketLabel(date: string, bucket: Bucket, long = false): string {
+export function bucketLabel(
+  date: string,
+  bucket: Bucket,
+  long = false,
+): string {
   const d = utcDate(date);
   switch (bucket) {
     case "dia":
@@ -127,9 +131,24 @@ export function funnelSteps(funnel: DashboardOrders["funnel"]): FunnelStep[] {
   const pct = (value: number) =>
     funnel.registered > 0 ? (value / funnel.registered) * 100 : null;
   return [
-    { key: "registered", label: "Registradas", value: funnel.registered, pct: pct(funnel.registered) },
-    { key: "approved", label: "Aprobadas", value: funnel.approved, pct: pct(funnel.approved) },
-    { key: "delivered", label: "Entregadas", value: funnel.delivered, pct: pct(funnel.delivered) },
+    {
+      key: "registered",
+      label: "Registradas",
+      value: funnel.registered,
+      pct: pct(funnel.registered),
+    },
+    {
+      key: "approved",
+      label: "Aprobadas",
+      value: funnel.approved,
+      pct: pct(funnel.approved),
+    },
+    {
+      key: "delivered",
+      label: "Entregadas",
+      value: funnel.delivered,
+      pct: pct(funnel.delivered),
+    },
   ];
 }
 
@@ -138,8 +157,16 @@ export function funnelLosses(
   funnel: DashboardOrders["funnel"],
 ): { key: string; label: string; value: number }[] {
   return [
-    { key: "in_consultation", label: "En consulta o espera", value: funnel.in_consultation },
-    { key: "rejected", label: "Rechazadas por el cliente", value: funnel.rejected },
+    {
+      key: "in_consultation",
+      label: "En consulta o espera",
+      value: funnel.in_consultation,
+    },
+    {
+      key: "rejected",
+      label: "Rechazadas por el cliente",
+      value: funnel.rejected,
+    },
     { key: "no_fix", label: "Sin arreglo", value: funnel.no_fix },
     { key: "cancelled", label: "Anuladas", value: funnel.cancelled },
   ];
@@ -164,7 +191,10 @@ export function regionName(code: string): string {
  * tiene ninguna (mismos umbrales que `piece-status-age.ts`: 7 y 15 días).
  */
 export function workshopTone(
-  row: Pick<DashboardWorkshopRow, "in_workshop" | "over_alert" | "max_now_days">,
+  row: Pick<
+    DashboardWorkshopRow,
+    "in_workshop" | "over_alert" | "max_now_days"
+  >,
   alertDays: number,
 ): BadgeTone {
   if (row.in_workshop === 0) return "neutral";

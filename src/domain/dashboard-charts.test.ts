@@ -53,7 +53,12 @@ describe("topWithOthers", () => {
     { label: "d", value: 10 },
   ];
   it("ordena de mayor a menor", () => {
-    expect(topWithOthers(items, 8).map((i) => i.label)).toEqual(["b", "c", "d", "a"]);
+    expect(topWithOthers(items, 8).map((i) => i.label)).toEqual([
+      "b",
+      "c",
+      "d",
+      "a",
+    ]);
   });
   it("agrupa la cola en «Otros» sin pasar del máximo", () => {
     const top = topWithOthers(items, 3);
@@ -64,7 +69,9 @@ describe("topWithOthers", () => {
 
 describe("withShare", () => {
   it("calcula el porcentaje sobre el total", () => {
-    expect(withShare([{ value: 1 }, { value: 3 }]).map((i) => i.pct)).toEqual([25, 75]);
+    expect(withShare([{ value: 1 }, { value: 3 }]).map((i) => i.pct)).toEqual([
+      25, 75,
+    ]);
   });
   it("total cero: 0 %", () => {
     expect(withShare([{ value: 0 }])[0]?.pct).toBe(0);
@@ -93,8 +100,14 @@ describe("orderedCounts", () => {
 
 describe("embudo", () => {
   const funnel = {
-    registered: 8, approved: 6, delivered: 2, in_consultation: 1,
-    rejected: 1, no_fix: 0, cancelled: 1, urgent: 3,
+    registered: 8,
+    approved: 6,
+    delivered: 2,
+    in_consultation: 1,
+    rejected: 1,
+    no_fix: 0,
+    cancelled: 1,
+    urgent: 3,
   };
   it("pasos con porcentaje sobre lo registrado", () => {
     expect(funnelSteps(funnel).map((s) => [s.key, s.value, s.pct])).toEqual([
@@ -104,7 +117,10 @@ describe("embudo", () => {
     ]);
   });
   it("sin piezas no hay porcentajes", () => {
-    expect(funnelSteps({ ...funnel, registered: 0, approved: 0, delivered: 0 })[1]?.pct).toBeNull();
+    expect(
+      funnelSteps({ ...funnel, registered: 0, approved: 0, delivered: 0 })[1]
+        ?.pct,
+    ).toBeNull();
     expect(approvalRate({ ...funnel, registered: 0 })).toBeNull();
   });
   it("tasa de aprobación y pérdidas", () => {
@@ -123,13 +139,23 @@ describe("regionName", () => {
 });
 
 describe("workshopTone", () => {
-  const row = (in_workshop: number, over_alert: number, max_now_days: number | null) => ({
-    in_workshop, over_alert, max_now_days,
+  const row = (
+    in_workshop: number,
+    over_alert: number,
+    max_now_days: number | null,
+  ) => ({
+    in_workshop,
+    over_alert,
+    max_now_days,
   });
-  it("sin piezas: neutro", () => expect(workshopTone(row(0, 0, null), 7)).toBe("neutral"));
-  it("a tiempo: éxito", () => expect(workshopTone(row(2, 0, 3), 7)).toBe("success"));
-  it("desde el umbral: atención", () => expect(workshopTone(row(2, 1, 7), 7)).toBe("attention"));
-  it("el doble del umbral: crítico", () => expect(workshopTone(row(2, 2, 14), 7)).toBe("critical"));
+  it("sin piezas: neutro", () =>
+    expect(workshopTone(row(0, 0, null), 7)).toBe("neutral"));
+  it("a tiempo: éxito", () =>
+    expect(workshopTone(row(2, 0, 3), 7)).toBe("success"));
+  it("desde el umbral: atención", () =>
+    expect(workshopTone(row(2, 1, 7), 7)).toBe("attention"));
+  it("el doble del umbral: crítico", () =>
+    expect(workshopTone(row(2, 2, 14), 7)).toBe("critical"));
 });
 
 describe("barWidth", () => {

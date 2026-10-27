@@ -30,7 +30,7 @@ export type CsvRestoration = {
 };
 
 /** Escapa un campo CSV (comillas, comas y saltos de línea). */
-function field(value: string | number | null): string {
+export function csvField(value: string | number | null): string {
   const text = value === null ? "" : String(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
@@ -83,7 +83,7 @@ export function restorationsCsv(rows: readonly CsvRestoration[]): string {
       money(r.balanceCents),
       RESTORATION_ORIGIN_LABELS[r.origin],
     ]
-      .map(field)
+      .map(csvField)
       .join(","),
   );
   return `﻿${[header.join(","), ...lines].join("\r\n")}\r\n`;

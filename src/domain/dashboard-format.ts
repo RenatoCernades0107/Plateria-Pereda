@@ -5,7 +5,9 @@ const wholeSoles = new Intl.NumberFormat("es-PE", {
   currency: "PEN",
   maximumFractionDigits: 0,
 });
-const plainNumber = new Intl.NumberFormat("es-PE", { maximumFractionDigits: 1 });
+const plainNumber = new Intl.NumberFormat("es-PE", {
+  maximumFractionDigits: 1,
+});
 const oneDecimal = new Intl.NumberFormat("es-PE", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -23,7 +25,8 @@ export function formatSolesCompact(amount: number): string {
   const abs = Math.abs(amount);
   const sign = amount < 0 ? "−" : "";
   if (abs < 1_000) return `${sign}S/ ${plainNumber.format(Math.round(abs))}`;
-  if (abs < 1_000_000) return `${sign}S/ ${plainNumber.format(abs / 1_000)} mil`;
+  if (abs < 1_000_000)
+    return `${sign}S/ ${plainNumber.format(abs / 1_000)} mil`;
   return `${sign}S/ ${plainNumber.format(abs / 1_000_000)} M`;
 }
 
@@ -48,7 +51,7 @@ export function formatPercent(
   digits: 0 | 1 = 1,
 ): string {
   if (value === null || value === undefined) return "—";
-  return `${(digits === 0 ? plainNumber.format(Math.round(value)) : oneDecimal.format(value))} %`;
+  return `${digits === 0 ? plainNumber.format(Math.round(value)) : oneDecimal.format(value)} %`;
 }
 
 export function formatCount(value: number): string {
@@ -66,7 +69,8 @@ export function computeDelta(
   current: number | null | undefined,
   previous: number | null | undefined,
 ): Delta {
-  if (current === null || current === undefined) return { kind: "none", pct: null };
+  if (current === null || current === undefined)
+    return { kind: "none", pct: null };
   if (previous === null || previous === undefined)
     return { kind: "none", pct: null };
   if (previous === 0) {

@@ -71,6 +71,24 @@
      sobre --guide; el amarillo puro no llega a 3:1). */
   --edit: #facc15;
   --edit-strong: #a16207;
+  /* Dashboard (Fase 13): paleta categórica validada con `validate_palette.js` (cobre de
+     la marca primero, luego azul, verde azulado, ámbar, violeta y rosa; las barras de
+     varias series siguen este orden fijo). La rampa cobre es la secuencial (más oscuro =
+     más). Sin tema oscuro: si se agrega, definir aquí sus pasos propios. */
+  --viz-1: #b5603f;
+  --viz-2: #2a78d6;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #6250d6;
+  --viz-6: #e87ba4;
+  --viz-grid: #ece4dd;
+  --viz-track: #f1e7e0;
+  --viz-seq-200: #ebd0c0;
+  --viz-seq-300: #dcab8f;
+  --viz-seq-400: #cc8663;
+  --viz-seq-500: #b5603f;
+  --viz-seq-600: #964a2d;
+  --viz-seq-700: #763820;
 }
 
 /* Solo hay tema claro (no se activa `.dark` en ningún sitio). Si se agrega un tema
@@ -131,6 +149,20 @@
   --color-pdf-strong: var(--pdf-strong);
   --color-edit: var(--edit);
   --color-edit-strong: var(--edit-strong);
+  --color-viz-1: var(--viz-1);
+  --color-viz-2: var(--viz-2);
+  --color-viz-3: var(--viz-3);
+  --color-viz-4: var(--viz-4);
+  --color-viz-5: var(--viz-5);
+  --color-viz-6: var(--viz-6);
+  --color-viz-grid: var(--viz-grid);
+  --color-viz-track: var(--viz-track);
+  --color-viz-seq-200: var(--viz-seq-200);
+  --color-viz-seq-300: var(--viz-seq-300);
+  --color-viz-seq-400: var(--viz-seq-400);
+  --color-viz-seq-500: var(--viz-seq-500);
+  --color-viz-seq-600: var(--viz-seq-600);
+  --color-viz-seq-700: var(--viz-seq-700);
 }
 
 @layer base {
