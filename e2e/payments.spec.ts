@@ -40,7 +40,7 @@ type FakeDraft = { id: string; tags: string[]; orderId: string | null };
  */
 async function employeeCreatesOrders(
   request: APIRequestContext,
-  code: string,
+  { id, code }: { id: string; code: string },
   count: number,
 ) {
   const drafts = async () => {
@@ -65,6 +65,20 @@ async function employeeCreatesOrders(
       { admin_graphql_api_id: draft.id },
     );
   }
+  // El webhook encola la conciliación: cada pago queda ligado a su pedido y cobrado.
+  await expect
+    .poll(
+      async () => {
+        const { data } = await adminClient()
+          .from("payments")
+          .select("shopify_order_id")
+          .eq("restoration_id", id)
+          .eq("kind", "pago");
+        return (data ?? []).filter((p) => p.shopify_order_id).length;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(count);
 }
 
 const summary = async (request: APIRequestContext, code: string) =>
@@ -215,7 +229,7 @@ test.describe("Pagos", () => {
     await expect(card).toContainText("Aprobada");
     await expect(page.getByTestId("estado-pago")).toHaveText("Pago parcial");
     // El adelanto es su propio borrador: el empleado crea el pedido y queda pagado.
-    await employeeCreatesOrders(request, r.code, 1);
+    await employeeCreatesOrders(request, r, 1);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
@@ -231,7 +245,7 @@ test.describe("Pagos", () => {
     await expect(page.getByText("Pago de S/ 100.00 registrado.")).toBeVisible();
     await expect(page.getByTestId("estado-pago")).toHaveText("Pagado");
     await expect(page.getByTestId("pago")).toHaveCount(2);
-    await employeeCreatesOrders(request, r.code, 2);
+    await employeeCreatesOrders(request, r, 2);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([
@@ -324,7 +338,7 @@ test.describe("Pagos", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     await approveWithDeposit(page, r.code, "Yape");
-    await employeeCreatesOrders(request, r.code, 1);
+    await employeeCreatesOrders(request, r, 1);
     await expect
       .poll(async () => (await fakeOrders(request, r.code)).length, {
         timeout: 30_000,
@@ -381,7 +395,7 @@ test.describe("Pagos", () => {
     await loginAs("ventas");
     await page.goto(`/restauraciones/${r.id}`);
     await approveWithDeposit(page, r.code, "Yape");
-    await employeeCreatesOrders(request, r.code, 1);
+    await employeeCreatesOrders(request, r, 1);
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);

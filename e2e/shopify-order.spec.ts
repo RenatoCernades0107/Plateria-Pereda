@@ -27,6 +27,15 @@ async function fakeOrders(request: APIRequestContext, tag: string) {
   return state.orders.filter((o) => o.tags.includes(tag));
 }
 
+/** Borradores de los pagos (el empleado los convierte en pedido en Shopify). */
+async function fakeDrafts(request: APIRequestContext, tag: string) {
+  const response = await request.get("/api/test/shopify");
+  const state = (await response.json()) as {
+    drafts: { tags: string[]; lines: { title: string }[] }[];
+  };
+  return state.drafts.filter((d) => d.tags.includes(tag));
+}
+
 const customers = new Map<string, string>();
 
 /** Cliente que existe en el Shopify falso (la orden necesita un comprador real). */
@@ -152,7 +161,7 @@ test.describe("Shopify al aprobar y cobrar", () => {
     expect(await fakeOrders(request, r.code)).toEqual([]);
   });
 
-  test("si Shopify falla al crear el pedido de un pago queda en error y Reintentar lo crea una sola vez", async ({
+  test("si Shopify falla al crear el borrador de un pago queda en error y Reintentar lo crea una sola vez", async ({
     page,
     request,
     loginAs,
@@ -181,7 +190,7 @@ test.describe("Shopify al aprobar y cobrar", () => {
     await request.post("/api/test/shopify", {
       data: {
         action: "fail",
-        method: "createOrder",
+        method: "createDraftOrder",
         kind: "user",
         message: "Rechazo de prueba",
         // Solo el pedido de esta guía (otros archivos corren a la vez).
@@ -200,7 +209,7 @@ test.describe("Shopify al aprobar y cobrar", () => {
       "Shopify: Error",
       { timeout: 20_000 },
     );
-    expect(await fakeOrders(request, r.code)).toEqual([]);
+    expect(await fakeDrafts(request, r.code)).toEqual([]);
 
     await page.getByRole("button", { name: "Reintentar" }).click();
     await expect(
@@ -209,7 +218,7 @@ test.describe("Shopify al aprobar y cobrar", () => {
     await expect
       .poll(
         async () =>
-          (await fakeOrders(request, r.code)).map((o) => o.lines[0]!.title),
+          (await fakeDrafts(request, r.code)).map((d) => d.lines[0]!.title),
         {
           timeout: 20_000,
         },
