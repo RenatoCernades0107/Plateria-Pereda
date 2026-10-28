@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { readDraft } from "./payment-fields";
 
+const CAJA = "00000000-0000-0000-0000-0000000000b1";
 const draft = (...rows: [string, string][]) => ({
   paidOn: "2026-10-12",
+  branchId: CAJA,
   rows: rows.map(([methodId, amount]) => ({ methodId, amount })),
 });
 const YAPE = "00000000-0000-0000-0000-000000000001";
@@ -15,6 +17,7 @@ describe("readDraft: validación del pago (11.2)", () => {
       {
         input: {
           paidOn: "2026-10-12",
+          branchId: CAJA,
           rows: [
             { methodId: YAPE, amountCents: 15000 },
             { methodId: EFECTIVO, amountCents: 5050 },
@@ -41,6 +44,16 @@ describe("readDraft: validación del pago (11.2)", () => {
   it("cada fila necesita su método", () => {
     expect(readDraft(draft(["", "10"]), 40000)).toEqual({
       error: "Elige el método de pago.",
+    });
+  });
+
+  it("pide la sucursal, salvo en los reembolsos", () => {
+    const noBranch = { ...draft([YAPE, "10"]), branchId: "" };
+    expect(readDraft(noBranch, 40000)).toEqual({
+      error: "Elige la sucursal.",
+    });
+    expect(readDraft(noBranch, 40000, { withBranch: false })).toMatchObject({
+      totalCents: 1000,
     });
   });
 });

@@ -158,7 +158,7 @@ function LineEditor({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-[6rem_9rem_10rem_1fr]">
           <div className="space-y-1">
             <Label htmlFor={id("quantity")}>Cantidad</Label>
             <Input

@@ -19,6 +19,7 @@ import type { PaymentRecord } from "@/server/payments/queries";
 /** Estado de envío a Shopify de cada pago (§7.5); con su pedido, su descripción. */
 export function shopifyLabel(p: PaymentRecord): string {
   if (p.source === "shopify") return "Hecho en Shopify";
+  if (p.skipShopify) return "Solo en el sistema";
   if (p.orderName) return p.orderTitle ?? p.orderName;
   return p.syncedToShopify ? "En Shopify" : "Pendiente de envío";
 }
@@ -54,7 +55,9 @@ function ShopifyCell({ payment: p }: { payment: PaymentRecord }) {
     <>
       <ShopifyBadge
         className={
-          pending ? "border-border text-foreground bg-transparent" : undefined
+          pending || p.skipShopify
+            ? "border-border text-foreground bg-transparent"
+            : undefined
         }
       >
         {label}
@@ -94,6 +97,11 @@ export function PaymentsList({ payments }: { payments: PaymentRecord[] }) {
             <TableCell>{formatDate(`${p.paidOn}T12:00:00`)}</TableCell>
             <TableCell>
               {p.methodName}
+              {p.branchName ? (
+                <span className="text-muted-foreground block text-xs">
+                  {p.branchName}
+                </span>
+              ) : null}
               {p.kind === "reembolso" ? (
                 <>
                   {" "}

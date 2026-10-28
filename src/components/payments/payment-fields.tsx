@@ -17,9 +17,17 @@ import type { PaymentInput } from "@/server/payments/actions";
 
 export type MethodOption = { id: string; name: string };
 
+/** Sucursal que cobra el pago (catálogo de Configuración). */
+export type BranchOption = { id: string; name: string };
+
 export type PaymentRow = { methodId: string; amount: string };
 
-export type PaymentDraft = { paidOn: string; rows: PaymentRow[] };
+/** Una sola sucursal por registro: todos sus métodos (y sus pedidos) la llevan. */
+export type PaymentDraft = {
+  paidOn: string;
+  branchId: string;
+  rows: PaymentRow[];
+};
 
 /** Hoy en Lima (AAAA-MM-DD). */
 export const todayInLima = () =>
@@ -29,6 +37,7 @@ export const todayInLima = () =>
 
 export const newDraft = (amountCents: Cents | null): PaymentDraft => ({
   paidOn: todayInLima(),
+  branchId: "",
   rows: [
     {
       methodId: "",
@@ -38,13 +47,16 @@ export const newDraft = (amountCents: Cents | null): PaymentDraft => ({
 });
 
 /**
- * Valida el borrador: cada fila con método y monto > 0 y, si se da `maxCents`, que
- * la suma no pase del saldo. Devuelve el pago o el mensaje de error.
+ * Valida el borrador: la sucursal (salvo en reembolsos, `withBranch: false`), cada
+ * fila con método y monto > 0 y, si se da `maxCents`, que la suma no pase del saldo.
+ * Devuelve el pago o el mensaje de error.
  */
 export function readDraft(
   draft: PaymentDraft,
   maxCents: Cents | null,
+  { withBranch = true } = {},
 ): { input: PaymentInput; totalCents: Cents } | { error: string } {
+  if (withBranch && !draft.branchId) return { error: "Elige la sucursal." };
   const rows: PaymentInput["rows"] = [];
   for (const row of draft.rows) {
     const amountCents = parseMoney(row.amount);
@@ -59,20 +71,28 @@ export function readDraft(
       error: `El monto supera el saldo pendiente (${formatCents(maxCents)}).`,
     };
   if (!draft.paidOn) return { error: "Elige la fecha del pago." };
-  return { input: { paidOn: draft.paidOn, rows }, totalCents };
+  return {
+    input: { paidOn: draft.paidOn, branchId: draft.branchId, rows },
+    totalCents,
+  };
 }
 
-/** Monto, método y fecha; se puede repartir en varios métodos (Paso 11.2). */
+/**
+ * Sucursal, monto, método y fecha; se puede repartir en varios métodos (Paso 11.2).
+ * Sin `branches` (reembolsos) no se pide sucursal.
+ */
 export function PaymentFields({
   draft,
   onChange,
   methods,
+  branches,
   idPrefix,
   single = false,
 }: {
   draft: PaymentDraft;
   onChange: (draft: PaymentDraft) => void;
   methods: MethodOption[];
+  branches?: BranchOption[];
   idPrefix: string;
   /** Un solo método (reembolsos). */
   single?: boolean;
@@ -84,6 +104,26 @@ export function PaymentFields({
     });
   return (
     <div className="space-y-3">
+      {branches ? (
+        <div className="space-y-1.5">
+          <Label htmlFor={`${idPrefix}-sucursal`}>Sucursal</Label>
+          <Select
+            value={draft.branchId}
+            onValueChange={(branchId) => onChange({ ...draft, branchId })}
+          >
+            <SelectTrigger id={`${idPrefix}-sucursal`} className="w-full">
+              <SelectValue placeholder="Elige" />
+            </SelectTrigger>
+            <SelectContent>
+              {branches.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
       {draft.rows.map((row, i) => (
         <div
           key={i}

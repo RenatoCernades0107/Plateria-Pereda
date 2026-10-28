@@ -105,6 +105,8 @@ type FormValues = {
   depositAmount: string;
   /** Método con que se pagó el adelanto: al guardar, el adelanto se registra como pago. */
   depositMethodId: string;
+  /** Sucursal que cobró el adelanto (va al pedido de Shopify del pago). */
+  depositBranchId: string;
   /** Solo lo lee el esquema de la cotización de WhatsApp (que no lleva pago): siempre "". */
   depositPercent: string;
   notes: string;
@@ -486,6 +488,7 @@ function defaultsFor(
       paymentType: "sin_definir",
       depositAmount: "",
       depositMethodId: "",
+      depositBranchId: "",
       depositPercent: "",
       notes: "",
       pieces: [newPiece(materials, services)],
@@ -507,6 +510,7 @@ function defaultsFor(
           )
         : "",
     depositMethodId: "",
+    depositBranchId: "",
     depositPercent: "",
     notes: mode.kind === "copia" ? "" : q.notes,
     pieces:
@@ -570,6 +574,7 @@ export function RestorationForm({
   canAssignWorkshop = false,
   canSetKind = false,
   paymentMethods = [],
+  branches = [],
 }: {
   defaultDepositPercent: number;
   workshops: { id: string; name: string }[];
@@ -578,6 +583,8 @@ export function RestorationForm({
   mode?: RestorationFormMode;
   /** Métodos de pago activos, para el adelanto (solo al registrar restauraciones). */
   paymentMethods?: { id: string; name: string }[];
+  /** Sucursales activas, para el adelanto (solo al registrar restauraciones). */
+  branches?: { id: string; name: string }[];
   /** Puede asignar el precio de venta de las piezas (admin, ventas y logística). */
   canSetPrice?: boolean;
   /** Puede elegir el taller de las piezas (logística y admin, D60). */
@@ -722,6 +729,7 @@ export function RestorationForm({
       form.setValue("paymentType", "sin_definir");
       form.setValue("depositAmount", "");
       form.setValue("depositMethodId", "");
+      form.setValue("depositBranchId", "");
       (form.getValues("pieces") ?? []).forEach((_, i) =>
         form.setValue(`pieces.${i}.price`, ""),
       );
@@ -754,6 +762,7 @@ export function RestorationForm({
       input.paymentType = "sin_definir";
       input.depositAmount = "";
       input.depositMethodId = "";
+      input.depositBranchId = "";
       input.pieces = input.pieces.map((p) => ({ ...p, price: "" }));
     }
     startTransition(async () => {
@@ -1147,6 +1156,35 @@ export function RestorationForm({
                       <p className="text-muted-foreground text-xs">
                         El adelanto se registra como pago al guardar.
                       </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+              {withDeposit ? (
+                <FormField
+                  control={form.control}
+                  name="depositBranchId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sucursal del adelanto</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Elige la sucursal" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {branches.map((b) => (
+                            <SelectItem key={b.id} value={b.id}>
+                              {b.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

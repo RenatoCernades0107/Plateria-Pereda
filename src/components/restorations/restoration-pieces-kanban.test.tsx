@@ -348,6 +348,7 @@ describe("RestorationPiecesKanban: mover de estado", () => {
         workshops={[]}
         approvalPayment={{
           methods: [{ id: "m1", name: "Efectivo" }],
+          branches: [{ id: "b1", name: "PEREDA 4TA - CAJA" }],
           suggested: { kind: "adelanto", amount: 6_000 },
         }}
       />,

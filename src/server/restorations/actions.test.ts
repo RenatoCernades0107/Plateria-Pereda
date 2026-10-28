@@ -49,6 +49,7 @@ const input = {
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
   depositMethodId: "00000000-0000-0000-0000-0000000000aa",
+  depositBranchId: "00000000-0000-0000-0000-0000000000bb",
   notes: "",
   pieces: [piece],
 };
@@ -81,12 +82,13 @@ describe("createRestoration", () => {
     expect(mocks.revalidate).toHaveBeenCalledWith("/restauraciones");
   });
 
-  it("registra el adelanto como pago con el método elegido", async () => {
+  it("registra el adelanto como pago con el método y la sucursal elegidos", async () => {
     await createRestoration(input);
     expect(mocks.deposit).toHaveBeenCalledWith(
       {},
       "r1",
       "00000000-0000-0000-0000-0000000000aa",
+      "00000000-0000-0000-0000-0000000000bb",
     );
   });
 

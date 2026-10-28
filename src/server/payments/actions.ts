@@ -27,10 +27,17 @@ const date = z.iso.date();
 
 const paymentSchema = z.object({
   paidOn: date,
+  /** Sucursal que cobró: va como etiqueta de cada pedido de Shopify. */
+  branchId: z.guid(),
   rows: z
     .array(z.object({ methodId: z.guid(), amountCents: cents }))
     .min(1)
     .max(5),
+  /**
+   * Solo en el sistema, sin crear su pedido en Shopify (solo el admin): corrige un
+   * cobro que se hizo creando el pedido directamente en Shopify.
+   */
+  skipShopify: z.boolean().optional(),
 });
 export type PaymentInput = z.input<typeof paymentSchema>;
 
@@ -71,23 +78,28 @@ async function insertPayments(
       payment_method_id: row.methodId,
       // La BD lo reemplaza por el nombre del método elegido.
       method_name: "-",
+      branch_id: input.branchId,
       paid_on: input.paidOn,
+      skip_shopify: input.skipShopify ?? false,
     })),
   );
 }
 
 /**
  * Registra un pago, repartido en uno o más métodos (Paso 11.2). Con la orden de
- * Shopify creada, la BD encola su conciliación (`payment.sync`).
+ * Shopify creada, la BD encola su conciliación (`payment.sync`). Sin Shopify
+ * (`skipShopify`) es una corrección del admin: no se crea su pedido.
  */
 export async function registerPayment(
   restorationId: string,
   input: PaymentInput,
 ): Promise<PaymentActionResult> {
-  await requirePermission("pagos.registrar");
+  await requirePermission(
+    input.skipShopify ? "pagos.corregir" : "pagos.registrar",
+  );
   const parsed = paymentSchema.safeParse(input);
   if (!parsed.success || !z.guid().safeParse(restorationId).success)
-    return { error: "Revisa el monto, el método y la fecha." };
+    return { error: "Revisa la sucursal, el monto, el método y la fecha." };
   const supabase = await createClient();
   const uncharged = await unchargedKindError(supabase, restorationId);
   if (uncharged) return { error: uncharged };
@@ -108,10 +120,12 @@ export async function approveWithPayment(
   pieceIds: string[],
   input: PaymentInput | null,
 ): Promise<PaymentActionResult> {
-  await requirePermission("pagos.registrar");
+  await requirePermission(
+    input?.skipShopify ? "pagos.corregir" : "pagos.registrar",
+  );
   const parsed = input ? paymentSchema.safeParse(input) : null;
   if (parsed && !parsed.success)
-    return { error: "Revisa el monto, el método y la fecha." };
+    return { error: "Revisa la sucursal, el monto, el método y la fecha." };
   const supabase = await createClient();
   if (parsed) {
     const uncharged = await unchargedKindError(supabase, restorationId);

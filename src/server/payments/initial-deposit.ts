@@ -19,6 +19,7 @@ export async function recordInitialDeposit(
   supabase: SupabaseClient<Database>,
   restorationId: string,
   methodId: string,
+  branchId: string,
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from("restorations")
@@ -34,6 +35,7 @@ export async function recordInitialDeposit(
     payment_method_id: methodId,
     // La BD lo reemplaza por el nombre del método elegido.
     method_name: "-",
+    branch_id: branchId,
   });
   return !payError;
 }

@@ -66,6 +66,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      branches: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       clients: {
         Row: {
           active: boolean;
@@ -336,6 +360,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number;
+          branch_id: string | null;
+          branch_name: string | null;
           created_at: string;
           created_by: string | null;
           created_by_name: string | null;
@@ -352,10 +378,13 @@ export type Database = {
           shopify_order_title: string | null;
           shopify_synced_at: string | null;
           shopify_transaction_id: string | null;
+          skip_shopify: boolean;
           source: Database["public"]["Enums"]["payment_source"];
         };
         Insert: {
           amount: number;
+          branch_id?: string | null;
+          branch_name?: string | null;
           created_at?: string;
           created_by?: string | null;
           created_by_name?: string | null;
@@ -372,10 +401,13 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Update: {
           amount?: number;
+          branch_id?: string | null;
+          branch_name?: string | null;
           created_at?: string;
           created_by?: string | null;
           created_by_name?: string | null;
@@ -392,9 +424,17 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Relationships: [
+          {
+            foreignKeyName: "payments_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "payments_payment_method_id_fkey";
             columns: ["payment_method_id"];

@@ -136,8 +136,15 @@ async function markReady(pieceId: string) {
     .eq("id", pieceId);
 }
 
-async function fillPayment(page: Page, method: string, amount?: string) {
+async function fillPayment(
+  page: Page,
+  method: string,
+  amount?: string,
+  branch = "PEREDA 4TA - CAJA",
+) {
   const dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: "Sucursal" }).click();
+  await page.getByRole("option", { name: branch }).click();
   await dialog.getByRole("combobox", { name: "Método" }).click();
   await page.getByRole("option", { name: method }).click();
   if (amount) await dialog.getByLabel("Monto (S/)").fill(amount);
@@ -183,6 +190,11 @@ test.describe("Pagos", () => {
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
+    // Primero el método de pago y la sucursal, luego las etiquetas del sistema.
+    expect((await fakeOrders(request, r.code))[0]!.tags.slice(0, 2)).toEqual([
+      "Yape",
+      "PEREDA 4TA - CAJA",
+    ]);
 
     // Vuelve del taller; antes de entregar se cobra el saldo.
     await markReady(r.pieceId);

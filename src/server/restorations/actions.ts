@@ -74,18 +74,20 @@ export async function createRestoration(
     return { error: ERRORS[code] ?? "No se pudo registrar la restauración." };
   }
   revalidatePath("/restauraciones");
-  const { depositAmount, depositMethodId } = parsed.data;
+  const { depositAmount, depositMethodId, depositBranchId } = parsed.data;
   if (
     charged &&
     depositAmount !== null &&
     depositAmount > 0 &&
-    depositMethodId
+    depositMethodId &&
+    depositBranchId
   ) {
     // La restauración ya quedó: si el pago falla, se avisa y se registra desde Pagos.
     const recorded = await recordInitialDeposit(
       supabase,
       created.id,
       depositMethodId,
+      depositBranchId,
     );
     if (!recorded)
       return { ok: true, ...created, warning: DEPOSIT_NOT_RECORDED };

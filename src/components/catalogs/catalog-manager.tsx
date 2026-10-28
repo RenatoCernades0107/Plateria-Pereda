@@ -23,7 +23,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CATALOGS, type CatalogKind } from "@/domain/catalogs";
+import {
+  CATALOGS,
+  isPieceCatalogKind,
+  type CatalogKind,
+} from "@/domain/catalogs";
 import { formatMoney } from "@/lib/format";
 import {
   setCatalogItemActive,
@@ -54,7 +58,7 @@ function ItemActions({
     });
   const toggleDefault = () =>
     startTransition(async () => {
-      if (kind === "payment_methods") return;
+      if (!isPieceCatalogKind(kind)) return;
       const result = await setCatalogItemDefault(
         kind,
         item.id,
