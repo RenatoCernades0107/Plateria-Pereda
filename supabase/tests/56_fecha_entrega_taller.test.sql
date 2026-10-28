@@ -1,6 +1,6 @@
 begin;
 
-select plan(20);
+select plan(22);
 select set_config('app.deliver_with_balance', 'on', true);
 
 -- Fecha estimada de entrega del taller (2026-10-27): opcional, nunca posterior a la
@@ -127,7 +127,27 @@ select is(
   1, 'la vista de piezas devuelve las dos fechas'
 );
 
--- 3. Registrar una guía con las dos fechas.
+-- 3. `service_role` (sincronizaciones, scripts, e2e) no ve el esquema `private`: la regla
+--    tiene que correr igual con sus permisos.
+reset role;
+set local role service_role;
+select lives_ok(
+  $$ update public.pieces set urgent = true, estimated_delivery_date = current_date + 30,
+       workshop_delivery_date = current_date + 20
+     where id = '00000000-0000-0000-0000-0000000056e1' $$,
+  'service_role marca urgente con fechas'
+);
+select throws_ok(
+  $$ update public.pieces set estimated_delivery_date = null
+     where id = '00000000-0000-0000-0000-0000000056e1' $$,
+  '23514', 'Una pieza urgente necesita fecha estimada de entrega.',
+  'service_role tampoco deja una urgente sin fecha'
+);
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000056a1","role":"authenticated"}', true);
+
+-- 4. Registrar una guía con las dos fechas.
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000056a1","role":"authenticated"}', true);
 select lives_ok(
   $$ select * from public.create_restoration('00000000-0000-0000-0000-0000000056c1', null, 'contado', null, '',

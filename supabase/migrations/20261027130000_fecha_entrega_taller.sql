@@ -18,6 +18,10 @@ returns trigger
 language plpgsql
 set search_path = ''
 as $$
+declare
+  -- Hoy en Lima, sin `private.lima_today()`: el trigger corre con los permisos de quien
+  -- escribe (también `service_role`: sincronizaciones y scripts) y ese rol no ve `private`.
+  v_today date := (now() at time zone 'America/Lima')::date;
 begin
   if tg_op = 'UPDATE'
      and old.status in ('anulada', 'rechazada', 'sin_arreglo', 'entregada')
@@ -41,14 +45,14 @@ begin
 
   if new.estimated_delivery_date is not null
      and (tg_op = 'INSERT' or new.estimated_delivery_date is distinct from old.estimated_delivery_date)
-     and new.estimated_delivery_date < private.lima_today() then
+     and new.estimated_delivery_date < v_today then
     raise exception 'La fecha estimada de entrega no puede ser anterior a hoy.'
       using errcode = '23514';
   end if;
 
   if new.workshop_delivery_date is not null
      and (tg_op = 'INSERT' or new.workshop_delivery_date is distinct from old.workshop_delivery_date)
-     and new.workshop_delivery_date < private.lima_today() then
+     and new.workshop_delivery_date < v_today then
     raise exception 'La fecha de entrega del taller no puede ser anterior a hoy.'
       using errcode = '23514';
   end if;
