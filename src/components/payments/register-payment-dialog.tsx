@@ -32,22 +32,29 @@ const SUGGESTION_LABELS: Record<SuggestedPayment["kind"], string> = {
   saldo: "Saldo",
 };
 
-/** "Registrar pago" (ventas y admin, Paso 11.2): sucursal, monto sugerido, método y fecha. */
+/**
+ * "Registrar pago" (ventas y admin, Paso 11.2): sucursal, monto sugerido, método y
+ * fecha. El admin puede registrarlo solo en el sistema (`canSkipShopify`), para
+ * corregir un cobro que se hizo creando el pedido directamente en Shopify.
+ */
 export function RegisterPaymentDialog({
   restorationId,
   balanceCents,
   suggested,
   methods,
   branches,
+  canSkipShopify = false,
 }: {
   restorationId: string;
   balanceCents: Cents;
   suggested: SuggestedPayment | null;
   methods: MethodOption[];
   branches: BranchOption[];
+  canSkipShopify?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => newDraft(suggested?.amount ?? null));
+  const [skipShopify, setSkipShopify] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -57,9 +64,14 @@ export function RegisterPaymentDialog({
     if ("error" in read) return setError(read.error);
     setError(null);
     startTransition(async () => {
-      const result = await registerPayment(restorationId, read.input);
+      const result = await registerPayment(restorationId, {
+        ...read.input,
+        skipShopify: canSkipShopify && skipShopify,
+      });
       if ("error" in result) return setError(result.error);
-      toast.success(`Pago de ${formatCents(read.totalCents)} registrado.`);
+      toast.success(
+        `Pago de ${formatCents(read.totalCents)} registrado${skipShopify ? " solo en el sistema" : ""}.`,
+      );
       setOpen(false);
     });
   };
@@ -71,6 +83,7 @@ export function RegisterPaymentDialog({
         setOpen(next);
         if (next) {
           setDraft(newDraft(suggested?.amount ?? null));
+          setSkipShopify(false);
           setError(null);
         }
       }}
@@ -100,6 +113,23 @@ export function RegisterPaymentDialog({
             branches={branches}
             idPrefix="pago"
           />
+          {canSkipShopify ? (
+            <div className="space-y-1">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  className="accent-primary size-4"
+                  checked={skipShopify}
+                  onChange={(e) => setSkipShopify(e.target.checked)}
+                />
+                Solo en el sistema (no crear pedido en Shopify)
+              </label>
+              <p className="text-muted-foreground text-xs">
+                Para corregir un cobro que ya se hizo creando el pedido
+                directamente en Shopify.
+              </p>
+            </div>
+          ) : null}
           <DialogFooter>
             <Button type="submit" disabled={pending}>
               {pending ? "Guardando…" : "Guardar pago"}

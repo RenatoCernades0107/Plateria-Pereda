@@ -9,10 +9,14 @@ const mocks = vi.hoisted(() => ({
   payments: [] as { id: string }[],
   kind: "normal" as string,
   scheduled: 0,
+  permissions: [] as string[],
 }));
 
 vi.mock("@/server/auth", () => ({
-  requirePermission: async () => ({ id: "u1", role: "admin" }),
+  requirePermission: async (permission: string) => {
+    mocks.permissions.push(permission);
+    return { id: "u1", role: "admin" };
+  },
 }));
 vi.mock("@/server/shopify-sync/run", () => ({
   scheduleShopifySync: () => {
@@ -76,6 +80,7 @@ describe("acciones de pagos (11.2)", () => {
     mocks.payments = [];
     mocks.kind = "normal";
     mocks.scheduled = 0;
+    mocks.permissions = [];
   });
 
   it.each(["interno", "observado"])(
@@ -114,11 +119,23 @@ describe("acciones de pagos (11.2)", () => {
             method_name: "-",
             branch_id: B,
             paid_on: "2026-10-12",
+            skip_shopify: false,
           },
         ],
       ],
     ]);
     expect(mocks.scheduled).toBe(1);
+    expect(mocks.permissions).toEqual(["pagos.registrar"]);
+  });
+
+  it("un pago sin Shopify es una corrección del admin", async () => {
+    expect(await registerPayment(R, { ...pay, skipShopify: true })).toEqual({
+      ok: true,
+    });
+    expect(mocks.permissions).toEqual(["pagos.corregir"]);
+    expect(mocks.calls).toEqual([
+      ["insert", "payments", [expect.objectContaining({ skip_shopify: true })]],
+    ]);
   });
 
   it("valida los datos y traduce los errores de la BD", async () => {

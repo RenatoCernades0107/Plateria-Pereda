@@ -18,6 +18,8 @@ export type PaymentRecord = {
   source: "sistema" | "shopify";
   /** Ya llegó a Shopify; si no, queda pendiente de envío (11.2). */
   syncedToShopify: boolean;
+  /** Registrado solo en el sistema por el admin: no tiene pedido en Shopify. */
+  skipShopify: boolean;
   /**
    * Pedido de Shopify del pago (un pedido por pago): el nombre que se le da
    * ("Adelanto Guía RES-00043 A1"), el que muestra Shopify y el enlace al admin. null
@@ -42,7 +44,7 @@ export async function listPayments(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, kind, amount, method_name, branch_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
+      "id, kind, amount, method_name, branch_name, paid_on, reason, source, shopify_synced_at, skip_shopify, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
     )
     .eq("restoration_id", restorationId)
     .order("created_at");
@@ -68,6 +70,7 @@ export async function listPayments(
       reason: p.reason,
       source: p.source,
       syncedToShopify: p.shopify_synced_at !== null,
+      skipShopify: p.skip_shopify,
       orderTitle: p.shopify_order_title,
       orderName: p.shopify_order_name,
       orderUrl: shopifyOrderAdminUrl(shop, p.shopify_order_id),

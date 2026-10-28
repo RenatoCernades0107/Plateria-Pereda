@@ -689,6 +689,11 @@ export default async function RestauracionDetallePage({
                       suggested={suggested}
                       methods={paymentMethods}
                       branches={branches}
+                      // Corrección del admin; con la orden de piezas no aplica.
+                      canSkipShopify={
+                        can(user.role, "pagos.corregir") &&
+                        !restoration.hasOrder
+                      }
                     />
                     {can(user.role, "pagos.corregir") ? (
                       <RefundDialog

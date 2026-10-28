@@ -378,6 +378,7 @@ export type Database = {
           shopify_order_title: string | null;
           shopify_synced_at: string | null;
           shopify_transaction_id: string | null;
+          skip_shopify: boolean;
           source: Database["public"]["Enums"]["payment_source"];
         };
         Insert: {
@@ -400,6 +401,7 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Update: {
@@ -422,6 +424,7 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Relationships: [
