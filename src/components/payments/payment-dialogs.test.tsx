@@ -105,7 +105,41 @@ describe("diálogos de pagos (11.2)", () => {
       paidOn: expect.any(String),
       branchId: BRANCHES[0]!.id,
       rows: [{ methodId: METHODS[0]!.id, amountCents: 20000 }],
+      skipShopify: false,
     });
+    // Ventas no ve la opción de registrarlo solo en el sistema.
+    expect(
+      within(dialog).queryByRole("checkbox", { name: /Solo en el sistema/ }),
+    ).toBeNull();
+  });
+
+  it("Registrar pago: el admin puede registrarlo solo en el sistema", async () => {
+    const user = userEvent.setup();
+    actions.registerPayment.mockResolvedValue({ ok: true });
+    render(
+      <RegisterPaymentDialog
+        restorationId="r1"
+        balanceCents={40000}
+        suggested={{ kind: "saldo", amount: 40000 }}
+        methods={METHODS}
+        branches={BRANCHES}
+        canSkipShopify
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    const dialog = screen.getByRole("dialog");
+    await chooseBranch(user, "PEREDA 4TA - CAJA");
+    await chooseMethod(user, "Yape");
+    await user.click(
+      within(dialog).getByRole("checkbox", { name: /Solo en el sistema/ }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar pago" }),
+    );
+    expect(actions.registerPayment).toHaveBeenLastCalledWith(
+      "r1",
+      expect.objectContaining({ skipShopify: true }),
+    );
   });
 
   it("Reembolsar: exige motivo y no más de lo pagado", async () => {

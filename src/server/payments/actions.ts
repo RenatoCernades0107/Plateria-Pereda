@@ -33,6 +33,11 @@ const paymentSchema = z.object({
     .array(z.object({ methodId: z.guid(), amountCents: cents }))
     .min(1)
     .max(5),
+  /**
+   * Solo en el sistema, sin crear su pedido en Shopify (solo el admin): corrige un
+   * cobro que se hizo creando el pedido directamente en Shopify.
+   */
+  skipShopify: z.boolean().optional(),
 });
 export type PaymentInput = z.input<typeof paymentSchema>;
 
@@ -75,19 +80,23 @@ async function insertPayments(
       method_name: "-",
       branch_id: input.branchId,
       paid_on: input.paidOn,
+      skip_shopify: input.skipShopify ?? false,
     })),
   );
 }
 
 /**
  * Registra un pago, repartido en uno o más métodos (Paso 11.2). Con la orden de
- * Shopify creada, la BD encola su conciliación (`payment.sync`).
+ * Shopify creada, la BD encola su conciliación (`payment.sync`). Sin Shopify
+ * (`skipShopify`) es una corrección del admin: no se crea su pedido.
  */
 export async function registerPayment(
   restorationId: string,
   input: PaymentInput,
 ): Promise<PaymentActionResult> {
-  await requirePermission("pagos.registrar");
+  await requirePermission(
+    input.skipShopify ? "pagos.corregir" : "pagos.registrar",
+  );
   const parsed = paymentSchema.safeParse(input);
   if (!parsed.success || !z.guid().safeParse(restorationId).success)
     return { error: "Revisa la sucursal, el monto, el método y la fecha." };
@@ -111,7 +120,9 @@ export async function approveWithPayment(
   pieceIds: string[],
   input: PaymentInput | null,
 ): Promise<PaymentActionResult> {
-  await requirePermission("pagos.registrar");
+  await requirePermission(
+    input?.skipShopify ? "pagos.corregir" : "pagos.registrar",
+  );
   const parsed = input ? paymentSchema.safeParse(input) : null;
   if (parsed && !parsed.success)
     return { error: "Revisa la sucursal, el monto, el método y la fecha." };
