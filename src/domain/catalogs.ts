@@ -39,6 +39,17 @@ export const CATALOGS = {
     description:
       "Se eligen al registrar un pago; se envían a Shopify. Solo se borran los que ningún pago usa; los demás se desactivan.",
   },
+  branches: {
+    title: "Sucursales",
+    singular: "sucursal",
+    href: "/configuracion/sucursales",
+    hasPrice: false,
+    hasShopifyName: false,
+    hasDefault: false,
+    deleteHint: "Si algún pago ya la usa, no se podrá eliminar: desactívala.",
+    description:
+      "Se elige la que cobró cada pago; su nombre va como etiqueta del pedido en Shopify, por eso tiene máximo 40 caracteres y sin comas. Solo se borran las que ningún pago usa; las demás se desactivan.",
+  },
 } as const;
 
 export type CatalogKind = keyof typeof CATALOGS;

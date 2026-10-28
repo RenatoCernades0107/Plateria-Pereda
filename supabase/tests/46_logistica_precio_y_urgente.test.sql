@@ -105,7 +105,7 @@ select throws_ok(
 -- 3. Urgente: logística marca piezas de guías activas; las entregadas se omiten.
 select results_eq(
   $$ select piece_id, urgent from public.set_pieces_urgent(
-       array['00000000-0000-0000-0000-0000000045e1', '00000000-0000-0000-0000-0000000045e5']::uuid[], true) $$,
+       array['00000000-0000-0000-0000-0000000045e1', '00000000-0000-0000-0000-0000000045e5']::uuid[], true, current_date + 5) $$,
   $$ values ('00000000-0000-0000-0000-0000000045e1'::uuid, true) $$,
   'logística marca como urgente; la pieza entregada no cambia'
 );
@@ -114,12 +114,12 @@ select is(
   false, 'la pieza entregada sigue sin marca'
 );
 select throws_ok(
-  $$ select * from public.set_pieces_urgent(array['00000000-0000-0000-0000-0000000045e5']::uuid[], true) $$,
+  $$ select * from public.set_pieces_urgent(array['00000000-0000-0000-0000-0000000045e5']::uuid[], true, current_date + 5) $$,
   '23514', 'Una pieza cerrada o entregada no se marca como urgente.',
   'si todas están cerradas o entregadas, error'
 );
 select throws_ok(
-  $$ select * from public.set_pieces_urgent(array['00000000-0000-0000-0000-0000000045e3']::uuid[], true) $$,
+  $$ select * from public.set_pieces_urgent(array['00000000-0000-0000-0000-0000000045e3']::uuid[], true, current_date + 5) $$,
   '42501', 'Tu rol no puede marcar piezas de restauraciones pasadas.',
   'logística no marca piezas de guías pasadas'
 );

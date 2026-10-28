@@ -37,6 +37,8 @@ const base: BoardPiece = {
   status: "aprobada",
   location: "sin_enviar",
   urgent: false,
+  estimatedDeliveryDate: null,
+  workshopDeliveryDate: null,
   readyForDelivery: false,
   returnedAt: null,
   workshopId: null,

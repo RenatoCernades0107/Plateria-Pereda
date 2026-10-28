@@ -70,7 +70,7 @@ export function RefundDialog({
     const target = refundablePayments?.find((p) => p.id === paymentId);
     if (refundablePayments && !target)
       return setError("Elige el pago que se reembolsa.");
-    const read = readDraft(draft, null);
+    const read = readDraft(draft, null, { withBranch: false });
     if ("error" in read) return setError(read.error);
     const maxCents = target ? target.refundableCents : paidCents;
     if (read.totalCents > maxCents)

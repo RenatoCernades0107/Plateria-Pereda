@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +45,8 @@ const piece: PieceDetail = {
   status: "aprobada",
   location: "en_tienda",
   urgent: false,
+  estimatedDeliveryDate: null,
+  workshopDeliveryDate: null,
   readyForDelivery: false,
   description: "Fuente",
   measure: "40 cm",
@@ -176,6 +178,160 @@ describe("PieceDialog", () => {
     expect(mocks.updatePiece).toHaveBeenCalledWith(
       "p1",
       expect.objectContaining({ quantity: "6" }),
+    );
+  });
+
+  it("una pieza urgente lleva fecha estimada de entrega: sin ella no se guarda", async () => {
+    const user = userEvent.setup();
+    render(<PieceDialog restorationId="r1" piece={piece} {...props} />);
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).queryByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeNull();
+    await user.click(within(dialog).getByLabelText("Urgente"));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(
+      await within(dialog).findByText("Indica la fecha estimada de entrega"),
+    ).toBeVisible();
+    expect(mocks.updatePiece).not.toHaveBeenCalled();
+
+    fireEvent.change(
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
+      { target: { value: "2030-01-15" } },
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({
+        urgent: true,
+        estimatedDeliveryDate: "2030-01-15",
+        workshopDeliveryDate: "",
+      }),
+    );
+  });
+
+  it("la fecha del taller es opcional y no puede ser posterior a la del cliente", async () => {
+    const user = userEvent.setup();
+    render(<PieceDialog restorationId="r1" piece={piece} {...props} />);
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByLabelText("Urgente"));
+    const client = within(dialog).getByLabelText(
+      "Fecha estimada de entrega al cliente",
+    );
+    const workshop = within(dialog).getByLabelText(
+      "Fecha estimada de entrega del taller",
+    );
+    fireEvent.change(client, { target: { value: "2030-01-15" } });
+    fireEvent.change(workshop, { target: { value: "2030-01-16" } });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "La fecha del taller no puede ser posterior a la del cliente",
+      ),
+    ).toBeVisible();
+    expect(mocks.updatePiece).not.toHaveBeenCalled();
+
+    fireEvent.change(workshop, { target: { value: "2030-01-12" } });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({
+        estimatedDeliveryDate: "2030-01-15",
+        workshopDeliveryDate: "2030-01-12",
+      }),
+    );
+  });
+
+  it("ventas no cambia la fecha del taller: el campo va bloqueado", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{
+          ...piece,
+          urgent: true,
+          estimatedDeliveryDate: "2030-01-15",
+          workshopDeliveryDate: "2030-01-12",
+        }}
+        editable={["description", "notes", "urgent"]}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeEnabled();
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega del taller"),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "La del taller queda 3 días antes de la del cliente; la cambian logística y administración.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("una urgente de antes, sin fecha, la pide al editarla; si no se puede cambiar la urgencia, no", async () => {
+    const user = userEvent.setup();
+    const legacy = { ...piece, urgent: true, estimatedDeliveryDate: null };
+    const { unmount } = render(
+      <PieceDialog restorationId="r1" piece={legacy} {...props} />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    let dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
+    ).toHaveValue("");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(
+      await within(dialog).findByText("Indica la fecha estimada de entrega"),
+    ).toBeVisible();
+    expect(mocks.updatePiece).not.toHaveBeenCalled();
+    unmount();
+
+    // Entregada: solo las notas; la fecha no estorba.
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{ ...legacy, status: "entregada" }}
+        editable={["notes"]}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeDisabled();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Guardar cambios" }),
+    );
+    expect(mocks.updatePiece).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ urgent: true, estimatedDeliveryDate: "" }),
     );
   });
 

@@ -54,6 +54,7 @@ import {
   type RestorationKind,
 } from "@/domain/restoration-status";
 import {
+  pieceKeepingUrgencySchema,
   pieceSchema,
   restorationEditSchema,
   type PieceFormInput,
@@ -299,6 +300,8 @@ function pieceDefaults(piece: PieceDetail): PieceFormInput {
     weight: piece.weightGrams === null ? "" : String(piece.weightGrams),
     price: piece.priceCents === null ? "" : toDecimalString(piece.priceCents),
     urgent: piece.urgent,
+    estimatedDeliveryDate: piece.estimatedDeliveryDate ?? "",
+    workshopDeliveryDate: piece.workshopDeliveryDate ?? "",
     notes: piece.notes,
   };
 }
@@ -340,7 +343,12 @@ export function PieceDialog({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const form = useForm<PieceFormInput>({
-    resolver: zodResolver(pieceSchema as never),
+    // Si la urgencia ya no se puede cambiar (pieza cerrada o entregada), no se pide la fecha.
+    resolver: zodResolver(
+      (editable && !editable.includes("urgent")
+        ? pieceKeepingUrgencySchema
+        : pieceSchema) as never,
+    ),
     defaultValues: piece ? pieceDefaults(piece) : newPiece(materials, services),
   });
 

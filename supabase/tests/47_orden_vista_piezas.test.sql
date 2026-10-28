@@ -12,10 +12,10 @@ insert into public.restorations (id, client_id, payment_type, created_at) values
   ('00000000-0000-0000-0000-00000000ea30', '00000000-0000-0000-0000-00000000ea20', 'contado', now() - interval '2 days'),
   ('00000000-0000-0000-0000-00000000ea31', '00000000-0000-0000-0000-00000000ea20', 'contado', now() - interval '1 day');
 -- Guía antigua: "uno" (S/ 100) y "dos" (urgente, sin precio). Guía nueva: "tres" (S/ 300).
-insert into public.pieces (id, restoration_id, description, price, urgent, created_at) values
-  ('00000000-0000-0000-0000-00000000ea41', '00000000-0000-0000-0000-00000000ea30', 'Ordenprueba uno', 100, false, now() - interval '3 hours'),
-  ('00000000-0000-0000-0000-00000000ea42', '00000000-0000-0000-0000-00000000ea30', 'Ordenprueba dos', null, true, now() - interval '2 hours'),
-  ('00000000-0000-0000-0000-00000000ea43', '00000000-0000-0000-0000-00000000ea31', 'Ordenprueba tres', 300, false, now() - interval '1 hour');
+insert into public.pieces (id, restoration_id, description, price, urgent, created_at, estimated_delivery_date) values
+  ('00000000-0000-0000-0000-00000000ea41', '00000000-0000-0000-0000-00000000ea30', 'Ordenprueba uno', 100, false, now() - interval '3 hours', null),
+  ('00000000-0000-0000-0000-00000000ea42', '00000000-0000-0000-0000-00000000ea30', 'Ordenprueba dos', null, true, now() - interval '2 hours', current_date + 5),
+  ('00000000-0000-0000-0000-00000000ea43', '00000000-0000-0000-0000-00000000ea31', 'Ordenprueba tres', 300, false, now() - interval '1 hour', null);
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000ea1","role":"authenticated"}', true);

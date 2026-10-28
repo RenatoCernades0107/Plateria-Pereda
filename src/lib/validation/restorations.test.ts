@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   copyRestorationSchema,
+  DEPOSIT_BRANCH_ERROR,
   DEPOSIT_METHOD_ERROR,
   invalidInputMessage,
   MAX_PIECES,
+  pieceKeepingUrgencySchema,
   pieceSchema,
   quotePieceSchema,
   restorationSchema,
@@ -18,6 +20,7 @@ const WORKSHOP = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const SILVER = "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e";
 const POLISH = "3d4e5f6a-7b8c-4d9e-8f10-2b3c4d5e6f70";
 const YAPE = "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f";
+const CAJA = "3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a";
 
 const piece: PieceFormInput = {
   workshopId: "",
@@ -36,6 +39,7 @@ const restoration = {
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
   depositMethodId: YAPE,
+  depositBranchId: CAJA,
   notes: "",
   pieces: [piece],
 };
@@ -69,8 +73,87 @@ describe("pieceSchema", () => {
       weightGrams: 850.5,
       priceCents: 125_050,
       urgent: false,
+      estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     });
+  });
+
+  it("una pieza urgente exige la fecha estimada de entrega", () => {
+    expect(errorsOf(pieceSchema, { ...piece, urgent: true })).toEqual({
+      estimatedDeliveryDate: "Indica la fecha estimada de entrega",
+    });
+    expect(
+      errorsOf(pieceSchema, {
+        ...piece,
+        urgent: true,
+        estimatedDeliveryDate: "   ",
+      }),
+    ).toEqual({ estimatedDeliveryDate: "Indica la fecha estimada de entrega" });
+    expect(
+      pieceSchema.parse({
+        ...piece,
+        urgent: true,
+        estimatedDeliveryDate: " 2026-11-05 ",
+      }),
+    ).toMatchObject({ urgent: true, estimatedDeliveryDate: "2026-11-05" });
+  });
+
+  it("la fecha de entrega tiene que existir en el calendario", () => {
+    for (const estimatedDeliveryDate of [
+      "2026-02-30",
+      "05/11/2026",
+      "mañana",
+    ]) {
+      expect(
+        errorsOf(pieceSchema, {
+          ...piece,
+          urgent: true,
+          estimatedDeliveryDate,
+        }),
+      ).toEqual({ estimatedDeliveryDate: "Ingresa una fecha válida" });
+    }
+  });
+
+  it("la fecha del taller es opcional y no es posterior a la del cliente", () => {
+    const urgent = {
+      ...piece,
+      urgent: true,
+      estimatedDeliveryDate: "2026-11-05",
+    };
+    expect(pieceSchema.parse(urgent).workshopDeliveryDate).toBeNull();
+    expect(
+      pieceSchema.parse({ ...urgent, workshopDeliveryDate: "2026-11-05" })
+        .workshopDeliveryDate,
+    ).toBe("2026-11-05");
+    expect(
+      errorsOf(pieceSchema, { ...urgent, workshopDeliveryDate: "2026-11-06" }),
+    ).toEqual({
+      workshopDeliveryDate:
+        "La fecha del taller no puede ser posterior a la del cliente",
+    });
+    expect(
+      errorsOf(pieceSchema, { ...urgent, workshopDeliveryDate: "2026-02-30" }),
+    ).toEqual({ workshopDeliveryDate: "Ingresa una fecha válida" });
+  });
+
+  it("una pieza que no es urgente no guarda fecha de entrega", () => {
+    expect(
+      pieceSchema.parse({
+        ...piece,
+        estimatedDeliveryDate: "2026-11-05",
+        workshopDeliveryDate: "2026-11-03",
+      }),
+    ).toMatchObject({
+      estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
+    });
+  });
+
+  it("al editar una pieza con la urgencia fija, la fecha no se exige", () => {
+    expect(
+      pieceKeepingUrgencySchema.parse({ ...piece, urgent: true }),
+    ).toMatchObject({ urgent: true, estimatedDeliveryDate: null });
   });
 
   it("cantidad: entero de 1 a 999; vacía = 1", () => {
@@ -111,6 +194,8 @@ describe("pieceSchema", () => {
       weightGrams: null,
       priceCents: 0,
       urgent: false,
+      estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     });
   });
@@ -394,6 +479,32 @@ describe("restorationSchema", () => {
     ).toBe(`${DEPOSIT_METHOD_ERROR}.`);
   });
 
+  it("con adelanto exige la sucursal que lo cobró (va al pedido de Shopify)", () => {
+    expect(restorationSchema.parse(restoration).depositBranchId).toBe(CAJA);
+    for (const depositBranchId of ["", null, undefined])
+      expect(
+        errorsOf(restorationSchema, { ...restoration, depositBranchId }),
+      ).toEqual({ depositBranchId: DEPOSIT_BRANCH_ERROR });
+    expect(
+      invalidInputMessage(
+        restorationSchema.safeParse({ ...restoration, depositBranchId: "" })
+          .error!,
+      ),
+    ).toBe(`${DEPOSIT_BRANCH_ERROR}.`);
+    // Sin adelanto no se pide; en otros tipos se descarta.
+    expect(
+      restorationSchema.parse({
+        ...restoration,
+        depositAmount: "",
+        depositBranchId: "",
+      }).depositBranchId,
+    ).toBeNull();
+    expect(
+      restorationSchema.parse({ ...restoration, paymentType: "contado" })
+        .depositBranchId,
+    ).toBeNull();
+  });
+
   it("sin adelanto (vacío o 0) no pide método; en otros tipos se descarta", () => {
     for (const depositAmount of ["", "0"])
       expect(
@@ -541,13 +652,19 @@ describe("copyRestorationSchema (P49)", () => {
     }
   });
 
-  it("con adelanto también exige su método", () => {
+  it("con adelanto también exige su método y su sucursal", () => {
     expect(
       errorsOf(copyRestorationSchema, {
         ...copy({ initialStatus: "aprobada" }),
         depositMethodId: "",
       }),
     ).toEqual({ depositMethodId: DEPOSIT_METHOD_ERROR });
+    expect(
+      errorsOf(copyRestorationSchema, {
+        ...copy({ initialStatus: "aprobada" }),
+        depositBranchId: "",
+      }),
+    ).toEqual({ depositBranchId: DEPOSIT_BRANCH_ERROR });
   });
 
   it("el registro en oficina no pide estado inicial", () => {

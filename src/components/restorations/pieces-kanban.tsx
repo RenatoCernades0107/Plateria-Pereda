@@ -27,6 +27,7 @@ import {
   ReviewBadge,
   UrgentBadge,
 } from "./status-badges";
+import { DeliveryDate } from "./urgent-toggle";
 
 /**
  * Tablero kanban de piezas en curso: una columna por estado (en cada columna, en el
@@ -123,6 +124,7 @@ export function PiecesKanban({
               <p className="break-words">{piece.description}</p>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 {piece.urgent ? <UrgentBadge /> : null}
+                {piece.urgent ? <DeliveryDate piece={piece} /> : null}
                 <LocationBadge location={piece.location} />
                 {isPieceInReview(piece) ? <ReviewBadge /> : null}
                 <span className="text-muted-foreground">

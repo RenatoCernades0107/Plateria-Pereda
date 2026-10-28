@@ -24,21 +24,22 @@ function fakeSupabase({
 }
 
 describe("recordInitialDeposit", () => {
-  it("registra el adelanto esperado como pago con el método elegido", async () => {
+  it("registra el adelanto esperado como pago con el método y la sucursal elegidos", async () => {
     const { client, insert, eq } = fakeSupabase({ expectedDeposit: 100 });
-    expect(await recordInitialDeposit(client, "r1", "m1")).toBe(true);
+    expect(await recordInitialDeposit(client, "r1", "m1", "b1")).toBe(true);
     expect(eq).toHaveBeenCalledWith("id", "r1");
     expect(insert).toHaveBeenCalledWith({
       restoration_id: "r1",
       amount: 100,
       payment_method_id: "m1",
       method_name: "-",
+      branch_id: "b1",
     });
   });
 
   it("sin monto (total 0) no registra nada", async () => {
     const { client, insert } = fakeSupabase({ expectedDeposit: 0 });
-    expect(await recordInitialDeposit(client, "r1", "m1")).toBe(true);
+    expect(await recordInitialDeposit(client, "r1", "m1", "b1")).toBe(true);
     expect(insert).not.toHaveBeenCalled();
   });
 
@@ -48,6 +49,7 @@ describe("recordInitialDeposit", () => {
         fakeSupabase({ readError: { code: "x" } }).client,
         "r1",
         "m1",
+        "b1",
       ),
     ).toBe(false);
     expect(
@@ -55,6 +57,7 @@ describe("recordInitialDeposit", () => {
         fakeSupabase({ insertError: { code: "23514" } }).client,
         "r1",
         "m1",
+        "b1",
       ),
     ).toBe(false);
   });

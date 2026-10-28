@@ -66,6 +66,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      branches: {
+        Row: {
+          active: boolean;
+          created_at: string;
+          id: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          active?: boolean;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       clients: {
         Row: {
           active: boolean;
@@ -336,6 +360,8 @@ export type Database = {
       payments: {
         Row: {
           amount: number;
+          branch_id: string | null;
+          branch_name: string | null;
           created_at: string;
           created_by: string | null;
           created_by_name: string | null;
@@ -352,10 +378,13 @@ export type Database = {
           shopify_order_title: string | null;
           shopify_synced_at: string | null;
           shopify_transaction_id: string | null;
+          skip_shopify: boolean;
           source: Database["public"]["Enums"]["payment_source"];
         };
         Insert: {
           amount: number;
+          branch_id?: string | null;
+          branch_name?: string | null;
           created_at?: string;
           created_by?: string | null;
           created_by_name?: string | null;
@@ -372,10 +401,13 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Update: {
           amount?: number;
+          branch_id?: string | null;
+          branch_name?: string | null;
           created_at?: string;
           created_by?: string | null;
           created_by_name?: string | null;
@@ -392,9 +424,17 @@ export type Database = {
           shopify_order_title?: string | null;
           shopify_synced_at?: string | null;
           shopify_transaction_id?: string | null;
+          skip_shopify?: boolean;
           source?: Database["public"]["Enums"]["payment_source"];
         };
         Relationships: [
+          {
+            foreignKeyName: "payments_branch_id_fkey";
+            columns: ["branch_id"];
+            isOneToOne: false;
+            referencedRelation: "branches";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "payments_payment_method_id_fkey";
             columns: ["payment_method_id"];
@@ -544,6 +584,7 @@ export type Database = {
           created_by: string | null;
           delivered_at: string | null;
           description: string;
+          estimated_delivery_date: string | null;
           first_sent_at: string | null;
           id: string;
           last_returned_at: string | null;
@@ -574,6 +615,7 @@ export type Database = {
           urgent: boolean;
           weight_grams: number | null;
           whatsapp_quote_item_id: string | null;
+          workshop_delivery_date: string | null;
           workshop_id: string | null;
         };
         Insert: {
@@ -585,6 +627,7 @@ export type Database = {
           created_by?: string | null;
           delivered_at?: string | null;
           description: string;
+          estimated_delivery_date?: string | null;
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
@@ -615,6 +658,7 @@ export type Database = {
           urgent?: boolean;
           weight_grams?: number | null;
           whatsapp_quote_item_id?: string | null;
+          workshop_delivery_date?: string | null;
           workshop_id?: string | null;
         };
         Update: {
@@ -626,6 +670,7 @@ export type Database = {
           created_by?: string | null;
           delivered_at?: string | null;
           description?: string;
+          estimated_delivery_date?: string | null;
           first_sent_at?: string | null;
           id?: string;
           last_returned_at?: string | null;
@@ -656,6 +701,7 @@ export type Database = {
           urgent?: boolean;
           weight_grams?: number | null;
           whatsapp_quote_item_id?: string | null;
+          workshop_delivery_date?: string | null;
           workshop_id?: string | null;
         };
         Relationships: [
@@ -1662,6 +1708,7 @@ export type Database = {
           created_at: string | null;
           delivered_at: string | null;
           description: string | null;
+          estimated_delivery_date: string | null;
           first_sent_at: string | null;
           id: string | null;
           last_returned_at: string | null;
@@ -1688,6 +1735,7 @@ export type Database = {
           updated_at: string | null;
           urgent: boolean | null;
           weight_grams: number | null;
+          workshop_delivery_date: string | null;
           workshop_id: string | null;
         };
         Relationships: [
@@ -2083,6 +2131,7 @@ export type Database = {
           client_name: string;
           code: string;
           description: string;
+          estimated_delivery_date: string;
           first_sent_at: string;
           has_order: boolean;
           id: string;
@@ -2110,6 +2159,7 @@ export type Database = {
           urgent: boolean;
           weight_grams: number;
           workshop_days: number;
+          workshop_delivery_date: string;
           workshop_id: string;
           workshop_name: string;
           workshop_ongoing: boolean;
@@ -2373,7 +2423,13 @@ export type Database = {
         Returns: undefined;
       };
       set_pieces_urgent: {
-        Args: { p_piece_ids: string[]; p_urgent: boolean };
+        Args: {
+          p_estimated_delivery_date?: string;
+          p_keep_workshop_date?: boolean;
+          p_piece_ids: string[];
+          p_urgent: boolean;
+          p_workshop_delivery_date?: string;
+        };
         Returns: {
           piece_id: string;
           urgent: boolean;

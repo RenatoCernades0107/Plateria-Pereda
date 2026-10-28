@@ -44,6 +44,18 @@ export async function listCatalog(
     }));
   }
 
+  if (kind === "branches") {
+    let query = supabase
+      .from("branches")
+      .select("id, name, active")
+      .order("active", { ascending: false })
+      .order("name");
+    if (onlyActive) query = query.eq("active", true);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data.map((b) => ({ ...b, price: null }));
+  }
+
   if (kind === "payment_methods") {
     let query = supabase
       .from("payment_methods")

@@ -14,7 +14,7 @@ import {
 import { can } from "@/domain/permissions";
 import {
   invalidInputMessage,
-  pieceSchema,
+  pieceKeepingUrgencySchema,
   restorationEditSchema,
   restorationSchema,
   type PieceFormInput,
@@ -74,18 +74,20 @@ export async function createRestoration(
     return { error: ERRORS[code] ?? "No se pudo registrar la restauración." };
   }
   revalidatePath("/restauraciones");
-  const { depositAmount, depositMethodId } = parsed.data;
+  const { depositAmount, depositMethodId, depositBranchId } = parsed.data;
   if (
     charged &&
     depositAmount !== null &&
     depositAmount > 0 &&
-    depositMethodId
+    depositMethodId &&
+    depositBranchId
   ) {
     // La restauración ya quedó: si el pago falla, se avisa y se registra desde Pagos.
     const recorded = await recordInitialDeposit(
       supabase,
       created.id,
       depositMethodId,
+      depositBranchId,
     );
     if (!recorded)
       return { ok: true, ...created, warning: DEPOSIT_NOT_RECORDED };
@@ -185,13 +187,19 @@ function pieceColumns(
   input: PieceFormInput,
   { withPrice, withWorkshop }: { withPrice: boolean; withWorkshop: boolean },
 ) {
-  const parsed = pieceSchema.safeParse(input);
+  // No exige la fecha de entrega aquí: la BD la pide cuando la urgencia cambia y no
+  // atasca la edición de una pieza urgente cerrada o entregada que no la tenía.
+  const parsed = pieceKeepingUrgencySchema.safeParse(input);
   if (!parsed.success) return null;
   const p = parsed.data;
   return {
     piece: p,
     columns: {
-      ...(withWorkshop && { workshop_id: p.workshopId }),
+      // El taller y su fecha de entrega los cambian logística y el admin (D60).
+      ...(withWorkshop && {
+        workshop_id: p.workshopId,
+        workshop_delivery_date: p.workshopDeliveryDate,
+      }),
       quantity: p.quantity,
       description: p.description,
       measure: p.measure,
@@ -206,6 +214,8 @@ function pieceColumns(
       }),
       notes: p.notes,
       urgent: p.urgent,
+      // Obligatoria si es urgente; sin urgencia se borra (la BD lo exige).
+      estimated_delivery_date: p.estimatedDeliveryDate,
     },
   };
 }

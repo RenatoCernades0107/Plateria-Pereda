@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { CatalogKind } from "@/domain/catalogs";
+
 export const catalogItemSchema = z.object({
   name: z
     .string()
@@ -21,3 +23,20 @@ export const catalogItemSchema = z.object({
 
 export type CatalogItemFormInput = z.input<typeof catalogItemSchema>;
 export type CatalogItemInput = z.output<typeof catalogItemSchema>;
+
+/**
+ * Sucursales: el nombre va como etiqueta del pedido de Shopify, que acepta hasta 40
+ * caracteres y usa la coma para separar etiquetas.
+ */
+const branchItemSchema = catalogItemSchema.extend({
+  name: catalogItemSchema.shape.name
+    .refine((v) => v.length <= 40, "Máximo 40 caracteres")
+    .refine(
+      (v) => !v.includes(","),
+      "Sin comas (Shopify las usa para separar etiquetas)",
+    ),
+});
+
+/** Esquema del formulario según el catálogo. */
+export const catalogItemSchemaFor = (kind: CatalogKind) =>
+  kind === "branches" ? branchItemSchema : catalogItemSchema;

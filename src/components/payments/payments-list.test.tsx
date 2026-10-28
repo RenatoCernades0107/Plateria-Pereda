@@ -10,10 +10,12 @@ const payment = (overrides: Partial<PaymentRecord>): PaymentRecord => ({
   kind: "pago",
   amountCents: 20000,
   methodName: "Yape",
+  branchName: null,
   paidOn: "2026-10-12",
   reason: "",
   source: "sistema",
   syncedToShopify: true,
+  skipShopify: false,
   orderTitle: null,
   orderName: null,
   orderUrl: null,
@@ -25,6 +27,11 @@ const payment = (overrides: Partial<PaymentRecord>): PaymentRecord => ({
 });
 
 describe("PaymentsList (11.4)", () => {
+  it("un pago registrado solo en el sistema lo dice", () => {
+    render(<PaymentsList payments={[payment({ skipShopify: true })]} />);
+    expect(screen.getByText("Solo en el sistema")).toBeInTheDocument();
+  });
+
   it("muestra método, fecha, monto, quién lo registró y su envío a Shopify", () => {
     render(
       <PaymentsList

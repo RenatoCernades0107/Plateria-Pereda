@@ -209,15 +209,19 @@ export default async function RestauracionDetallePage({
 
   // Historial de estados (8.5, admin y ventas). La línea de tiempo de cada pieza está
   // en su detalle (/piezas/[id]).
-  const [history, files, payments, methods, balanceDue] = await Promise.all([
-    canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
-    listRestorationFiles(restoration.id),
-    canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
-    canSeeMoney
-      ? listCatalog("payment_methods", { onlyActive: true })
-      : Promise.resolve([]),
-    getBalanceDue(restoration.id),
-  ]);
+  const [history, files, payments, methods, branchItems, balanceDue] =
+    await Promise.all([
+      canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
+      listRestorationFiles(restoration.id),
+      canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
+      canSeeMoney
+        ? listCatalog("payment_methods", { onlyActive: true })
+        : Promise.resolve([]),
+      canSeeMoney
+        ? listCatalog("branches", { onlyActive: true })
+        : Promise.resolve([]),
+      getBalanceDue(restoration.id),
+    ]);
   // Pagos (11.2): monto sugerido y, al aprobar la última pieza sin orden aún, el
   // adelanto que la orden incluirá (al contado, el total; a cuenta, el %; P28).
   const money = restoration.money;
@@ -230,6 +234,7 @@ export default async function RestauracionDetallePage({
       })
     : null;
   const paymentMethods = methods.map((m) => ({ id: m.id, name: m.name }));
+  const branches = branchItems.map((b) => ({ id: b.id, name: b.name }));
   // Precios de venta que faltan para la orden de Shopify (D58).
   const missingPrices = canSeeMoney
     ? missingSalePrices(restoration.pieces, restoration.hasOrder, kind)
@@ -246,7 +251,7 @@ export default async function RestauracionDetallePage({
     !unpricedPieces &&
     can(user.role, "pagos.registrar") &&
     money.expectedDepositCents > money.paidCents
-      ? { methods: paymentMethods, suggested }
+      ? { methods: paymentMethods, branches, suggested }
       : null;
   // Fotos y archivos (Fase 10): la foto general o la de cada pieza.
   const fileTargets = [
@@ -683,6 +688,12 @@ export default async function RestauracionDetallePage({
                       )}
                       suggested={suggested}
                       methods={paymentMethods}
+                      branches={branches}
+                      // Corrección del admin; con la orden de piezas no aplica.
+                      canSkipShopify={
+                        can(user.role, "pagos.corregir") &&
+                        !restoration.hasOrder
+                      }
                     />
                     {can(user.role, "pagos.corregir") ? (
                       <RefundDialog

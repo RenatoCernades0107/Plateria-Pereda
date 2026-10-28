@@ -27,6 +27,9 @@ export function pieceToRpc(piece: PieceInput) {
     // Sin precio de venta (D58): queda sin asignar.
     price: piece.priceCents === null ? null : toDecimalString(piece.priceCents),
     urgent: piece.urgent,
+    // Obligatoria si es urgente (la BD lo exige).
+    estimated_delivery_date: piece.estimatedDeliveryDate,
+    workshop_delivery_date: piece.workshopDeliveryDate,
     notes: piece.notes,
     quote_item_id: piece.quoteItemId ?? null,
     // Estado inicial de la copia desde WhatsApp (P49); las demás RPC lo ignoran.
@@ -48,11 +51,18 @@ export function withoutSalePrices<T extends PieceInput>(
   );
 }
 
-/** Sin el permiso del taller (ventas, D60) las piezas se registran sin taller. */
+/**
+ * Sin el permiso del taller (ventas, D60) las piezas se registran sin taller y sin
+ * fecha de entrega del taller (la BD la deja 3 días antes de la del cliente).
+ */
 export function withoutWorkshops<T extends PieceInput>(
   pieces: readonly T[],
 ): T[] {
-  return pieces.map((piece) => ({ ...piece, workshopId: null }));
+  return pieces.map((piece) => ({
+    ...piece,
+    workshopId: null,
+    workshopDeliveryDate: null,
+  }));
 }
 
 /** Registra la restauración y sus piezas en una sola transacción (RPC). */

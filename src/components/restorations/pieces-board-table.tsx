@@ -56,6 +56,7 @@ import {
   PieceQuantity,
   UrgentIcon,
 } from "./status-badges";
+import { DeliveryDate } from "./urgent-toggle";
 import { WorkshopEditButton } from "./workshop-edit-button";
 
 /**
@@ -298,6 +299,9 @@ function BoardRow({
             <PieceQuantity quantity={piece.quantity} />
             {piece.urgent ? <UrgentIcon /> : null}
           </span>
+          {piece.urgent ? (
+            <DeliveryDate piece={piece} className="mt-0.5 flex" />
+          ) : null}
         </td>
         {showClient ? (
           <td className={cn(labeled, "max-w-40")} data-label="Cliente">
