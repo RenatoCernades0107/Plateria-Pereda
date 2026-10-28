@@ -40,11 +40,11 @@ insert into public.clients (id, kind, first_name, shopify_customer_id)
   values ('00000000-0000-0000-0000-00000000ca22', 'persona', 'Otra', 'gid://shopify/Customer/ca22');
 insert into public.restorations (id, client_id, payment_type)
   values ('00000000-0000-0000-0000-00000000ca34', '00000000-0000-0000-0000-00000000ca22', 'contado');
-insert into public.pieces (id, restoration_id, description, price, urgent, arrived_at) values
-  ('00000000-0000-0000-0000-00000000ca46', '00000000-0000-0000-0000-00000000ca34', 'Plato normal', 20, false, null),
-  ('00000000-0000-0000-0000-00000000ca44', '00000000-0000-0000-0000-00000000ca34', 'Copa urgente', 20, true, null),
-  ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca34', 'Vaso por devolver', 10, false, now()),
-  ('00000000-0000-0000-0000-00000000ca47', '00000000-0000-0000-0000-00000000ca34', 'Taza ya devuelta', 10, false, now());
+insert into public.pieces (id, restoration_id, description, price, urgent, arrived_at, estimated_delivery_date) values
+  ('00000000-0000-0000-0000-00000000ca46', '00000000-0000-0000-0000-00000000ca34', 'Plato normal', 20, false, null, null),
+  ('00000000-0000-0000-0000-00000000ca44', '00000000-0000-0000-0000-00000000ca34', 'Copa urgente', 20, true, null, current_date + 5),
+  ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca34', 'Vaso por devolver', 10, false, now(), null),
+  ('00000000-0000-0000-0000-00000000ca47', '00000000-0000-0000-0000-00000000ca34', 'Taza ya devuelta', 10, false, now(), null);
 update public.pieces set status = 'rechazada'
   where id in ('00000000-0000-0000-0000-00000000ca45', '00000000-0000-0000-0000-00000000ca47');
 -- Devuelta días atrás: las devueltas hoy siguen a la vista (ver 35_…).

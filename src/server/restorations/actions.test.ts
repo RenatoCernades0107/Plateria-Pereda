@@ -200,6 +200,8 @@ describe("pieceToRpc", () => {
         weightGrams: 12.5,
         priceCents: 120050,
         urgent: true,
+        estimatedDeliveryDate: "2026-11-05",
+        workshopDeliveryDate: "2026-11-03",
         notes: "",
       }),
     ).toEqual({
@@ -212,6 +214,8 @@ describe("pieceToRpc", () => {
       weight_grams: "12.50",
       price: "1200.50",
       urgent: true,
+      estimated_delivery_date: "2026-11-05",
+      workshop_delivery_date: "2026-11-03",
       notes: "",
       quote_item_id: null,
       status: null,
@@ -231,6 +235,8 @@ describe("pieceToRpc", () => {
         weightGrams: null,
         priceCents: null,
         urgent: false,
+        estimatedDeliveryDate: null,
+        workshopDeliveryDate: null,
         notes: "",
       }).price,
     ).toBeNull();
@@ -248,6 +254,8 @@ describe("pieceToRpc", () => {
         weightGrams: null,
         priceCents: 1000,
         urgent: false,
+        estimatedDeliveryDate: null,
+        workshopDeliveryDate: null,
         notes: "",
         initialStatus: "en_consulta",
         statusNote: "Consultar al taller",
@@ -269,6 +277,8 @@ describe("withoutSalePrices (D58)", () => {
     services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
     weightGrams: null,
     urgent: false,
+    estimatedDeliveryDate: null,
+    workshopDeliveryDate: null,
     notes: "",
   };
 
@@ -299,10 +309,36 @@ describe("withoutWorkshops (D60)", () => {
       weightGrams: null,
       priceCents: null,
       urgent: false,
+      estimatedDeliveryDate: null,
+      workshopDeliveryDate: null,
       notes: "",
     };
     expect(withoutWorkshops([{ ...base, workshopId: "w1" }])).toEqual([
       { ...base, workshopId: null },
     ]);
+  });
+
+  it("y la fecha de entrega del taller (la BD pone la de por defecto)", () => {
+    const urgent = {
+      quantity: 1,
+      description: "Fuente",
+      measure: "",
+      materials: [],
+      services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
+      weightGrams: null,
+      priceCents: null,
+      urgent: true,
+      estimatedDeliveryDate: "2026-11-05",
+      notes: "",
+    };
+    expect(
+      withoutWorkshops([
+        {
+          ...urgent,
+          workshopId: "w1",
+          workshopDeliveryDate: "2026-11-03",
+        },
+      ]),
+    ).toEqual([{ ...urgent, workshopId: null, workshopDeliveryDate: null }]);
   });
 });

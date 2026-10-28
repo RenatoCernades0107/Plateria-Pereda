@@ -125,6 +125,8 @@ export const EMPTY_PIECE: PieceFormInput = {
   weight: "",
   price: "",
   urgent: false,
+  estimatedDeliveryDate: "",
+  workshopDeliveryDate: "",
   notes: "",
 };
 

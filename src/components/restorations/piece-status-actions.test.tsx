@@ -1,4 +1,11 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -536,7 +543,12 @@ describe("Retroceder estado", () => {
 describe("PieceHeader: urgente", () => {
   const renderHeader = (
     role: AppRole,
-    patch: { urgent?: boolean; status?: PieceStatus } = {},
+    patch: {
+      urgent?: boolean;
+      status?: PieceStatus;
+      estimatedDeliveryDate?: string | null;
+      workshopDeliveryDate?: string | null;
+    } = {},
   ) =>
     render(
       <PieceHeader
@@ -552,22 +564,125 @@ describe("PieceHeader: urgente", () => {
           readyForDelivery: false,
           returnedAt: null,
           urgent: patch.urgent ?? false,
+          estimatedDeliveryDate: patch.estimatedDeliveryDate ?? null,
+          workshopDeliveryDate: patch.workshopDeliveryDate ?? null,
         }}
         role={role}
         workshops={workshops}
       />,
     );
 
-  it("el botón «Urgente» marca la pieza (también logística)", async () => {
+  const setDeliveryDate = (value: string) =>
+    fireEvent.change(
+      screen.getByLabelText("Fecha estimada de entrega al cliente", {
+        selector: "input",
+      }),
+      {
+        target: { value },
+      },
+    );
+
+  it("el botón «Urgente» pide la fecha de entrega y marca la pieza (también logística)", async () => {
     mocks.urgent.mockResolvedValue({ ok: true });
     const user = userEvent.setup();
     renderHeader("logistica");
     const toggle = screen.getByRole("button", { name: "Urgente" });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
     await user.click(toggle);
-    expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true);
+    // Sin fecha no se marca.
+    await user.click(screen.getByRole("button", { name: "Marcar urgente" }));
+    expect(
+      screen.getByText("Indica la fecha estimada de entrega."),
+    ).toBeInTheDocument();
+    expect(mocks.urgent).not.toHaveBeenCalled();
+    setDeliveryDate("2030-01-15");
+    await user.click(screen.getByRole("button", { name: "Marcar urgente" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
+    );
     expect(mocks.success).toHaveBeenCalledWith(
-      "RES-00001-1 marcada como urgente.",
+      "RES-00001-1 marcada como urgente para el 15 ene 2030.",
+    );
+  });
+
+  it("muestra la fecha de entrega y deja cambiarla", async () => {
+    mocks.urgent.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderHeader("ventas", {
+      urgent: true,
+      estimatedDeliveryDate: "2030-01-15",
+    });
+    await user.click(
+      screen.getByRole("button", {
+        name: "Cambiar la fecha de entrega de RES-00001-1",
+      }),
+    );
+    expect(
+      screen.getByLabelText("Fecha estimada de entrega al cliente", {
+        selector: "input",
+      }),
+    ).toHaveValue("2030-01-15");
+    // Ventas no cambia la fecha del taller: el campo va bloqueado y se conserva.
+    expect(
+      screen.getByLabelText("Fecha estimada de entrega del taller"),
+    ).toBeDisabled();
+    setDeliveryDate("2030-01-20");
+    await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-20", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: true,
+      }),
+    );
+  });
+
+  it("logística y admin cambian la fecha del taller", async () => {
+    mocks.urgent.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderHeader("logistica", {
+      urgent: true,
+      estimatedDeliveryDate: "2030-01-15",
+      workshopDeliveryDate: "2030-01-12",
+    });
+    await user.click(
+      screen.getByRole("button", {
+        name: "Cambiar la fecha de entrega de RES-00001-1",
+      }),
+    );
+    const workshop = screen.getByLabelText(
+      "Fecha estimada de entrega del taller",
+    );
+    expect(workshop).toBeEnabled();
+    expect(workshop).toHaveValue("2030-01-12");
+    fireEvent.change(workshop, { target: { value: "2030-01-10" } });
+    await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15", {
+        workshopDeliveryDate: "2030-01-10",
+        keepWorkshopDate: false,
+      }),
+    );
+  });
+
+  it("una urgente sin fecha (de antes) la puede colocar", async () => {
+    mocks.urgent.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderHeader("logistica", { urgent: true });
+    await user.click(
+      screen.getByRole("button", {
+        name: "Colocar la fecha de entrega de RES-00001-1",
+      }),
+    );
+    setDeliveryDate("2030-02-01");
+    await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-02-01", {
+        workshopDeliveryDate: null,
+        keepWorkshopDate: false,
+      }),
     );
   });
 
@@ -582,9 +697,19 @@ describe("PieceHeader: urgente", () => {
     expect(mocks.error).toHaveBeenCalledWith("No se pudo.");
   });
 
-  it("una pieza entregada solo muestra la insignia", () => {
-    renderHeader("admin", { urgent: true, status: "entregada" });
+  it("una pieza entregada solo muestra la insignia y la fecha, sin botones", () => {
+    renderHeader("admin", {
+      urgent: true,
+      status: "entregada",
+      estimatedDeliveryDate: "2030-01-15",
+    });
     expect(screen.queryByRole("button", { name: "Urgente" })).toBeNull();
     expect(screen.getByText("Urgente")).toBeInTheDocument();
+    expect(screen.getByTestId("fecha-entrega")).toHaveTextContent(
+      "Entrega 15 ene 2030",
+    );
+    expect(
+      screen.queryByRole("button", { name: /fecha de entrega/ }),
+    ).toBeNull();
   });
 });

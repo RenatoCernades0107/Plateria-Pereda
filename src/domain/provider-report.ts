@@ -1,5 +1,6 @@
 import { formatDate } from "@/lib/format";
 
+import { formatDeliveryDate } from "./delivery-date";
 import { formatCents, sumCents, type Cents } from "./money";
 import { PIECE_STATUS_LABELS, type PieceStatus } from "./piece-state-machine";
 import {
@@ -33,6 +34,8 @@ export type ProviderReportPiece = {
   weightGrams: number | null;
   /** Lo que cobra el taller; null si aún no se define o si el rol no lo ve. */
   serviceCostCents: Cents | null;
+  /** Fecha estimada de entrega del taller (AAAA-MM-DD); null si no se indicó. */
+  workshopDeliveryDate: string | null;
 };
 
 export type ProviderReportRow = {
@@ -53,6 +56,8 @@ export type ProviderReportRow = {
   serviceCost: string;
   /** "Servicio a realizar" (las notas de la pieza); vacío si no hay. */
   task: string;
+  /** Fecha estimada de entrega del taller (p. ej. `30 oct`); `—` si no se indicó. */
+  workshopDeliveryDate: string;
 };
 
 export type ProviderReportModel = {
@@ -109,6 +114,9 @@ export function providerReportModel(
       serviceCost:
         p.serviceCostCents === null ? "—" : formatCents(p.serviceCostCents),
       task: p.notes.trim(),
+      workshopDeliveryDate: p.workshopDeliveryDate
+        ? formatDeliveryDate(p.workshopDeliveryDate, now)
+        : "—",
     })),
   };
 }

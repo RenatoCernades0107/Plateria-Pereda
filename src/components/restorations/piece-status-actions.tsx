@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { can } from "@/domain/permissions";
 import {
   availableTransitions,
   canMarkArrived,
@@ -94,7 +95,7 @@ import {
   ReviewBadge,
   UrgentBadge,
 } from "./status-badges";
-import { canToggleUrgent, UrgentToggle } from "./urgent-toggle";
+import { canToggleUrgent, DeliveryDate, UrgentToggle } from "./urgent-toggle";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
 export const ACTION_LABELS: Record<PieceStatus, string> = {
@@ -120,6 +121,10 @@ export type StatusPiece = {
   readyForDelivery: boolean;
   returnedAt: string | null;
   urgent: boolean;
+  /** Fecha estimada de entrega (AAAA-MM-DD) de las urgentes; null si no la tiene. */
+  estimatedDeliveryDate?: string | null;
+  /** Fecha estimada de entrega del taller (AAAA-MM-DD); null si no se indicó. */
+  workshopDeliveryDate?: string | null;
   /** Revisión en taller: último envío a revisar y última vuelta. */
   reviewSentAt?: string | null;
   reviewReturnedAt?: string | null;
@@ -1108,10 +1113,27 @@ function PieceStatusBadges({
         {role && canToggleUrgent(piece, role) ? (
           <UrgentToggle
             variant="label"
-            piece={{ id: piece.id, code: piece.code, urgent: piece.urgent }}
+            workshopDateEditable={can(role, "piezas.asignar-taller")}
+            piece={{
+              id: piece.id,
+              code: piece.code,
+              urgent: piece.urgent,
+              estimatedDeliveryDate: piece.estimatedDeliveryDate,
+              workshopDeliveryDate: piece.workshopDeliveryDate,
+            }}
           />
         ) : piece.urgent ? (
           <UrgentBadge className={LARGE_BADGE_CLASS} />
+        ) : null}
+        {/* Toda pieza urgente lleva fecha de entrega; si no la tiene, se coloca aquí. */}
+        {piece.urgent ? (
+          <DeliveryDate
+            piece={piece}
+            editable={Boolean(role && canToggleUrgent(piece, role))}
+            workshopDateEditable={Boolean(
+              role && can(role, "piezas.asignar-taller"),
+            )}
+          />
         ) : null}
         {pending ? (
           <Loader2

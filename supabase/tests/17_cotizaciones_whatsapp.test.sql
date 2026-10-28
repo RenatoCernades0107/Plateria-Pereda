@@ -196,7 +196,8 @@ create temporary table r2 as
     (select jsonb_agg(jsonb_build_object('quote_item_id', i.id, 'description', i.description, 'price', i.price::text,
        'status', 'aprobada') order by i.number)
      from public.whatsapp_quote_items i where i.quote_id = (select id from q) and i.number in (2, 3))
-    || jsonb_build_array(jsonb_build_object('description', 'Pieza nueva', 'urgent', true, 'status', 'aprobada')));
+    || jsonb_build_array(jsonb_build_object('description', 'Pieza nueva', 'urgent', true,
+      'estimated_delivery_date', (current_date + 5)::text, 'status', 'aprobada')));
 grant select on r2 to authenticated;
 reset role;
 select results_eq(
