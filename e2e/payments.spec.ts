@@ -190,10 +190,11 @@ test.describe("Pagos", () => {
     await expect
       .poll(() => summary(request, r.code), { timeout: 30_000 })
       .toEqual([[`Adelanto Guía ${r.code} A1`, "PAID", "100.00"]]);
-    // La sucursal elegida va como etiqueta del pedido.
-    expect((await fakeOrders(request, r.code))[0]!.tags).toContain(
+    // Primero el método de pago y la sucursal, luego las etiquetas del sistema.
+    expect((await fakeOrders(request, r.code))[0]!.tags.slice(0, 2)).toEqual([
+      "Yape",
       "PEREDA 4TA - CAJA",
-    );
+    ]);
 
     // Vuelve del taller; antes de entregar se cobra el saldo.
     await markReady(r.pieceId);

@@ -62,6 +62,12 @@ export function orderBuyer(
 export const paymentOrderTag = (paymentId: string) =>
   `pago-${paymentId.replaceAll("-", "")}`;
 
+/**
+ * Texto como etiqueta de Shopify: sin comas (las separan) y hasta 40 caracteres. El
+ * nombre de un método de pago puede ser más largo; el de una sucursal ya cumple.
+ */
+const asTag = (text: string) => text.replaceAll(",", " ").trim().slice(0, 40);
+
 /** Pagos del sistema que tienen (o tendrán) su propio pedido. */
 const ownOrderPayments = (data: OrderRestoration) =>
   data.payments.filter(
@@ -89,13 +95,15 @@ export function paymentOrderInput(
   return {
     ...orderBuyer(data),
     lines: [{ title: payment.orderTitle, price: amount, quantity: 1 }],
+    // Primero el método de pago y la sucursal que cobró (se ven en la columna
+    // «Etiquetas» de Shopify), luego las del sistema.
     tags: [
+      asTag(payment.gateway),
+      ...(payment.branch ? [payment.branch] : []),
       "restauracion",
       data.code,
       paymentOrderTag(payment.id),
-      // La sucursal que cobró, tal cual: se ve en la columna «Etiquetas» de Shopify.
-      ...(payment.branch ? [payment.branch] : []),
-    ],
+    ].filter(Boolean),
     note: `Guía ${data.code}: ${new URL(`/restauraciones/${data.id}`, appUrl)}`,
     payments: [{ gateway: payment.gateway, amount }],
   };
