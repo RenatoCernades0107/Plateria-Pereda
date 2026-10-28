@@ -87,7 +87,8 @@ update public.pieces set created_at = '2025-02-20T15:00:00Z', status = 'aprobada
   where id = '00000000-0000-0000-0000-000000005570';
 update public.pieces set status = 'aprobada', approved_at = '2025-03-03T17:00:00Z', urgent = false
   where id = '00000000-0000-0000-0000-000000005571';
-update public.pieces set status = 'aprobada', approved_at = '2025-03-03T17:00:00Z', urgent = true
+update public.pieces set status = 'aprobada', approved_at = '2025-03-03T17:00:00Z', urgent = true,
+  estimated_delivery_date = current_date + 7
   where id = '00000000-0000-0000-0000-000000005572';
 update public.pieces set status = 'anulada', approved_at = '2025-03-04T17:00:00Z', cancelled_at = '2025-03-05T17:00:00Z'
   where id = '00000000-0000-0000-0000-000000005573';

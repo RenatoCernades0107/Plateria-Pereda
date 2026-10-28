@@ -465,7 +465,6 @@ as $$
 declare
   v_start timestamptz := private.dash_start(p_from);
   v_end timestamptz := private.dash_start(p_to + 1);
-  v_role public.app_role := private.dash_guard(p_from, p_to, p_bucket);
   v_by_status jsonb;
   v_by_kind jsonb;
   v_by_location jsonb;
@@ -475,6 +474,7 @@ declare
   v_orders integer;
   v_pieces_per_order numeric;
 begin
+  perform private.dash_guard(p_from, p_to, p_bucket);
   select coalesce(jsonb_agg(jsonb_build_object('key', status, 'value', n) order by n desc), '[]')
     into v_by_status
   from (select status, count(*) n from public.restorations r
@@ -581,7 +581,6 @@ as $$
 declare
   v_start timestamptz := private.dash_start(p_from);
   v_end timestamptz := private.dash_start(p_to + 1);
-  v_role public.app_role := private.dash_guard(p_from, p_to, p_bucket);
   v_total integer;
   v_new integer;
   v_active integer;
@@ -592,6 +591,7 @@ declare
   v_debtors jsonb;
   v_series jsonb;
 begin
+  perform private.dash_guard(p_from, p_to, p_bucket);
   select count(*) into v_total from public.clients where active;
   select count(*) into v_new from public.clients c
   where c.created_at >= v_start and c.created_at < v_end;
@@ -855,7 +855,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_role public.app_role := private.dash_guard(p_from, p_to, p_bucket);
   v_start timestamptz := private.dash_start(p_from);
   v_end timestamptz := private.dash_start(p_to + 1);
   v_cwa jsonb;
@@ -864,6 +863,7 @@ declare
   v_origin jsonb;
   v_series jsonb;
 begin
+  perform private.dash_guard(p_from, p_to, p_bucket);
   select jsonb_build_object(
            'created', count(*),
            'cotizada', count(*) filter (where q.status = 'cotizada'),

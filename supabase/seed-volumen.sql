@@ -171,10 +171,11 @@ begin
       v_ret := v_sent + make_interval(days => v_wdays);
       v_deliv := v_ret + make_interval(days => (random() * 4)::int, hours => 1 + (random() * 5)::int);
 
-      insert into public.pieces (restoration_id, description, price, quantity, urgent, service_ids, material_ids, service_cost, workshop_id, created_at)
+      insert into public.pieces (restoration_id, description, price, quantity, urgent, estimated_delivery_date, service_ids, material_ids, service_cost, workshop_id, created_at)
       values (v_rid,
               (array['Fuente ovalada','Juego de cubiertos','Candelabro','Bandeja de servicio','Tetera','Cáliz','Marco de espejo','Jarra','Azucarera','Plato de mesa','Cruz procesional','Charola'])[1 + (random() * 11)::int],
               case when v_kind = 'interno' then null else v_price end, v_qty, v_urgent,
+              case when v_urgent then current_date + 5 + (random() * 10)::int end,
               v_svc, array[v_materials[1 + (random() * 3)::int]],
               case when v_fate in ('registrada','consulta','espera') then null else v_cost end,
               case when v_fate in ('entregada','taller','lista','interna') then v_workshops[v_wk] else null end,
