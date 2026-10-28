@@ -317,4 +317,28 @@ describe("withoutWorkshops (D60)", () => {
       { ...base, workshopId: null },
     ]);
   });
+
+  it("y la fecha de entrega del taller (la BD pone la de por defecto)", () => {
+    const urgent = {
+      quantity: 1,
+      description: "Fuente",
+      measure: "",
+      materials: [],
+      services: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d70"],
+      weightGrams: null,
+      priceCents: null,
+      urgent: true,
+      estimatedDeliveryDate: "2026-11-05",
+      notes: "",
+    };
+    expect(
+      withoutWorkshops([
+        {
+          ...urgent,
+          workshopId: "w1",
+          workshopDeliveryDate: "2026-11-03",
+        },
+      ]),
+    ).toEqual([{ ...urgent, workshopId: null, workshopDeliveryDate: null }]);
+  });
 });

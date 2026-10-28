@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  role: "logistica" as "logistica" | "ventas" | "admin",
   permission: vi.fn(),
   rpc: vi.fn(),
   result: { error: null as { code?: string; message?: string } | null },
@@ -14,7 +15,7 @@ vi.mock("@/server/auth", () => ({
   requirePermission: async (permission: string) => {
     mocks.permission(permission);
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "logistica" };
+    return { id: "u1", role: mocks.role };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -223,6 +224,7 @@ describe("tipo de guía", () => {
 describe("marcar urgente", () => {
   beforeEach(() => {
     mocks.forbidden = false;
+    mocks.role = "logistica";
     for (const fn of [mocks.permission, mocks.rpc, mocks.revalidate])
       fn.mockReset();
     mocks.result = { error: null };
@@ -269,6 +271,19 @@ describe("marcar urgente", () => {
     });
     expect(mocks.rpc).toHaveBeenLastCalledWith("set_pieces_urgent", {
       p_piece_ids: ["p1", "p2"],
+      p_urgent: true,
+      p_estimated_delivery_date: "2026-11-05",
+      p_keep_workshop_date: true,
+    });
+  });
+
+  it("ventas no cambia la fecha del taller: se ignora y cada pieza conserva la suya", async () => {
+    mocks.role = "ventas";
+    await setPiecesUrgent(["p1"], true, "2026-11-05", {
+      workshopDeliveryDate: "2026-11-03",
+    });
+    expect(mocks.rpc).toHaveBeenLastCalledWith("set_pieces_urgent", {
+      p_piece_ids: ["p1"],
       p_urgent: true,
       p_estimated_delivery_date: "2026-11-05",
       p_keep_workshop_date: true,

@@ -1,27 +1,37 @@
 -- Dos fechas por pieza urgente (pedido del 2026-10-27): la fecha estimada de entrega al
 -- cliente (`estimated_delivery_date`, obligatoria) y la fecha estimada de entrega del
--- taller (`workshop_delivery_date`, opcional). La del taller no es posterior a la del
--- cliente. Se ingresan al marcar la pieza urgente y se pueden llenar o cambiar después.
+-- taller (`workshop_delivery_date`, por defecto 3 días antes de la del cliente). La del
+-- taller no es posterior a la del cliente. Se ingresan al marcar la pieza urgente y se
+-- pueden cambiar después; la del taller solo la cambian admin y logística.
 
 -- 1. Columna.
 alter table public.pieces add column workshop_delivery_date date;
 comment on column public.pieces.workshop_delivery_date is
-  'Fecha estimada en que el taller entrega la pieza. Opcional; solo en piezas urgentes y nunca posterior a la fecha de entrega al cliente.';
+  'Fecha estimada en que el taller entrega la pieza. Solo en piezas urgentes y nunca posterior a la fecha de entrega al cliente. Si no se indica, queda 3 días antes de la del cliente (sin pasar de hoy).';
 grant insert (workshop_delivery_date), update (workshop_delivery_date) on public.pieces to authenticated;
 
--- 2. Regla (reemplaza a la de 20261027120000). Sin urgencia no hay fechas. La fecha al
+-- 2. Regla (reemplaza a la de 20261027110000). Sin urgencia no hay fechas. La fecha al
 --    cliente es obligatoria (salvo en las urgentes de antes que aún no la tienen). Las
 --    fechas nuevas no pueden ser anteriores a hoy (hora de Lima). La del taller no es
---    posterior a la del cliente. Las piezas cerradas o entregadas no cambian sus fechas.
+--    posterior a la del cliente y, si no se indica al marcar la pieza urgente (o al
+--    ponerle por primera vez la fecha del cliente), queda 3 días antes de la del cliente,
+--    sin pasar de hoy. Si la fecha del cliente se adelanta por delante de la del taller
+--    (y no se tocó la del taller), la del taller se vuelve a calcular. Ventas no cambia la
+--    fecha del taller (admin y logística sí; sin sesión, como `service_role`, también).
+--    Las piezas cerradas o entregadas no cambian sus fechas.
+--
+--    `security definer`: el trigger corre con los permisos de quien escribe, y
+--    `service_role` (sincronizaciones, scripts) no ve el esquema `private`.
 create or replace function private.guard_piece_urgent_date()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 declare
-  -- Hoy en Lima, sin `private.lima_today()`: el trigger corre con los permisos de quien
-  -- escribe (también `service_role`: sincronizaciones y scripts) y ese rol no ve `private`.
   v_today date := (now() at time zone 'America/Lima')::date;
+  v_role public.app_role := private.current_app_role();
+  v_old_workshop date := case when tg_op = 'UPDATE' then old.workshop_delivery_date end;
 begin
   if tg_op = 'UPDATE'
      and old.status in ('anulada', 'rechazada', 'sin_arreglo', 'entregada')
@@ -37,6 +47,11 @@ begin
     return new;
   end if;
 
+  if v_role = 'ventas' and new.workshop_delivery_date is distinct from v_old_workshop then
+    raise exception 'Solo administración y logística cambian la fecha de entrega del taller.'
+      using errcode = '42501';
+  end if;
+
   if new.estimated_delivery_date is null
      and (tg_op = 'INSERT' or not old.urgent or old.estimated_delivery_date is not null) then
     raise exception 'Una pieza urgente necesita fecha estimada de entrega.'
@@ -48,6 +63,21 @@ begin
      and new.estimated_delivery_date < v_today then
     raise exception 'La fecha estimada de entrega no puede ser anterior a hoy.'
       using errcode = '23514';
+  end if;
+
+  -- Fecha del taller por defecto: 3 días antes de la del cliente, sin pasar de hoy.
+  if new.estimated_delivery_date is not null and new.workshop_delivery_date is null
+     and (tg_op = 'INSERT' or not old.urgent or old.estimated_delivery_date is null) then
+    new.workshop_delivery_date := greatest(new.estimated_delivery_date - 3, v_today);
+  end if;
+
+  -- La fecha del cliente se adelantó por delante de la del taller (que no se tocó): se
+  -- recalcula en vez de fallar, para quien no puede cambiar la del taller.
+  if tg_op = 'UPDATE' and new.estimated_delivery_date is not null
+     and new.estimated_delivery_date is distinct from old.estimated_delivery_date
+     and new.workshop_delivery_date is not distinct from old.workshop_delivery_date
+     and new.workshop_delivery_date > new.estimated_delivery_date then
+    new.workshop_delivery_date := greatest(new.estimated_delivery_date - 3, v_today);
   end if;
 
   if new.workshop_delivery_date is not null
@@ -379,8 +409,9 @@ $$;
 -- 5. Marcar urgente o cambiar las fechas. Al marcar, la fecha al cliente es obligatoria;
 --    la del taller, opcional. Sobre piezas que ya son urgentes, la misma llamada coloca o
 --    cambia las fechas. `p_keep_workshop_date`: con la fecha del taller en blanco, cada
---    pieza conserva la que tenga (cambio en bloque); sin él, en blanco la borra. Al
---    quitar la marca, las dos fechas se borran.
+--    pieza conserva la que tenga (cambio en bloque, y siempre para ventas); sin él, en
+--    blanco la borra (y una pieza que se marca ahora recibe la de por defecto). Al quitar
+--    la marca, las dos fechas se borran.
 drop function public.set_pieces_urgent(uuid[], boolean, date);
 
 create function public.set_pieces_urgent(

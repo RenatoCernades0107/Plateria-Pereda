@@ -57,6 +57,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { can } from "@/domain/permissions";
 import {
   availableTransitions,
   canMarkArrived,
@@ -1112,6 +1113,7 @@ function PieceStatusBadges({
         {role && canToggleUrgent(piece, role) ? (
           <UrgentToggle
             variant="label"
+            workshopDateEditable={can(role, "piezas.asignar-taller")}
             piece={{
               id: piece.id,
               code: piece.code,
@@ -1128,6 +1130,9 @@ function PieceStatusBadges({
           <DeliveryDate
             piece={piece}
             editable={Boolean(role && canToggleUrgent(piece, role))}
+            workshopDateEditable={Boolean(
+              role && can(role, "piezas.asignar-taller"),
+            )}
           />
         ) : null}
         {pending ? (

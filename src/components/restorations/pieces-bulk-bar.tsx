@@ -590,6 +590,7 @@ export function PiecesBulkBar({
         }
         // Varias piezas: la fecha del taller en blanco no borra la que cada una tenga.
         keepWorkshopDate={dateTargets.length > 1}
+        workshopDateEditable={can(role, "piezas.asignar-taller")}
         alreadyUrgent={dateDialog === "change"}
         onDone={onDone}
       />

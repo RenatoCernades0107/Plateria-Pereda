@@ -110,7 +110,7 @@ const renderBoard = (
 
 const setWorkshopDate = (value: string) =>
   fireEvent.change(
-    screen.getByLabelText("Fecha estimada de entrega del taller (opcional)"),
+    screen.getByLabelText("Fecha estimada de entrega del taller"),
     { target: { value } },
   );
 
@@ -517,7 +517,7 @@ describe("PiecesBoard: urgente", () => {
     await waitFor(() =>
       expect(mocks.urgent).toHaveBeenCalledWith(["p2"], true, "2030-02-01", {
         workshopDeliveryDate: null,
-        keepWorkshopDate: false,
+        keepWorkshopDate: true,
       }),
     );
   });
@@ -559,11 +559,11 @@ describe("PiecesBoard: urgente", () => {
       within(bar()).getByRole("button", { name: "Fecha de entrega" }),
     );
     expect(
-      screen.getByLabelText("Fecha estimada de entrega del taller (opcional)"),
+      screen.getByLabelText("Fecha estimada de entrega del taller"),
     ).toHaveValue("");
     expect(
       screen.getByText(
-        "En blanco: cada pieza conserva la fecha del taller que tenga.",
+        "En blanco: cada pieza conserva la fecha del taller que tenga (o 3 días antes de la del cliente).",
       ),
     ).toBeInTheDocument();
     setDeliveryDate("2030-01-25");

@@ -229,7 +229,7 @@ describe("PieceDialog", () => {
       "Fecha estimada de entrega al cliente",
     );
     const workshop = within(dialog).getByLabelText(
-      "Fecha estimada de entrega del taller (opcional)",
+      "Fecha estimada de entrega del taller",
     );
     fireEvent.change(client, { target: { value: "2030-01-15" } });
     fireEvent.change(workshop, { target: { value: "2030-01-16" } });
@@ -254,6 +254,38 @@ describe("PieceDialog", () => {
         workshopDeliveryDate: "2030-01-12",
       }),
     );
+  });
+
+  it("ventas no cambia la fecha del taller: el campo va bloqueado", async () => {
+    const user = userEvent.setup();
+    render(
+      <PieceDialog
+        restorationId="r1"
+        piece={{
+          ...piece,
+          urgent: true,
+          estimatedDeliveryDate: "2030-01-15",
+          workshopDeliveryDate: "2030-01-12",
+        }}
+        editable={["description", "notes", "urgent"]}
+        {...props}
+      />,
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Editar pieza RES-00001-1" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega al cliente"),
+    ).toBeEnabled();
+    expect(
+      within(dialog).getByLabelText("Fecha estimada de entrega del taller"),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByText(
+        "La del taller queda 3 días antes de la del cliente; la cambian logística y administración.",
+      ),
+    ).toBeVisible();
   });
 
   it("una urgente de antes, sin fecha, la pide al editarla; si no se puede cambiar la urgencia, no", async () => {

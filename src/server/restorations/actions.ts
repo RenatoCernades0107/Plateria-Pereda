@@ -195,7 +195,11 @@ function pieceColumns(
   return {
     piece: p,
     columns: {
-      ...(withWorkshop && { workshop_id: p.workshopId }),
+      // El taller y su fecha de entrega los cambian logística y el admin (D60).
+      ...(withWorkshop && {
+        workshop_id: p.workshopId,
+        workshop_delivery_date: p.workshopDeliveryDate,
+      }),
       quantity: p.quantity,
       description: p.description,
       measure: p.measure,
@@ -212,7 +216,6 @@ function pieceColumns(
       urgent: p.urgent,
       // Obligatoria si es urgente; sin urgencia se borra (la BD lo exige).
       estimated_delivery_date: p.estimatedDeliveryDate,
-      workshop_delivery_date: p.workshopDeliveryDate,
     },
   };
 }

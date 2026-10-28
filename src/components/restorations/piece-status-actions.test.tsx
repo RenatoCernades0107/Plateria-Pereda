@@ -547,6 +547,7 @@ describe("PieceHeader: urgente", () => {
       urgent?: boolean;
       status?: PieceStatus;
       estimatedDeliveryDate?: string | null;
+      workshopDeliveryDate?: string | null;
     } = {},
   ) =>
     render(
@@ -564,6 +565,7 @@ describe("PieceHeader: urgente", () => {
           returnedAt: null,
           urgent: patch.urgent ?? false,
           estimatedDeliveryDate: patch.estimatedDeliveryDate ?? null,
+          workshopDeliveryDate: patch.workshopDeliveryDate ?? null,
         }}
         role={role}
         workshops={workshops}
@@ -623,11 +625,43 @@ describe("PieceHeader: urgente", () => {
         selector: "input",
       }),
     ).toHaveValue("2030-01-15");
+    // Ventas no cambia la fecha del taller: el campo va bloqueado y se conserva.
+    expect(
+      screen.getByLabelText("Fecha estimada de entrega del taller"),
+    ).toBeDisabled();
     setDeliveryDate("2030-01-20");
     await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
     await waitFor(() =>
       expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-20", {
         workshopDeliveryDate: null,
+        keepWorkshopDate: true,
+      }),
+    );
+  });
+
+  it("logística y admin cambian la fecha del taller", async () => {
+    mocks.urgent.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    renderHeader("logistica", {
+      urgent: true,
+      estimatedDeliveryDate: "2030-01-15",
+      workshopDeliveryDate: "2030-01-12",
+    });
+    await user.click(
+      screen.getByRole("button", {
+        name: "Cambiar la fecha de entrega de RES-00001-1",
+      }),
+    );
+    const workshop = screen.getByLabelText(
+      "Fecha estimada de entrega del taller",
+    );
+    expect(workshop).toBeEnabled();
+    expect(workshop).toHaveValue("2030-01-12");
+    fireEvent.change(workshop, { target: { value: "2030-01-10" } });
+    await user.click(screen.getByRole("button", { name: "Guardar fecha" }));
+    await waitFor(() =>
+      expect(mocks.urgent).toHaveBeenCalledWith(["p1"], true, "2030-01-15", {
+        workshopDeliveryDate: "2030-01-10",
         keepWorkshopDate: false,
       }),
     );

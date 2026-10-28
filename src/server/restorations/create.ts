@@ -51,11 +51,18 @@ export function withoutSalePrices<T extends PieceInput>(
   );
 }
 
-/** Sin el permiso del taller (ventas, D60) las piezas se registran sin taller. */
+/**
+ * Sin el permiso del taller (ventas, D60) las piezas se registran sin taller y sin
+ * fecha de entrega del taller (la BD la deja 3 días antes de la del cliente).
+ */
 export function withoutWorkshops<T extends PieceInput>(
   pieces: readonly T[],
 ): T[] {
-  return pieces.map((piece) => ({ ...piece, workshopId: null }));
+  return pieces.map((piece) => ({
+    ...piece,
+    workshopId: null,
+    workshopDeliveryDate: null,
+  }));
 }
 
 /** Registra la restauración y sus piezas en una sola transacción (RPC). */

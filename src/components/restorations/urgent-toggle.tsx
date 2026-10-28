@@ -64,6 +64,7 @@ export function UrgentDateDialog({
   initialDate,
   initialWorkshopDate,
   keepWorkshopDate = false,
+  workshopDateEditable = false,
   alreadyUrgent = false,
   onDone,
 }: {
@@ -77,6 +78,8 @@ export function UrgentDateDialog({
   initialWorkshopDate?: string | null;
   /** Varias piezas: con la fecha del taller en blanco, cada una conserva la suya. */
   keepWorkshopDate?: boolean;
+  /** Quien mira cambia la fecha del taller (logística y admin); ventas no. */
+  workshopDateEditable?: boolean;
   /** Las piezas ya son urgentes: solo se coloca o cambia la fecha. */
   alreadyUrgent?: boolean;
   /** Tras guardar (p. ej. vaciar la selección). */
@@ -92,15 +95,21 @@ export function UrgentDateDialog({
   const save = () => {
     if (date === "") return setError(`${DELIVERY_DATE_REQUIRED}.`);
     if (!isIsoDate(date)) return setError(`${DELIVERY_DATE_INVALID}.`);
-    if (workshopDate !== "" && !isIsoDate(workshopDate))
-      return setError(`${DELIVERY_DATE_INVALID}.`);
-    if (workshopDate !== "" && workshopDate > date)
-      return setError(`${WORKSHOP_DATE_AFTER_CLIENT}.`);
+    if (workshopDateEditable && workshopDate !== "") {
+      if (!isIsoDate(workshopDate))
+        return setError(`${DELIVERY_DATE_INVALID}.`);
+      if (workshopDate > date)
+        return setError(`${WORKSHOP_DATE_AFTER_CLIENT}.`);
+    }
     setError(null);
     startTransition(async () => {
+      // Sin permiso de la fecha del taller, cada pieza conserva la suya (o recibe la
+      // de por defecto, 3 días antes de la del cliente).
       const result = await setPiecesUrgent(pieceIds, true, date, {
-        workshopDeliveryDate: workshopDate || null,
-        keepWorkshopDate,
+        workshopDeliveryDate: workshopDateEditable
+          ? workshopDate || null
+          : null,
+        keepWorkshopDate: workshopDateEditable ? keepWorkshopDate : true,
       });
       if ("error" in result) return setError(result.error);
       toast.success(
@@ -122,7 +131,7 @@ export function UrgentDateDialog({
           </DialogTitle>
           <DialogDescription>
             Toda pieza urgente lleva fecha estimada de entrega al cliente; la
-            del taller es opcional ({subject}).
+            del taller queda 3 días antes si no la indicas ({subject}).
           </DialogDescription>
         </DialogHeader>
         <form
@@ -150,22 +159,28 @@ export function UrgentDateDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor={workshopInputId}>
-              Fecha estimada de entrega del taller (opcional)
+              Fecha estimada de entrega del taller
             </Label>
             <Input
               id={workshopInputId}
               type="date"
               min={todayInLima()}
               max={date || undefined}
-              value={workshopDate}
+              value={
+                workshopDateEditable
+                  ? workshopDate
+                  : (initialWorkshopDate ?? "")
+              }
               onChange={(e) => setWorkshopDate(e.target.value)}
-              disabled={pending}
+              disabled={pending || !workshopDateEditable}
             />
-            {keepWorkshopDate ? (
-              <p className="text-muted-foreground text-xs">
-                En blanco: cada pieza conserva la fecha del taller que tenga.
-              </p>
-            ) : null}
+            <p className="text-muted-foreground text-xs">
+              {!workshopDateEditable
+                ? "La cambian logística y administración. Por defecto, 3 días antes de la del cliente."
+                : keepWorkshopDate
+                  ? "En blanco: cada pieza conserva la fecha del taller que tenga (o 3 días antes de la del cliente)."
+                  : "En blanco: 3 días antes de la fecha del cliente."}
+            </p>
           </div>
           <DialogFooter>
             <Button type="submit" disabled={pending}>
@@ -190,6 +205,7 @@ export function UrgentDateDialog({
 export function DeliveryDate({
   piece,
   editable = false,
+  workshopDateEditable = false,
   className,
 }: {
   piece: {
@@ -199,6 +215,8 @@ export function DeliveryDate({
     workshopDeliveryDate?: string | null;
   };
   editable?: boolean;
+  /** Quien mira cambia la fecha del taller (logística y admin). */
+  workshopDateEditable?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -254,6 +272,7 @@ export function DeliveryDate({
         subject={piece.code}
         initialDate={date}
         initialWorkshopDate={workshopDate}
+        workshopDateEditable={workshopDateEditable}
         alreadyUrgent
       />
     </>
@@ -270,6 +289,7 @@ export function DeliveryDate({
 export function UrgentToggle({
   piece,
   variant = "icon",
+  workshopDateEditable = false,
   className,
 }: {
   piece: {
@@ -280,6 +300,8 @@ export function UrgentToggle({
     workshopDeliveryDate?: string | null;
   };
   variant?: "icon" | "label";
+  /** Quien mira cambia la fecha del taller (logística y admin). */
+  workshopDateEditable?: boolean;
   className?: string;
 }) {
   const [pending, startTransition] = useTransition();
@@ -339,6 +361,7 @@ export function UrgentToggle({
         subject={piece.code}
         initialDate={piece.estimatedDeliveryDate}
         initialWorkshopDate={piece.workshopDeliveryDate}
+        workshopDateEditable={workshopDateEditable}
       />
     </>
   );

@@ -172,6 +172,8 @@ export function PieceFields({
     name: path("workshopId"),
   }) as string | null | undefined;
   const urgent = useWatch({ control: form.control, name: path("urgent") });
+  // La fecha de entrega del taller la cambia quien asigna el taller (logística y admin).
+  const workshopDateEditable = showWorkshop && !off("workshopId");
   const currentWorkshop = workshopId
     ? (workshops.find((w) => w.id === workshopId)?.name ??
       workshopName ??
@@ -322,25 +324,33 @@ export function PieceFields({
         </div>
       ) : null}
       {showUrgent && urgent ? (
-        // Una pieza urgente siempre lleva fecha de entrega al cliente; la del taller es
-        // opcional y no es posterior a la del cliente.
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            form={form}
-            name={path("estimatedDeliveryDate")}
-            label="Fecha estimada de entrega al cliente"
-            type="date"
-            min={todayInLima()}
-            disabled={off("urgent")}
-          />
-          <TextField
-            form={form}
-            name={path("workshopDeliveryDate")}
-            label="Fecha estimada de entrega del taller (opcional)"
-            type="date"
-            min={todayInLima()}
-            disabled={off("urgent")}
-          />
+        // Una pieza urgente siempre lleva fecha de entrega al cliente. La del taller no es
+        // posterior a la del cliente: en blanco queda 3 días antes, y la cambian logística
+        // y el admin (como el taller, D60).
+        <div className="space-y-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              form={form}
+              name={path("estimatedDeliveryDate")}
+              label="Fecha estimada de entrega al cliente"
+              type="date"
+              min={todayInLima()}
+              disabled={off("urgent")}
+            />
+            <TextField
+              form={form}
+              name={path("workshopDeliveryDate")}
+              label="Fecha estimada de entrega del taller"
+              type="date"
+              min={todayInLima()}
+              disabled={off("urgent") || !workshopDateEditable}
+            />
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {workshopDateEditable
+              ? "La del taller, en blanco, queda 3 días antes de la del cliente."
+              : "La del taller queda 3 días antes de la del cliente; la cambian logística y administración."}
+          </p>
         </div>
       ) : null}
     </div>

@@ -8,6 +8,7 @@ import {
   isIsoDate,
   WORKSHOP_DATE_AFTER_CLIENT,
 } from "@/domain/delivery-date";
+import { can } from "@/domain/permissions";
 import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
 import {
   isRestorationCloseTarget,
@@ -156,21 +157,30 @@ export async function changePiecePrice(
  * Marca o quita "Urgente" a una o varias piezas (admin, ventas y logística; RPC
  * `set_pieces_urgent`). Al marcar hay que indicar la fecha estimada de entrega al
  * cliente (AAAA-MM-DD); la del taller es opcional y no puede ser posterior a la del
- * cliente. Llamarla sobre piezas que ya son urgentes coloca o cambia las fechas: con la
- * del taller en blanco la borra, salvo `keepWorkshopDate` (cambio en bloque: cada pieza
- * conserva la suya). Las piezas pueden ser de varias guías: se refrescan todas.
+ * cliente. Si no se indica la del taller, queda 3 días antes de la del cliente (la BD).
+ * Llamarla sobre piezas que ya son urgentes coloca o cambia las fechas: con la del taller
+ * en blanco la borra, salvo `keepWorkshopDate` (cambio en bloque: cada pieza conserva la
+ * suya). La fecha del taller solo la cambian logística y el admin: para ventas se ignora
+ * y siempre se conserva. Las piezas pueden ser de varias guías: se refrescan todas.
  */
 export async function setPiecesUrgent(
   pieceIds: string[],
   urgent: boolean,
   estimatedDeliveryDate: string | null = null,
-  {
-    workshopDeliveryDate = null,
-    keepWorkshopDate = false,
-  }: { workshopDeliveryDate?: string | null; keepWorkshopDate?: boolean } = {},
+  options: {
+    workshopDeliveryDate?: string | null;
+    keepWorkshopDate?: boolean;
+  } = {},
 ): Promise<StatusActionResult> {
-  await requirePermission("piezas.marcar-urgente");
+  const user = await requirePermission("piezas.marcar-urgente");
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
+  const canSetWorkshopDate = can(user.role, "piezas.asignar-taller");
+  const workshopDeliveryDate = canSetWorkshopDate
+    ? (options.workshopDeliveryDate ?? null)
+    : null;
+  const keepWorkshopDate = canSetWorkshopDate
+    ? (options.keepWorkshopDate ?? false)
+    : true;
   if (urgent) {
     if (!estimatedDeliveryDate) return { error: `${DELIVERY_DATE_REQUIRED}.` };
     if (!isIsoDate(estimatedDeliveryDate))

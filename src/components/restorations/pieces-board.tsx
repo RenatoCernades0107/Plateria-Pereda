@@ -195,6 +195,7 @@ function PieceRow({
               workshopDeliveryDate: live.workshopDeliveryDate,
             }}
             editable={urgentToggle}
+            workshopDateEditable={can(role, "piezas.asignar-taller")}
             className="mt-0.5 flex"
           />
         ) : null}
@@ -273,6 +274,7 @@ function PieceRow({
         <div className="flex items-center gap-2 max-md:w-full md:justify-end">
           {urgentToggle ? (
             <UrgentToggle
+              workshopDateEditable={can(role, "piezas.asignar-taller")}
               piece={{
                 id: piece.id,
                 code: piece.code,
