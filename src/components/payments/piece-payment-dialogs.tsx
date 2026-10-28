@@ -26,11 +26,13 @@ import {
   newDraft,
   PaymentFields,
   readDraft,
+  type BranchOption,
   type MethodOption,
 } from "./payment-fields";
 
 export type ApprovalPayment = {
   methods: MethodOption[];
+  branches: BranchOption[];
   suggested: SuggestedPayment;
 };
 
@@ -98,6 +100,7 @@ export function ApproveWithPaymentDialog({
           draft={draft}
           onChange={setDraft}
           methods={payment.methods}
+          branches={payment.branches}
           idPrefix="adelanto"
         />
         <DialogFooter className="gap-2">

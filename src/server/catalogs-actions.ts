@@ -11,7 +11,7 @@ import {
 } from "@/domain/catalogs";
 import { createClient } from "@/lib/supabase/server";
 import {
-  catalogItemSchema,
+  catalogItemSchemaFor,
   type CatalogItemFormInput,
 } from "@/lib/validation/catalogs";
 import { requirePermission } from "@/server/auth";
@@ -27,7 +27,7 @@ async function save(
   input: CatalogItemFormInput,
   id?: string,
 ) {
-  const parsed = catalogItemSchema.safeParse(input);
+  const parsed = catalogItemSchemaFor(kind).safeParse(input);
   if (!parsed.success) return { invalid: true as const };
   const { name, price, shopifyName } = parsed.data;
 

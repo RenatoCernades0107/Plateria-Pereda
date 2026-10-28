@@ -11,6 +11,8 @@ export type PaymentRecord = {
   kind: PaymentKind;
   amountCents: Cents;
   methodName: string;
+  /** Sucursal que cobró (va como etiqueta del pedido); null si no tiene. */
+  branchName: string | null;
   paidOn: string;
   reason: string;
   source: "sistema" | "shopify";
@@ -40,7 +42,7 @@ export async function listPayments(
   const { data, error } = await supabase
     .from("payments")
     .select(
-      "id, kind, amount, method_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
+      "id, kind, amount, method_name, branch_name, paid_on, reason, source, shopify_synced_at, shopify_order_title, shopify_order_id, shopify_order_name, refunded_payment_id, created_by_name, created_at",
     )
     .eq("restoration_id", restorationId)
     .order("created_at");
@@ -61,6 +63,7 @@ export async function listPayments(
       kind: p.kind,
       amountCents,
       methodName: p.method_name,
+      branchName: p.branch_name,
       paidOn: p.paid_on,
       reason: p.reason,
       source: p.source,

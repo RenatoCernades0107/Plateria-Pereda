@@ -135,6 +135,8 @@ test.describe("Restauraciones", () => {
     // Con adelanto se pide su método: se registra como pago al guardar.
     await page.getByLabel("Método del adelanto").click();
     await page.getByRole("option", { name: "Efectivo" }).click();
+    await page.getByLabel("Sucursal del adelanto").click();
+    await page.getByRole("option", { name: "PEREDA SAC - VENTAS1" }).click();
 
     await page.getByRole("button", { name: "Registrar restauración" }).click();
     await expect(page).toHaveURL(

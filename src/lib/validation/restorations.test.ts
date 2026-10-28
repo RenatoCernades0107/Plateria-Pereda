@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   copyRestorationSchema,
+  DEPOSIT_BRANCH_ERROR,
   DEPOSIT_METHOD_ERROR,
   invalidInputMessage,
   MAX_PIECES,
@@ -18,6 +19,7 @@ const WORKSHOP = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 const SILVER = "1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e";
 const POLISH = "3d4e5f6a-7b8c-4d9e-8f10-2b3c4d5e6f70";
 const YAPE = "2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f";
+const CAJA = "3d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f6a";
 
 const piece: PieceFormInput = {
   workshopId: "",
@@ -36,6 +38,7 @@ const restoration = {
   paymentType: "a_cuenta" as const,
   depositAmount: "500",
   depositMethodId: YAPE,
+  depositBranchId: CAJA,
   notes: "",
   pieces: [piece],
 };
@@ -394,6 +397,32 @@ describe("restorationSchema", () => {
     ).toBe(`${DEPOSIT_METHOD_ERROR}.`);
   });
 
+  it("con adelanto exige la sucursal que lo cobró (va al pedido de Shopify)", () => {
+    expect(restorationSchema.parse(restoration).depositBranchId).toBe(CAJA);
+    for (const depositBranchId of ["", null, undefined])
+      expect(
+        errorsOf(restorationSchema, { ...restoration, depositBranchId }),
+      ).toEqual({ depositBranchId: DEPOSIT_BRANCH_ERROR });
+    expect(
+      invalidInputMessage(
+        restorationSchema.safeParse({ ...restoration, depositBranchId: "" })
+          .error!,
+      ),
+    ).toBe(`${DEPOSIT_BRANCH_ERROR}.`);
+    // Sin adelanto no se pide; en otros tipos se descarta.
+    expect(
+      restorationSchema.parse({
+        ...restoration,
+        depositAmount: "",
+        depositBranchId: "",
+      }).depositBranchId,
+    ).toBeNull();
+    expect(
+      restorationSchema.parse({ ...restoration, paymentType: "contado" })
+        .depositBranchId,
+    ).toBeNull();
+  });
+
   it("sin adelanto (vacío o 0) no pide método; en otros tipos se descarta", () => {
     for (const depositAmount of ["", "0"])
       expect(
@@ -541,13 +570,19 @@ describe("copyRestorationSchema (P49)", () => {
     }
   });
 
-  it("con adelanto también exige su método", () => {
+  it("con adelanto también exige su método y su sucursal", () => {
     expect(
       errorsOf(copyRestorationSchema, {
         ...copy({ initialStatus: "aprobada" }),
         depositMethodId: "",
       }),
     ).toEqual({ depositMethodId: DEPOSIT_METHOD_ERROR });
+    expect(
+      errorsOf(copyRestorationSchema, {
+        ...copy({ initialStatus: "aprobada" }),
+        depositBranchId: "",
+      }),
+    ).toEqual({ depositBranchId: DEPOSIT_BRANCH_ERROR });
   });
 
   it("el registro en oficina no pide estado inicial", () => {

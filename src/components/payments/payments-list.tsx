@@ -94,6 +94,11 @@ export function PaymentsList({ payments }: { payments: PaymentRecord[] }) {
             <TableCell>{formatDate(`${p.paidOn}T12:00:00`)}</TableCell>
             <TableCell>
               {p.methodName}
+              {p.branchName ? (
+                <span className="text-muted-foreground block text-xs">
+                  {p.branchName}
+                </span>
+              ) : null}
               {p.kind === "reembolso" ? (
                 <>
                   {" "}

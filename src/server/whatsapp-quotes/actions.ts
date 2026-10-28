@@ -171,8 +171,16 @@ export async function createRestorationFromQuote(
   if (error) return fail(error, "No se pudo crear la restauración.");
   // El adelanto se registra como pago antes de que se procese la orden (la incluye).
   const recorded =
-    v.depositAmount !== null && v.depositAmount > 0 && v.depositMethodId
-      ? await recordInitialDeposit(supabase, data.id, v.depositMethodId)
+    v.depositAmount !== null &&
+    v.depositAmount > 0 &&
+    v.depositMethodId &&
+    v.depositBranchId
+      ? await recordInitialDeposit(
+          supabase,
+          data.id,
+          v.depositMethodId,
+          v.depositBranchId,
+        )
       : true;
   // Las fotos de la cotización pasan a la guía (la cotización conserva las suyas).
   const notCopied = await copyQuoteFilesToRestoration(
