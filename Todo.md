@@ -1306,11 +1306,13 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `perf: optimiza consultas e índices`
 
 #### Paso 15.4 — Manejo de errores y monitoreo ⛔ P06
-- [ ] Páginas de error amigables (`error.tsx`, `not-found.tsx`), logs estructurados en servidor, monitoreo de errores, alerta si hay jobs de Shopify en error.
+- [x] Páginas de error amigables (`error.tsx`, `not-found.tsx`), logs estructurados en servidor, monitoreo de errores, alerta si hay jobs de Shopify en error.
 - **Unit:**
-  - [ ] El logger no expone secretos ni datos sensibles.
+  - [x] El logger no expone secretos ni datos sensibles (`logger.test.ts`).
+  - [x] `onRequestError` (`instrumentation.test.ts`), `ErrorScreen`, el aviso de errores de Shopify y su dominio, y el log del outbox (`processor.test.ts`).
 - **E2E:**
-  - [ ] Una ruta inexistente muestra la página 404 amigable.
+  - [x] Una ruta inexistente muestra la página 404 amigable (`errors.spec.ts`).
+- Hecho (2026-10-29): `src/lib/logger.ts` escribe una línea JSON por evento (`level`, `time`, `msg` y contexto) y oculta campos con nombre sensible (contraseñas, tokens, claves, cookies, email, teléfono, documento, dirección) y valores con forma de JWT, clave de Supabase, token de Shopify, `Bearer` o email aunque vengan dentro de un mensaje; serializa errores (código, digest, causa y las primeras líneas de la pila) y corta ciclos. Reemplaza a los `console.error` del servidor. **Monitoreo:** `onRequestError` en `src/instrumentation.ts` registra todo error que Next captura en páginas, route handlers, server actions y proxy, con el `digest` que la pantalla de error le muestra al usuario (sin cabeceras ni query string). **P06 sigue pendiente:** sin Sentry por ahora, los errores quedan en los logs de Vercel; si se adopta, se envían desde ese mismo `onRequestError`. Páginas de error: `ErrorScreen` compartido por `(app)/error.tsx`, `app/error.tsx` (fuera del menú, p. ej. el login) y `global-error.tsx` (errores del layout raíz, con su propio `<html>` y estilos). **Jobs de Shopify en error:** el outbox registra en los logs cada job que queda en error, y el admin ve en todas las páginas un aviso con cuántas sincronizaciones siguen en error (un error deja de contar si después se completó otro job del mismo tipo para el mismo registro) y enlaces al registro, donde está «Reintentar» (`src/server/shopify-sync/errors.ts`, `src/domain/shopify-sync-errors.ts`).
 - Commit: `feat(observabilidad): agrega manejo de errores y monitoreo`
 
 ### Fase 16 — Producción

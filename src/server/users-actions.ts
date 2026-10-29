@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -53,7 +54,7 @@ export async function createUser(
     app_metadata: { role: parsed.data.role },
   });
   if (error) {
-    console.error("No se pudo crear el usuario", {
+    logger.error("No se pudo crear el usuario", {
       code: error.code,
       status: error.status,
       message: error.message,
@@ -142,7 +143,7 @@ export async function deleteUser(userId: string): Promise<UserActionResult> {
   const admin = createAdminClient();
   const { error: authError } = await admin.auth.admin.deleteUser(userId);
   if (authError) {
-    console.error("No se pudo borrar el usuario de Auth", {
+    logger.error("No se pudo borrar el usuario de Auth", {
       code: authError.code,
       status: authError.status,
       message: authError.message,

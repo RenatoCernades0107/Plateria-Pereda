@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 
 import { serverEnv } from "@/lib/env.server";
+import { logger } from "@/lib/logger";
 import { readBodyWithLimit } from "@/server/shopify-webhooks/body";
 import {
   expectedShopDomain,
@@ -49,7 +50,10 @@ export async function POST(request: NextRequest) {
           shopifyWebhookHandlers,
         );
       } catch (error) {
-        console.error("No se pudo procesar el webhook de Shopify", error);
+        logger.error("No se pudo procesar el webhook de Shopify", {
+          error,
+          eventId,
+        });
       }
     });
   }
