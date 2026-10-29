@@ -1,4 +1,4 @@
--- Paso 15.1: permisos mínimos (la matriz completa está en tests/60_matriz_permisos).
+-- Paso 15.1: permisos mínimos (la matriz completa está en tests/61_matriz_permisos).
 --
 -- `profiles` conservaba los privilegios que Supabase da por defecto a toda tabla nueva:
 -- anon y authenticated podían hacer TRUNCATE (que no pasa por RLS), INSERT y editar
