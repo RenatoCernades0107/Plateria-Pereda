@@ -12,10 +12,13 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/server/auth", () => ({
-  requireUser: async () => ({ id: "u-1", role: "logistica" }),
+  requireUser: async () => ({
+    id: "00000000-0000-4000-8000-000000000018",
+    role: "logistica",
+  }),
   requirePermission: async () => {
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "admin-1", role: "admin" };
+    return { id: "00000000-0000-4000-8000-000000000020", role: "admin" };
   },
 }));
 vi.mock("@/server/alerts", () => ({
@@ -57,9 +60,9 @@ describe("getMyAlerts", () => {
       error: null,
       data: [
         {
-          id: "n-1",
+          id: "00000000-0000-4000-8000-000000000016",
           kind: "aprobacion_parcial",
-          restoration_id: "r-1",
+          restoration_id: "00000000-0000-4000-8000-000000000017",
           restoration_code: "RES-00001",
           client_name: null,
           actor_name: "Vera",
@@ -81,11 +84,11 @@ describe("getMyAlerts", () => {
       unread: 4,
       alerts: [
         {
-          id: "n-1",
+          id: "00000000-0000-4000-8000-000000000016",
           kind: "aprobacion_parcial",
           title: "RES-00001 · Guía parcialmente aprobada",
           body: "1/3 en RES-00001",
-          href: "/restauraciones/r-1",
+          href: "/restauraciones/00000000-0000-4000-8000-000000000017",
           createdAt: "2026-10-21T10:00:00Z",
           read: false,
         },
@@ -107,11 +110,13 @@ describe("markAlertsRead", () => {
   );
 
   it("marca las indicadas del usuario", async () => {
-    expect(await markAlertsRead(["n-1"])).toEqual({ ok: true });
+    expect(
+      await markAlertsRead(["00000000-0000-4000-8000-000000000016"]),
+    ).toEqual({ ok: true });
     expect(mocks.markQuery.mock.calls[0]![0]).toEqual(
       expect.arrayContaining([
-        ["eq", "recipient_id", "u-1"],
-        ["in", "id", ["n-1"]],
+        ["eq", "recipient_id", "00000000-0000-4000-8000-000000000018"],
+        ["in", "id", ["00000000-0000-4000-8000-000000000016"]],
       ]),
     );
   });

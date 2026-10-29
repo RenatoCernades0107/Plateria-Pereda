@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   rpcResult: { data: "q-new" as string | null, error: null as object | null },
   updateResult: {
-    data: [{ id: "q1" }] as object[] | null,
+    data: [{ id: "00000000-0000-4000-8000-000000000015" }] as object[] | null,
     error: null as object | null,
   },
   revalidate: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("@/server/auth", () => ({
   requirePermission: async (permission: string) => {
     mocks.permission = permission;
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "ventas" };
+    return { id: "00000000-0000-4000-8000-000000000007", role: "ventas" };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({

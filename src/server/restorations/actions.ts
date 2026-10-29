@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { AppRole } from "@/lib/roles";
 import type { TablesInsert } from "@/lib/supabase/database.types";
@@ -12,6 +13,7 @@ import {
   toSoles,
 } from "@/domain/money";
 import { can } from "@/domain/permissions";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   invalidInputMessage,
   pieceKeepingUrgencySchema,
@@ -102,6 +104,7 @@ export async function listClientContacts(
   clientId: string,
 ): Promise<ContactChoice[]> {
   await requirePermission("restauraciones.editar");
+  if (!validArgs([idArg], [clientId])) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
@@ -232,6 +235,8 @@ export async function updatePiece(
   input: PieceFormInput,
 ): Promise<ActionResult> {
   const user = await requirePermission("restauraciones.editar");
+  if (!validArgs([idArg, z.unknown()], [pieceId, input]))
+    return { error: INVALID_ARGS };
   const parsed = pieceColumns(input, permissionsOf(user.role));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
@@ -256,6 +261,8 @@ export async function addPiece(
   input: PieceFormInput,
 ): Promise<ActionResult> {
   const user = await requirePermission("restauraciones.editar");
+  if (!validArgs([idArg, z.unknown()], [restorationId, input]))
+    return { error: INVALID_ARGS };
   const parsed = pieceColumns(input, permissionsOf(user.role));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 

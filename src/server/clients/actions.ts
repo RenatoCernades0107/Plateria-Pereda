@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { TablesInsert } from "@/lib/supabase/database.types";
 import { createClient as createSupabase } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   clientSchema,
   contactSchema,
@@ -134,6 +136,8 @@ export async function setClientActive(
   active: boolean,
 ): Promise<ActionResult> {
   await requirePermission("clientes.editar");
+  if (!validArgs([idArg, z.boolean()], [id, active]))
+    return { error: INVALID_ARGS };
   const supabase = await createSupabase();
   const { data, error } = await supabase
     .from("clients")
@@ -209,6 +213,8 @@ export async function setContactActive(
   active: boolean,
 ): Promise<ActionResult> {
   await requirePermission("clientes.editar");
+  if (!validArgs([idArg, z.boolean()], [id, active]))
+    return { error: INVALID_ARGS };
   const supabase = await createSupabase();
   const { data, error } = await supabase
     .from("contacts")

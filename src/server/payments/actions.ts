@@ -7,6 +7,13 @@ import { MAX_CENTS, toDecimalString } from "@/domain/money";
 import { isChargedKind } from "@/domain/restoration-status";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  INVALID_ARGS,
+  idsArg,
+  optionalIdArg,
+  optionalTextArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { checkRequirements } from "@/server/restorations/requirements";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
@@ -207,6 +214,13 @@ export async function deliverWithBalance(
   note: string | null,
 ): Promise<PaymentActionResult> {
   await requirePermission("pagos.registrar");
+  if (
+    !validArgs(
+      [optionalIdArg, idsArg, optionalTextArg],
+      [restorationId, pieceIds, note],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
   const missing = await checkRequirements(supabase, "entregada", pieceIds);

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idsArg, validArgs } from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,6 +18,7 @@ export async function getProviderReportData(
   { notes: Record<string, string>; generatedBy: string } | { error: string }
 > {
   const user = await requirePermission("restauraciones.ver");
+  if (!validArgs([idsArg], [pieceIds])) return { error: INVALID_ARGS };
   const ids = [...new Set(pieceIds)];
   if (
     ids.length === 0 ||

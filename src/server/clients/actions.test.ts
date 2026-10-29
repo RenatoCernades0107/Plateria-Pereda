@@ -7,11 +7,19 @@ const mocks = vi.hoisted(() => ({
   eq: vi.fn(),
   table: "",
   result: {
-    data: { id: "c1", display_name: "Ana Pérez" },
+    data: {
+      id: "00000000-0000-4000-8000-000000000009",
+      display_name: "Ana Pérez",
+    },
     error: null as { code: string } | null,
   },
   updateResult: {
-    data: [{ id: "c1", client_id: "c2" }] as object[] | null,
+    data: [
+      {
+        id: "00000000-0000-4000-8000-000000000009",
+        client_id: "00000000-0000-4000-8000-000000000010",
+      },
+    ] as object[] | null,
     error: null as { code: string } | null,
   },
   schedule: vi.fn(),
@@ -21,7 +29,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/auth", () => ({
   requirePermission: async () => {
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "ventas" };
+    return { id: "00000000-0000-4000-8000-000000000007", role: "ventas" };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -79,7 +87,10 @@ describe("createClient", () => {
     mocks.insert.mockReset();
     mocks.schedule.mockReset();
     mocks.result = {
-      data: { id: "c1", display_name: "Ana Pérez" },
+      data: {
+        id: "00000000-0000-4000-8000-000000000009",
+        display_name: "Ana Pérez",
+      },
       error: null,
     };
   });
@@ -87,7 +98,7 @@ describe("createClient", () => {
   it("registra la persona normalizada y programa la sincronización", async () => {
     expect(await createClient(person)).toEqual({
       ok: true,
-      id: "c1",
+      id: "00000000-0000-4000-8000-000000000009",
       displayName: "Ana Pérez",
       kind: "persona",
     });
@@ -172,60 +183,95 @@ describe("edición de clientes y contactos", () => {
     ])
       fn.mockReset();
     mocks.result = {
-      data: { id: "k1", display_name: "Luis Rojas" },
+      data: {
+        id: "00000000-0000-4000-8000-000000000011",
+        display_name: "Luis Rojas",
+      },
       error: null,
     };
-    mocks.updateResult = { data: [{ id: "c1", client_id: "c2" }], error: null };
+    mocks.updateResult = {
+      data: [
+        {
+          id: "00000000-0000-4000-8000-000000000009",
+          client_id: "00000000-0000-4000-8000-000000000010",
+        },
+      ],
+      error: null,
+    };
   });
 
   it("updateClient guarda los datos sin cambiar el tipo y programa la sincronización", async () => {
-    expect(await updateClient("c1", person)).toEqual({ ok: true });
+    expect(
+      await updateClient("00000000-0000-4000-8000-000000000009", person),
+    ).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenCalledWith(
       expect.objectContaining({ first_name: "Ana", phone: "+51999888777" }),
     );
-    expect(mocks.eq).toHaveBeenCalledWith("id", "c1");
+    expect(mocks.eq).toHaveBeenCalledWith(
+      "id",
+      "00000000-0000-4000-8000-000000000009",
+    );
     expect(mocks.eq).toHaveBeenCalledWith("kind", "persona");
     expect(mocks.schedule).toHaveBeenCalled();
-    expect(mocks.revalidate).toHaveBeenCalledWith("/clientes/c1");
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/clientes/00000000-0000-4000-8000-000000000009",
+    );
   });
 
   it("updateClient informa si no existe, si el documento se repite o si falla", async () => {
     mocks.updateResult = { data: [], error: null };
-    expect(await updateClient("c1", person)).toEqual({
+    expect(
+      await updateClient("00000000-0000-4000-8000-000000000009", person),
+    ).toEqual({
       error: "El cliente no existe.",
     });
     mocks.updateResult = { data: null, error: { code: "23505" } };
-    expect(await updateClient("c1", person)).toEqual({
+    expect(
+      await updateClient("00000000-0000-4000-8000-000000000009", person),
+    ).toEqual({
       error: "Ya existe un cliente con ese documento.",
     });
     mocks.updateResult = { data: null, error: { code: "42501" } };
-    expect(await updateClient("c1", person)).toEqual({
+    expect(
+      await updateClient("00000000-0000-4000-8000-000000000009", person),
+    ).toEqual({
       error: "No se pudo guardar el cliente.",
     });
-    expect(await updateClient("c1", { ...person, firstName: "" })).toEqual({
+    expect(
+      await updateClient("00000000-0000-4000-8000-000000000009", {
+        ...person,
+        firstName: "",
+      }),
+    ).toEqual({
       error: "Revisa los datos ingresados.",
     });
     expect(mocks.schedule).not.toHaveBeenCalled();
   });
 
   it("setClientActive cambia el estado", async () => {
-    expect(await setClientActive("c1", false)).toEqual({ ok: true });
+    expect(
+      await setClientActive("00000000-0000-4000-8000-000000000009", false),
+    ).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenCalledWith({ active: false });
     mocks.updateResult = { data: [], error: null };
-    expect(await setClientActive("c1", true)).toEqual({
+    expect(
+      await setClientActive("00000000-0000-4000-8000-000000000009", true),
+    ).toEqual({
       error: "No se pudo cambiar el estado del cliente.",
     });
   });
 
   it("createContact registra el contacto normalizado en la empresa", async () => {
-    expect(await createContact("c2", contact)).toEqual({
+    expect(
+      await createContact("00000000-0000-4000-8000-000000000010", contact),
+    ).toEqual({
       ok: true,
-      id: "k1",
+      id: "00000000-0000-4000-8000-000000000011",
       displayName: "Luis Rojas",
     });
     expect(mocks.table).toBe("contacts");
     expect(mocks.insert).toHaveBeenCalledWith({
-      client_id: "c2",
+      client_id: "00000000-0000-4000-8000-000000000010",
       first_name: "Luis",
       last_name: "Rojas",
       position: "Compras",
@@ -235,49 +281,83 @@ describe("edición de clientes y contactos", () => {
       email: "luis@andina.pe",
     });
     expect(mocks.schedule).toHaveBeenCalled();
-    expect(mocks.revalidate).toHaveBeenCalledWith("/clientes/c2");
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/clientes/00000000-0000-4000-8000-000000000010",
+    );
   });
 
   it("createContact traduce errores", async () => {
     mocks.result = { data: null as never, error: { code: "23505" } };
-    expect(await createContact("c2", contact)).toEqual({
+    expect(
+      await createContact("00000000-0000-4000-8000-000000000010", contact),
+    ).toEqual({
       error: "Ya existe un registro con ese documento.",
     });
     mocks.result = { data: null as never, error: { code: "23514" } };
-    expect(await createContact("c2", contact)).toEqual({
+    expect(
+      await createContact("00000000-0000-4000-8000-000000000010", contact),
+    ).toEqual({
       error: "No se pudo registrar el contacto.",
     });
-    expect(await createContact("c2", { ...contact, phone: "" })).toEqual({
+    expect(
+      await createContact("00000000-0000-4000-8000-000000000010", {
+        ...contact,
+        phone: "",
+      }),
+    ).toEqual({
       error: "Revisa los datos ingresados.",
     });
   });
 
   it("updateContact y setContactActive revalidan la empresa del contacto", async () => {
-    expect(await updateContact("k1", contact)).toEqual({ ok: true });
-    expect(mocks.revalidate).toHaveBeenCalledWith("/clientes/c2");
-    expect(await setContactActive("k1", false)).toEqual({ ok: true });
+    expect(
+      await updateContact("00000000-0000-4000-8000-000000000011", contact),
+    ).toEqual({ ok: true });
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/clientes/00000000-0000-4000-8000-000000000010",
+    );
+    expect(
+      await setContactActive("00000000-0000-4000-8000-000000000011", false),
+    ).toEqual({ ok: true });
     expect(mocks.update).toHaveBeenLastCalledWith({ active: false });
 
     mocks.updateResult = { data: [], error: null };
-    expect(await updateContact("k1", contact)).toEqual({
+    expect(
+      await updateContact("00000000-0000-4000-8000-000000000011", contact),
+    ).toEqual({
       error: "El contacto no existe.",
     });
-    expect(await setContactActive("k1", true)).toEqual({
+    expect(
+      await setContactActive("00000000-0000-4000-8000-000000000011", true),
+    ).toEqual({
       error: "No se pudo cambiar el estado del contacto.",
     });
     mocks.updateResult = { data: null, error: { code: "23505" } };
-    expect(await updateContact("k1", contact)).toEqual({
+    expect(
+      await updateContact("00000000-0000-4000-8000-000000000011", contact),
+    ).toEqual({
       error: "Ya existe un registro con ese documento.",
     });
-    expect(await updateContact("k1", { ...contact, firstName: " " })).toEqual({
+    expect(
+      await updateContact("00000000-0000-4000-8000-000000000011", {
+        ...contact,
+        firstName: " ",
+      }),
+    ).toEqual({
       error: "Revisa los datos ingresados.",
     });
   });
 
   it("exige permiso de edición", async () => {
     mocks.forbidden = true;
-    await expect(updateClient("c1", person)).rejects.toThrow("FORBIDDEN");
-    await expect(createContact("c2", contact)).rejects.toThrow("FORBIDDEN");
-    await expect(setContactActive("k1", false)).rejects.toThrow("FORBIDDEN");
+    await expect(
+      updateClient("00000000-0000-4000-8000-000000000009", person),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      createContact("00000000-0000-4000-8000-000000000010", contact),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      setContactActive("00000000-0000-4000-8000-000000000011", false),
+    ).rejects.toThrow("FORBIDDEN");
   });
 });

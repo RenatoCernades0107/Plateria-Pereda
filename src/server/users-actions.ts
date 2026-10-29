@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { AppRole } from "@/lib/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   newUserSchema,
   roleSchema,
@@ -88,6 +90,8 @@ export async function setUserActive(
   active: boolean,
 ): Promise<UserActionResult> {
   const me = await requirePermission("usuarios.gestionar");
+  if (!validArgs([idArg, z.boolean()], [userId, active]))
+    return { error: INVALID_ARGS };
   if (userId === me.id) return { error: SELF_ERROR };
 
   const supabase = await createClient();
@@ -110,6 +114,7 @@ export async function setUserActive(
  */
 export async function deleteUser(userId: string): Promise<UserActionResult> {
   const me = await requirePermission("usuarios.gestionar");
+  if (!validArgs([idArg], [userId])) return { error: INVALID_ARGS };
   if (userId === me.id) {
     return {
       error: "No puedes eliminarte a ti mismo: pídeselo a otro administrador.",

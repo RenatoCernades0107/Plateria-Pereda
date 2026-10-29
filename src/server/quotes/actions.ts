@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { QUOTE_STATUSES, type QuoteStatus } from "@/domain/quote";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   quoteRpcArgs,
   quoteSchema,
@@ -63,6 +65,8 @@ export async function changeQuoteStatus(
   status: QuoteStatus,
 ): Promise<QuoteActionResult> {
   await requirePermission("cotizador.usar");
+  if (!validArgs([idArg, z.string()], [id, status]))
+    return { error: INVALID_ARGS };
   if (!UUID.test(id) || !QUOTE_STATUSES.includes(status)) {
     return { error: "No se pudo cambiar el estado." };
   }
@@ -83,6 +87,7 @@ export async function changeQuoteStatus(
 /** Copia la cotización como un borrador nuevo. */
 export async function duplicateQuote(id: string): Promise<SaveQuoteResult> {
   await requirePermission("cotizador.usar");
+  if (!validArgs([idArg], [id])) return { error: INVALID_ARGS };
   if (!UUID.test(id)) return { error: "La cotización no existe." };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("duplicate_quote", { p_id: id });

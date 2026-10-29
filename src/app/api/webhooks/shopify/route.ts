@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 
 import { serverEnv } from "@/lib/env.server";
+import { readBodyWithLimit } from "@/server/shopify-webhooks/body";
 import {
   expectedShopDomain,
   webhookSecret,
@@ -13,13 +14,20 @@ import { supabaseWebhookStore } from "@/server/shopify-webhooks/store";
 /**
  * Webhooks de Shopify: verifica la firma con el body crudo, guarda el evento una sola
  * vez y responde 200 enseguida (Shopify reintenta si tarda más de 5 s). El evento se
- * procesa después de responder.
+ * procesa después de responder. Un cuerpo de más de 1 MB se rechaza sin leerlo entero.
  */
 export async function POST(request: NextRequest) {
+  const rawBody = await readBodyWithLimit(request);
+  if (rawBody === null) {
+    return NextResponse.json(
+      { error: "Cuerpo demasiado grande" },
+      { status: 413 },
+    );
+  }
   const env = serverEnv();
   const result = await receiveWebhook({
     headers: request.headers,
-    rawBody: await request.text(),
+    rawBody,
     secret: webhookSecret(env),
     shopDomain: expectedShopDomain(env),
     store: supabaseWebhookStore,

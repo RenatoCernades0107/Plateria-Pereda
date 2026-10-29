@@ -1280,12 +1280,16 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 ### Fase 15 — Calidad transversal
 
 #### Paso 15.1 — Seguridad
-- [ ] Suite pgTAP con la matriz completa: cada tabla × operación × rol.
-- [ ] La clave secreta solo se usa en servidor (`server-only`); cabeceras de seguridad (CSP, etc.); límite de tamaño en webhooks; validación zod en todas las actions; `supabase db lint` y advisors de seguridad sin alertas.
+- [x] Suite pgTAP con la matriz completa: cada tabla × operación × rol.
+- [x] La clave secreta solo se usa en servidor (`server-only`); cabeceras de seguridad (CSP, etc.); límite de tamaño en webhooks; validación zod en todas las actions; `supabase db lint` y advisors de seguridad sin alertas.
+- **Unit:**
+  - [x] `server-only.test.ts`: los módulos con secretos importan `server-only`, `process.env` solo se lee en `env.ts`/`env.server.ts`/`instrumentation.ts` y ningún componente de cliente importa código del servidor que no sea una server action.
+  - [x] `security-headers.test.ts`, `body.test.ts` (webhooks), `action-args.test.ts` y ids inválidos en `status-actions.test.ts`.
 - **BD:**
-  - [ ] Matriz completa de permisos.
+  - [x] Matriz completa de permisos (`60_matriz_permisos`, 518 pruebas).
 - **E2E:**
-  - [ ] Cada rol intenta entrar por URL a los módulos prohibidos → 403.
+  - [x] Cada rol intenta entrar por URL a los módulos prohibidos → 403 (`security.spec.ts`, derivado de `can()`); exportaciones CSV 403 para logística; cabeceras de seguridad.
+- Hecho (2026-10-29): `60_matriz_permisos` evalúa, como cada rol (anónimo, admin, ventas, logística), los privilegios y las políticas de RLS de cada tabla y vista de `public` más `storage.objects`/`storage.buckets` sobre filas conocidas, y la compara con una matriz escrita a mano (`si` / `filas` / `no`); una tabla nueva hace fallar el test hasta agregarla. También exige RLS en todas las tablas, ningún TRUNCATE/REFERENCES/TRIGGER para los usuarios, nada para anónimos y los esquemas `private` y `audit` cerrados. **Hallazgo corregido** (migración `20261029120000_endurece_permisos.sql`): `profiles` conservaba los privilegios por defecto de Supabase (anon y authenticated con TRUNCATE, que no pasa por RLS, INSERT y UPDATE de todas las columnas): ahora solo SELECT, DELETE y UPDATE de nombre, rol y estado; las secuencias ya no se dan a anon y los privilegios por defecto de lo que se cree en `public` ya no incluyen a anon. Cabeceras en `next.config.ts` (`src/lib/security-headers.ts`): CSP sin nonce (la guía "Without Nonces" de Next; un nonce obligaría a renderizar todo dinámico) con Supabase, su Realtime y el CDN de Shopify, `frame-ancestors 'none'`, HSTS, nosniff, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`. El webhook de Shopify rechaza con 413 un cuerpo de más de 1 MB sin leerlo entero. Las server actions sin formulario validan sus argumentos con `validArgs` (`src/lib/validation/action-args.ts`: ids `z.guid()`, listas ≤ 1000, textos ≤ 5000) después del permiso. `supabase db lint --fail-on error` sin errores (quedan avisos de plpgsql_check por asignar literales de texto a arreglos, inofensivos); sin funciones con `search_path` mutable ni extensiones en `public`. **Excepción aceptada del advisor** `security_definer_view`: `pieces_operational` y `restorations_operational` son vistas del dueño a propósito (filtran por rol en su WHERE para que logística vea lo operativo sin montos, D24/P42).
 - Commit: `test(seguridad): agrega matriz completa de permisos`
 
 #### Paso 15.2 — Accesibilidad y responsive

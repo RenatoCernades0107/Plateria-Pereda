@@ -121,7 +121,12 @@ select ok(not private.has_role('{ventas}'), 'un usuario desactivado no pasa has_
 -- Anónimo
 reset role;
 set local role anon;
-select is((select count(*)::int from public.profiles), 0, 'un anónimo no lee perfiles');
+select throws_ok(
+  $$ select count(*) from public.profiles $$,
+  '42501',
+  null,
+  'un anónimo no lee perfiles'
+);
 select throws_ok(
   $$ select private.has_role('{admin}') $$,
   '42501',

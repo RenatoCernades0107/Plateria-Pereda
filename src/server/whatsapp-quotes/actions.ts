@@ -6,6 +6,12 @@ import { toSoles } from "@/domain/money";
 import { can } from "@/domain/permissions";
 import { createClient } from "@/lib/supabase/server";
 import {
+  INVALID_ARGS,
+  idArg,
+  textArg,
+  validArgs,
+} from "@/lib/validation/action-args";
+import {
   copyRestorationSchema,
   invalidInputMessage,
   whatsappQuoteSchema,
@@ -113,6 +119,8 @@ export async function discardWhatsappQuote(
   reason: string,
 ): Promise<QuoteActionResult> {
   await requirePermission("cotizaciones-whatsapp.usar");
+  if (!validArgs([idArg, textArg], [id, reason]))
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase.rpc("discard_whatsapp_quote", {
     p_id: id,
@@ -127,6 +135,7 @@ export async function reopenWhatsappQuote(
   id: string,
 ): Promise<QuoteActionResult> {
   await requirePermission("cotizaciones-whatsapp.usar");
+  if (!validArgs([idArg], [id])) return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase.rpc("reopen_whatsapp_quote", { p_id: id });
   if (error) return fail(error, "No se pudo reabrir la cotización.");
