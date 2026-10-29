@@ -44,6 +44,15 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("listQuotes", () => {
+  it("con un límite (ficha del cliente) pide solo esa cantidad", async () => {
+    const page = await listQuotes(
+      parseQuoteFilters({ cliente: "33333333-3333-4333-8333-333333333333" }),
+      { limit: 10 },
+    );
+    expect(mocks.calls.find(([m]) => m === "range")).toEqual(["range", 0, 9]);
+    expect(page.pages).toBe(3);
+  });
+
   it("vencida = emitida con la vigencia antes de hoy en Lima", async () => {
     await listQuotes(parseQuoteFilters({ estado: "vencida" }));
     expect(filterCalls()).toEqual([
