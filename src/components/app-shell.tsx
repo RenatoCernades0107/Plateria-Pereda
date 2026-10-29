@@ -216,12 +216,25 @@ export function AppShell({
 }) {
   return (
     <SidebarProvider>
+      {/* Con el teclado, el primer Tab ofrece saltar el menú (WCAG 2.4.1). */}
+      <a
+        href="#contenido"
+        className="bg-background focus-visible:ring-ring sr-only z-50 rounded-md px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus-visible:ring-2"
+      >
+        Saltar al contenido
+      </a>
       <BreadcrumbProvider>
         <AppNav role={user.role} />
         {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
         <SidebarInset className="min-w-0">
           <AppHeader user={user} />
-          <div className="flex-1 p-4 md:p-6">{children}</div>
+          <div
+            id="contenido"
+            tabIndex={-1}
+            className="flex-1 p-4 outline-none md:p-6"
+          >
+            {children}
+          </div>
         </SidebarInset>
       </BreadcrumbProvider>
     </SidebarProvider>

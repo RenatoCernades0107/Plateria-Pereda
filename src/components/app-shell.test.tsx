@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { NAV_ITEMS } from "@/lib/navigation";
@@ -100,6 +101,17 @@ describe("AppShell", () => {
   it("muestra el contenido de la página", () => {
     render(<AppShell user={user}>contenido de prueba</AppShell>);
     expect(screen.getByRole("main")).toHaveTextContent("contenido de prueba");
+  });
+
+  it("el primer Tab ofrece saltar el menú hasta el contenido", async () => {
+    render(<AppShell user={user}>contenido de prueba</AppShell>);
+    await userEvent.tab();
+    const skip = screen.getByRole("link", { name: "Saltar al contenido" });
+    expect(skip).toHaveFocus();
+    expect(skip).toHaveAttribute("href", "#contenido");
+    expect(document.getElementById("contenido")).toHaveTextContent(
+      "contenido de prueba",
+    );
   });
 
   it("muestra el nombre y el rol del usuario conectado", () => {
