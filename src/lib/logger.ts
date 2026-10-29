@@ -24,7 +24,8 @@ const SENSITIVE_VALUES: [RegExp, string][] = [
   // Claves de Supabase y tokens de Shopify.
   [/\b(sb_secret|sb_publishable|shpat|shpca|shpss)_[\w-]+/g, REDACTED],
   [/\bBearer\s+[\w.~+/-]+=*/gi, `Bearer ${REDACTED}`],
-  [/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, REDACTED],
+  // El dominio termina en letras: no confunde rutas como `react@19.2.8`.
+  [/[\w.+-]+@[\w-]+(\.[\w-]+)*\.[a-z]{2,}\b/gi, REDACTED],
 ];
 
 function scrub(text: string): string {

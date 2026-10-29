@@ -14,8 +14,9 @@ const SHOWN = 5;
 export type SyncErrorSummary = { total: number; links: SyncErrorLink[] };
 
 /**
- * Sincronizaciones con Shopify en error que siguen vigentes, para el aviso del admin
- * (solo el admin lee el outbox: con otro rol la consulta no trae filas).
+ * Sincronizaciones con Shopify en error que siguen vigentes (sin un job posterior
+ * completado y de registros que aún existen), para el aviso del admin. Solo el admin
+ * lee el outbox: con otro rol la consulta no trae filas.
  */
 export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
   const supabase = await createClient();
@@ -45,9 +46,8 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
       createdAt: j.created_at,
     })),
   );
-  const shown = open.slice(0, SHOWN);
   const idsOf = (table: string) =>
-    shown.filter((j) => j.entityTable === table).map((j) => j.entityId);
+    open.filter((j) => j.entityTable === table).map((j) => j.entityId);
 
   const [restorations, clients, contacts] = await Promise.all([
     supabase
@@ -64,17 +64,24 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
       .in("id", idsOf("contacts")),
   ]);
   const names = new Map<string, string>();
-  for (const r of restorations.data ?? []) names.set(r.id, r.code);
-  for (const c of clients.data ?? [])
+  const existing = new Set<string>();
+  for (const r of restorations.data ?? []) {
+    existing.add(r.id);
+    names.set(r.id, r.code);
+  }
+  for (const c of [...(clients.data ?? []), ...(contacts.data ?? [])]) {
+    existing.add(c.id);
     if (c.display_name) names.set(c.id, c.display_name);
-  for (const c of contacts.data ?? [])
-    if (c.display_name) names.set(c.id, c.display_name);
+  }
   const clientOf = new Map(
     (contacts.data ?? []).map((c) => [c.id, c.client_id] as const),
   );
+  // El job de un registro que ya se borró no se puede ni hace falta reintentar.
+  const live = open.filter((job) => existing.has(job.entityId));
+  const shown = live.slice(0, SHOWN);
 
   return {
-    total: open.length,
+    total: live.length,
     links: shown.map((job) => syncErrorLink(job, names, clientOf)),
   };
 }

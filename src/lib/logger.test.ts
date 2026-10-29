@@ -117,3 +117,14 @@ describe("logger", () => {
     });
   });
 });
+
+describe("emails y versiones", () => {
+  it("no confunde una ruta de paquete con un email", () => {
+    expect(sanitize("node_modules/next@16.3.8_react@19.2.8/x")).toBe(
+      "node_modules/next@16.3.8_react@19.2.8/x",
+    );
+    expect(sanitize("escribe a ana.diaz@pereda.com.pe")).toBe(
+      "escribe a [oculto]",
+    );
+  });
+});

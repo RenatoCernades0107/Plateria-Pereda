@@ -45,7 +45,8 @@ export function ClientWorkTabs({
   const quoteFilters = { ...parseWhatsappQuoteFilters({}), clientId };
   return (
     <Tabs defaultValue="restauraciones">
-      <TabsList>
+      {/* En el celular las dos pestañas no caben: se desplazan sin ensanchar la página. */}
+      <TabsList className="max-w-full justify-start overflow-x-auto">
         <TabsTrigger value="restauraciones">
           Restauraciones ({restorationsTotal})
         </TabsTrigger>

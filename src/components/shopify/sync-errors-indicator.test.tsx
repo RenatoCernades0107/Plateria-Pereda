@@ -1,17 +1,18 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { SyncErrorsBanner } from "./sync-errors-banner";
+import { SyncErrorsIndicator, syncErrorsLabel } from "./sync-errors-indicator";
 
-describe("SyncErrorsBanner", () => {
+describe("SyncErrorsIndicator", () => {
   it("no muestra nada sin errores", () => {
-    const { container } = render(<SyncErrorsBanner total={0} links={[]} />);
+    const { container } = render(<SyncErrorsIndicator total={0} links={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("cuenta los errores y enlaza a cada registro", () => {
+  it("cuenta los errores y al abrirlo enlaza a cada registro", async () => {
     render(
-      <SyncErrorsBanner
+      <SyncErrorsIndicator
         total={7}
         links={[
           {
@@ -23,11 +24,11 @@ describe("SyncErrorsBanner", () => {
         ]}
       />,
     );
-    expect(
-      screen.getByRole("region", {
-        name: "7 sincronizaciones con Shopify quedaron en error",
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "7 sincronizaciones con Shopify en error",
       }),
-    ).toBeInTheDocument();
+    );
     expect(
       screen.getByRole("link", { name: "Crear orden: RES-00001" }),
     ).toHaveAttribute("href", "/restauraciones/r1");
@@ -36,16 +37,6 @@ describe("SyncErrorsBanner", () => {
   });
 
   it("en singular con un solo error", () => {
-    render(
-      <SyncErrorsBanner
-        total={1}
-        links={[{ jobId: 1, label: "Registrar pago", href: null }]}
-      />,
-    );
-    expect(
-      screen.getByRole("heading", {
-        name: "1 sincronización con Shopify quedó en error",
-      }),
-    ).toBeInTheDocument();
+    expect(syncErrorsLabel(1)).toBe("1 sincronización con Shopify en error");
   });
 });
