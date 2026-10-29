@@ -12,6 +12,7 @@ import {
   limaDateOf,
   quoteDisplayStatus,
   type QuoteDisplayStatus,
+  type QuotePaymentCondition,
   type QuoteStatus,
 } from "@/domain/quote";
 import type { QuoteLineDraft } from "@/domain/quote-line";
@@ -103,6 +104,8 @@ export type QuoteDetail = {
   displayStatus: QuoteDisplayStatus;
   client: ClientOption;
   validityDays: number;
+  paymentCondition: QuotePaymentCondition;
+  deliveryDays: number;
   issueDate: string | null;
   validUntil: string | null;
   notes: string;
@@ -164,6 +167,8 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     displayStatus: quoteDisplayStatus(q.status, q.valid_until),
     client,
     validityDays: q.validity_days,
+    paymentCondition: q.payment_condition,
+    deliveryDays: q.delivery_days,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
     notes: q.notes,

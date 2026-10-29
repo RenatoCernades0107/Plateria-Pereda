@@ -6,6 +6,10 @@ import { PageHeader } from "@/components/page-header";
 import { QuoteForm } from "@/components/quotes/quote-form";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
+import {
+  DEFAULT_QUOTE_DELIVERY_DAYS,
+  DEFAULT_QUOTE_PAYMENT_CONDITION,
+} from "@/domain/quote";
 import { requirePermission } from "@/server/auth";
 import { getSettings } from "@/server/settings";
 
@@ -31,6 +35,8 @@ export default async function NuevaCotizacionPage() {
         initial={{
           client: null,
           validityDays: String(settings.quoteValidityDays),
+          paymentCondition: DEFAULT_QUOTE_PAYMENT_CONDITION,
+          deliveryDays: String(DEFAULT_QUOTE_DELIVERY_DAYS),
           notes: "",
           terms: settings.terms,
           lines: [],

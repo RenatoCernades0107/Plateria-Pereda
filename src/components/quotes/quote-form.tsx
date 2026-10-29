@@ -9,6 +9,13 @@ import { ClientPicker } from "@/components/clients/client-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/domain/client-search";
 import { formatCents } from "@/domain/money";
@@ -16,7 +23,10 @@ import {
   addDays,
   formatQuoteDate,
   limaDateOf,
+  QUOTE_PAYMENT_CONDITION_LABELS,
+  QUOTE_PAYMENT_CONDITIONS,
   quoteTotals,
+  type QuotePaymentCondition,
 } from "@/domain/quote";
 import { draftAmounts, type QuoteLineDraft } from "@/domain/quote-line";
 import {
@@ -31,6 +41,9 @@ import { QuoteLinesEditor } from "./quote-lines-editor";
 export type QuoteFormValues = {
   client: ClientOption | null;
   validityDays: string;
+  paymentCondition: QuotePaymentCondition;
+  /** Tiempo de entrega en días hábiles (texto del input). */
+  deliveryDays: string;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -45,6 +58,8 @@ function toInput(values: QuoteFormValues): QuoteFormInput {
         ? client.contactId
         : null,
     validityDays: values.validityDays,
+    paymentCondition: values.paymentCondition,
+    deliveryDays: values.deliveryDays,
     notes: values.notes,
     terms: values.terms,
     lines: values.lines,
@@ -132,7 +147,8 @@ function ClientSummary({ client }: { client: ClientOption }) {
 
 /**
  * Formulario de la cotización: cliente (o contacto de una empresa), líneas con
- * totales en vivo, vigencia, notas y condiciones. Guarda el borrador y lo emite.
+ * totales en vivo, vigencia, condición de pago, tiempo de entrega, notas y
+ * condiciones. Guarda el borrador y lo emite.
  * Si la cotización ya se emitió se muestra sin edición.
  */
 export function QuoteForm({
@@ -298,6 +314,46 @@ export function QuoteForm({
           </p>
         </div>
         <FormError id="vigencia-error" message={errors?.validityDays} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="cotizacion-condicion-pago">Condición de pago</Label>
+            <Select
+              value={values.paymentCondition}
+              disabled={readOnly}
+              onValueChange={(value) =>
+                set({ paymentCondition: value as QuotePaymentCondition })
+              }
+            >
+              <SelectTrigger id="cotizacion-condicion-pago" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {QUOTE_PAYMENT_CONDITIONS.map((condition) => (
+                  <SelectItem key={condition} value={condition}>
+                    {QUOTE_PAYMENT_CONDITION_LABELS[condition]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cotizacion-entrega">
+              Tiempo de entrega (días hábiles)
+            </Label>
+            <Input
+              id="cotizacion-entrega"
+              inputMode="numeric"
+              value={values.deliveryDays}
+              disabled={readOnly}
+              aria-invalid={errors?.deliveryDays ? true : undefined}
+              aria-describedby={
+                errors?.deliveryDays ? "entrega-error" : undefined
+              }
+              onChange={(e) => set({ deliveryDays: e.target.value })}
+            />
+            <FormError id="entrega-error" message={errors?.deliveryDays} />
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="cotizacion-notas">Notas</Label>
           <Textarea
@@ -305,7 +361,7 @@ export function QuoteForm({
             value={values.notes}
             maxLength={2000}
             disabled={readOnly}
-            placeholder="Plazo de entrega, detalles para el cliente…"
+            placeholder="Detalles para el cliente…"
             onChange={(e) => set({ notes: e.target.value })}
           />
         </div>

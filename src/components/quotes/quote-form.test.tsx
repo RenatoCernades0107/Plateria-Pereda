@@ -60,6 +60,8 @@ const KEY_2 = "22222222-2222-4222-8222-222222222222";
 const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   client: ana,
   validityDays: "15",
+  paymentCondition: "contado",
+  deliveryDays: "30",
   notes: "",
   terms: "Pago al contado.",
   lines: [
@@ -121,6 +123,45 @@ describe("QuoteForm", () => {
     expect(
       screen.getByText(/Si se emite hoy, vence el \d{2}\/\d{2}\/\d{4}\./),
     ).toBeInTheDocument();
+  });
+
+  it("condición de pago y tiempo de entrega se envían al guardar", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm initial={values()} />);
+    const condicion = screen.getByLabelText("Condición de pago");
+    expect(condicion).toHaveTextContent("Al contado");
+    await user.click(condicion);
+    for (const name of ["Al contado", "Al crédito", "A cuenta"])
+      expect(screen.getByRole("option", { name })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: "Al crédito" }));
+    expect(condicion).toHaveTextContent("Al crédito");
+
+    const entrega = screen.getByLabelText("Tiempo de entrega (días hábiles)");
+    expect(entrega).toHaveValue("30");
+    await user.clear(entrega);
+    await user.type(entrega, "45");
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({
+        paymentCondition: "credito",
+        deliveryDays: "45",
+      }),
+    );
+  });
+
+  it("valida el tiempo de entrega", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm initial={values({ deliveryDays: "0" })} />);
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+    expect(
+      screen.getByLabelText("Tiempo de entrega (días hábiles)"),
+    ).toHaveAttribute("aria-invalid", "true");
+    expect(
+      screen.getByLabelText("Tiempo de entrega (días hábiles)"),
+    ).toHaveAccessibleDescription(/tiempo de entrega/i);
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 
   it("valida antes de guardar: cliente, líneas, cantidad y precio", async () => {
@@ -214,5 +255,9 @@ describe("QuoteForm", () => {
       screen.queryByRole("button", { name: "Guardar borrador" }),
     ).not.toBeInTheDocument();
     expect(within(lineGroup(1)).getByLabelText("Cantidad")).toBeDisabled();
+    expect(screen.getByLabelText("Condición de pago")).toBeDisabled();
+    expect(
+      screen.getByLabelText("Tiempo de entrega (días hábiles)"),
+    ).toBeDisabled();
   });
 });
