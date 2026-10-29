@@ -12,6 +12,7 @@ import {
   limaDateOf,
   quoteDisplayStatus,
   type QuoteDisplayStatus,
+  type QuotePaymentCondition,
   type QuoteStatus,
 } from "@/domain/quote";
 import type { QuoteLineDraft } from "@/domain/quote-line";
@@ -39,7 +40,10 @@ export type QuotesPage = {
 const limaStart = (date: string) => `${date}T00:00:00-05:00`;
 
 /** Listado con búsqueda (código o cliente), filtros y paginación. */
-export async function listQuotes(filters: QuoteFilters): Promise<QuotesPage> {
+export async function listQuotes(
+  filters: QuoteFilters,
+  { limit = QUOTES_PAGE_SIZE }: { limit?: number } = {},
+): Promise<QuotesPage> {
   const supabase = await createClient();
   const today = limaDateOf(new Date());
   let query = supabase
@@ -71,17 +75,17 @@ export async function listQuotes(filters: QuoteFilters): Promise<QuotesPage> {
     query = query.lt("created_at", limaStart(addDays(filters.to, 1)));
   }
 
-  const offset = (filters.page - 1) * QUOTES_PAGE_SIZE;
+  const offset = (filters.page - 1) * limit;
   const { data, count, error } = await query
     .order("created_at", { ascending: false })
     .order("number", { ascending: false })
-    .range(offset, offset + QUOTES_PAGE_SIZE - 1);
+    .range(offset, offset + limit - 1);
   if (error) throw error;
 
   const total = count ?? 0;
   return {
     total,
-    pages: Math.max(1, Math.ceil(total / QUOTES_PAGE_SIZE)),
+    pages: Math.max(1, Math.ceil(total / limit)),
     quotes: data.map((q) => ({
       id: q.id,
       code: q.code ?? "",
@@ -103,6 +107,8 @@ export type QuoteDetail = {
   displayStatus: QuoteDisplayStatus;
   client: ClientOption;
   validityDays: number;
+  paymentCondition: QuotePaymentCondition;
+  deliveryDays: number;
   issueDate: string | null;
   validUntil: string | null;
   notes: string;
@@ -164,6 +170,8 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     displayStatus: quoteDisplayStatus(q.status, q.valid_until),
     client,
     validityDays: q.validity_days,
+    paymentCondition: q.payment_condition,
+    deliveryDays: q.delivery_days,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
     notes: q.notes,

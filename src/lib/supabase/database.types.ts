@@ -887,6 +887,7 @@ export type Database = {
           contact_phone: string | null;
           created_at: string;
           created_by: string | null;
+          delivery_days: number;
           discount_total: number;
           duplicated_from: string | null;
           id: string;
@@ -894,6 +895,7 @@ export type Database = {
           issued_at: string | null;
           notes: string;
           number: number;
+          payment_condition: Database["public"]["Enums"]["quote_payment_condition"];
           status: Database["public"]["Enums"]["quote_status"];
           subtotal: number;
           terms: string;
@@ -919,6 +921,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
@@ -926,6 +929,7 @@ export type Database = {
           issued_at?: string | null;
           notes?: string;
           number?: never;
+          payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           terms?: string;
@@ -950,6 +954,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
@@ -957,6 +962,7 @@ export type Database = {
           issued_at?: string | null;
           notes?: string;
           number?: never;
+          payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           terms?: string;
@@ -2539,6 +2545,7 @@ export type Database = {
         | "rechazada"
         | "sin_arreglo"
         | "anulada";
+      quote_payment_condition: "contado" | "credito" | "a_cuenta";
       quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
       restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
@@ -2727,6 +2734,7 @@ export const Constants = {
         "sin_arreglo",
         "anulada",
       ],
+      quote_payment_condition: ["contado", "credito", "a_cuenta"],
       quote_status: ["borrador", "emitida", "aceptada", "rechazada"],
       restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],

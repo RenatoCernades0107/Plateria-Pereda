@@ -3,9 +3,11 @@ import { formatCents } from "./money";
 import {
   formatQuoteDateLong,
   lineTotal,
+  QUOTE_PAYMENT_CONDITION_LABELS,
   quoteTotals,
   quoteValidUntil,
   type QuoteLineAmounts,
+  type QuotePaymentCondition,
 } from "./quote";
 import { draftAmounts, type QuoteLineDraft } from "./quote-line";
 
@@ -15,6 +17,9 @@ import { draftAmounts, type QuoteLineDraft } from "./quote-line";
  * tabla de productos, totales, monto en letras ("Son:") y condiciones. El contenido
  * se arma aquí; el dibujo con jsPDF está en `components/quotes/quote-pdf-draw.ts`.
  */
+
+/** Dirección que se usa si la configuración no tiene una (logo y ciudad de la fecha). */
+export const DEFAULT_COMPANY_ADDRESS = "Calle Coronel Inclán 928, Miraflores";
 
 export type QuotePdfCompany = {
   name: string;
@@ -34,11 +39,15 @@ export type QuotePdfData = {
   /** Fecha de emisión en Lima; si aún es borrador, la de hoy (vista previa). */
   issueDate: string;
   validityDays: number;
+  /** Forma de pago, fila "Condición:" bajo "Son:". */
+  paymentCondition: QuotePaymentCondition;
+  /** Tiempo de entrega en días hábiles desde la aprobación. */
+  deliveryDays: number;
   clientName: string;
   /** Nombre del contacto; igual al del cliente cuando no se cotiza a un contacto. */
   contactName: string;
   lines: QuotePdfLine[];
-  /** Plazo de entrega u otro detalle para el cliente (campo "Notas"). */
+  /** Detalles para el cliente (campo "Notas"). */
   notes: string;
   /** Forma de pago, cuentas bancarias, etc. (campo "Condiciones"). */
   terms: string;
@@ -84,6 +93,7 @@ export type QuotePdfModel = {
   /** "Miraflores, 17 de agosto de 2026". */
   dateLine: string;
   companyName: string;
+  /** Va debajo del logo; `DEFAULT_COMPANY_ADDRESS` si la configuración está vacía. */
   companyAddress: string;
   clientName: string;
   contactName: string;
@@ -96,6 +106,10 @@ export type QuotePdfModel = {
   amountInWords: string;
   /** "Los precios... tienen una validez de {validityDays} días". */
   validityText: string;
+  /** "Al contado", "Al crédito" o "A cuenta". */
+  paymentConditionText: string;
+  /** "30 días hábiles desde su aprobación". */
+  deliveryText: string;
   notes: string;
   terms: string;
   /** Nombre bajo "Atentamente,"; vacío si la empresa no tiene razón social. */
@@ -112,13 +126,14 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     total: formatCents(lineTotal(line)),
   }));
   const validUntil = quoteValidUntil(data.issueDate, data.validityDays);
+  const address = data.company.address.trim() || DEFAULT_COMPANY_ADDRESS;
 
   return {
     title: "COTIZACIÓN",
     code: data.code,
-    dateLine: `${cityFromAddress(data.company.address)}, ${formatQuoteDateLong(data.issueDate)}`,
+    dateLine: `${cityFromAddress(address)}, ${formatQuoteDateLong(data.issueDate)}`,
     companyName: data.company.name,
-    companyAddress: data.company.address,
+    companyAddress: address,
     clientName: data.clientName,
     contactName: data.contactName,
     rows,
@@ -127,6 +142,11 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     total: formatCents(totals.total),
     amountInWords: amountInWords(totals.total),
     validityText: `Los precios que figuran en el presente documento tienen una validez de ${data.validityDays} día${data.validityDays === 1 ? "" : "s"}, hasta el ${formatQuoteDateLong(validUntil)}.`,
+    paymentConditionText: QUOTE_PAYMENT_CONDITION_LABELS[data.paymentCondition],
+    deliveryText:
+      data.deliveryDays === 1
+        ? "1 día hábil desde su aprobación"
+        : `${data.deliveryDays} días hábiles desde su aprobación`,
     notes: data.notes.trim(),
     terms: data.terms.trim(),
     signer: data.company.name.trim(),

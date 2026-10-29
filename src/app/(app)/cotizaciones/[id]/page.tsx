@@ -54,6 +54,8 @@ export default async function CotizacionPage({
     code: quote.code,
     issueDate: quote.issueDate ?? limaDateOf(new Date()),
     validityDays: quote.validityDays,
+    paymentCondition: quote.paymentCondition,
+    deliveryDays: quote.deliveryDays,
     clientName,
     contactName: client.name,
     lines: quote.lines.map(quotePdfLineFromDraft),
@@ -113,6 +115,8 @@ export default async function CotizacionPage({
         initial={{
           client: quote.client,
           validityDays: String(quote.validityDays),
+          paymentCondition: quote.paymentCondition,
+          deliveryDays: String(quote.deliveryDays),
           notes: quote.notes,
           terms: quote.terms,
           lines: quote.lines,

@@ -41,6 +41,8 @@ const input = (patch: Partial<QuoteFormInput> = {}): QuoteFormInput => ({
   clientId: CLIENT,
   contactId: null,
   validityDays: "15",
+  paymentCondition: "contado",
+  deliveryDays: "30",
   notes: "",
   terms: "",
   lines: [anillo, libre],
@@ -51,6 +53,8 @@ describe("quoteSchema", () => {
   it("acepta una cotización válida y convierte los montos a céntimos", () => {
     const parsed = quoteSchema.parse(input());
     expect(parsed.validityDays).toBe(15);
+    expect(parsed.paymentCondition).toBe("contado");
+    expect(parsed.deliveryDays).toBe(30);
     expect(parsed.lines[0]).toMatchObject({
       id: KEY_1,
       customization: "Grabado: Ana",
@@ -136,6 +140,41 @@ describe("quoteSchema", () => {
       "La vigencia debe ser de 1 a 365 días",
     );
   });
+
+  it.each(["0", "366", "", "1.5", "abc"])(
+    "rechaza el tiempo de entrega %j",
+    (deliveryDays) => {
+      expect(quoteFormErrors(input({ deliveryDays }))?.deliveryDays).toBe(
+        "El tiempo de entrega debe ser de 1 a 365 días",
+      );
+    },
+  );
+
+  it.each(["1", "365", " 45 "])(
+    "acepta el tiempo de entrega %j",
+    (deliveryDays) => {
+      expect(quoteFormErrors(input({ deliveryDays }))).toBeNull();
+    },
+  );
+
+  it.each(["contado", "credito", "a_cuenta"] as const)(
+    "acepta la condición de pago %s",
+    (paymentCondition) => {
+      expect(
+        quoteSchema.parse(input({ paymentCondition })).paymentCondition,
+      ).toBe(paymentCondition);
+    },
+  );
+
+  it("rechaza una condición de pago desconocida", () => {
+    expect(
+      quoteSchema.safeParse(
+        input({
+          paymentCondition: "fiado" as QuoteFormInput["paymentCondition"],
+        }),
+      ).success,
+    ).toBe(false);
+  });
 });
 
 describe("quoteRpcArgs", () => {
@@ -143,6 +182,8 @@ describe("quoteRpcArgs", () => {
     const args = quoteRpcArgs(
       quoteSchema.parse(
         input({
+          paymentCondition: "a_cuenta",
+          deliveryDays: "45",
           lines: [
             anillo,
             { ...libre, discountType: "porcentaje", discountValue: "12.5" },
@@ -154,6 +195,8 @@ describe("quoteRpcArgs", () => {
       client_id: CLIENT,
       contact_id: null,
       validity_days: 15,
+      payment_condition: "a_cuenta",
+      delivery_days: 45,
       notes: "",
       terms: "",
     });

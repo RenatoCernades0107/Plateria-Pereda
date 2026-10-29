@@ -4,9 +4,11 @@ import type { QuotePdfModel } from "@/domain/quote-pdf";
 
 /**
  * Dibuja la cotización en un A4 vertical (mm), al estilo de la cotización en papel de
- * la tienda: fecha y código a la izquierda, logo a la derecha, cliente y contacto,
- * tabla de productos sin grilla, totales, monto en letras y condiciones. `logo` va
- * como data URL PNG/JPEG.
+ * la tienda: fecha a la izquierda, logo con la dirección centrada debajo a la
+ * derecha, código, cliente y contacto, tabla de productos sin grilla, totales, monto en
+ * letras, condición de pago, tiempo de entrega y condiciones. `logo` va como data
+ * URL PNG/JPEG. Los textos fijos usan solo caracteres de WinAnsi (Helvetica de
+ * jsPDF no tiene, p. ej., el signo menos U+2212).
  */
 
 const MARGIN = 18;
@@ -37,41 +39,48 @@ export async function drawQuotePdf(
     pdf.line(x1, yy, x2, yy);
   };
 
-  // --- Encabezado: fecha y código a la izquierda; logo a la derecha.
+  // --- Encabezado: fecha a la izquierda; logo y, debajo, la dirección de la
+  // empresa (centrada bajo el logo) a la derecha.
   let y = 18;
   const logoW = 34;
-  let logoBottom = y;
+  const logoCenter = right - logoW / 2;
+  let rightBottom = y - 6;
   if (logo) {
     const props = pdf.getImageProperties(logo);
     const h = (props.height / props.width) * logoW;
     pdf.addImage(logo, right - logoW, y - 6, logoW, h);
-    logoBottom = y - 6 + h;
+    rightBottom = y - 6 + h;
+  }
+  if (model.companyAddress) {
+    font("bold", 8.5);
+    const address = pdf.splitTextToSize(model.companyAddress, logoW + 8);
+    const addressLineH = 3.6;
+    const addressY = logo ? rightBottom + 4 : y;
+    pdf.text(address, logoCenter, addressY, {
+      align: "center",
+      lineHeightFactor: addressLineH / (8.5 * 0.3528),
+    });
+    rightBottom = addressY + (address.length - 1) * addressLineH + 1;
   }
   font("normal", 10.5);
   pdf.text(model.dateLine, MARGIN, y);
-  y += 9;
+  y = Math.max(y, rightBottom) + 12;
+
+  // --- Código de la cotización, justo encima del cliente.
   font("bold", 12);
   pdf.text("Cotización N°:", MARGIN, y);
   const labelW = pdf.getTextWidth("Cotización N°: ");
   font("normal", 12);
   pdf.text(model.code, MARGIN + labelW, y);
-  y = Math.max(y, logoBottom) + 12;
+  y += 10;
 
-  // --- Cliente a la izquierda; dirección de la empresa a la derecha.
+  // --- Cliente y contacto.
   const fieldLabelW = 22;
   font("normal", 10);
   pdf.text("Sr(es):", MARGIN, y);
-  pdf.text(
-    pdf.splitTextToSize(model.clientName, contentW - fieldLabelW - 60),
-    MARGIN + fieldLabelW,
-    y,
-  );
-  font("bold", 10);
-  pdf.text(pdf.splitTextToSize(model.companyAddress, 70), right, y, {
-    align: "right",
-  });
-  y += 6;
-  font("normal", 10);
+  const client = pdf.splitTextToSize(model.clientName, contentW - fieldLabelW);
+  pdf.text(client, MARGIN + fieldLabelW, y);
+  y += Math.max(1, client.length) * 4.6 + 1.4;
   pdf.text("Contacto:", MARGIN, y);
   pdf.text(model.contactName, MARGIN + fieldLabelW, y);
   y += 12;
@@ -160,7 +169,8 @@ export async function drawQuotePdf(
     y += strong ? 8 : 6;
   };
   totalRow("Sub Total:", model.subtotal, false);
-  if (model.discount) totalRow("Descuento:", `− ${model.discount}`, false);
+  // Guion ASCII: el signo menos (U+2212) no existe en Helvetica/WinAnsi de jsPDF.
+  if (model.discount) totalRow("Descuento:", `- ${model.discount}`, false);
   totalRow("Total Venta:", model.total, true);
   y += 4;
 
@@ -168,21 +178,22 @@ export async function drawQuotePdf(
   font("italic", 10);
   pdf.text("Son:", MARGIN, y);
   font("bold", 10);
-  pdf.text(
-    pdf.splitTextToSize(model.amountInWords, contentW - 16),
-    MARGIN + 12,
-    y,
-  );
-  y += 10;
+  const words = pdf.splitTextToSize(model.amountInWords, contentW - 16);
+  pdf.text(words, MARGIN + 12, y);
+  y += (Math.max(1, words.length) - 1) * 4.6 + 10;
 
+  // Columna de etiquetas con espacio para la más larga ("Tiempo de entrega:").
+  const infoLabelW = 34;
   const infoRow = (label: string, value: string, bold = false) => {
     font("normal", 9.5, GRAY);
     pdf.text(label, MARGIN, y);
     font(bold ? "bold" : "normal", 9.5);
-    const text = pdf.splitTextToSize(value, contentW - 32);
-    pdf.text(text, MARGIN + 30, y);
+    const text = pdf.splitTextToSize(value, contentW - infoLabelW);
+    pdf.text(text, MARGIN + infoLabelW, y);
     y += Math.max(1, text.length) * 4.2 + 1.5;
   };
+  infoRow("Condición:", model.paymentConditionText);
+  infoRow("Tiempo de entrega:", model.deliveryText);
   if (model.notes) infoRow("Notas:", model.notes);
   infoRow("Validez:", model.validityText);
   infoRow("Impuesto:", "LOS PRECIOS NO INCLUYEN IGV", true);

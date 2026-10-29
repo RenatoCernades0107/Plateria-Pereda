@@ -28,6 +28,8 @@ const data: QuotePdfData = {
   code: "COT-000001",
   issueDate: "2026-08-17",
   validityDays: 7,
+  paymentCondition: "contado",
+  deliveryDays: 30,
   clientName: "Lorena",
   contactName: "Lorena",
   lines: [
