@@ -367,6 +367,31 @@ describe("guía antigua con su orden de piezas (11.2)", () => {
       null,
     ]);
   });
+
+  it("con un pago solo en el sistema la orden de piezas queda como está (2026-10-29)", async () => {
+    const r = await seed();
+    await legacy(r);
+    await approve(r.pieceIds);
+    const { error } = await pricing.from("payments").insert({
+      restoration_id: r.id,
+      amount: 100,
+      method_name: "Efectivo",
+      skip_shopify: true,
+    });
+    expect(error).toBeNull();
+    // El resto se cobra normal: completa el total en el sistema, no en Shopify.
+    await pay(r.id, 300, "Yape");
+    await process_();
+    expect(orderOf(r.code).financials).toMatchObject({
+      financialStatus: "PENDING",
+      received: "0.00",
+    });
+    expect(orderOf(r.code).transactions).toEqual([]);
+    expect(await synced(r.id)).toEqual([
+      [100, true],
+      [300, false],
+    ]);
+  });
 });
 
 describe("pagos hechos en Shopify (11.3)", () => {

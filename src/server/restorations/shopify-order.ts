@@ -64,6 +64,11 @@ export type OrderPayment = SyncPayment & {
   branch?: string | null;
   /** Reembolso: el pago que devuelve. */
   refundedPaymentId?: string | null;
+  /**
+   * Registrado solo en el sistema por el admin: sin pedido y, en una guía antigua,
+   * detiene la conciliación con su orden de piezas.
+   */
+  skipShopify?: boolean;
 };
 
 export type OrderRestoration = {
@@ -176,6 +181,8 @@ async function importExternalPayments(
 /**
  * Concilia los pagos del sistema con la orden de piezas (11.2): pago completo,
  * reembolso de la diferencia o nada (pagos intermedios). Repetirlo no cambia nada.
+ * Con un pago solo en el sistema (2026-10-29) la orden ya no se toca: se siguen
+ * importando los pagos hechos en ella, pero no se le envía nada.
  */
 async function syncPayments(
   repo: RestorationOrderRepository,
@@ -192,6 +199,7 @@ async function syncPayments(
   );
   const data =
     imported > 0 ? ((await repo.getOrderData(current.id)) ?? current) : current;
+  if (data.payments.some((p) => p.skipShopify)) return "solo_sistema";
   const financials = await gateway.getOrderFinancials(orderId);
   const receivedCents = toCents(financials.received);
   const plan = planPaymentSync({

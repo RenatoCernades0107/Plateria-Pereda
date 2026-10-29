@@ -14,7 +14,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
     const { data: r, error } = await admin
       .from("restorations")
       .select(
-        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, source, shopify_synced_at, shopify_order_title, shopify_order_id, branch_name, refunded_payment_id, created_at, payment_methods(shopify_name))",
+        "id, code, kind, client_id, contact_id, shopify_order_id, shopify_order_name, pieces(id, code, number, price, quantity, status, approved_at), clients(kind, shopify_customer_id, shopify_company_location_id), payments(id, kind, amount, method_name, source, shopify_synced_at, shopify_order_title, shopify_order_id, branch_name, refunded_payment_id, skip_shopify, created_at, payment_methods(shopify_name))",
       )
       .eq("id", restorationId)
       .maybeSingle();
@@ -76,6 +76,7 @@ export const supabaseRestorationOrderRepository: RestorationOrderRepository = {
           orderId: p.shopify_order_id,
           branch: p.branch_name,
           refundedPaymentId: p.refunded_payment_id,
+          skipShopify: p.skip_shopify,
         })),
     };
   },

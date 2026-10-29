@@ -1,6 +1,6 @@
 begin;
 
-select plan(11);
+select plan(14);
 
 -- Pago solo en el sistema (pedido del 2026-10-28): el admin corrige un cobro que se
 -- hizo creando el pedido directamente en Shopify.
@@ -75,12 +75,27 @@ select is(
   1, 'el pago normal sí encola su pedido'
 );
 
--- Guía antigua con la orden de piezas: no aplica.
-select throws_ok(
+-- Guía antigua con la orden de piezas (2026-10-29): se concilia en el sistema sin
+-- tocar su orden.
+select lives_ok(
   $$insert into public.payments (restoration_id, amount, method_name, skip_shopify)
     values ('00000000-0000-0000-0000-000000056f02', 10, 'Efectivo', true)$$,
-  '23514', 'Esta guía tiene la orden de piezas de Shopify: el pago se concilia con ella',
-  'no aplica a guías con la orden de piezas'
+  'el admin registra un pago sin Shopify en una guía antigua'
+);
+select results_eq(
+  $$ select shopify_order_title, shopify_synced_at is not null from public.payments
+     where restoration_id = '00000000-0000-0000-0000-000000056f02' $$,
+  $$ values (null::text, true) $$,
+  'en la guía antigua también queda sin pedido y como ya en Shopify'
+);
+select is(
+  (select paid from public.restorations where id = '00000000-0000-0000-0000-000000056f02'),
+  10.00::numeric, 'cuenta en lo pagado de la guía antigua'
+);
+select is(
+  (select count(*)::int from jobs
+   where entity_id = '00000000-0000-0000-0000-000000056f02' and kind = 'payment.sync'),
+  0, 'no encola la conciliación de la orden de piezas'
 );
 
 -- Solo pagos, no reembolsos.

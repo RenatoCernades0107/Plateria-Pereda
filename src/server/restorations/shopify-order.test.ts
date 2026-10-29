@@ -311,6 +311,77 @@ describe("order.edit y order.fulfill (Pasos 9.2 y 9.3)", () => {
     expect(fakeShopify.snapshot().orders).toEqual([]);
   });
 
+  it("con un pago solo en el sistema la orden de piezas ya no se toca (2026-10-29)", async () => {
+    const { handlers } = await created();
+    const syncJob = jobOf("payment.sync");
+    const legacyPayment = (o: Partial<OrderPayment>): OrderPayment => ({
+      id: "x",
+      kind: "pago",
+      amountCents: 0,
+      gateway: "Efectivo",
+      synced: false,
+      source: "sistema",
+      ...o,
+    });
+    // Conciliado en el sistema por S/ 500; luego se cobra el resto de forma normal.
+    data.payments.push(
+      legacyPayment({
+        id: "s1",
+        amountCents: 500_00,
+        synced: true,
+        skipShopify: true,
+      }),
+      legacyPayment({ id: "n1", amountCents: 750_50, gateway: "Yape" }),
+    );
+    await expect(handlers["payment.sync"]!(syncJob, gateway)).resolves.toEqual({
+      shopifyOrderId: data.shopifyOrderId,
+      payments: "solo_sistema",
+    });
+    expect(order()?.financials).toMatchObject({
+      financialStatus: "PENDING",
+      received: "0.00",
+    });
+    // Tampoco al editar la orden, ni con un reembolso del sistema.
+    data.payments.push(
+      legacyPayment({ id: "r1", kind: "reembolso", amountCents: 100_00 }),
+    );
+    await expect(
+      handlers["order.edit"]!(jobOf("order.edit"), gateway),
+    ).resolves.toMatchObject({ unchanged: true, payments: "solo_sistema" });
+    expect(order()?.transactions).toEqual([]);
+    expect(data.payments.find((p) => p.id === "n1")?.synced).toBe(false);
+  });
+
+  it("con la orden ya sin tocar, un pago hecho en ella igual entra al registro", async () => {
+    const { handlers } = await created();
+    data.payments.push({
+      id: "s1",
+      kind: "pago",
+      amountCents: 100_00,
+      gateway: "Efectivo",
+      synced: true,
+      source: "sistema",
+      skipShopify: true,
+    });
+    await gateway.recordFullPayment(data.shopifyOrderId!, "Efectivo");
+    await handlers["payment.sync"]!(jobOf("payment.sync"), gateway);
+    expect(data.payments.map((p) => [p.source, p.amountCents])).toEqual([
+      ["sistema", 100_00],
+      ["shopify", 125_050],
+    ]);
+    // Un reembolso del sistema deja lo pagado bajo lo cobrado allá: no se reembolsa.
+    data.payments.push({
+      id: "r1",
+      kind: "reembolso",
+      amountCents: 300_00,
+      gateway: "Efectivo",
+      synced: false,
+      source: "sistema",
+    });
+    await handlers["payment.sync"]!(jobOf("payment.sync"), gateway);
+    expect(order()?.financials).toMatchObject({ received: "1250.50" });
+  });
+
   it("order.fulfill prepara las piezas entregadas una sola vez (P44)", async () => {
     const { handlers } = await created();
     data.pieces[0]!.status = "entregada";

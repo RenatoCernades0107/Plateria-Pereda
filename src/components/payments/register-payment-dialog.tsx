@@ -35,7 +35,8 @@ const SUGGESTION_LABELS: Record<SuggestedPayment["kind"], string> = {
 /**
  * "Registrar pago" (ventas y admin, Paso 11.2): sucursal, monto sugerido, método y
  * fecha. El admin puede registrarlo solo en el sistema (`canSkipShopify`), para
- * corregir un cobro que se hizo creando el pedido directamente en Shopify.
+ * corregir un cobro que se hizo creando el pedido directamente en Shopify o, en una
+ * guía antigua (`hasOrder`), conciliar pagos ya hechos sin tocar su orden de piezas.
  */
 export function RegisterPaymentDialog({
   restorationId,
@@ -44,6 +45,7 @@ export function RegisterPaymentDialog({
   methods,
   branches,
   canSkipShopify = false,
+  hasOrder = false,
 }: {
   restorationId: string;
   balanceCents: Cents;
@@ -51,6 +53,8 @@ export function RegisterPaymentDialog({
   methods: MethodOption[];
   branches: BranchOption[];
   canSkipShopify?: boolean;
+  /** Guía antigua, con su orden de piezas en Shopify. */
+  hasOrder?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(() => newDraft(suggested?.amount ?? null));
@@ -122,11 +126,14 @@ export function RegisterPaymentDialog({
                   checked={skipShopify}
                   onChange={(e) => setSkipShopify(e.target.checked)}
                 />
-                Solo en el sistema (no crear pedido en Shopify)
+                {hasOrder
+                  ? "Solo en el sistema (no tocar la orden de Shopify)"
+                  : "Solo en el sistema (no crear pedido en Shopify)"}
               </label>
               <p className="text-muted-foreground text-xs">
-                Para corregir un cobro que ya se hizo creando el pedido
-                directamente en Shopify.
+                {hasOrder
+                  ? "Para conciliar un pago que ya se hizo. La orden de piezas de Shopify queda como está: este pago y los que sigan quedan solo en el sistema."
+                  : "Para corregir un cobro que ya se hizo creando el pedido directamente en Shopify."}
               </p>
             </div>
           ) : null}

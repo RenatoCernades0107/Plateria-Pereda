@@ -142,6 +142,33 @@ describe("diálogos de pagos (11.2)", () => {
     );
   });
 
+  it("Registrar pago: en una guía antigua avisa que su orden de Shopify queda como está", async () => {
+    const user = userEvent.setup();
+    render(
+      <RegisterPaymentDialog
+        restorationId="r1"
+        balanceCents={40000}
+        suggested={null}
+        methods={METHODS}
+        branches={BRANCHES}
+        canSkipShopify
+        hasOrder
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    const dialog = screen.getByRole("dialog");
+    expect(
+      within(dialog).getByRole("checkbox", {
+        name: "Solo en el sistema (no tocar la orden de Shopify)",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        /este pago y los que sigan quedan solo en el sistema/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("Reembolsar: exige motivo y no más de lo pagado", async () => {
     const user = userEvent.setup();
     actions.refundPayment.mockResolvedValue({ ok: true });
