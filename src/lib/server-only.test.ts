@@ -38,12 +38,13 @@ describe("secretos solo en el servidor", () => {
     expect(file?.code).toMatch(/^import "server-only";/m);
   });
 
-  it("process.env solo se lee en env.ts (validado) e instrumentation.ts", () => {
+  it("process.env solo se lee en los módulos de entorno e instrumentation.ts", () => {
     const readers = files
       .filter((f) => /process\.env\b/.test(f.code))
       .map((f) => f.path);
     expect(readers.sort()).toEqual([
       "src/instrumentation.ts",
+      "src/lib/env.browser.ts",
       "src/lib/env.server.ts",
       "src/lib/env.ts",
     ]);
