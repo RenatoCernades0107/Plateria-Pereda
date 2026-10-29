@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 import { parseMoney, toDecimalString } from "@/domain/money";
-import { lineGross } from "@/domain/quote";
+import {
+  lineGross,
+  QUOTE_PAYMENT_CONDITIONS,
+  type QuotePaymentCondition,
+} from "@/domain/quote";
 import {
   parsePercent,
   parseQuantity,
@@ -108,20 +112,23 @@ export const quoteLineSchema = z
     };
   });
 
+/** Días de 1 a 365 a partir del texto escrito. */
+const days = (message: string) =>
+  z.string().transform((value, ctx) => {
+    const n = /^\d{1,3}$/.test(value.trim()) ? Number(value) : NaN;
+    if (!(n >= 1 && n <= 365)) {
+      ctx.addIssue({ code: "custom", message });
+      return z.NEVER;
+    }
+    return n;
+  });
+
 export const quoteSchema = z.object({
   clientId: UUID,
   contactId: z.uuid().nullable(),
-  validityDays: z.string().transform((value, ctx) => {
-    const days = /^\d{1,3}$/.test(value.trim()) ? Number(value) : NaN;
-    if (!(days >= 1 && days <= 365)) {
-      ctx.addIssue({
-        code: "custom",
-        message: "La vigencia debe ser de 1 a 365 días",
-      });
-      return z.NEVER;
-    }
-    return days;
-  }),
+  validityDays: days("La vigencia debe ser de 1 a 365 días"),
+  paymentCondition: z.enum(QUOTE_PAYMENT_CONDITIONS),
+  deliveryDays: days("El tiempo de entrega debe ser de 1 a 365 días"),
   notes: text(2000),
   terms: text(5000),
   lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
@@ -131,6 +138,8 @@ export type QuoteFormInput = {
   clientId: string;
   contactId: string | null;
   validityDays: string;
+  paymentCondition: QuotePaymentCondition;
+  deliveryDays: string;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -145,6 +154,8 @@ export function quoteRpcArgs(v: QuoteInput) {
       client_id: v.clientId,
       contact_id: v.contactId,
       validity_days: v.validityDays,
+      payment_condition: v.paymentCondition,
+      delivery_days: v.deliveryDays,
       notes: v.notes,
       terms: v.terms,
     },
@@ -166,6 +177,7 @@ export function quoteRpcArgs(v: QuoteInput) {
 export type QuoteFormErrors = {
   clientId?: string;
   validityDays?: string;
+  deliveryDays?: string;
   notes?: string;
   terms?: string;
   lines?: string;
@@ -198,6 +210,7 @@ export function quoteFormErrors(input: QuoteFormInput): QuoteFormErrors | null {
     } else if (
       first === "clientId" ||
       first === "validityDays" ||
+      first === "deliveryDays" ||
       first === "notes" ||
       first === "terms"
     ) {

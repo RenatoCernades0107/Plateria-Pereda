@@ -5,6 +5,7 @@ import { parseQuoteFilters } from "@/domain/quote-filters";
 const mocks = vi.hoisted(() => ({
   calls: [] as [string, ...unknown[]][],
   rows: [] as object[],
+  quote: null as object | null,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/supabase/server", () => ({
           return chain;
         };
       }
+      chain.maybeSingle = async () => ({ data: mocks.quote, error: null });
       chain.range = async (...args: unknown[]) => {
         mocks.calls.push(["range", ...args]);
         return { data: mocks.rows, count: 30, error: null };
@@ -26,7 +28,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-const { listQuotes } = await import("./queries");
+const { getQuote, listQuotes } = await import("./queries");
 
 const filterCalls = () =>
   mocks.calls.filter(([m]) => ["or", "eq", "gte", "lt"].includes(m));
@@ -34,6 +36,7 @@ const filterCalls = () =>
 beforeEach(() => {
   mocks.calls = [];
   mocks.rows = [];
+  mocks.quote = null;
   vi.useFakeTimers({ toFake: ["Date"] });
   // 4 de octubre de 2026, 22:00 en Lima.
   vi.setSystemTime(new Date("2026-10-05T03:00:00Z"));
@@ -95,5 +98,43 @@ describe("listQuotes", () => {
     ];
     const { quotes } = await listQuotes(parseQuoteFilters({}));
     expect(quotes[0]).toMatchObject({ status: "vencida", total: 78600 });
+  });
+});
+
+describe("getQuote", () => {
+  it("devuelve la condición de pago y el tiempo de entrega", async () => {
+    mocks.quote = {
+      id: "q1",
+      code: "COT-000001",
+      status: "borrador",
+      client_id: "c1",
+      client_name: "",
+      validity_days: 15,
+      payment_condition: "credito",
+      delivery_days: 45,
+      issue_date: null,
+      valid_until: null,
+      notes: "",
+      terms: "",
+      total: 0,
+      quote_items: [],
+      clients: {
+        id: "c1",
+        kind: "persona",
+        display_name: "Ana",
+        document_type: null,
+        document_number: null,
+        phone: null,
+        email: null,
+        shopify_customer_id: null,
+      },
+      contacts: null,
+      source: null,
+    };
+    expect(await getQuote("q1")).toMatchObject({
+      validityDays: 15,
+      paymentCondition: "credito",
+      deliveryDays: 45,
+    });
   });
 });

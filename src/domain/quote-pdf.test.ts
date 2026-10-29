@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { freeLine, lineFromCatalog, type QuoteLineDraft } from "./quote-line";
 import {
+  DEFAULT_COMPANY_ADDRESS,
   quotePdfFileName,
   quotePdfLineFromDraft,
   quotePdfModel,
@@ -17,6 +18,8 @@ const baseData: QuotePdfData = {
   code: "COT-000001",
   issueDate: "2026-08-17",
   validityDays: 7,
+  paymentCondition: "contado",
+  deliveryDays: 30,
   clientName: "Lorena Rodríguez di Laura",
   contactName: "Lorena Rodríguez di Laura",
   lines: [
@@ -93,6 +96,24 @@ describe("quotePdfModel", () => {
     expect(model.validityText).toContain("validez de 7 días");
     expect(model.validityText).toContain("24 de agosto de 2026");
     expect(model.signer).toBe("Platería Pereda");
+    expect(model.paymentConditionText).toBe("Al contado");
+    expect(model.deliveryText).toBe("30 días hábiles desde su aprobación");
+  });
+
+  it("condición de pago con su etiqueta", () => {
+    expect(
+      quotePdfModel({ ...baseData, paymentCondition: "credito" })
+        .paymentConditionText,
+    ).toBe("Al crédito");
+    expect(
+      quotePdfModel({ ...baseData, paymentCondition: "a_cuenta" })
+        .paymentConditionText,
+    ).toBe("A cuenta");
+  });
+
+  it("un día de entrega va en singular", () => {
+    const model = quotePdfModel({ ...baseData, deliveryDays: 1 });
+    expect(model.deliveryText).toBe("1 día hábil desde su aprobación");
   });
 
   it("muestra el descuento solo cuando hay alguno", () => {
@@ -130,12 +151,15 @@ describe("quotePdfModel", () => {
     expect(model.dateLine).toBe("Miraflores, 17 de agosto de 2026");
   });
 
-  it("sin dirección de la empresa, el encabezado queda sin ciudad", () => {
-    const model = quotePdfModel({
-      ...baseData,
-      company: { ...baseData.company, address: "" },
-    });
-    expect(model.dateLine).toBe(", 17 de agosto de 2026");
+  it("sin dirección de la empresa, usa la dirección por defecto (y su ciudad)", () => {
+    for (const address of ["", "   "]) {
+      const model = quotePdfModel({
+        ...baseData,
+        company: { ...baseData.company, address },
+      });
+      expect(model.companyAddress).toBe(DEFAULT_COMPANY_ADDRESS);
+      expect(model.dateLine).toBe("Miraflores, 17 de agosto de 2026");
+    }
   });
 });
 

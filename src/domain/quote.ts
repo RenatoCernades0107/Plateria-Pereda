@@ -49,6 +49,25 @@ export const MAX_QUOTE_QUANTITY = 100_000;
 /** Vigencia si la configuración no tiene otra (P36, propuesta). */
 export const DEFAULT_QUOTE_VALIDITY_DAYS = 15;
 
+/** Forma de pago que se muestra en el PDF bajo "Son:" ("Condición:"). */
+export const QUOTE_PAYMENT_CONDITIONS = [
+  "contado",
+  "credito",
+  "a_cuenta",
+] as const;
+export type QuotePaymentCondition = (typeof QUOTE_PAYMENT_CONDITIONS)[number];
+export const QUOTE_PAYMENT_CONDITION_LABELS: Record<
+  QuotePaymentCondition,
+  string
+> = {
+  contado: "Al contado",
+  credito: "Al crédito",
+  a_cuenta: "A cuenta",
+};
+export const DEFAULT_QUOTE_PAYMENT_CONDITION: QuotePaymentCondition = "contado";
+/** Tiempo de entrega por defecto, en días hábiles desde la aprobación. */
+export const DEFAULT_QUOTE_DELIVERY_DAYS = 30;
+
 export type LineDiscount =
   | { type: "monto"; cents: Cents }
   | { type: "porcentaje"; percent: number }

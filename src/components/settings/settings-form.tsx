@@ -184,7 +184,12 @@ export function SettingsForm({
               fields={[
                 { name: "legalName", label: "Razón social" },
                 { name: "ruc", label: "RUC", inputMode: "numeric" },
-                { name: "address", label: "Dirección" },
+                {
+                  name: "address",
+                  label: "Dirección",
+                  description:
+                    "Se muestra en el PDF de la cotización, debajo del logo; el último tramo (p. ej. Miraflores) va en la fecha.",
+                },
                 {
                   name: "phones",
                   label: "Teléfonos",

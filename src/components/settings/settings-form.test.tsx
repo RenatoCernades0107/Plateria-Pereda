@@ -52,6 +52,13 @@ describe("SettingsForm", () => {
     );
   });
 
+  it("explica dónde sale la dirección en el PDF", () => {
+    render(<SettingsForm defaultValues={defaults} />);
+    expect(screen.getByLabelText("Dirección")).toHaveAccessibleDescription(
+      "Se muestra en el PDF de la cotización, debajo del logo; el último tramo (p. ej. Miraflores) va en la fecha.",
+    );
+  });
+
   it("muestra los errores y no guarda", async () => {
     const user = userEvent.setup();
     render(<SettingsForm defaultValues={defaults} />);
