@@ -230,8 +230,10 @@ select is((select (j->>'pieces_per_order')::numeric from res where name = 'order
 
 -- Clientes
 select is((select (j->>'new_clients')::int from res where name = 'clients'), 2, 'clientes nuevos del periodo');
-select is((select j->'new_by_kind' from res where name = 'clients'),
-  '[{"key":"persona","value":1},{"key":"empresa","value":1}]'::jsonb, 'nuevos por tipo');
+-- Empatan en cantidad: el orden entre ellos no está definido.
+select is((select jsonb_agg(e order by e->>'key') from res, jsonb_array_elements(j->'new_by_kind') e
+           where name = 'clients'),
+  '[{"key":"empresa","value":1},{"key":"persona","value":1}]'::jsonb, 'nuevos por tipo');
 select is((select (j->>'active_in_range')::int from res where name = 'clients'), 3, 'clientes con guías en el periodo');
 select is((select (j->>'returning')::int from res where name = 'clients'), 1, 'recurrentes: C1 ya tenía una guía antes');
 select is((select (j->>'repeat_rate')::numeric from res where name = 'clients'), 33.3, 'tasa de recompra');

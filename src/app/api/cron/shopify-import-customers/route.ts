@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { serverEnv } from "@/lib/env.server";
+import { logger } from "@/lib/logger";
 import { importCustomerWithAdmin } from "@/server/clients/repository";
 import { importShopifyCustomers } from "@/server/clients/shopify-import";
 import { safeEqual } from "@/server/secrets";
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(summary);
   } catch (error) {
-    console.error("No se pudo importar los clientes de Shopify", error);
+    logger.error("No se pudo importar los clientes de Shopify", { error });
     return NextResponse.json(
       { error: "Shopify no respondió. Vuelve a intentarlo.", after },
       { status: 502 },

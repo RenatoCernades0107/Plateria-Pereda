@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import "server-only";
 
 import { after } from "next/server";
@@ -27,7 +28,7 @@ export function scheduleShopifySync() {
     try {
       await runShopifySync();
     } catch (error) {
-      console.error("No se pudo procesar el outbox de Shopify", error);
+      logger.error("No se pudo procesar el outbox de Shopify", { error });
     }
   });
 }

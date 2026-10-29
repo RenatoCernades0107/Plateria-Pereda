@@ -7,6 +7,7 @@ import {
 } from "@/domain/client-search";
 import { personFromShopify } from "@/domain/shopify-customer";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, textArg, validArgs } from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { getShopifyGateway } from "@/server/shopify";
 
@@ -44,6 +45,8 @@ export async function searchClients(
   query: string,
 ): Promise<ClientSearchResult> {
   await requirePermission("clientes.ver");
+  if (!validArgs([textArg], [query]))
+    return { options: [], shopifyUnavailable: false };
   const { text, digits, searchable } = parseClientQuery(query);
   if (!searchable) return { options: [], shopifyUnavailable: false };
 
@@ -132,6 +135,8 @@ export async function importShopifyCustomer(
   shopifyCustomerId: string,
 ): Promise<ImportResult> {
   await requirePermission("clientes.editar");
+  if (!validArgs([textArg], [shopifyCustomerId]))
+    return { error: INVALID_ARGS };
   if (!shopifyCustomerId.startsWith("gid://shopify/Customer/")) {
     return { error: "Cliente de Shopify inválido." };
   }

@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { parseMoney, toDecimalString } from "@/domain/money";
 import { createClient } from "@/lib/supabase/server";
+import {
+  INVALID_ARGS,
+  idArg,
+  textArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
@@ -23,6 +29,8 @@ export async function setPieceSalePrice(
   input: string,
 ): Promise<SalePriceResult> {
   await requirePermission("piezas.precio-venta");
+  if (!validArgs([idArg, textArg], [pieceId, input]))
+    return { error: INVALID_ARGS };
   const text = input.trim();
   let price: number | null = null;
   if (text !== "") {

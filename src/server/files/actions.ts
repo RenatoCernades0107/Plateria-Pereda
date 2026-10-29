@@ -12,6 +12,7 @@ import {
   type FileMimeType,
 } from "@/domain/files";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 
 import { FILES_BUCKET } from "./queries";
@@ -154,6 +155,7 @@ export async function deleteWhatsappQuoteFile(
   fileId: string,
 ): Promise<FileActionResult> {
   await requirePermission("cotizaciones-whatsapp.usar");
+  if (!validArgs([idArg], [fileId])) return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { data: file, error } = await supabase
     .from("whatsapp_quote_files")

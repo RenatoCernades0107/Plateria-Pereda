@@ -1280,33 +1280,42 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 ### Fase 15 — Calidad transversal
 
 #### Paso 15.1 — Seguridad
-- [ ] Suite pgTAP con la matriz completa: cada tabla × operación × rol.
-- [ ] La clave secreta solo se usa en servidor (`server-only`); cabeceras de seguridad (CSP, etc.); límite de tamaño en webhooks; validación zod en todas las actions; `supabase db lint` y advisors de seguridad sin alertas.
+- [x] Suite pgTAP con la matriz completa: cada tabla × operación × rol.
+- [x] La clave secreta solo se usa en servidor (`server-only`); cabeceras de seguridad (CSP, etc.); límite de tamaño en webhooks; validación zod en todas las actions; `supabase db lint` y advisors de seguridad sin alertas.
+- **Unit:**
+  - [x] `server-only.test.ts`: los módulos con secretos importan `server-only`, `process.env` solo se lee en `env.ts`/`env.server.ts`/`instrumentation.ts` y ningún componente de cliente importa código del servidor que no sea una server action.
+  - [x] `security-headers.test.ts`, `body.test.ts` (webhooks), `action-args.test.ts` y ids inválidos en `status-actions.test.ts`.
 - **BD:**
-  - [ ] Matriz completa de permisos.
+  - [x] Matriz completa de permisos (`61_matriz_permisos`, 518 pruebas).
 - **E2E:**
-  - [ ] Cada rol intenta entrar por URL a los módulos prohibidos → 403.
+  - [x] Cada rol intenta entrar por URL a los módulos prohibidos → 403 (`security.spec.ts`, derivado de `can()`); exportaciones CSV 403 para logística; cabeceras de seguridad.
+- Hecho (2026-10-29): `61_matriz_permisos` evalúa, como cada rol (anónimo, admin, ventas, logística), los privilegios y las políticas de RLS de cada tabla y vista de `public` más `storage.objects`/`storage.buckets` sobre filas conocidas, y la compara con una matriz escrita a mano (`si` / `filas` / `no`); una tabla nueva hace fallar el test hasta agregarla. También exige RLS en todas las tablas, ningún TRUNCATE/REFERENCES/TRIGGER para los usuarios, nada para anónimos y los esquemas `private` y `audit` cerrados. **Hallazgo corregido** (migración `20261029140000_endurece_permisos.sql`): `profiles` conservaba los privilegios por defecto de Supabase (anon y authenticated con TRUNCATE, que no pasa por RLS, INSERT y UPDATE de todas las columnas): ahora solo SELECT, DELETE y UPDATE de nombre, rol y estado; las secuencias ya no se dan a anon y los privilegios por defecto de lo que se cree en `public` ya no incluyen a anon. Cabeceras en `next.config.ts` (`src/lib/security-headers.ts`): CSP sin nonce (la guía "Without Nonces" de Next; un nonce obligaría a renderizar todo dinámico) con Supabase, su Realtime y el CDN de Shopify, `frame-ancestors 'none'`, HSTS, nosniff, `X-Frame-Options`, `Referrer-Policy` y `Permissions-Policy`. El webhook de Shopify rechaza con 413 un cuerpo de más de 1 MB sin leerlo entero. Las server actions sin formulario validan sus argumentos con `validArgs` (`src/lib/validation/action-args.ts`: ids `z.guid()`, listas ≤ 1000, textos ≤ 5000) después del permiso. `supabase db lint --fail-on error` sin errores (quedan avisos de plpgsql_check por asignar literales de texto a arreglos, inofensivos); sin funciones con `search_path` mutable ni extensiones en `public`. **Excepción aceptada del advisor** `security_definer_view`: `pieces_operational` y `restorations_operational` son vistas del dueño a propósito (filtran por rol en su WHERE para que logística vea lo operativo sin montos, D24/P42).
 - Commit: `test(seguridad): agrega matriz completa de permisos`
 
 #### Paso 15.2 — Accesibilidad y responsive
-- [ ] axe en todas las páginas principales; revisión en 360 px, 768 px y 1280 px; navegación con teclado.
+- [x] axe en todas las páginas principales; revisión en 360 px, 768 px y 1280 px; navegación con teclado.
+- **Unit:** [x] el primer Tab ofrece «Saltar al contenido» (`app-shell.test.tsx`).
 - **E2E:**
-  - [ ] axe sin violaciones serias en cada página.
-  - [ ] Sin scroll horizontal en móvil.
+  - [x] axe sin violaciones serias en cada página (`accessibility.spec.ts`: 19 páginas por rol, con registros del seed, más el login).
+  - [x] Sin scroll horizontal en móvil (360 px, y también 768 y 1280 px).
+- Hecho (2026-10-29): enlace «Saltar al contenido» como primer elemento con el teclado (WCAG 2.4.1) y el contenido como destino (`#contenido`). Corregido lo que encontró la revisión: en el detalle del cliente las pestañas «Restauraciones / Cotizaciones de WhatsApp» ensanchaban la página 36 px en 360 px (ahora se desplazan dentro de su caja), en el tablero de piezas los días en taller en rojo sobre la fila resaltada tenían contraste 4.36:1 (ahora `red-700`, AA), y en 360 px el encabezado del admin se salía 10 px (la ruta de navegación y el nombre del usuario ahora se recortan). Suite E2E completa en verde sin reintentos (189 pruebas).
 - Commit: `test(a11y): agrega pruebas de accesibilidad y responsive`
 
 #### Paso 15.3 — Rendimiento
-- [ ] Revisión de índices con `EXPLAIN`; seed de volumen (p. ej., 5 000 restauraciones) para probar listados y dashboard; `loading.tsx` / Suspense; revisión del tamaño del bundle.
+- [x] Revisión de índices con `EXPLAIN`; seed de volumen (p. ej., 5 000 restauraciones) para probar listados y dashboard; `loading.tsx` / Suspense (ver abajo: `loading.tsx` rompe el 403); revisión del tamaño del bundle.
 - **Integración (opcional):**
-  - [ ] Tiempo máximo en las consultas clave con el seed de volumen.
+  - [ ] Tiempo máximo en las consultas clave con el seed de volumen (no se agregó: un umbral de tiempo en el CI sería inestable; las mediciones quedan abajo y se repiten con el seed).
+- Hecho (2026-10-29): `supabase/seed-rendimiento.sql` (a mano, después de `seed-volumen.sql`) copia las guías con sus piezas, historial y pagos hasta ~5 200 guías, ~9 600 piezas, ~31 000 eventos y ~4 500 pagos, más 2 000 clientes (en 3 s, con los disparadores apagados). Medido como cada rol (mejor de 5): **`list_restorations` de ~550 ms a ~25 ms** (el plan genérico de la función estimaba una guía y unía con los clientes en un bucle anidado de 5 millones de comparaciones; ahora la base se materializa y las piezas se agregan en una pasada) y **`list_pieces_board` de ~350 ms a ~105 ms** (los días en taller, que recorren el historial de cada pieza, solo se calculan para la página mostrada salvo que se filtre u ordene por ellos; la función de "guía pasada" solo para guías cerradas). Migración `20261029150000_listados_rapidos.sql`; se verificó que ambas devuelven las mismas filas en el mismo orden para varios filtros y roles. Los índices existentes alcanzan (los cuellos eran la forma del plan, no índices faltantes). Sin cambios: búsqueda de clientes (~15 ms), auditoría y alertas (< 2 ms), dashboard con 30 días entre 5 y 95 ms por pestaña; Talleres llega a ~200 ms porque el volumen copia piezas viejas que siguen "en taller" (con datos reales son pocas). **Sin `loading.tsx` a nivel de sección:** se probó, pero con un límite de carga Next empieza a responder con 200 antes de que la página revise el permiso, y `forbidden()` deja de devolver 403 (lo detectaron `permissions.spec.ts` y `security.spec.ts`); se retiró. El dashboard ya usa Suspense dentro de la página, después del permiso. **Bundle:** jsPDF ya se cargaba bajo demanda y recharts solo en el dashboard; el menú (en todas las páginas) arrastraba zod completo (~87 KB gzip) solo para validar la URL de Supabase de la campana: ahora el navegador la lee sin zod (`src/lib/env.browser.ts`; el servidor ya la valida al arrancar).
 - Commit: `perf: optimiza consultas e índices`
 
 #### Paso 15.4 — Manejo de errores y monitoreo ⛔ P06
-- [ ] Páginas de error amigables (`error.tsx`, `not-found.tsx`), logs estructurados en servidor, monitoreo de errores, alerta si hay jobs de Shopify en error.
+- [x] Páginas de error amigables (`error.tsx`, `not-found.tsx`), logs estructurados en servidor, monitoreo de errores, alerta si hay jobs de Shopify en error.
 - **Unit:**
-  - [ ] El logger no expone secretos ni datos sensibles.
+  - [x] El logger no expone secretos ni datos sensibles (`logger.test.ts`).
+  - [x] `onRequestError` (`instrumentation.test.ts`), `ErrorScreen`, el aviso de errores de Shopify y su dominio, y el log del outbox (`processor.test.ts`).
 - **E2E:**
-  - [ ] Una ruta inexistente muestra la página 404 amigable.
+  - [x] Una ruta inexistente muestra la página 404 amigable (`errors.spec.ts`).
+- Hecho (2026-10-29): `src/lib/logger.ts` escribe una línea JSON por evento (`level`, `time`, `msg` y contexto) y oculta campos con nombre sensible (contraseñas, tokens, claves, cookies, email, teléfono, documento, dirección) y valores con forma de JWT, clave de Supabase, token de Shopify, `Bearer` o email aunque vengan dentro de un mensaje; serializa errores (código, digest, causa y las primeras líneas de la pila) y corta ciclos. Reemplaza a los `console.error` del servidor. **Monitoreo:** `onRequestError` en `src/instrumentation.ts` registra todo error que Next captura en páginas, route handlers, server actions y proxy, con el `digest` que la pantalla de error le muestra al usuario (sin cabeceras ni query string). **P06 sigue pendiente:** sin Sentry por ahora, los errores quedan en los logs de Vercel; si se adopta, se envían desde ese mismo `onRequestError`. Páginas de error: `ErrorScreen` compartido por `(app)/error.tsx`, `app/error.tsx` (fuera del menú, p. ej. el login) y `global-error.tsx` (errores del layout raíz, con su propio `<html>` y estilos). **Jobs de Shopify en error:** el outbox registra en los logs cada job que queda en error, y el admin ve en el encabezado, junto a la campana, un indicador con cuántas sincronizaciones siguen en error (un error deja de contar si después se completó otro job del mismo tipo para el mismo registro, o si el registro ya no existe) y, al abrirlo, enlaces al registro, donde está «Reintentar» (`src/server/shopify-sync/errors.ts`, `src/domain/shopify-sync-errors.ts`).
 - Commit: `feat(observabilidad): agrega manejo de errores y monitoreo`
 
 ### Fase 16 — Producción

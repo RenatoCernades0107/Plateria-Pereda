@@ -12,7 +12,7 @@ vi.mock("@/server/auth", () => ({
   requirePermission: async (permission: string) => {
     mocks.permission = permission;
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "u1", role: "logistica" };
+    return { id: "00000000-0000-4000-8000-000000000007", role: "logistica" };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -55,16 +55,22 @@ describe("acciones de talleres", () => {
     mocks.forbidden = false;
     mocks.insert.mockReset().mockResolvedValue({ error: null });
     mocks.update.mockReset().mockResolvedValue({ error: null });
-    mocks.remove
-      .mockReset()
-      .mockResolvedValue({ data: [{ id: "w1" }], error: null });
+    mocks.remove.mockReset().mockResolvedValue({
+      data: [{ id: "00000000-0000-4000-8000-000000000005" }],
+      error: null,
+    });
   });
 
   it("crea y edita con los datos normalizados", async () => {
     expect(await createWorkshop(input)).toEqual({ ok: true });
     expect(mocks.insert).toHaveBeenCalledWith(row);
-    expect(await updateWorkshop("w1", input)).toEqual({ ok: true });
-    expect(mocks.update).toHaveBeenCalledWith(row, "w1");
+    expect(
+      await updateWorkshop("00000000-0000-4000-8000-000000000005", input),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      row,
+      "00000000-0000-4000-8000-000000000005",
+    );
   });
 
   it("traduce el nombre duplicado", async () => {
@@ -72,7 +78,9 @@ describe("acciones de talleres", () => {
     mocks.update.mockResolvedValue({ error: { code: "23505" } });
     const duplicate = { error: "Ya existe un taller con ese nombre." };
     expect(await createWorkshop(input)).toEqual(duplicate);
-    expect(await updateWorkshop("w1", input)).toEqual(duplicate);
+    expect(
+      await updateWorkshop("00000000-0000-4000-8000-000000000005", input),
+    ).toEqual(duplicate);
   });
 
   it("informa otros errores", async () => {
@@ -81,10 +89,14 @@ describe("acciones de talleres", () => {
     expect(await createWorkshop(input)).toEqual({
       error: "No se pudo crear el taller.",
     });
-    expect(await updateWorkshop("w1", input)).toEqual({
+    expect(
+      await updateWorkshop("00000000-0000-4000-8000-000000000005", input),
+    ).toEqual({
       error: "No se pudo guardar el taller.",
     });
-    expect(await setWorkshopActive("w1", false)).toEqual({
+    expect(
+      await setWorkshopActive("00000000-0000-4000-8000-000000000005", false),
+    ).toEqual({
       error: "No se pudo actualizar el taller.",
     });
   });
@@ -94,7 +106,9 @@ describe("acciones de talleres", () => {
     expect(await createWorkshop(invalid)).toEqual({
       error: "Revisa los datos ingresados.",
     });
-    expect(await updateWorkshop("w1", invalid)).toEqual({
+    expect(
+      await updateWorkshop("00000000-0000-4000-8000-000000000005", invalid),
+    ).toEqual({
       error: "Revisa los datos ingresados.",
     });
     expect(mocks.insert).not.toHaveBeenCalled();
@@ -102,21 +116,35 @@ describe("acciones de talleres", () => {
   });
 
   it("desactiva un taller", async () => {
-    expect(await setWorkshopActive("w1", false)).toEqual({ ok: true });
-    expect(mocks.update).toHaveBeenCalledWith({ active: false }, "w1");
+    expect(
+      await setWorkshopActive("00000000-0000-4000-8000-000000000005", false),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith(
+      { active: false },
+      "00000000-0000-4000-8000-000000000005",
+    );
   });
 
   it("exige el permiso", async () => {
     mocks.forbidden = true;
     await expect(createWorkshop(input)).rejects.toThrow("FORBIDDEN");
-    await expect(updateWorkshop("w1", input)).rejects.toThrow("FORBIDDEN");
-    await expect(setWorkshopActive("w1", true)).rejects.toThrow("FORBIDDEN");
+    await expect(
+      updateWorkshop("00000000-0000-4000-8000-000000000005", input),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      setWorkshopActive("00000000-0000-4000-8000-000000000005", true),
+    ).rejects.toThrow("FORBIDDEN");
   });
 
   it("borra un taller sin uso; solo el admin (talleres.eliminar)", async () => {
-    expect(await deleteWorkshop("w1")).toEqual({ ok: true });
+    expect(
+      await deleteWorkshop("00000000-0000-4000-8000-000000000005"),
+    ).toEqual({ ok: true });
     expect(mocks.permission).toBe("talleres.eliminar");
-    expect(mocks.remove).toHaveBeenCalledWith("workshops", "w1");
+    expect(mocks.remove).toHaveBeenCalledWith(
+      "workshops",
+      "00000000-0000-4000-8000-000000000005",
+    );
   });
 
   it("si está en uso muestra el aviso de la BD, que sugiere desactivarlo", async () => {
@@ -126,7 +154,9 @@ describe("acciones de talleres", () => {
       data: null,
       error: { code: "23503", message },
     });
-    expect(await deleteWorkshop("w1")).toEqual({ error: message });
+    expect(
+      await deleteWorkshop("00000000-0000-4000-8000-000000000005"),
+    ).toEqual({ error: message });
   });
 
   it("al borrar no revela otros errores y avisa si no se borró nada", async () => {
@@ -135,15 +165,21 @@ describe("acciones de talleres", () => {
       error: { code: "XX000", message: "detalle interno" },
     });
     const failed = { error: "No se pudo eliminar el taller." };
-    expect(await deleteWorkshop("w1")).toEqual(failed);
+    expect(
+      await deleteWorkshop("00000000-0000-4000-8000-000000000005"),
+    ).toEqual(failed);
     // Sin permiso (RLS) o ya borrado: el delete no falla pero no toca filas.
     mocks.remove.mockResolvedValue({ data: [], error: null });
-    expect(await deleteWorkshop("w1")).toEqual(failed);
+    expect(
+      await deleteWorkshop("00000000-0000-4000-8000-000000000005"),
+    ).toEqual(failed);
   });
 
   it("borrar exige el permiso", async () => {
     mocks.forbidden = true;
-    await expect(deleteWorkshop("w1")).rejects.toThrow("FORBIDDEN");
+    await expect(
+      deleteWorkshop("00000000-0000-4000-8000-000000000005"),
+    ).rejects.toThrow("FORBIDDEN");
     expect(mocks.remove).not.toHaveBeenCalled();
   });
 });

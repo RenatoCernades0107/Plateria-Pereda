@@ -1,10 +1,13 @@
 "use server";
 
+import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import type { AppRole } from "@/lib/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   newUserSchema,
   roleSchema,
@@ -51,7 +54,7 @@ export async function createUser(
     app_metadata: { role: parsed.data.role },
   });
   if (error) {
-    console.error("No se pudo crear el usuario", {
+    logger.error("No se pudo crear el usuario", {
       code: error.code,
       status: error.status,
       message: error.message,
@@ -88,6 +91,8 @@ export async function setUserActive(
   active: boolean,
 ): Promise<UserActionResult> {
   const me = await requirePermission("usuarios.gestionar");
+  if (!validArgs([idArg, z.boolean()], [userId, active]))
+    return { error: INVALID_ARGS };
   if (userId === me.id) return { error: SELF_ERROR };
 
   const supabase = await createClient();
@@ -110,6 +115,7 @@ export async function setUserActive(
  */
 export async function deleteUser(userId: string): Promise<UserActionResult> {
   const me = await requirePermission("usuarios.gestionar");
+  if (!validArgs([idArg], [userId])) return { error: INVALID_ARGS };
   if (userId === me.id) {
     return {
       error: "No puedes eliminarte a ti mismo: pídeselo a otro administrador.",
@@ -137,7 +143,7 @@ export async function deleteUser(userId: string): Promise<UserActionResult> {
   const admin = createAdminClient();
   const { error: authError } = await admin.auth.admin.deleteUser(userId);
   if (authError) {
-    console.error("No se pudo borrar el usuario de Auth", {
+    logger.error("No se pudo borrar el usuario de Auth", {
       code: authError.code,
       status: authError.status,
       message: authError.message,

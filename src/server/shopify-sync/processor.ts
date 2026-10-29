@@ -1,8 +1,9 @@
+import { logger } from "@/lib/logger";
 import type { ShopifyGateway } from "@/server/shopify/gateway";
 import { ShopifyError } from "@/server/shopify/errors";
 
 import type { ShopifyJobHandler } from "./handlers";
-import { jobBackoffMs, type JobRepository } from "./jobs";
+import { jobBackoffMs, type JobRepository, type SyncJob } from "./jobs";
 
 export type ProcessSummary = {
   processed: number;
@@ -23,7 +24,8 @@ type Options = {
  * Procesa los jobs vencidos del outbox. Es idempotente por diseño: cada handler debe
  * poder repetirse sin duplicar (p. ej., buscar la orden por etiqueta antes de crearla).
  * Los errores que se pueden reintentar esperan con backoff hasta `maxAttempts`; los
- * demás (datos rechazados, credenciales) quedan en error de inmediato.
+ * demás (datos rechazados, credenciales) quedan en error de inmediato. Un job que queda
+ * en error se registra en los logs (y el admin lo ve en el aviso del encabezado).
  */
 export async function processShopifyJobs({
   repo,
@@ -44,7 +46,9 @@ export async function processShopifyJobs({
     summary.processed += 1;
     const handler = handlers[job.kind];
     if (!handler) {
-      await repo.fail(job.id, `Tipo de job desconocido: ${job.kind}`, null);
+      const message = `Tipo de job desconocido: ${job.kind}`;
+      await repo.fail(job.id, message, null);
+      logFailure(job, message);
       summary.failed += 1;
       continue;
     }
@@ -62,9 +66,21 @@ export async function processShopifyJobs({
         summary.retrying += 1;
       } else {
         await repo.fail(job.id, message, null);
+        logFailure(job, message);
         summary.failed += 1;
       }
     }
   }
   return summary;
+}
+
+function logFailure(job: SyncJob, message: string) {
+  logger.error("Sincronización con Shopify en error", {
+    jobId: job.id,
+    kind: job.kind,
+    entityTable: job.entityTable,
+    entityId: job.entityId,
+    attempts: job.attempts,
+    error: message,
+  });
 }

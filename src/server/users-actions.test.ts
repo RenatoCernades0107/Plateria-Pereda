@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
   const remove = vi.fn();
   const restore = vi.fn();
   return {
-    me: { id: "admin-1", role: "admin" },
+    me: { id: "00000000-0000-4000-8000-000000000020", role: "admin" },
     forbidden: false,
     update,
     maybeSingle,
@@ -63,7 +63,7 @@ const {
 } = await import("./users-actions");
 
 const perfil = {
-  id: "u2",
+  id: "00000000-0000-4000-8000-000000000008",
   full_name: "Nora Nueva",
   email: "nora@pereda.test",
   role: "ventas",
@@ -96,12 +96,20 @@ describe("acciones de usuarios", () => {
   it("solo un administrador puede usarlas", async () => {
     mocks.forbidden = true;
     await expect(createUser(nuevo)).rejects.toThrow("FORBIDDEN");
-    await expect(updateUserRole("u2", "ventas")).rejects.toThrow("FORBIDDEN");
-    await expect(setUserActive("u2", false)).rejects.toThrow("FORBIDDEN");
     await expect(
-      setUserPassword("u2", { password: "Clave-nueva-123" }),
+      updateUserRole("00000000-0000-4000-8000-000000000008", "ventas"),
     ).rejects.toThrow("FORBIDDEN");
-    await expect(deleteUser("u2")).rejects.toThrow("FORBIDDEN");
+    await expect(
+      setUserActive("00000000-0000-4000-8000-000000000008", false),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      setUserPassword("00000000-0000-4000-8000-000000000008", {
+        password: "Clave-nueva-123",
+      }),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      deleteUser("00000000-0000-4000-8000-000000000008"),
+    ).rejects.toThrow("FORBIDDEN");
     expect(mocks.remove).not.toHaveBeenCalled();
     expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
@@ -153,27 +161,46 @@ describe("acciones de usuarios", () => {
 
   describe("cambios sobre otro usuario", () => {
     it("cambia el rol", async () => {
-      expect(await updateUserRole("u2", "ventas")).toEqual({ ok: true });
-      expect(mocks.update).toHaveBeenCalledWith({ role: "ventas" }, "u2");
+      expect(
+        await updateUserRole("00000000-0000-4000-8000-000000000008", "ventas"),
+      ).toEqual({ ok: true });
+      expect(mocks.update).toHaveBeenCalledWith(
+        { role: "ventas" },
+        "00000000-0000-4000-8000-000000000008",
+      );
     });
 
     it("rechaza un rol inválido", async () => {
-      expect(await updateUserRole("u2", "jefe" as never)).toEqual({
+      expect(
+        await updateUserRole(
+          "00000000-0000-4000-8000-000000000008",
+          "jefe" as never,
+        ),
+      ).toEqual({
         error: "Elige un rol válido.",
       });
     });
 
     it("activa y desactiva", async () => {
-      expect(await setUserActive("u2", false)).toEqual({ ok: true });
-      expect(mocks.update).toHaveBeenCalledWith({ active: false }, "u2");
+      expect(
+        await setUserActive("00000000-0000-4000-8000-000000000008", false),
+      ).toEqual({ ok: true });
+      expect(mocks.update).toHaveBeenCalledWith(
+        { active: false },
+        "00000000-0000-4000-8000-000000000008",
+      );
     });
 
     it("informa si la base de datos rechaza el cambio", async () => {
       mocks.update.mockResolvedValue({ error: { message: "rls" } });
-      expect(await setUserActive("u2", true)).toEqual({
+      expect(
+        await setUserActive("00000000-0000-4000-8000-000000000008", true),
+      ).toEqual({
         error: "No se pudo actualizar el usuario.",
       });
-      expect(await updateUserRole("u2", "ventas")).toEqual({
+      expect(
+        await updateUserRole("00000000-0000-4000-8000-000000000008", "ventas"),
+      ).toEqual({
         error: "No se pudo cambiar el rol.",
       });
     });
@@ -183,8 +210,12 @@ describe("acciones de usuarios", () => {
         error:
           "No puedes cambiar tu propio rol ni desactivarte: pídeselo a otro administrador.",
       };
-      expect(await updateUserRole("admin-1", "ventas")).toEqual(esperado);
-      expect(await setUserActive("admin-1", false)).toEqual(esperado);
+      expect(
+        await updateUserRole("00000000-0000-4000-8000-000000000020", "ventas"),
+      ).toEqual(esperado);
+      expect(
+        await setUserActive("00000000-0000-4000-8000-000000000020", false),
+      ).toEqual(esperado);
       expect(mocks.update).not.toHaveBeenCalled();
     });
   });
@@ -192,15 +223,24 @@ describe("acciones de usuarios", () => {
   describe("setUserPassword", () => {
     it("cambia la contraseña del usuario", async () => {
       expect(
-        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+        await setUserPassword("00000000-0000-4000-8000-000000000008", {
+          password: "Clave-nueva-123",
+        }),
       ).toEqual({ ok: true });
-      expect(mocks.admin.auth.admin.updateUserById).toHaveBeenCalledWith("u2", {
-        password: "Clave-nueva-123",
-      });
+      expect(mocks.admin.auth.admin.updateUserById).toHaveBeenCalledWith(
+        "00000000-0000-4000-8000-000000000008",
+        {
+          password: "Clave-nueva-123",
+        },
+      );
     });
 
     it("rechaza una contraseña corta sin llamar a Supabase", async () => {
-      expect(await setUserPassword("u2", { password: "corta" })).toEqual({
+      expect(
+        await setUserPassword("00000000-0000-4000-8000-000000000008", {
+          password: "corta",
+        }),
+      ).toEqual({
         error: "Revisa la contraseña ingresada.",
       });
       expect(mocks.admin.auth.admin.updateUserById).not.toHaveBeenCalled();
@@ -211,7 +251,9 @@ describe("acciones de usuarios", () => {
         error: { code: "weak_password" },
       });
       expect(
-        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+        await setUserPassword("00000000-0000-4000-8000-000000000008", {
+          password: "Clave-nueva-123",
+        }),
       ).toEqual({
         error: "La contraseña es muy débil. Usa una más larga o genera una.",
       });
@@ -219,7 +261,9 @@ describe("acciones de usuarios", () => {
         error: { code: "unexpected_failure" },
       });
       expect(
-        await setUserPassword("u2", { password: "Clave-nueva-123" }),
+        await setUserPassword("00000000-0000-4000-8000-000000000008", {
+          password: "Clave-nueva-123",
+        }),
       ).toEqual({
         error: "No se pudo cambiar la contraseña. Intenta de nuevo.",
       });
@@ -228,12 +272,16 @@ describe("acciones de usuarios", () => {
 
   describe("deleteUser", () => {
     it("borra el perfil con la sesión del admin y luego el usuario de Auth", async () => {
-      expect(await deleteUser("u2")).toEqual({ ok: true });
+      expect(await deleteUser("00000000-0000-4000-8000-000000000008")).toEqual({
+        ok: true,
+      });
       expect(mocks.remove).toHaveBeenCalledWith(
-        "u2",
+        "00000000-0000-4000-8000-000000000008",
         "id, full_name, email, role, active, created_at",
       );
-      expect(mocks.admin.auth.admin.deleteUser).toHaveBeenCalledWith("u2");
+      expect(mocks.admin.auth.admin.deleteUser).toHaveBeenCalledWith(
+        "00000000-0000-4000-8000-000000000008",
+      );
       expect(mocks.restore).not.toHaveBeenCalled();
       // El perfil se borra antes que el usuario de Auth (queda a nombre del admin).
       expect(mocks.remove.mock.invocationCallOrder[0]).toBeLessThan(
@@ -248,12 +296,14 @@ describe("acciones de usuarios", () => {
         data: null,
         error: { code: "23503", message },
       });
-      expect(await deleteUser("u2")).toEqual({ error: message });
+      expect(await deleteUser("00000000-0000-4000-8000-000000000008")).toEqual({
+        error: message,
+      });
       expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
     });
 
     it("el admin no se elimina a sí mismo", async () => {
-      expect(await deleteUser("admin-1")).toEqual({
+      expect(await deleteUser("00000000-0000-4000-8000-000000000020")).toEqual({
         error:
           "No puedes eliminarte a ti mismo: pídeselo a otro administrador.",
       });
@@ -266,11 +316,11 @@ describe("acciones de usuarios", () => {
         data: null,
         error: { code: "XX000", message: "detalle interno" },
       });
-      expect(await deleteUser("u2")).toEqual({
+      expect(await deleteUser("00000000-0000-4000-8000-000000000008")).toEqual({
         error: "No se pudo eliminar el usuario.",
       });
       mocks.remove.mockResolvedValue({ data: [], error: null });
-      expect(await deleteUser("u2")).toEqual({
+      expect(await deleteUser("00000000-0000-4000-8000-000000000008")).toEqual({
         error: "No se pudo eliminar el usuario.",
       });
       expect(mocks.admin.auth.admin.deleteUser).not.toHaveBeenCalled();
@@ -281,7 +331,7 @@ describe("acciones de usuarios", () => {
       mocks.admin.auth.admin.deleteUser.mockResolvedValue({
         error: { code: "unexpected_failure", status: 500 },
       });
-      expect(await deleteUser("u2")).toEqual({
+      expect(await deleteUser("00000000-0000-4000-8000-000000000008")).toEqual({
         error: "No se pudo eliminar el usuario. Intenta de nuevo.",
       });
       expect(mocks.restore).toHaveBeenCalledWith("profiles", perfil);

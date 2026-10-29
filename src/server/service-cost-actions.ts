@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import { parseMoney, toDecimalString } from "@/domain/money";
 import { createClient } from "@/lib/supabase/server";
+import {
+  INVALID_ARGS,
+  idArg,
+  textArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 
 export type ServiceCostResult = { ok: true } | { error: string };
@@ -17,6 +23,8 @@ export async function setPieceServiceCost(
   input: string,
 ): Promise<ServiceCostResult> {
   await requirePermission("piezas.costo-servicio");
+  if (!validArgs([idArg, textArg], [pieceId, input]))
+    return { error: INVALID_ARGS };
   const text = input.trim();
   let cost: number | null = null;
   if (text !== "") {

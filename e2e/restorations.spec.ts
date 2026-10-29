@@ -335,6 +335,8 @@ test.describe("Restauraciones", () => {
       .fill("Entregar antes de Navidad");
     await dialog.getByRole("button", { name: "Guardar cambios" }).click();
     await expect(page.getByText("Restauración actualizada.")).toBeVisible();
+    // El aviso sale antes de que termine de cerrarse el diálogo (que aún tiene la nota).
+    await expect(dialog).toBeHidden();
     await expect(page.getByText("Entregar antes de Navidad")).toBeVisible();
 
     await page.getByRole("button", { name: "Agregar pieza" }).click();

@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import { workshopSchema, type WorkshopInput } from "@/lib/validation/workshops";
 import { requirePermission } from "@/server/auth";
 
@@ -67,6 +69,8 @@ export async function setWorkshopActive(
   active: boolean,
 ): Promise<WorkshopActionResult> {
   await requirePermission("talleres.gestionar");
+  if (!validArgs([idArg, z.boolean()], [id, active]))
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase
     .from("workshops")
@@ -86,6 +90,7 @@ export async function deleteWorkshop(
   id: string,
 ): Promise<WorkshopActionResult> {
   await requirePermission("talleres.eliminar");
+  if (!validArgs([idArg], [id])) return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workshops")

@@ -6,6 +6,7 @@ import { Loader2, LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { AlertsBell } from "@/components/alerts/alerts-bell";
+import { SyncErrorsIndicator } from "@/components/shopify/sync-errors-indicator";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,6 +47,7 @@ import { can } from "@/domain/permissions";
 import { findNavItem, NAV_ITEMS } from "@/lib/navigation";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { logout } from "@/server/auth-actions";
+import type { SyncErrorSummary } from "@/server/shopify-sync/errors";
 
 export type ShellUser = {
   id: string;
@@ -136,9 +138,9 @@ function UserMenu({ user }: { user: ShellUser }) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto flex-col items-end gap-0 px-2 py-1"
+          className="h-auto max-w-32 flex-col items-end gap-0 px-2 py-1 sm:max-w-none"
         >
-          <span className="text-heading text-sm font-medium">
+          <span className="text-heading max-w-full truncate text-sm font-medium">
             {user.fullName}
           </span>
           <span className="text-muted-foreground text-xs">
@@ -164,7 +166,13 @@ function UserMenu({ user }: { user: ShellUser }) {
   );
 }
 
-function AppHeader({ user }: { user: ShellUser }) {
+function AppHeader({
+  user,
+  syncErrors,
+}: {
+  user: ShellUser;
+  syncErrors?: SyncErrorSummary;
+}) {
   const pathname = usePathname();
   const current = findNavItem(pathname);
   // En un detalle que dio su nombre: "Sección › RES-00012", con la sección como enlace.
@@ -178,8 +186,9 @@ function AppHeader({ user }: { user: ShellUser }) {
         orientation="vertical"
         className="mr-2 data-[orientation=vertical]:h-4"
       />
-      <Breadcrumb>
-        <BreadcrumbList>
+      {/* min-w-0 y truncate: en 360 px el nombre de la sección cede espacio a los íconos. */}
+      <Breadcrumb className="min-w-0">
+        <BreadcrumbList className="flex-nowrap">
           {current && detail ? (
             <>
               <BreadcrumbItem className="hidden sm:inline-flex">
@@ -188,18 +197,21 @@ function AppHeader({ user }: { user: ShellUser }) {
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden sm:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{detail}</BreadcrumbPage>
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate">{detail}</BreadcrumbPage>
               </BreadcrumbItem>
             </>
           ) : (
-            <BreadcrumbItem>
-              <BreadcrumbPage>{current?.title ?? "Inicio"}</BreadcrumbPage>
+            <BreadcrumbItem className="min-w-0">
+              <BreadcrumbPage className="truncate">
+                {current?.title ?? "Inicio"}
+              </BreadcrumbPage>
             </BreadcrumbItem>
           )}
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        {syncErrors && <SyncErrorsIndicator {...syncErrors} />}
         <AlertsBell userId={user.id} />
         <UserMenu user={user} />
       </div>
@@ -210,18 +222,34 @@ function AppHeader({ user }: { user: ShellUser }) {
 export function AppShell({
   children,
   user,
+  syncErrors,
 }: {
   children: React.ReactNode;
   user: ShellUser;
+  /** Solo para el admin: sincronizaciones con Shopify en error. */
+  syncErrors?: SyncErrorSummary;
 }) {
   return (
     <SidebarProvider>
+      {/* Con el teclado, el primer Tab ofrece saltar el menú (WCAG 2.4.1). */}
+      <a
+        href="#contenido"
+        className="bg-background focus-visible:ring-ring sr-only z-50 rounded-md px-3 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus-visible:ring-2"
+      >
+        Saltar al contenido
+      </a>
       <BreadcrumbProvider>
         <AppNav role={user.role} />
         {/* min-w-0: las tablas anchas se desplazan dentro de su contenedor sin estirar la página. */}
         <SidebarInset className="min-w-0">
-          <AppHeader user={user} />
-          <div className="flex-1 p-4 md:p-6">{children}</div>
+          <AppHeader user={user} syncErrors={syncErrors} />
+          <div
+            id="contenido"
+            tabIndex={-1}
+            className="flex-1 p-4 outline-none md:p-6"
+          >
+            {children}
+          </div>
         </SidebarInset>
       </BreadcrumbProvider>
     </SidebarProvider>

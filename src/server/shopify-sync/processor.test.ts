@@ -109,7 +109,8 @@ describe("procesador del outbox", () => {
     });
   });
 
-  it("al llegar al máximo de intentos queda en error", async () => {
+  it("al llegar al máximo de intentos queda en error y se registra en los logs", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const { repo, done } = memoryRepo([job(1, "x.y", 8, 8)]);
     const summary = await processShopifyJobs({
       repo,
@@ -122,6 +123,33 @@ describe("procesador del outbox", () => {
     });
     expect(summary.failed).toBe(1);
     expect(done[1]).toMatchObject({ status: "error", retryAt: null });
+    expect(JSON.parse(log.mock.calls[0]![0] as string)).toMatchObject({
+      level: "error",
+      msg: "Sincronización con Shopify en error",
+      jobId: 1,
+      kind: "x.y",
+      entityTable: "clients",
+      attempts: 8,
+      error: "timeout de red",
+    });
+    log.mockRestore();
+  });
+
+  it("un reintento pendiente no se registra como error", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { repo } = memoryRepo([job(1, "x.y", 1, 8)]);
+    await processShopifyJobs({
+      repo,
+      gateway,
+      handlers: {
+        "x.y": async () => {
+          throw new Error("timeout de red");
+        },
+      },
+      now: () => NOW,
+    });
+    expect(log).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it("un error que no se arregla reintentando queda en error de inmediato", async () => {

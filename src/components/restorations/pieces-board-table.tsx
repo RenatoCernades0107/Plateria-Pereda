@@ -74,7 +74,9 @@ function Days({ piece }: { piece: BoardPiece }) {
     <span
       className={cn(
         "inline-flex items-center gap-1 text-xs whitespace-nowrap",
-        long ? "text-destructive font-medium" : "text-foreground",
+        // red-700 y no `destructive`: sobre la fila resaltada en rojo, el texto chico
+        // necesita contraste AA (4.5:1).
+        long ? "font-medium text-red-700 dark:text-red-400" : "text-foreground",
       )}
       data-testid="dias-en-taller"
       data-long={long || undefined}

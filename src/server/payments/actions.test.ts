@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/server/auth", () => ({
   requirePermission: async (permission: string) => {
     mocks.permissions.push(permission);
-    return { id: "u1", role: "admin" };
+    return { id: "00000000-0000-4000-8000-000000000007", role: "admin" };
   },
 }));
 vi.mock("@/server/shopify-sync/run", () => ({
@@ -100,7 +100,13 @@ describe("acciones de pagos (11.2)", () => {
           reason: "x",
         }),
       ).toEqual(error);
-      expect(await approveWithPayment(R, ["p1"], pay)).toEqual(error);
+      expect(
+        await approveWithPayment(
+          R,
+          ["00000000-0000-4000-8000-000000000001"],
+          pay,
+        ),
+      ).toEqual(error);
       expect(mocks.calls).toEqual([]);
     },
   );
@@ -157,16 +163,28 @@ describe("acciones de pagos (11.2)", () => {
   });
 
   it("aprueba y registra el adelanto en el mismo paso", async () => {
-    expect(await approveWithPayment(R, ["p1"], pay)).toEqual({ ok: true });
+    expect(
+      await approveWithPayment(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        pay,
+      ),
+    ).toEqual({ ok: true });
     expect(mocks.calls.map((c) => c[1])).toEqual([
       "change_piece_status",
       "payments",
     ]);
     mocks.calls = [];
-    expect(await approveWithPayment(R, ["p1"], null)).toEqual({ ok: true });
+    expect(
+      await approveWithPayment(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        null,
+      ),
+    ).toEqual({ ok: true });
     expect(mocks.calls).toHaveLength(1);
     expect(
-      await approveWithPayment(R, ["p1"], {
+      await approveWithPayment(R, ["00000000-0000-4000-8000-000000000001"], {
         paidOn: "",
         branchId: B,
         rows: [],
@@ -177,10 +195,22 @@ describe("acciones de pagos (11.2)", () => {
   it("no aprueba ni entrega si faltan campos obligatorios (K10)", async () => {
     mocks.missing =
       "Falta el precio de venta de P-1 para pasarla a «Aprobada».";
-    expect(await approveWithPayment(R, ["p1"], pay)).toEqual({
+    expect(
+      await approveWithPayment(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        pay,
+      ),
+    ).toEqual({
       error: mocks.missing,
     });
-    expect(await deliverWithBalance(R, ["p1"], null)).toEqual({
+    expect(
+      await deliverWithBalance(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        null,
+      ),
+    ).toEqual({
       error: mocks.missing,
     });
     expect(mocks.calls).toEqual([]);
@@ -188,12 +218,24 @@ describe("acciones de pagos (11.2)", () => {
 
   it("si falla aprobar no registra el pago; si falla el pago, avisa", async () => {
     mocks.rpcError = { code: "42501", message: "Tu rol no puede" };
-    expect(await approveWithPayment(R, ["p1"], pay)).toEqual({
+    expect(
+      await approveWithPayment(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        pay,
+      ),
+    ).toEqual({
       error: "Tu rol no puede",
     });
     mocks.rpcError = null;
     mocks.error = { code: "XX000" };
-    expect(await approveWithPayment(R, ["p1"], pay)).toEqual({
+    expect(
+      await approveWithPayment(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        pay,
+      ),
+    ).toEqual({
       error:
         "Se aprobó, pero no se pudo registrar el pago. Regístralo desde Pagos.",
     });
@@ -223,14 +265,26 @@ describe("acciones de pagos (11.2)", () => {
 
   it("entrega con saldo confirmándolo (P45)", async () => {
     expect(await deliverWithBalance(null, [], null)).toHaveProperty("error");
-    expect(await deliverWithBalance(R, ["p1"], "ok")).toEqual({ ok: true });
+    expect(
+      await deliverWithBalance(
+        R,
+        ["00000000-0000-4000-8000-000000000001"],
+        "ok",
+      ),
+    ).toEqual({ ok: true });
     expect(mocks.calls[0]).toEqual([
       "rpc",
       "deliver_pieces_with_balance",
-      { p_piece_ids: ["p1"], p_note: "ok" },
+      { p_piece_ids: ["00000000-0000-4000-8000-000000000001"], p_note: "ok" },
     ]);
     mocks.rpcError = { code: "XX000" };
-    expect(await deliverWithBalance(null, ["p1"], null)).toEqual({
+    expect(
+      await deliverWithBalance(
+        null,
+        ["00000000-0000-4000-8000-000000000001"],
+        null,
+      ),
+    ).toEqual({
       error: "No se pudo entregar.",
     });
   });
@@ -253,7 +307,7 @@ describe("acciones de pagos (11.2)", () => {
     });
     // Un pedido por pago: sin orden de piezas, con pagos.
     mocks.rpcError = null;
-    mocks.payments = [{ id: "pay1" }];
+    mocks.payments = [{ id: "00000000-0000-4000-8000-000000000019" }];
     expect(await resyncPayments(R)).toEqual({ ok: true });
   });
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import {
   DELIVERY_DATE_INVALID,
@@ -9,7 +10,11 @@ import {
   WORKSHOP_DATE_AFTER_CLIENT,
 } from "@/domain/delivery-date";
 import { can } from "@/domain/permissions";
-import { toPieceStatus, type PieceStatus } from "@/domain/piece-state-machine";
+import {
+  PIECE_STATUSES,
+  toPieceStatus,
+  type PieceStatus,
+} from "@/domain/piece-state-machine";
 import {
   isRestorationCloseTarget,
   planRestorationClosure,
@@ -20,6 +25,15 @@ import {
   type RestorationKind,
 } from "@/domain/restoration-status";
 import { createClient } from "@/lib/supabase/server";
+import {
+  INVALID_ARGS,
+  idArg,
+  idsArg,
+  optionalIdArg,
+  optionalTextArg,
+  textArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
@@ -37,6 +51,11 @@ export type MoveActionResult =
   { ok: true; undoIds?: number[] } | { error: string };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+const urgentOptions = z.object({
+  workshopDeliveryDate: z.string().nullable().optional(),
+  keepWorkshopDate: z.boolean().optional(),
+});
 
 /** Eventos para "Deshacer" el movimiento recién hecho (nada si no se puede). */
 async function undoable(
@@ -84,6 +103,19 @@ export async function changePieceStatus(
   workshopId: string | null = null,
 ): Promise<MoveActionResult> {
   await requirePermission("restauraciones.ver");
+  if (
+    !validArgs(
+      [
+        optionalIdArg,
+        idsArg,
+        z.enum(PIECE_STATUSES),
+        optionalTextArg,
+        optionalIdArg,
+      ],
+      [restorationId, pieceIds, to, note, workshopId],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
   const missing = await checkRequirements(supabase, to, pieceIds, workshopId);
@@ -113,6 +145,8 @@ export async function undoPieceStatus(
   reason: string,
 ): Promise<StatusActionResult> {
   await requirePermission("restauraciones.ver");
+  if (!validArgs([idArg, idArg, textArg], [restorationId, pieceId, reason]))
+    return { error: INVALID_ARGS };
   if (!reason.trim()) return { error: "Escribe el motivo del retroceso." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("undo_piece_status", {
@@ -137,6 +171,13 @@ export async function changePiecePrice(
   reason: string,
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.precio-venta");
+  if (
+    !validArgs(
+      [idArg, idArg, z.number(), textArg],
+      [restorationId, pieceId, priceCents, reason],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (!reason.trim())
     return { error: "Escribe el motivo del cambio de precio." };
   if (!Number.isInteger(priceCents) || priceCents < 0)
@@ -173,6 +214,13 @@ export async function setPiecesUrgent(
   } = {},
 ): Promise<StatusActionResult> {
   const user = await requirePermission("piezas.marcar-urgente");
+  if (
+    !validArgs(
+      [idsArg, z.boolean(), z.string().nullable(), urgentOptions],
+      [pieceIds, urgent, estimatedDeliveryDate, options],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const canSetWorkshopDate = can(user.role, "piezas.asignar-taller");
   const workshopDeliveryDate = canSetWorkshopDate
@@ -224,6 +272,8 @@ export async function markPiecesArrived(
   pieceIds: string[],
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.marcar-llegada");
+  if (!validArgs([optionalIdArg, idsArg], [restorationId, pieceIds]))
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase.rpc("mark_pieces_arrived", {
     p_piece_ids: pieceIds,
@@ -243,6 +293,8 @@ export async function sendPiecesToWorkshop(
   workshopId: string | null,
 ): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
+  if (!validArgs([idsArg, optionalIdArg], [pieceIds, workshopId]))
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
   const missing = await checkRequirements(
@@ -271,6 +323,8 @@ export async function receiveFromWorkshop(
   pieceIds: string[],
 ): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
+  if (!validArgs([optionalIdArg, idsArg], [restorationId, pieceIds]))
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const missing = await checkRequirements(supabase, "recibir_taller", pieceIds);
   if (missing) return { error: missing };
@@ -292,6 +346,13 @@ export async function sendPiecesForReview(
   workshopId: string | null,
 ): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
+  if (
+    !validArgs(
+      [optionalIdArg, idsArg, optionalIdArg],
+      [restorationId, pieceIds, workshopId],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   if (!workshopId)
     return { error: "Elige el taller al que se lleva la pieza." };
@@ -311,6 +372,8 @@ export async function receivePiecesFromReview(
   pieceIds: string[],
 ): Promise<MoveActionResult> {
   await requirePermission("piezas.enviar-recibir-taller");
+  if (!validArgs([optionalIdArg, idsArg], [restorationId, pieceIds]))
+    return { error: INVALID_ARGS };
   if (pieceIds.length === 0) return { error: "Elige al menos una pieza." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("receive_pieces_from_review", {
@@ -333,6 +396,13 @@ export async function undoPieceMove(
   historyIds: number[],
 ): Promise<StatusActionResult> {
   await requirePermission("restauraciones.ver");
+  if (
+    !validArgs(
+      [optionalIdArg, z.array(z.number().int()).max(1000)],
+      [restorationId, historyIds],
+    )
+  )
+    return { error: INVALID_ARGS };
   if (historyIds.length === 0)
     return { error: "No hay ningún movimiento que deshacer." };
   const supabase = await createClient();
@@ -351,6 +421,8 @@ export async function returnPiecesToClient(
   pieceIds: string[],
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.marcar-llegada");
+  if (!validArgs([optionalIdArg, idsArg], [restorationId, pieceIds]))
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase.rpc("return_pieces_to_client", {
     p_piece_ids: pieceIds,
@@ -367,6 +439,13 @@ export async function assignWorkshop(
   workshopId: string | null,
 ): Promise<StatusActionResult> {
   await requirePermission("piezas.asignar-taller");
+  if (
+    !validArgs(
+      [optionalIdArg, idsArg, optionalIdArg],
+      [restorationId, pieceIds, workshopId],
+    )
+  )
+    return { error: INVALID_ARGS };
   const supabase = await createClient();
   const { error } = await supabase.rpc("assign_piece_workshop", {
     p_piece_ids: pieceIds,
@@ -387,6 +466,8 @@ export async function setRestorationKind(
   kind: RestorationKind,
 ): Promise<StatusActionResult> {
   await requirePermission("restauraciones.editar");
+  if (!validArgs([idArg, z.string()], [restorationId, kind]))
+    return { error: INVALID_ARGS };
   if (!RESTORATION_KINDS.includes(kind))
     return { error: "Elige el tipo de guía." };
   const supabase = await createClient();
@@ -415,6 +496,8 @@ export async function closeRestoration(
   note: string,
 ): Promise<StatusActionResult> {
   const user = await requirePermission("piezas.consultar-aprobar-anular");
+  if (!validArgs([idArg, z.string(), textArg], [restorationId, to, note]))
+    return { error: INVALID_ARGS };
   if (!isRestorationCloseTarget(to))
     return {
       error: "La restauración solo se puede pasar a Anulada o Rechazada.",

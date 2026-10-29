@@ -1,6 +1,7 @@
 "use server";
 
 import type { CatalogProduct } from "@/domain/quote-line";
+import { INVALID_ARGS, textArg, validArgs } from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { getShopifyGateway } from "@/server/shopify";
 import type { ShopifyProductSummary } from "@/server/shopify";
@@ -19,6 +20,7 @@ export async function searchCatalog(
   query: string,
 ): Promise<CatalogSearchResult> {
   await requirePermission("cotizador.usar");
+  if (!validArgs([textArg], [query])) return { error: INVALID_ARGS };
   const text = query.trim().slice(0, 100);
   if (text.length < 2) return { ok: true, products: [] };
   try {
@@ -36,6 +38,7 @@ export async function getCatalogProduct(
   id: string,
 ): Promise<CatalogProductResult> {
   await requirePermission("cotizador.usar");
+  if (!validArgs([textArg], [id])) return { error: INVALID_ARGS };
   if (!id.startsWith("gid://shopify/Product/")) {
     return { error: "Producto inválido." };
   }

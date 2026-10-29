@@ -86,4 +86,17 @@ describe("/api/webhooks/shopify", () => {
     expect(response.status).toBe(401);
     expect(mocks.insert).not.toHaveBeenCalled();
   });
+
+  it("un cuerpo de más de 1 MB responde 413 sin guardar nada", async () => {
+    const big = "x".repeat(1024 * 1024 + 1);
+    const response = await POST(
+      new NextRequest("http://localhost/api/webhooks/shopify", {
+        method: "POST",
+        body: big,
+        headers: { "x-shopify-hmac-sha256": signWebhook(big, "secreto") },
+      }),
+    );
+    expect(response.status).toBe(413);
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
 });

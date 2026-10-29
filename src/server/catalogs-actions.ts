@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import {
   CATALOGS,
@@ -10,6 +11,7 @@ import {
   type PieceCatalogKind,
 } from "@/domain/catalogs";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   catalogItemSchemaFor,
   type CatalogItemFormInput,
@@ -77,6 +79,8 @@ export async function updateCatalogItem(
   input: CatalogItemFormInput,
 ): Promise<CatalogActionResult> {
   await requirePermission("configuracion.gestionar");
+  if (!validArgs([z.string(), idArg, z.unknown()], [kind, id, input]))
+    return { error: INVALID_ARGS };
   if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
   const result = await save(await createClient(), kind, input, id);
   if ("invalid" in result) return { error: "Revisa los datos ingresados." };
@@ -92,6 +96,8 @@ export async function setCatalogItemActive(
   active: boolean,
 ): Promise<CatalogActionResult> {
   await requirePermission("configuracion.gestionar");
+  if (!validArgs([z.string(), idArg, z.boolean()], [kind, id, active]))
+    return { error: INVALID_ARGS };
   if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
 
   const supabase = await createClient();
@@ -118,6 +124,8 @@ export async function setCatalogItemDefault(
   isDefault: boolean,
 ): Promise<CatalogActionResult> {
   await requirePermission("configuracion.gestionar");
+  if (!validArgs([z.string(), idArg, z.boolean()], [kind, id, isDefault]))
+    return { error: INVALID_ARGS };
   if (!isPieceCatalogKind(kind)) return { error: "Catálogo inválido." };
 
   const supabase = await createClient();
@@ -158,6 +166,8 @@ export async function deleteCatalogItem(
   id: string,
 ): Promise<CatalogActionResult> {
   await requirePermission("configuracion.gestionar");
+  if (!validArgs([z.string(), idArg], [kind, id]))
+    return { error: INVALID_ARGS };
   if (!isCatalogKind(kind)) return { error: "Catálogo inválido." };
 
   const supabase = await createClient();

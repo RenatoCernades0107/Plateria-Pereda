@@ -11,6 +11,7 @@ import {
   type AlertPiece,
 } from "@/domain/alerts";
 import { createClient } from "@/lib/supabase/server";
+import { INVALID_ARGS, idsArg, validArgs } from "@/lib/validation/action-args";
 import {
   alertSettingsSchema,
   type AlertSettingsInput,
@@ -74,6 +75,7 @@ export async function markAlertsRead(
   ids?: string[],
 ): Promise<AlertActionResult> {
   const user = await requireUser();
+  if (!validArgs([idsArg.optional()], [ids])) return { error: INVALID_ARGS };
   const supabase = await createClient();
   let query = supabase
     .from("notifications")
