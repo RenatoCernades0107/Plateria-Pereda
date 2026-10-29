@@ -40,6 +40,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "cotizador.usar": [A, V],
   "cotizaciones-whatsapp.usar": [A, V],
   "dashboard.ver": [A, V],
+  "dashboard.margenes": [A],
   "historial.ver": [A, V],
   "usuarios.gestionar": [A],
   "configuracion.gestionar": [A],

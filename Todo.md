@@ -1171,27 +1171,28 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 
 ### Fase 13 — Dashboard
 
-#### Paso 13.1 — Métricas en BD ⛔ P33
-- [ ] Funciones SQL con filtro de fechas en zona Lima: ventas de restauraciones (monto aprobado y monto cobrado por día/semana/mes), restauraciones por estado, promedio y mediana de días en taller (general y por taller), promedio y mediana de días de cumplimiento, piezas por ubicación.
+#### Paso 13.1 — Métricas en BD (P33 ✅, 2026-10-27)
+- [x] Funciones SQL con filtro de fechas en zona Lima: ventas de restauraciones (monto aprobado y monto cobrado por día/semana/mes), restauraciones por estado, promedio y mediana de días en taller (general y por taller), promedio y mediana de días de cumplimiento, piezas por ubicación.
 - **Unit:** No aplica (SQL).
 - **BD:**
-  - [ ] Con un set de datos conocido, cada función devuelve los valores esperados.
-  - [ ] Respetan los permisos por rol.
+  - [x] Con un set de datos conocido, cada función devuelve los valores esperados (`59_dashboard_metricas`).
+  - [x] Respetan los permisos por rol.
 - **E2E:** se cubre en 13.2.
+- Hecho (2026-10-27): migración `20261028130000_dashboard_metricas.sql` con `dashboard_summary`, `dashboard_sales`, `dashboard_orders`, `dashboard_clients`, `dashboard_workshops`, `dashboard_sellers` y `dashboard_quotes` (devuelven jsonb y el servidor las valida con zod). Rango inclusivo en fechas de Lima; series sin huecos por día, semana (desde el lunes) o mes. **Vendido** = importe con techo de las piezas de guías Normales aprobadas en el rango y aún vivas; **cobrado** = pagos − reembolsos por `paid_on`; **saldo por cobrar** = aprobado − pagado de las guías vivas. Días en taller con `workshop_days` (viajes terminados que volvieron en el rango, taller del último envío) y cumplimiento con `lima_days_between` de registro a entrega; mediana con `percentile_cont`. Solo admin y ventas (logística y anónimos reciben 42501); el costo de servicio, los márgenes y el costo por taller solo al admin, y `dashboard_sellers` devuelve a ventas únicamente su fila. Índices por `approved_at`, `delivered_at`, `created_at`, `paid_on` y el historial. 72 pruebas de BD con un set conocido (borde de Lima, reembolsos, anuladas, interna y WhatsApp).
+- [x] Por origen (oficina o WhatsApp) y conversión de cotizaciones de WhatsApp (piezas cotizadas vs. pedidas) (P46): en `dashboard_quotes` y `dashboard_sales`.
 - Commit: `feat(dashboard): agrega funciones de métricas`
 
-- [ ] Por origen (oficina o WhatsApp) y conversión de cotizaciones de WhatsApp (piezas cotizadas vs. pedidas) (P46).
-
 #### Paso 13.2 — Interfaz del dashboard
-- [ ] KPIs en tarjetas; gráficos (barras por estado, línea de ventas, barras de días por taller); selector de rango de fechas; accesos rápidos (piezas con más de N días en taller, restauraciones listas para entregar); solo admin y ventas (logística no tiene dashboard, P42).
+- [x] KPIs en tarjetas; gráficos (barras por estado, línea de ventas, barras de días por taller); selector de rango de fechas; accesos rápidos (piezas con más de N días en taller, restauraciones listas para entregar); solo admin y ventas (logística no tiene dashboard, P42).
 - **Unit:**
-  - [ ] Transformación de datos para los gráficos.
-  - [ ] Tarjetas con formato de soles y días.
+  - [x] Transformación de datos para los gráficos.
+  - [x] Tarjetas con formato de soles y días.
 - **E2E:**
-  - [ ] Con datos semilla, los KPIs muestran los valores esperados.
-  - [ ] Cambiar el rango de fechas actualiza las métricas.
-  - [ ] Logística no accede al dashboard.
-  - [ ] `@mobile` dashboard legible.
+  - [x] Con datos semilla, los KPIs muestran los valores esperados.
+  - [x] Cambiar el rango de fechas actualiza las métricas.
+  - [x] Logística no accede al dashboard.
+  - [x] `@mobile` dashboard legible.
+- Hecho (2026-10-27): `/dashboard?area=…&rango=…&desde=…&hasta=…` por pestañas: **Resumen** (cifra de ventas con variación, frases con lo llamativo, 8 indicadores con tendencia, gráfico vendido/cobrado y los pendientes de siempre con enlace al listado), **Ventas** (cobranza, origen, método de pago, servicios y materiales, margen para el admin), **Pedidos** (guías por estado, embudo de piezas, ubicación hoy y cumplimiento), **Clientes** (nuevos, recompra, mejores clientes, regiones y saldos), **Talleres** (promedio y mediana de días con semáforo, carga de hoy y costo para el admin), **Vendedores** (ranking para el admin, «Mi desempeño» para ventas) y **Cotizaciones** (embudo de WhatsApp, piezas cotizadas vs. pedidas, motivos de descarte y cotizador COT). Atajos de fechas y rango personalizado en la URL; cada cambio atenúa el contenido en su sitio mientras llegan los datos. Gráficos con tooltip único, leyenda con dos o más series y «Ver como tabla»; barras, apiladas y embudo en HTML. Paleta cobre de la marca validada con `validate_palette.js` (tokens `--viz-*`). En el celular las tablas pasan a tarjetas. «Exportar CSV» por pestaña (`/api/dashboard/exportar`, con BOM). Datos para ver el dashboard con vida: `supabase/seed-volumen.sql` (se aplica a mano). Las metas mensuales y el catálogo de motivos de pérdida (K11) quedan fuera.
 - Commit: `feat(dashboard): agrega dashboard con métricas`
 
 #### Paso 13.3 — Alertas (pedido del 2026-10-21, D76)

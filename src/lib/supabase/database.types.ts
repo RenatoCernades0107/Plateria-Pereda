@@ -1982,6 +1982,34 @@ export type Database = {
           id: string;
         }[];
       };
+      dashboard_clients: {
+        Args: { p_bucket?: string; p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_orders: {
+        Args: { p_bucket?: string; p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_quotes: {
+        Args: { p_bucket?: string; p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_sales: {
+        Args: { p_bucket?: string; p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_sellers: {
+        Args: { p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_summary: {
+        Args: { p_bucket?: string; p_from: string; p_to: string };
+        Returns: Json;
+      };
+      dashboard_workshops: {
+        Args: { p_alert_days?: number; p_from: string; p_to: string };
+        Returns: Json;
+      };
       deliver_pieces_with_balance: {
         Args: { p_note?: string; p_piece_ids: string[] };
         Returns: {
