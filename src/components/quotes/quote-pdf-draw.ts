@@ -4,8 +4,8 @@ import type { QuotePdfModel } from "@/domain/quote-pdf";
 
 /**
  * Dibuja la cotización en un A4 vertical (mm), al estilo de la cotización en papel de
- * la tienda: fecha y código a la izquierda, logo con la dirección debajo a la
- * derecha, cliente y contacto, tabla de productos sin grilla, totales, monto en
+ * la tienda: fecha a la izquierda, logo con la dirección centrada debajo a la
+ * derecha, código, cliente y contacto, tabla de productos sin grilla, totales, monto en
  * letras, condición de pago, tiempo de entrega y condiciones. `logo` va como data
  * URL PNG/JPEG. Los textos fijos usan solo caracteres de WinAnsi (Helvetica de
  * jsPDF no tiene, p. ej., el signo menos U+2212).
@@ -39,10 +39,11 @@ export async function drawQuotePdf(
     pdf.line(x1, yy, x2, yy);
   };
 
-  // --- Encabezado: fecha y código a la izquierda; logo y, debajo, la dirección
-  // de la empresa a la derecha.
+  // --- Encabezado: fecha a la izquierda; logo y, debajo, la dirección de la
+  // empresa (centrada bajo el logo) a la derecha.
   let y = 18;
   const logoW = 34;
+  const logoCenter = right - logoW / 2;
   let rightBottom = y - 6;
   if (logo) {
     const props = pdf.getImageProperties(logo);
@@ -51,25 +52,27 @@ export async function drawQuotePdf(
     rightBottom = y - 6 + h;
   }
   if (model.companyAddress) {
-    font("normal", 8.5, GRAY);
+    font("bold", 8.5);
     const address = pdf.splitTextToSize(model.companyAddress, logoW + 8);
     const addressLineH = 3.6;
     const addressY = logo ? rightBottom + 4 : y;
-    pdf.text(address, right, addressY, {
-      align: "right",
+    pdf.text(address, logoCenter, addressY, {
+      align: "center",
       lineHeightFactor: addressLineH / (8.5 * 0.3528),
     });
     rightBottom = addressY + (address.length - 1) * addressLineH + 1;
   }
   font("normal", 10.5);
   pdf.text(model.dateLine, MARGIN, y);
-  y += 9;
+  y = Math.max(y, rightBottom) + 12;
+
+  // --- Código de la cotización, justo encima del cliente.
   font("bold", 12);
   pdf.text("Cotización N°:", MARGIN, y);
   const labelW = pdf.getTextWidth("Cotización N°: ");
   font("normal", 12);
   pdf.text(model.code, MARGIN + labelW, y);
-  y = Math.max(y, rightBottom) + 12;
+  y += 10;
 
   // --- Cliente y contacto.
   const fieldLabelW = 22;

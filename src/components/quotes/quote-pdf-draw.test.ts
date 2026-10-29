@@ -107,26 +107,44 @@ describe("drawQuotePdf", () => {
     expect(raw).not.toContain("\u2212");
   });
 
-  it("la dirección de la empresa va debajo del logo, alineada a la derecha", async () => {
+  it("la dirección va centrada bajo el logo y el código justo encima de Sr(es):", async () => {
     const logo =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const pdf = await drawQuotePdf(quotePdfModel(data), { logo });
     const raw = pdf.output();
-    // Envuelta al ancho del logo: "Calle Coronel Inclán 928," / "Miraflores".
-    const match = /([\d.]+) ([\d.]+) Td\n\(Calle Coronel Incl/.exec(raw);
-    expect(match).not.toBeNull();
     const pageH = pdf.internal.pageSize.getHeight();
     const k = 72 / 25.4;
-    const x = Number(match![1]) / k;
-    const y = pageH - Number(match![2]) / k;
-    // Alineada a la derecha: termina en el margen derecho (210 - 18 mm).
-    expect(x).toBeGreaterThan(210 / 2);
-    // Debajo del logo (34 mm de ancho, cuadrado → termina en y = 12 + 34).
-    expect(y).toBeGreaterThan(12 + 34);
-    // Ya no está a la altura de "Sr(es):".
-    const sr = /([\d.]+) Td\n\(Sr\\\(es\\\):\)/.exec(raw);
-    expect(sr).not.toBeNull();
-    expect(pageH - Number(sr![1]) / k).toBeGreaterThan(y);
+    const at = (text: RegExp) => {
+      const match = new RegExp(
+        String.raw`([\d.]+) ([\d.]+) Td\n\(` + text.source,
+      ).exec(raw);
+      expect(match).not.toBeNull();
+      return { x: Number(match![1]) / k, y: pageH - Number(match![2]) / k };
+    };
+    // Envuelta al ancho del logo: "Calle Coronel Inclán 928," / "Miraflores".
+    const address = at(/Calle Coronel Incl/);
+    // Logo de 34 mm pegado al margen derecho: su centro está en 210 - 18 - 17.
+    const center = 210 - 18 - 17;
+    expect(address.x).toBeLessThan(center);
+    expect(address.x).toBeGreaterThan(210 - 18 - 34 - 4);
+    // Debajo del logo (cuadrado → termina en y = 12 + 34).
+    expect(address.y).toBeGreaterThan(12 + 34);
+    // En negrita (F2 = Helvetica-Bold) y centrada: la segunda línea, más corta,
+    // se corre a la derecha respecto de la primera.
+    const block =
+      /\/(F\d) [\d.]+ Tf[^]*?\(Calle Coronel Incl[^)]*\) Tj\n([\d.]+) (-[\d.]+) Td\n\(Miraflores\)/.exec(
+        raw,
+      );
+    expect(block).not.toBeNull();
+    expect(block![1]).toBe("F2");
+    expect(Number(block![2])).toBeGreaterThan(0);
+    const miraflores = { y: address.y - Number(block![3]) / k };
+    // "Cotización N°:" va entre la dirección y "Sr(es):".
+    const code = at(/Cotizaci/);
+    const sr = at(/Sr\\\(es\\\):\)/);
+    expect(code.y).toBeGreaterThan(miraflores.y);
+    expect(sr.y).toBeGreaterThan(code.y);
+    expect(sr.y - code.y).toBeLessThan(15);
   });
 
   it("con logo, agrega la imagen (sin romper el resto del contenido)", async () => {

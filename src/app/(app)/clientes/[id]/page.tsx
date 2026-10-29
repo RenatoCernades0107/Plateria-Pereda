@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DOCUMENT_LABELS } from "@/domain/documents";
 import { can } from "@/domain/permissions";
 import { formatPhone } from "@/domain/phone";
+import { parseQuoteFilters } from "@/domain/quote-filters";
 import { PERU_REGIONS } from "@/domain/regions";
 import { parseRestorationFilters } from "@/domain/restoration-filters";
 import { parseWhatsappQuoteFilters } from "@/domain/whatsapp-quotes";
@@ -24,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
 import { getClientDetail, type SyncState } from "@/server/clients/queries";
+import { listQuotes } from "@/server/quotes/queries";
 import { listRestorations } from "@/server/restorations/queries";
 import { listWhatsappQuotes } from "@/server/whatsapp-quotes/queries";
 
@@ -71,7 +73,8 @@ export default async function ClienteDetallePage({
   // Logística solo ve los datos de contacto (P42).
   const canSeeHistory = can(user.role, "historial.ver");
   const Icon = client.kind === "empresa" ? Building2 : User;
-  // Restauraciones y cotizaciones de WhatsApp del cliente, en pestañas separadas (P46).
+  // Restauraciones, cotizaciones personalizadas y cotizaciones de WhatsApp del
+  // cliente, en pestañas separadas (P46).
   const work = canSeeHistory
     ? await Promise.all([
         listRestorations(
@@ -88,7 +91,17 @@ export default async function ClienteDetallePage({
               { limit: CLIENT_LIST_LIMIT },
             )
           : Promise.resolve(null),
-      ]).then(([restorations, quotes]) => ({ restorations, quotes }))
+        can(user.role, "cotizador.usar")
+          ? listQuotes(
+              { ...parseQuoteFilters({}), clientId: client.id },
+              { limit: CLIENT_LIST_LIMIT },
+            )
+          : Promise.resolve(null),
+      ]).then(([restorations, quotes, customQuotes]) => ({
+        restorations,
+        quotes,
+        customQuotes,
+      }))
     : null;
   const region = PERU_REGIONS.find((r) => r.code === client.region)?.name;
 
@@ -198,6 +211,9 @@ export default async function ClienteDetallePage({
               quotesTotal={work!.quotes?.total ?? 0}
               showMoney={canSeeHistory}
               showQuotes={work!.quotes !== null}
+              customQuotes={work!.customQuotes?.quotes ?? []}
+              customQuotesTotal={work!.customQuotes?.total ?? 0}
+              showCustomQuotes={work!.customQuotes !== null}
             />
           </section>
           <section className="space-y-3" aria-labelledby="historial">
