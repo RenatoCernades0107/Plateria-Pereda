@@ -18,7 +18,10 @@ export type PaymentRecord = {
   source: "sistema" | "shopify";
   /** Ya llegó a Shopify; si no, queda pendiente de envío (11.2). */
   syncedToShopify: boolean;
-  /** Registrado solo en el sistema por el admin: no tiene pedido en Shopify. */
+  /**
+   * Queda solo en el sistema: lo registró así el admin (no tiene pedido en Shopify)
+   * o es de una guía antigua cuya orden de piezas ya no se concilia por un pago así.
+   */
   skipShopify: boolean;
   /**
    * Pedido de Shopify del pago (un pedido por pago): el nombre que se le da
@@ -39,6 +42,8 @@ export type PaymentRecord = {
 /** Pagos y reembolsos de la restauración (solo admin y ventas, P42). */
 export async function listPayments(
   restorationId: string,
+  /** Guía antigua, con su orden de piezas. */
+  hasOrder = false,
 ): Promise<PaymentRecord[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -57,6 +62,8 @@ export async function listPayments(
         (refunded.get(p.refunded_payment_id) ?? 0) + toCents(Number(p.amount)),
       );
   }
+  // Con un pago solo en el sistema, la orden de piezas ya no recibe los pendientes.
+  const frozen = hasOrder && data.some((p) => p.skip_shopify);
   const shop = serverEnv().SHOPIFY_STORE_DOMAIN;
   return data.map((p) => {
     const amountCents = toCents(Number(p.amount));
@@ -70,7 +77,9 @@ export async function listPayments(
       reason: p.reason,
       source: p.source,
       syncedToShopify: p.shopify_synced_at !== null,
-      skipShopify: p.skip_shopify,
+      skipShopify:
+        p.skip_shopify ||
+        (frozen && p.source === "sistema" && p.shopify_synced_at === null),
       orderTitle: p.shopify_order_title,
       orderName: p.shopify_order_name,
       orderUrl: shopifyOrderAdminUrl(shop, p.shopify_order_id),

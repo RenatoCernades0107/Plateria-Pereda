@@ -213,7 +213,9 @@ export default async function RestauracionDetallePage({
     await Promise.all([
       canSeeMoney ? getStatusHistory(restoration.id) : Promise.resolve([]),
       listRestorationFiles(restoration.id),
-      canSeeMoney ? listPayments(restoration.id) : Promise.resolve([]),
+      canSeeMoney
+        ? listPayments(restoration.id, restoration.hasOrder)
+        : Promise.resolve([]),
       canSeeMoney
         ? listCatalog("payment_methods", { onlyActive: true })
         : Promise.resolve([]),
@@ -689,11 +691,10 @@ export default async function RestauracionDetallePage({
                       suggested={suggested}
                       methods={paymentMethods}
                       branches={branches}
-                      // Corrección del admin; con la orden de piezas no aplica.
-                      canSkipShopify={
-                        can(user.role, "pagos.corregir") &&
-                        !restoration.hasOrder
-                      }
+                      // Corrección del admin; en una guía antigua detiene la
+                      // conciliación con su orden de piezas.
+                      canSkipShopify={can(user.role, "pagos.corregir")}
+                      hasOrder={restoration.hasOrder}
                     />
                     {can(user.role, "pagos.corregir") ? (
                       <RefundDialog
