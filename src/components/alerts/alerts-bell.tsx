@@ -2,7 +2,7 @@
 
 import { formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,9 +13,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AlertKind } from "@/domain/alerts";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import {
+  dismissAlerts,
   getMyAlerts,
   markAlertsRead,
   type MyAlert,
@@ -34,6 +37,31 @@ function timeAgo(value: string): string {
   });
 }
 
+/** Pestañas de la campana: agrupan las alertas por tipo. */
+export const ALERT_TABS: readonly {
+  id: string;
+  label: string;
+  kinds: readonly AlertKind[] | null;
+}[] = [
+  { id: "todas", label: "Todas", kinds: null },
+  {
+    id: "aprobacion",
+    label: "Aprobadas",
+    kinds: ["aprobacion_parcial", "aprobacion_total"],
+  },
+  {
+    id: "espera",
+    label: "Espera cliente",
+    kinds: ["pieza_en_espera", "guia_en_espera"],
+  },
+  { id: "lista", label: "Para entregar", kinds: ["guia_lista"] },
+];
+
+function inTab(tabId: string, alert: MyAlert): boolean {
+  const kinds = ALERT_TABS.find((t) => t.id === tabId)?.kinds;
+  return !kinds || kinds.includes(alert.kind);
+}
+
 /** "Alertas, 3 sin leer" para lectores de pantalla. */
 export function bellLabel(unread: number): string {
   if (unread === 0) return "Alertas";
@@ -48,6 +76,7 @@ export function AlertsBell({ userId }: { userId: string }) {
   const [alerts, setAlerts] = useState<MyAlert[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("todas");
   // Aviso para lectores de pantalla. Sin toast: aparecería en cualquier momento,
   // en medio del trabajo; el contador de la campana ya lo muestra.
   const [announcement, setAnnouncement] = useState("");
@@ -135,6 +164,24 @@ export function AlertsBell({ userId }: { userId: string }) {
     }
   };
 
+  const dismiss = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const removedUnread = alerts.filter(
+      (a) => ids.includes(a.id) && !a.read,
+    ).length;
+    setAlerts((current) => current.filter((a) => !ids.includes(a.id)));
+    setUnread((n) => Math.max(n - removedUnread, 0));
+    const result = await dismissAlerts(ids);
+    if ("error" in result) {
+      toast.error(result.error);
+      void refresh();
+    }
+  };
+
+  const visible = alerts.filter((a) => inTab(tab, a));
+  const visibleUnread = visible.filter((a) => !a.read).map((a) => a.id);
+  const visibleRead = visible.filter((a) => a.read).map((a) => a.id);
+
   return (
     <Popover
       open={open}
@@ -166,64 +213,120 @@ export function AlertsBell({ userId }: { userId: string }) {
         align="end"
         className="w-[min(24rem,calc(100vw-2rem))] p-0"
       >
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
           <h2 className="text-heading text-sm font-semibold">Alertas</h2>
-          {unread > 0 ? (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0"
-              onClick={() => void markRead()}
-            >
-              Marcar todas como leídas
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {visibleUnread.length > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() =>
+                  void markRead(tab === "todas" ? undefined : visibleUnread)
+                }
+              >
+                {tab === "todas"
+                  ? "Marcar todas como leídas"
+                  : "Marcar como leídas"}
+              </Button>
+            ) : null}
+            {visibleRead.length > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-muted-foreground h-auto p-0"
+                onClick={() => void dismiss(visibleRead)}
+              >
+                Ocultar leídas
+              </Button>
+            ) : null}
+          </div>
         </div>
-        {alerts.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-            No tienes alertas.
-          </p>
-        ) : (
-          <ul className="max-h-[min(28rem,70vh)] divide-y overflow-y-auto">
-            {alerts.map((alert) => (
-              <li key={alert.id}>
-                <Link
-                  href={alert.href}
-                  onClick={() => {
-                    setOpen(false);
-                    if (!alert.read) void markRead([alert.id]);
-                  }}
-                  className={cn(
-                    "hover:bg-muted/60 flex gap-3 px-4 py-3 text-sm transition-colors",
-                    !alert.read && "bg-muted/30",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-1.5 size-2 shrink-0 rounded-full",
-                      alert.read ? "bg-transparent" : "bg-primary",
-                    )}
-                  />
-                  <span className="min-w-0 space-y-1">
-                    <span className="text-heading block font-medium">
-                      {alert.title}
-                      {alert.read ? null : (
-                        <span className="sr-only"> (sin leer)</span>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground block">
-                      {alert.body}
-                    </span>
-                    <span className="text-muted-foreground block text-xs">
-                      {timeAgo(alert.createdAt)}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Tabs value={tab} onValueChange={setTab} className="gap-0">
+          <div className="border-b px-2 py-2">
+            <TabsList className="grid w-full grid-cols-4 group-data-[orientation=horizontal]/tabs:h-auto">
+              {ALERT_TABS.map((t) => {
+                const count = alerts.filter(
+                  (a) => !a.read && inTab(t.id, a),
+                ).length;
+                return (
+                  <TabsTrigger
+                    key={t.id}
+                    value={t.id}
+                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-1 text-xs leading-tight whitespace-normal"
+                  >
+                    {t.label}
+                    {count > 0 ? (
+                      <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4">
+                        {count}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+          {ALERT_TABS.map((t) => (
+            <TabsContent key={t.id} value={t.id}>
+              {visible.length === 0 ? (
+                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
+                  {alerts.length === 0
+                    ? "No tienes alertas."
+                    : "No hay alertas de este tipo."}
+                </p>
+              ) : (
+                <ul className="max-h-[min(28rem,70vh)] divide-y overflow-y-auto">
+                  {visible.map((alert) => (
+                    <li key={alert.id} className="group relative">
+                      <Link
+                        href={alert.href}
+                        onClick={() => {
+                          setOpen(false);
+                          if (!alert.read) void markRead([alert.id]);
+                        }}
+                        className={cn(
+                          "hover:bg-muted/60 flex gap-3 py-3 pr-10 pl-4 text-sm transition-colors",
+                          !alert.read && "bg-muted/30",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-1.5 size-2 shrink-0 rounded-full",
+                            alert.read ? "bg-transparent" : "bg-primary",
+                          )}
+                        />
+                        <span className="min-w-0 space-y-1">
+                          <span className="text-heading block font-medium">
+                            {alert.title}
+                            {alert.read ? null : (
+                              <span className="sr-only"> (sin leer)</span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground block">
+                            {alert.body}
+                          </span>
+                          <span className="text-muted-foreground block text-xs">
+                            {timeAgo(alert.createdAt)}
+                          </span>
+                        </span>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground absolute top-2 right-2 size-7"
+                        aria-label={`Ocultar alerta: ${alert.title}`}
+                        onClick={() => void dismiss([alert.id])}
+                      >
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
         <PushToggle {...push} />
       </PopoverContent>
       <span role="status" aria-live="polite" className="sr-only">

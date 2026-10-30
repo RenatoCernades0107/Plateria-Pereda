@@ -275,6 +275,7 @@ export type Database = {
           actor_name: string | null;
           created_at: string;
           data: NonNullable<Json>;
+          dismissed_at: string | null;
           id: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pushed_at: string | null;
@@ -288,6 +289,7 @@ export type Database = {
           actor_name?: string | null;
           created_at?: string;
           data?: NonNullable<Json>;
+          dismissed_at?: string | null;
           id?: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pushed_at?: string | null;
@@ -301,6 +303,7 @@ export type Database = {
           actor_name?: string | null;
           created_at?: string;
           data?: NonNullable<Json>;
+          dismissed_at?: string | null;
           id?: string;
           kind?: Database["public"]["Enums"]["alert_kind"];
           pushed_at?: string | null;

@@ -91,6 +91,32 @@ export async function markAlertsRead(
   return { ok: true };
 }
 
+/** Oculta las alertas indicadas del usuario: dejan de aparecer en la campana. */
+export async function dismissAlerts(ids: string[]): Promise<AlertActionResult> {
+  const user = await requireUser();
+  if (!validArgs([idsArg], [ids])) return { error: INVALID_ARGS };
+  if (ids.length === 0) return { ok: true };
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+  const [hide, read] = await Promise.all([
+    supabase
+      .from("notifications")
+      .update({ dismissed_at: now })
+      .eq("recipient_id", user.id)
+      .in("id", ids),
+    // Sin pisar la fecha de las que ya estaban leídas.
+    supabase
+      .from("notifications")
+      .update({ read_at: now })
+      .eq("recipient_id", user.id)
+      .in("id", ids)
+      .is("read_at", null),
+  ]);
+  if (hide.error || read.error)
+    return { error: "No se pudieron quitar las alertas." };
+  return { ok: true };
+}
+
 /** Guarda la configuración de las alertas (solo admin). */
 export async function updateAlertSettings(
   input: AlertSettingsInput,
