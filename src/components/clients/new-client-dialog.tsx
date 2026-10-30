@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { SimilarClient } from "@/domain/client-duplicates";
 import { DEFAULT_REGION, PERU_REGIONS } from "@/domain/regions";
 import {
   companySchema,
@@ -41,10 +42,11 @@ import {
   type CompanyFormInput,
   type PersonFormInput,
 } from "@/lib/validation/clients";
-import { createClient } from "@/server/clients/actions";
+import { createClient, findSimilarClients } from "@/server/clients/actions";
 
 import { DocumentTypeField, TextField } from "./form-fields";
 import { PhoneField } from "./phone-field";
+import { SimilarClientsAlert } from "./similar-clients-alert";
 
 /** Datos ya anotados (p. ej., en una cotización de WhatsApp) para no volver a escribirlos. */
 export type ClientPrefill = { name: string; phone: string };
@@ -91,8 +93,14 @@ const COMPANY_DEFAULTS: CompanyFormInput = {
   notes: "",
 };
 
-/** Guarda los datos validados; devuelve un mensaje de error o null si salió bien. */
-export type SaveClient = (input: ClientFormInput) => Promise<string | null>;
+/**
+ * Guarda los datos validados; devuelve un mensaje de error, null si salió bien o
+ * `false` si aún no se guardó y el formulario debe quedar como está (p. ej., esperando
+ * que confirmen que no es un cliente ya registrado).
+ */
+export type SaveClient = (
+  input: ClientFormInput,
+) => Promise<string | null | false>;
 
 function useClientForm<T extends ClientFormInput>(
   schema: typeof personSchema | typeof companySchema,
@@ -112,6 +120,7 @@ function useClientForm<T extends ClientFormInput>(
     const input = form.getValues() as ClientFormInput;
     startTransition(async () => {
       const message = await save(input);
+      if (message === false) return;
       if (message) {
         setError(message);
         return;
@@ -262,12 +271,19 @@ export function NewClientDialog({
   prefill?: ClientPrefill | null;
 }) {
   const [internalOpen, setInternalOpen] = useState(false);
+  // Clientes parecidos a los datos ingresados, a la espera de que confirmen.
+  const [similar, setSimilar] = useState<{
+    input: ClientFormInput;
+    clients: SimilarClient[];
+  } | null>(null);
+  const [creating, startCreating] = useTransition();
   const open = controlledOpen ?? internalOpen;
   const setOpen = (value: boolean) => {
     setInternalOpen(value);
+    if (!value) setSimilar(null);
     onOpenChange?.(value);
   };
-  const save: SaveClient = async (input) => {
+  const create = async (input: ClientFormInput) => {
     const result = await createClient(input);
     if ("error" in result) return result.error;
     toast.success(
@@ -281,6 +297,37 @@ export function NewClientDialog({
     });
     return null;
   };
+  // Antes de registrar se avisa si ya hay uno parecido. Volver a enviar los mismos
+  // datos después del aviso equivale a confirmar que es otro cliente.
+  const save: SaveClient = async (input) => {
+    const confirmed =
+      similar !== null &&
+      JSON.stringify(similar.input) === JSON.stringify(input);
+    if (!confirmed) {
+      const clients = await findSimilarClients(input);
+      if (clients.length > 0) {
+        setSimilar({ input, clients });
+        return false;
+      }
+    }
+    return create(input);
+  };
+  const createAnyway = () =>
+    startCreating(async () => {
+      if (!similar) return;
+      const message = await create(similar.input);
+      if (message) toast.error(message);
+    });
+  const pickExisting = onCreated
+    ? (client: SimilarClient) => {
+        setOpen(false);
+        onCreated({
+          id: client.id,
+          displayName: client.name,
+          kind: client.kind,
+        });
+      }
+    : undefined;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -301,7 +348,15 @@ export function NewClientDialog({
             Se registra en el sistema y se crea en Shopify automáticamente.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="persona">
+        {similar ? (
+          <SimilarClientsAlert
+            clients={similar.clients}
+            pending={creating}
+            onUse={pickExisting}
+            onCreateAnyway={createAnyway}
+          />
+        ) : null}
+        <Tabs defaultValue="persona" onValueChange={() => setSimilar(null)}>
           <TabsList className="w-full">
             <TabsTrigger value="persona">Persona</TabsTrigger>
             <TabsTrigger value="empresa">Empresa</TabsTrigger>

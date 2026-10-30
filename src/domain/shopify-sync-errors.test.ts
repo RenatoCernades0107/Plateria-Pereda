@@ -98,4 +98,18 @@ describe("syncErrorLink", () => {
       syncErrorLink(job({ kind: "x.y", entityTable: "otra" }), names, clientOf),
     ).toEqual({ jobId: 1, label: "x.y: RES-00001", href: null });
   });
+
+  it("explica en español por qué falló", () => {
+    const link = syncErrorLink(
+      job({
+        kind: "customer.update",
+        entityTable: "clients",
+        entityId: "c1",
+        lastError: "Phone has already been taken",
+      }),
+      names,
+      clientOf,
+    );
+    expect(link.problem).toMatch(/teléfono ya lo tiene otro cliente/);
+  });
 });

@@ -129,6 +129,8 @@ export type ClientDetail = {
   notes: string;
   active: boolean;
   createdAt: string;
+  /** Cliente al que se fusionó este (duplicado), si se fusionó. */
+  mergedInto: { id: string; displayName: string } | null;
   sync: SyncState | null;
   contacts: ContactDetail[];
 };
@@ -151,12 +153,20 @@ export async function getClientDetail(
       Number(b.active) - Number(a.active) ||
       a.display_name!.localeCompare(b.display_name!, "es"),
   );
-  const [clientStates, contactStates] = await Promise.all([
+  const [clientStates, contactStates, merged] = await Promise.all([
     getSyncStates("clients", [c.id]),
     getSyncStates(
       "contacts",
       contacts.map((k) => k.id),
     ),
+    c.merged_into
+      ? supabase
+          .from("clients")
+          .select("id, display_name")
+          .eq("id", c.merged_into)
+          .maybeSingle()
+          .then(({ data }) => data)
+      : null,
   ]);
   const synced = c.shopify_customer_id ?? c.shopify_company_id;
 
@@ -177,6 +187,9 @@ export async function getClientDetail(
     notes: c.notes,
     active: c.active,
     createdAt: c.created_at,
+    mergedInto: merged
+      ? { id: merged.id, displayName: merged.display_name ?? "" }
+      : null,
     sync: clientStates.get(c.id) ?? (synced ? SYNCED : null),
     contacts: contacts.map((k) => ({
       id: k.id,

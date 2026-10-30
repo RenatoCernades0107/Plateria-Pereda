@@ -58,6 +58,8 @@ const PERMISSIONS = {
   /** Clientes y sus datos (nombre, teléfono, contactos): logística no los ve en ningún lado. */
   "clientes.ver": ["admin", "ventas"],
   "clientes.editar": ["admin", "ventas"],
+  /** Fusionar dos clientes duplicados (2026-10-30): pasa sus guías a uno y desactiva el otro. */
+  "clientes.fusionar": ["admin"],
   "cotizador.usar": ["admin", "ventas"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],

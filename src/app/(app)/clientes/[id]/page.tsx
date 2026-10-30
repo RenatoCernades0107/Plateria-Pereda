@@ -9,6 +9,8 @@ import { ActiveToggle } from "@/components/clients/active-toggle";
 import { ClientWorkTabs } from "@/components/clients/client-work-tabs";
 import { ContactsSection } from "@/components/clients/contacts-section";
 import { EditClientDialog } from "@/components/clients/edit-client-dialog";
+import { MergeClientDialog } from "@/components/clients/merge-client-dialog";
+import { Notice } from "@/components/notice";
 import { RefreshWhilePending } from "@/components/shopify/refresh-while-pending";
 import { SyncStatus } from "@/components/shopify/sync-status";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +72,12 @@ export default async function ClienteDetallePage({
   if (!client) notFound();
 
   const canEdit = can(user.role, "clientes.editar");
+  // Solo personas activas que no se fusionaron (el duplicado se elige en el diálogo).
+  const canMerge =
+    can(user.role, "clientes.fusionar") &&
+    client.kind === "persona" &&
+    client.active &&
+    !client.mergedInto;
   // Logística solo ve los datos de contacto (P42).
   const canSeeHistory = can(user.role, "historial.ver");
   const Icon = client.kind === "empresa" ? Building2 : User;
@@ -132,6 +140,7 @@ export default async function ClienteDetallePage({
               status={client.sync.status}
               lastError={client.sync.lastError}
               canRetry={canEdit}
+              detail="inline"
             />
           ) : null}
         </div>
@@ -145,9 +154,23 @@ export default async function ClienteDetallePage({
               active={client.active}
               size="default"
             />
+            {canMerge ? <MergeClientDialog client={client} /> : null}
           </div>
         ) : null}
       </div>
+
+      {client.mergedInto ? (
+        <Notice>
+          Este cliente era un duplicado y se fusionó en{" "}
+          <Link
+            href={`/clientes/${client.mergedInto.id}`}
+            className="font-medium underline underline-offset-4"
+          >
+            {client.mergedInto.displayName}
+          </Link>
+          : sus guías y cotizaciones están allí.
+        </Notice>
+      ) : null}
 
       <Card>
         <CardHeader>

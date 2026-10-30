@@ -20,7 +20,12 @@ describe("SyncErrorsIndicator", () => {
             label: "Crear orden: RES-00001",
             href: "/restauraciones/r1",
           },
-          { jobId: 2, label: "Crear contacto", href: null },
+          {
+            jobId: 2,
+            label: "Crear contacto",
+            href: null,
+            problem: "Shopify dice que el email no es válido.",
+          },
         ]}
       />,
     );
@@ -33,6 +38,9 @@ describe("SyncErrorsIndicator", () => {
       screen.getByRole("link", { name: "Crear orden: RES-00001" }),
     ).toHaveAttribute("href", "/restauraciones/r1");
     expect(screen.getByText("Crear contacto")).toBeInTheDocument();
+    expect(
+      screen.getByText("Shopify dice que el email no es válido."),
+    ).toBeInTheDocument();
     expect(screen.getByText("y 5 más")).toBeInTheDocument();
   });
 

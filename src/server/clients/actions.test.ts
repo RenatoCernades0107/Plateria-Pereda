@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   },
   schedule: vi.fn(),
   revalidate: vi.fn(),
+  rpc: vi.fn(),
 }));
 
 vi.mock("@/server/auth", () => ({
@@ -34,6 +35,7 @@ vi.mock("@/server/auth", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
+    rpc: (fn: string, args: object) => mocks.rpc(fn, args),
     from: (table: string) => {
       mocks.table = table;
       return {
@@ -41,6 +43,11 @@ vi.mock("@/lib/supabase/server", () => ({
           mocks.insert(row);
           return { select: () => ({ single: async () => mocks.result }) };
         },
+        select: () => ({
+          eq: () => ({
+            single: async () => ({ data: { display_name: "Ana Pérez" } }),
+          }),
+        }),
         update: (row: object) => {
           mocks.update(row);
           const chain = {
@@ -64,6 +71,8 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 const {
   createClient,
   createContact,
+  findSimilarClients,
+  mergeClients,
   setClientActive,
   setContactActive,
   updateClient,
@@ -359,5 +368,95 @@ describe("edición de clientes y contactos", () => {
     await expect(
       setContactActive("00000000-0000-4000-8000-000000000011", false),
     ).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("clientes duplicados", () => {
+  const keep = "00000000-0000-4000-8000-000000000001";
+  const remove = "00000000-0000-4000-8000-000000000002";
+
+  beforeEach(() => {
+    mocks.forbidden = false;
+    mocks.rpc.mockReset();
+    mocks.revalidate.mockReset();
+  });
+
+  it("busca parecidos con los datos normalizados", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: [
+        {
+          id: remove,
+          kind: "persona",
+          display_name: "ANA PÉREZ",
+          document_type: null,
+          document_number: null,
+          phone: "+51999888777",
+          email: null,
+          same_name: true,
+          same_document: false,
+          same_phone: true,
+          same_email: false,
+        },
+      ],
+      error: null,
+    });
+    const found = await findSimilarClients(person);
+    expect(mocks.rpc).toHaveBeenCalledWith("similar_clients", {
+      p_name: "Ana Pérez",
+      p_document_number: "45678912",
+      p_phone: "+51999888777",
+      p_email: "",
+    });
+    expect(found).toEqual([
+      expect.objectContaining({
+        id: remove,
+        name: "ANA PÉREZ",
+        reasons: ["telefono", "nombre"],
+      }),
+    ]);
+  });
+
+  it("si la búsqueda falla no frena el registro", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "XX000" } });
+    await expect(findSimilarClients(person)).resolves.toEqual([]);
+  });
+
+  it("fusiona y resume lo que pasó", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { restorations: 2, quotes: 0, whatsappQuotes: 1 },
+      error: null,
+    });
+    await expect(mergeClients(keep, remove)).resolves.toEqual({
+      ok: true,
+      summary:
+        "Se pasaron 2 guías y 1 cotización de WhatsApp a Ana Pérez. El duplicado quedó desactivado.",
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("merge_clients", {
+      p_keep: keep,
+      p_remove: remove,
+    });
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/clientes/${remove}`);
+  });
+
+  it("muestra el motivo de la BD si no se puede fusionar", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: {
+        code: "23514",
+        message: "Por ahora solo se pueden fusionar personas",
+      },
+    });
+    await expect(mergeClients(keep, remove)).resolves.toEqual({
+      error: "Por ahora solo se pueden fusionar personas.",
+    });
+  });
+
+  it("valida los ids y el permiso", async () => {
+    await expect(mergeClients("x", remove)).resolves.toEqual({
+      error: expect.any(String),
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.forbidden = true;
+    await expect(mergeClients(keep, remove)).rejects.toThrow("FORBIDDEN");
   });
 });

@@ -30,7 +30,7 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
   // Los jobs completados de esos mismos registros dicen si el error ya se resolvió.
   const { data: jobs, error: jobsError } = await supabase
     .from("shopify_sync_jobs")
-    .select("id, kind, entity_table, entity_id, status, created_at")
+    .select("id, kind, entity_table, entity_id, status, created_at, last_error")
     .in("status", ["error", "ok"])
     .in("entity_id", [...new Set(errors.map((e) => e.entity_id))])
     .order("created_at", { ascending: false });
@@ -44,6 +44,7 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
       entityId: j.entity_id,
       status: j.status,
       createdAt: j.created_at,
+      lastError: j.status === "error" ? j.last_error : undefined,
     })),
   );
   const idsOf = (table: string) =>
@@ -56,7 +57,7 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
       .in("id", idsOf("restorations")),
     supabase
       .from("clients")
-      .select("id, display_name")
+      .select("id, display_name, merged_into")
       .in("id", idsOf("clients")),
     supabase
       .from("contacts")
@@ -69,14 +70,16 @@ export async function shopifySyncErrors(): Promise<SyncErrorSummary> {
     existing.add(r.id);
     names.set(r.id, r.code);
   }
-  for (const c of [...(clients.data ?? []), ...(contacts.data ?? [])]) {
+  // Un duplicado fusionado ya no importa en Shopify: su error deja de contar.
+  const liveClients = (clients.data ?? []).filter((c) => !c.merged_into);
+  for (const c of [...liveClients, ...(contacts.data ?? [])]) {
     existing.add(c.id);
     if (c.display_name) names.set(c.id, c.display_name);
   }
   const clientOf = new Map(
     (contacts.data ?? []).map((c) => [c.id, c.client_id] as const),
   );
-  // El job de un registro que ya se borró no se puede ni hace falta reintentar.
+  // El job de un registro que ya se borró (o se fusionó) no hace falta reintentarlo.
   const live = open.filter((job) => existing.has(job.entityId));
   const shown = live.slice(0, SHOWN);
 

@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { explainSyncError } from "@/domain/shopify-sync-messages";
 import { cn } from "@/lib/utils";
 import { retryShopifyJob } from "@/server/shopify-sync/actions";
 import type { SyncJobStatus } from "@/server/shopify-sync/jobs";
@@ -44,22 +45,48 @@ const CLASSES: Record<SyncJobStatus, string | undefined> = {
   error: undefined,
 };
 
-/** Estado de sincronización con Shopify de un registro, con "Reintentar" si falló. */
+/** Qué pasó y qué hacer, en español; el mensaje original de Shopify va aparte. */
+function ErrorExplanation({ message }: { message: string }) {
+  const { problem, fix, original } = explainSyncError(message);
+  return (
+    <span className="block space-y-1">
+      <span className="block">{problem}</span>
+      <span className="block">
+        <span className="font-medium">Qué hacer: </span>
+        {fix}
+      </span>
+      {original ? (
+        <span className="block text-xs opacity-75">
+          Mensaje de Shopify: {original}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * Estado de sincronización con Shopify de un registro, con "Reintentar" si falló. El
+ * motivo se explica en español: al pasar sobre el estado o, en la ficha del registro
+ * (`detail="inline"`), escrito debajo cuando quedó en error.
+ */
 export function SyncStatus({
   jobId,
   status,
   lastError,
   canRetry = true,
+  detail = "tooltip",
 }: {
   /** null: sin job (importado de Shopify); no se puede reintentar. */
   jobId: number | null;
   status: SyncJobStatus;
   lastError?: string | null;
   canRetry?: boolean;
+  detail?: "tooltip" | "inline";
 }) {
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
-  const withDetail = Boolean(lastError) && status !== "ok";
+  const inline = detail === "inline" && status === "error";
+  const withDetail = Boolean(lastError) && status !== "ok" && !inline;
   // Con detalle del error, el cursor de ayuda indica que hay más información.
   const badge = (
     <Badge
@@ -73,7 +100,7 @@ export function SyncStatus({
     </Badge>
   );
 
-  return (
+  const controls = (
     <span className="inline-flex flex-wrap items-center gap-2">
       {withDetail ? (
         <TooltipProvider>
@@ -81,7 +108,9 @@ export function SyncStatus({
             <TooltipTrigger asChild>
               <span tabIndex={0}>{badge}</span>
             </TooltipTrigger>
-            <TooltipContent>{lastError}</TooltipContent>
+            <TooltipContent className="max-w-xs">
+              <ErrorExplanation message={lastError!} />
+            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       ) : (
@@ -104,6 +133,18 @@ export function SyncStatus({
           Reintentar
         </Button>
       ) : null}
+    </span>
+  );
+  if (!inline) return controls;
+  return (
+    <span className="block w-full max-w-prose space-y-2">
+      {controls}
+      <span
+        role="note"
+        className="border-destructive/30 bg-destructive/5 block rounded-md border p-3 text-sm"
+      >
+        <ErrorExplanation message={lastError ?? ""} />
+      </span>
     </span>
   );
 }

@@ -47,9 +47,10 @@ export function SyncErrorsIndicator({ total, links }: SyncErrorSummary) {
       <PopoverContent align="end" className="w-80 space-y-2 text-sm">
         <p className="font-medium">{syncErrorsLabel(total)}</p>
         <p className="text-muted-foreground">
-          Shopify no tiene estos cambios. Abre cada registro y usa «Reintentar».
+          Shopify no tiene estos cambios. Abre cada registro: ahí se explica qué
+          hacer y está «Reintentar».
         </p>
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {links.map((link) => (
             <li key={link.jobId} className="break-words">
               {link.href ? (
@@ -59,6 +60,11 @@ export function SyncErrorsIndicator({ total, links }: SyncErrorSummary) {
               ) : (
                 link.label
               )}
+              {link.problem ? (
+                <span className="text-muted-foreground block text-xs">
+                  {link.problem}
+                </span>
+              ) : null}
             </li>
           ))}
           {rest > 0 && <li className="text-muted-foreground">y {rest} más</li>}
