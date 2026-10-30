@@ -6,6 +6,9 @@ const PUBLIC_PATHS = [
   "/api/test",
   "/api/cron",
   "/api/webhooks",
+  // La app instalable: el navegador los pide sin la cookie de sesión.
+  "/manifest.webmanifest",
+  "/sw.js",
 ];
 
 export function isPublicPath(pathname: string): boolean {

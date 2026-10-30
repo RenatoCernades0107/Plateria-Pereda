@@ -53,9 +53,30 @@ const serverSchema = z
         issue.input === undefined ? FALTA : "Debe ser una URL http(s) válida",
     }),
     APP_TIMEZONE: z.string().default("America/Lima"),
+    // Notificaciones push de las alertas: sin las tres, la campana no ofrece activarlas.
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    VAPID_SUBJECT: z
+      .string()
+      .regex(/^(mailto:|https:\/\/)/, "Debe empezar con mailto: o https://")
+      .optional(),
     VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   })
   .superRefine((env, ctx) => {
+    const vapid = [
+      "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+      "VAPID_PRIVATE_KEY",
+      "VAPID_SUBJECT",
+    ] as const;
+    if (vapid.some((key) => env[key]) && !vapid.every((key) => env[key])) {
+      for (const key of vapid.filter((k) => !env[k])) {
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: "Las tres variables VAPID van juntas",
+        });
+      }
+    }
     if (env.SHOPIFY_MODE === "live") {
       for (const key of SHOPIFY_LIVE_VARS) {
         if (!env[key]) {

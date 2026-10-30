@@ -21,6 +21,12 @@ import {
   type MyAlert,
 } from "@/server/alerts-actions";
 
+import {
+  PushToggle,
+  usePushNotifications,
+  usePushReminder,
+} from "./push-toggle";
+
 function timeAgo(value: string): string {
   return formatDistanceToNowStrict(new Date(value), {
     addSuffix: true,
@@ -49,6 +55,9 @@ export function AlertsBell({ userId }: { userId: string }) {
   const [live, setLive] = useState(false);
   // Alertas ya vistas en esta pestaña: solo las nuevas se anuncian.
   const known = useRef<Set<string> | null>(null);
+  // Notificaciones push en este dispositivo (llegan aunque la app esté cerrada).
+  const push = usePushNotifications();
+  usePushReminder(push.state, push.enable);
 
   const refresh = useCallback(async () => {
     let result;
@@ -215,6 +224,7 @@ export function AlertsBell({ userId }: { userId: string }) {
             ))}
           </ul>
         )}
+        <PushToggle {...push} />
       </PopoverContent>
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}

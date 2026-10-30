@@ -83,6 +83,29 @@ describe("parseServerEnv", () => {
     });
     expect(env.VERCEL_ENV).toBe("production");
   });
+
+  it("las claves VAPID de las notificaciones push van las tres juntas", () => {
+    expect(() =>
+      parseServerEnv({ ...base, VAPID_PRIVATE_KEY: "privada" }),
+    ).toThrow(
+      /NEXT_PUBLIC_VAPID_PUBLIC_KEY: Las tres[\s\S]*VAPID_SUBJECT: Las tres/,
+    );
+    expect(() =>
+      parseServerEnv({
+        ...base,
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: "publica",
+        VAPID_PRIVATE_KEY: "privada",
+        VAPID_SUBJECT: "correo@ejemplo.com",
+      }),
+    ).toThrow("VAPID_SUBJECT: Debe empezar con mailto: o https://");
+    const env = parseServerEnv({
+      ...base,
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: "publica",
+      VAPID_PRIVATE_KEY: "privada",
+      VAPID_SUBJECT: "mailto:correo@ejemplo.com",
+    });
+    expect(env.VAPID_SUBJECT).toBe("mailto:correo@ejemplo.com");
+  });
 });
 
 describe("parsePublicEnv", () => {
