@@ -11,7 +11,13 @@ describe("isPublicPath", () => {
     expect(isPublicPath("/api/test/shopify")).toBe(true);
     expect(isPublicPath("/api/cron/shopify-sync")).toBe(true);
     expect(isPublicPath("/api/webhooks/shopify")).toBe(true);
+    expect(isPublicPath("/api/webhooks/push")).toBe(true);
     expect(isPublicPath("/api/otra-cosa")).toBe(false);
+  });
+
+  it("deja pasar el manifiesto y el service worker de la app instalable", () => {
+    expect(isPublicPath("/manifest.webmanifest")).toBe(true);
+    expect(isPublicPath("/sw.js")).toBe(true);
   });
 
   it("protege el resto, incluso rutas con prefijo parecido", () => {

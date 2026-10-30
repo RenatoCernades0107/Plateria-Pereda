@@ -81,6 +81,11 @@ insert into public.notifications (recipient_id, kind, restoration_id, txid) valu
   ('00000000-0000-0000-0000-00000000e602', 'guia_lista', '00000000-0000-0000-0000-00000000e630', 1),
   ('00000000-0000-0000-0000-00000000e603', 'aprobacion_total', '00000000-0000-0000-0000-00000000e630', 1);
 
+insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values
+  ('00000000-0000-0000-0000-00000000e601', 'https://push.test/e601', 'k', 'a'),
+  ('00000000-0000-0000-0000-00000000e602', 'https://push.test/e602', 'k', 'a'),
+  ('00000000-0000-0000-0000-00000000e603', 'https://push.test/e603', 'k', 'a');
+
 insert into storage.objects (bucket_id, name) values
   ('branding', 'logo/matriz.png'),
   ('restoration-files', 'restorations/00000000-0000-0000-0000-00000000e630/general/a.jpg'),
@@ -187,6 +192,11 @@ insert into matriz values
   ('notifications',                'insert',  'no', 'no',    'no',    'no'),
   ('notifications',                'update',  'no', 'filas', 'filas', 'filas'),
   ('notifications',                'delete',  'no', 'no',    'no',    'no'),
+  -- Los dispositivos los guarda el servidor con la clave secreta (push-actions).
+  ('push_subscriptions',           'select',  'no', 'filas', 'filas', 'filas'),
+  ('push_subscriptions',           'insert',  'no', 'no',    'no',    'no'),
+  ('push_subscriptions',           'update',  'no', 'no',    'no',    'no'),
+  ('push_subscriptions',           'delete',  'no', 'filas', 'filas', 'filas'),
   ('payment_methods',              'select',  'no', 'si',    'si',    'no'),
   ('payment_methods',              'insert',  'no', 'si',    'no',    'no'),
   ('payment_methods',              'update',  'no', 'si',    'no',    'no'),

@@ -93,6 +93,27 @@ scripts/          scripts de desarrollo
 - Las funciones internas van en el esquema `private`, que la API de Supabase no expone.
 - El cliente administrador (`src/lib/supabase/admin.ts`) usa la clave secreta y salta RLS: solo en el servidor.
 
+## Notificaciones push
+
+Las alertas de la campana también llegan como notificación del teléfono o la computadora, aunque la app esté cerrada. Cada usuario las activa desde la campana ("Activar notificaciones en este dispositivo"); al entrar, el sistema también lo ofrece una vez. En iPhone/iPad (iOS 16.4 o más) solo funcionan con el sistema agregado a la pantalla de inicio (Compartir → Agregar a inicio).
+
+Cómo funciona: al crearse alertas, la BD llama con `pg_net` a `APP_URL/api/webhooks/push` (`Authorization: Bearer CRON_SECRET`), que arma el mensaje con la plantilla vigente y lo envía con `web-push` a los dispositivos guardados en `push_subscriptions`.
+
+Para activarlas en un entorno:
+
+1. Generar las claves VAPID (una sola vez por entorno; si cambian, todos tienen que volver a activarlas): `pnpm dlx web-push generate-vapid-keys`.
+2. En Vercel: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` (`mailto:` de contacto). Volver a desplegar.
+3. En el SQL Editor de Supabase, guardar en Vault a dónde avisar (el secreto es el mismo `CRON_SECRET` de Vercel):
+
+   ```sql
+   select vault.create_secret('https://<dominio-de-la-app>/api/webhooks/push', 'push_dispatch_url');
+   select vault.create_secret('<CRON_SECRET>', 'push_dispatch_secret');
+   ```
+
+   Para cambiarlos: `select vault.update_secret(id, '<nuevo valor>') from vault.secrets where name = 'push_dispatch_url';`.
+
+Sin las claves VAPID la campana no ofrece activarlas; sin los secretos de Vault la BD no avisa (así en local y en el CI).
+
 ## Usuarios y contraseñas
 
 La app no envía correos. El administrador crea cada usuario con una contraseña desde **Usuarios** y, si alguien la olvida, se la cambia desde ahí mismo ("Cambiar contraseña").
