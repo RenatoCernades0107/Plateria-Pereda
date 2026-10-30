@@ -213,9 +213,9 @@ export function AlertsBell({ userId }: { userId: string }) {
         align="end"
         className="w-[min(24rem,calc(100vw-2rem))] p-0"
       >
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3">
           <h2 className="text-heading text-sm font-semibold">Alertas</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {visibleUnread.length > 0 ? (
               <Button
                 variant="link"
@@ -243,16 +243,20 @@ export function AlertsBell({ userId }: { userId: string }) {
           </div>
         </div>
         <Tabs value={tab} onValueChange={setTab} className="border-b px-2 py-2">
-          <TabsList className="w-full">
+          <TabsList className="grid w-full grid-cols-4 group-data-[orientation=horizontal]/tabs:h-auto">
             {ALERT_TABS.map((t) => {
               const count = alerts.filter(
                 (a) => !a.read && inTab(t.id, a),
               ).length;
               return (
-                <TabsTrigger key={t.id} value={t.id} className="px-1.5 text-xs">
+                <TabsTrigger
+                  key={t.id}
+                  value={t.id}
+                  className="h-auto min-w-0 flex-col gap-0.5 px-1 py-1 text-xs leading-tight whitespace-normal"
+                >
                   {t.label}
                   {count > 0 ? (
-                    <span className="bg-primary text-primary-foreground ml-1 rounded-full px-1.5 text-[10px] leading-4">
+                    <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4">
                       {count}
                     </span>
                   ) : null}
