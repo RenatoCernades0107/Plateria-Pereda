@@ -66,7 +66,12 @@ export const paymentOrderTag = (paymentId: string) =>
  * Texto como etiqueta de Shopify: sin comas (las separan) y hasta 40 caracteres. El
  * nombre de un método de pago puede ser más largo; el de una sucursal ya cumple.
  */
-const asTag = (text: string) => text.replaceAll(",", " ").trim().slice(0, 40);
+const asTag = (text: string) =>
+  text
+    .replace(/\s*,\s*/g, " ")
+    .trim()
+    .slice(0, 40)
+    .trim();
 
 /** Pagos del sistema que tienen (o tendrán) su propio pedido. */
 const ownOrderPayments = (data: OrderRestoration) =>
@@ -95,11 +100,12 @@ export function paymentOrderInput(
   return {
     ...orderBuyer(data),
     lines: [{ title: payment.orderTitle, price: amount, quantity: 1 }],
-    // Primero el método de pago y la sucursal que cobró (se ven en la columna
-    // «Etiquetas» de Shopify), luego las del sistema.
+    // Shopify guarda y exporta las etiquetas en orden alfabético: el número las deja
+    // primero y fijas ("1 Yape", "2 PEREDA 4TA - CAJA"), así al dividir la columna en
+    // Excel el método y la sucursal caen siempre en las mismas columnas.
     tags: [
-      asTag(payment.gateway),
-      ...(payment.branch ? [payment.branch] : []),
+      asTag(`1 ${payment.gateway}`),
+      ...(payment.branch ? [asTag(`2 ${payment.branch}`)] : []),
       "restauracion",
       data.code,
       paymentOrderTag(payment.id),
