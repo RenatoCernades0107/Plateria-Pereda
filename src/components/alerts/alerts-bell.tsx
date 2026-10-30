@@ -237,7 +237,7 @@ export function AlertsBell({ userId }: { userId: string }) {
                 className="text-muted-foreground h-auto p-0"
                 onClick={() => void dismiss(visibleRead)}
               >
-                Quitar leídas
+                Ocultar leídas
               </Button>
             ) : null}
           </div>
@@ -308,7 +308,7 @@ export function AlertsBell({ userId }: { userId: string }) {
                   variant="ghost"
                   size="icon"
                   className="text-muted-foreground absolute top-2 right-2 size-7"
-                  aria-label={`Quitar alerta: ${alert.title}`}
+                  aria-label={`Ocultar alerta: ${alert.title}`}
                   onClick={() => void dismiss([alert.id])}
                 >
                   <X />

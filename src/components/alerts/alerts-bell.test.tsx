@@ -126,7 +126,7 @@ describe("AlertsBell", () => {
     expect(screen.getByRole("link", { name: /RES-00003/ })).toBeVisible();
   });
 
-  it("quita una alerta para que no aparezca más", async () => {
+  it("oculta una alerta para que no aparezca más", async () => {
     mocks.getMyAlerts.mockResolvedValue({
       alerts: [alert("1", false), alert("2", true)],
       unread: 1,
@@ -137,7 +137,7 @@ describe("AlertsBell", () => {
     );
     await userEvent.click(
       await screen.findByRole("button", {
-        name: "Quitar alerta: RES-00001 · Guía parcialmente aprobada",
+        name: "Ocultar alerta: RES-00001 · Guía parcialmente aprobada",
       }),
     );
     expect(mocks.dismissAlerts).toHaveBeenCalledWith(["1"]);
@@ -145,7 +145,7 @@ describe("AlertsBell", () => {
     expect(screen.getByRole("button", { name: "Alertas" })).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Quitar leídas" }),
+      screen.getByRole("button", { name: "Ocultar leídas" }),
     );
     expect(mocks.dismissAlerts).toHaveBeenLastCalledWith(["2"]);
     expect(await screen.findByText("No tienes alertas.")).toBeVisible();
