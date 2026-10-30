@@ -2,8 +2,6 @@
 
 Qué hacer cuando algo falla en producción. Para el diseño detrás de cada pieza, ver [`arquitectura.md`](./arquitectura.md).
 
-> **Pendiente:** producción todavía no está desplegada (Fase 16 de [`Todo.md`](../Todo.md)). Revisar este documento cuando lo esté.
-
 ## Dónde mirar
 
 | Qué                        | Dónde                                                                                                |

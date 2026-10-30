@@ -2,7 +2,7 @@
 
 Sistema interno para registrar restauraciones (piezas, estados, taller, pagos) y generar cotizaciones, integrado con la tienda de Shopify de Platería Pereda.
 
-**Estado:** funcional en local y en el CI; falta desplegar a producción. Lo que falta está en [`Todo.md`](./Todo.md) (Fases 16 y 17).
+**Estado:** en producción (Vercel, Supabase Cloud y la tienda de Shopify de la Platería).
 
 ## Documentación
 

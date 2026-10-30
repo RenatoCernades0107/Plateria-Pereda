@@ -1,6 +1,6 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
-> **Estado:** Fases 1–15 terminadas; faltan producción (Fase 16) y entrega (Fase 17).
+> **Estado:** en producción. Falta la entrega (Fase 17).
 > **Última actualización:** 2026-10-30
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
