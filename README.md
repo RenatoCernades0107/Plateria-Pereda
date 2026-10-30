@@ -2,16 +2,15 @@
 
 Sistema interno para registrar restauraciones (piezas, estados, taller, pagos) y generar cotizaciones, integrado con la tienda de Shopify de Platería Pereda.
 
-**Estado:** funcional en local y en el CI; falta desplegar a producción. Si vas a continuar el trabajo, empieza por [`docs/pendientes.md`](./docs/pendientes.md).
+**Estado:** funcional en local y en el CI; falta desplegar a producción. Lo que falta está en [`Todo.md`](./Todo.md) (Fases 16 y 17).
 
 ## Documentación
 
 | Documento                                        | Para qué                                                    |
 | ------------------------------------------------ | ----------------------------------------------------------- |
-| [`docs/pendientes.md`](./docs/pendientes.md)     | Estado actual y qué falta hacer                             |
 | [`docs/arquitectura.md`](./docs/arquitectura.md) | Cómo está armado el sistema y decisiones clave              |
 | [`docs/runbook.md`](./docs/runbook.md)           | Qué hacer cuando algo falla en producción                   |
-| [`Todo.md`](./Todo.md)                           | Plan paso a paso (historial de lo hecho)                    |
+| [`Todo.md`](./Todo.md)                           | Plan paso a paso: lo hecho y lo que falta                   |
 | [`Notas.md`](./Notas.md)                         | Preguntas al negocio, respuestas y decisiones (`Pxx`/`Dxx`) |
 | [`MejorasUI.md`](./MejorasUI.md)                 | Mejoras de interfaz pedidas                                 |
 

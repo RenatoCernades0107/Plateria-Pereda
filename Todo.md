@@ -1,6 +1,6 @@
 # Todo · Sistema de Restauraciones y Cotizador — Platería Pereda
 
-> **Estado:** Fases 1–15 terminadas; faltan producción (Fase 16) y entrega (Fase 17). Resumen en [`docs/pendientes.md`](./docs/pendientes.md).
+> **Estado:** Fases 1–15 terminadas; faltan producción (Fase 16) y entrega (Fase 17).
 > **Última actualización:** 2026-10-30
 > Preguntas abiertas, respuestas y decisiones: ver [`Notas.md`](./Notas.md).
 > Los pasos o reglas marcados con ⛔ **Pxx** dependen de la respuesta a esa pregunta.
@@ -1360,7 +1360,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Commit: `docs: agrega manual de usuario`
 
 #### Paso 17.2 — Documentación técnica
-- [x] README final; runbook (reintentar jobs, reprocesar webhooks, restaurar backup, rotar tokens); decisiones de arquitectura (`docs/arquitectura.md`, `docs/runbook.md`, `docs/pendientes.md`). Revisar el runbook cuando producción esté desplegada.
+- [x] README final; runbook (reintentar jobs, reprocesar webhooks, restaurar backup, rotar tokens); decisiones de arquitectura (`docs/arquitectura.md`, `docs/runbook.md`). Revisar el runbook cuando producción esté desplegada.
 - Tests: No aplica (documentación).
 - Commit: `docs: agrega runbook y documentación técnica`
 
