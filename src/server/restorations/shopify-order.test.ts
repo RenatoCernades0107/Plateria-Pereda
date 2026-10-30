@@ -463,22 +463,22 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
   const run = (memory: ReturnType<typeof memoryRepo>, j = syncJob) =>
     restorationOrderHandlers(memory.repo, () => APP_URL)[j.kind]!(j, gateway);
 
-  it("las etiquetas del pedido: método de pago, sucursal y luego las del sistema", async () => {
+  it("las etiquetas del pedido: 1 método de pago, 2 sucursal y luego las del sistema", async () => {
     data.payments[0]!.branch = "PEREDA 4TA - CAJA";
     data.payments[1]!.gateway =
       "Transferencia, cuenta BCP del negocio principal";
     await run(repoOf());
     expect(orders().map((o) => o.tags)).toEqual([
       [
-        "Efectivo",
-        "PEREDA 4TA - CAJA",
+        "1 Efectivo",
+        "2 PEREDA 4TA - CAJA",
         "restauracion",
         "RES-00001",
         "pago-pay1",
       ],
       [
         // Sin comas y hasta 40 caracteres, como exige Shopify.
-        "Transferencia  cuenta BCP del negocio pr",
+        "1 Transferencia cuenta BCP del negocio p",
         "restauracion",
         "RES-00001",
         "pago-pay2",
@@ -505,14 +505,14 @@ describe("un pedido de Shopify por pago (2026-10-19)", () => {
       {
         number: "#1001",
         lines: [["Adelanto Guía RES-00001 A1", "300.00", 1]],
-        tags: ["Efectivo", "restauracion", "RES-00001", "pago-pay1"],
+        tags: ["1 Efectivo", "restauracion", "RES-00001", "pago-pay1"],
         note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
         status: "PAID",
       },
       {
         number: "#1002",
         lines: [["Adelanto Guía RES-00001 A2", "100.00", 1]],
-        tags: ["Yape", "restauracion", "RES-00001", "pago-pay2"],
+        tags: ["1 Yape", "restauracion", "RES-00001", "pago-pay2"],
         note: "Guía RES-00001: https://pereda.example/restauraciones/r1",
         status: "PAID",
       },
