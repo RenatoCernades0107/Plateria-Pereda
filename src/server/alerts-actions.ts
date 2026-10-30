@@ -91,6 +91,21 @@ export async function markAlertsRead(
   return { ok: true };
 }
 
+/** Descarta (borra) las alertas indicadas del usuario: dejan de aparecer en la campana. */
+export async function dismissAlerts(ids: string[]): Promise<AlertActionResult> {
+  const user = await requireUser();
+  if (!validArgs([idsArg], [ids])) return { error: INVALID_ARGS };
+  if (ids.length === 0) return { ok: true };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("notifications")
+    .delete()
+    .eq("recipient_id", user.id)
+    .in("id", ids);
+  if (error) return { error: "No se pudieron descartar las alertas." };
+  return { ok: true };
+}
+
 /** Guarda la configuración de las alertas (solo admin). */
 export async function updateAlertSettings(
   input: AlertSettingsInput,

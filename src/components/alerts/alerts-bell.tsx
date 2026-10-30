@@ -2,7 +2,7 @@
 
 import { formatDistanceToNowStrict } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,9 +13,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { AlertKind } from "@/domain/alerts";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import {
+  dismissAlerts,
   getMyAlerts,
   markAlertsRead,
   type MyAlert,
@@ -34,6 +37,31 @@ function timeAgo(value: string): string {
   });
 }
 
+/** Pestañas de la campana: agrupan las alertas por tipo. */
+export const ALERT_TABS: readonly {
+  id: string;
+  label: string;
+  kinds: readonly AlertKind[] | null;
+}[] = [
+  { id: "todas", label: "Todas", kinds: null },
+  {
+    id: "aprobacion",
+    label: "Aprobadas",
+    kinds: ["aprobacion_parcial", "aprobacion_total"],
+  },
+  {
+    id: "espera",
+    label: "Espera cliente",
+    kinds: ["pieza_en_espera", "guia_en_espera"],
+  },
+  { id: "lista", label: "Para entregar", kinds: ["guia_lista"] },
+];
+
+function inTab(tabId: string, alert: MyAlert): boolean {
+  const kinds = ALERT_TABS.find((t) => t.id === tabId)?.kinds;
+  return !kinds || kinds.includes(alert.kind);
+}
+
 /** "Alertas, 3 sin leer" para lectores de pantalla. */
 export function bellLabel(unread: number): string {
   if (unread === 0) return "Alertas";
@@ -48,6 +76,7 @@ export function AlertsBell({ userId }: { userId: string }) {
   const [alerts, setAlerts] = useState<MyAlert[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("todas");
   // Aviso para lectores de pantalla. Sin toast: aparecería en cualquier momento,
   // en medio del trabajo; el contador de la campana ya lo muestra.
   const [announcement, setAnnouncement] = useState("");
@@ -135,6 +164,24 @@ export function AlertsBell({ userId }: { userId: string }) {
     }
   };
 
+  const dismiss = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const removedUnread = alerts.filter(
+      (a) => ids.includes(a.id) && !a.read,
+    ).length;
+    setAlerts((current) => current.filter((a) => !ids.includes(a.id)));
+    setUnread((n) => Math.max(n - removedUnread, 0));
+    const result = await dismissAlerts(ids);
+    if ("error" in result) {
+      toast.error(result.error);
+      void refresh();
+    }
+  };
+
+  const visible = alerts.filter((a) => inTab(tab, a));
+  const visibleUnread = visible.filter((a) => !a.read).map((a) => a.id);
+  const visibleRead = visible.filter((a) => a.read).map((a) => a.id);
+
   return (
     <Popover
       open={open}
@@ -168,25 +215,62 @@ export function AlertsBell({ userId }: { userId: string }) {
       >
         <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
           <h2 className="text-heading text-sm font-semibold">Alertas</h2>
-          {unread > 0 ? (
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto p-0"
-              onClick={() => void markRead()}
-            >
-              Marcar todas como leídas
-            </Button>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {visibleUnread.length > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() =>
+                  void markRead(tab === "todas" ? undefined : visibleUnread)
+                }
+              >
+                {tab === "todas"
+                  ? "Marcar todas como leídas"
+                  : "Marcar como leídas"}
+              </Button>
+            ) : null}
+            {visibleRead.length > 0 ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="text-muted-foreground h-auto p-0"
+                onClick={() => void dismiss(visibleRead)}
+              >
+                Quitar leídas
+              </Button>
+            ) : null}
+          </div>
         </div>
-        {alerts.length === 0 ? (
+        <Tabs value={tab} onValueChange={setTab} className="border-b px-2 py-2">
+          <TabsList className="w-full">
+            {ALERT_TABS.map((t) => {
+              const count = alerts.filter(
+                (a) => !a.read && inTab(t.id, a),
+              ).length;
+              return (
+                <TabsTrigger key={t.id} value={t.id} className="px-1.5 text-xs">
+                  {t.label}
+                  {count > 0 ? (
+                    <span className="bg-primary text-primary-foreground ml-1 rounded-full px-1.5 text-[10px] leading-4">
+                      {count}
+                    </span>
+                  ) : null}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+        {visible.length === 0 ? (
           <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-            No tienes alertas.
+            {alerts.length === 0
+              ? "No tienes alertas."
+              : "No hay alertas de este tipo."}
           </p>
         ) : (
           <ul className="max-h-[min(28rem,70vh)] divide-y overflow-y-auto">
-            {alerts.map((alert) => (
-              <li key={alert.id}>
+            {visible.map((alert) => (
+              <li key={alert.id} className="group relative">
                 <Link
                   href={alert.href}
                   onClick={() => {
@@ -194,7 +278,7 @@ export function AlertsBell({ userId }: { userId: string }) {
                     if (!alert.read) void markRead([alert.id]);
                   }}
                   className={cn(
-                    "hover:bg-muted/60 flex gap-3 px-4 py-3 text-sm transition-colors",
+                    "hover:bg-muted/60 flex gap-3 py-3 pr-10 pl-4 text-sm transition-colors",
                     !alert.read && "bg-muted/30",
                   )}
                 >
@@ -220,6 +304,15 @@ export function AlertsBell({ userId }: { userId: string }) {
                     </span>
                   </span>
                 </Link>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground absolute top-2 right-2 size-7"
+                  aria-label={`Quitar alerta: ${alert.title}`}
+                  onClick={() => void dismiss([alert.id])}
+                >
+                  <X />
+                </Button>
               </li>
             ))}
           </ul>
