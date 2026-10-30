@@ -2388,6 +2388,19 @@ export type Database = {
         Args: { p_restoration_id: string };
         Returns: string;
       };
+      restoration_quote_message_data: {
+        Args: { p_restoration_id: string };
+        Returns: {
+          client_document_number: string;
+          client_name: string;
+          client_phone: string;
+          contact_name: string;
+          contact_phone: string;
+          deposit_amount: number;
+          deposit_percent: number;
+          total: number;
+        }[];
+      };
       restorations_balance_due: {
         Args: { p_restoration_ids: string[] };
         Returns: {

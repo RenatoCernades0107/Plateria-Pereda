@@ -156,6 +156,56 @@ export async function getRestorationClientName(
   return data ?? null;
 }
 
+export type QuoteMessageClient = {
+  clientName: string;
+  clientDocument: string | null;
+  clientPhone: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  /** % de adelanto (del monto, si se guardó en soles), o null si no hay. */
+  depositPercent: number | null;
+};
+
+/**
+ * Cliente, contacto y adelanto de una guía para el "Mensaje de cotización" de
+ * logística, que no lee clientes ni montos: la RPC `restoration_quote_message_data`
+ * se los da (solo de guías activas). null si la guía no está a su alcance.
+ */
+export async function getQuoteMessageClient(
+  id: string,
+): Promise<QuoteMessageClient | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("restoration_quote_message_data", {
+    p_restoration_id: id,
+  });
+  if (error) throw error;
+  const row = data[0];
+  if (!row) return null;
+  return {
+    clientName: row.client_name ?? "",
+    clientDocument: row.client_document_number ?? null,
+    clientPhone: row.client_phone ?? null,
+    contactName: row.contact_name ?? null,
+    contactPhone: row.contact_phone ?? null,
+    depositPercent: depositPercentFrom(
+      row.deposit_amount,
+      row.deposit_percent,
+      row.total,
+    ),
+  };
+}
+
+/** % de adelanto: del monto en soles si se guardó así; si no, el % antiguo. */
+function depositPercentFrom(
+  amount: number | null,
+  percent: number | null,
+  total: number | null,
+): number | null {
+  if (amount !== null)
+    return depositPercentOf(toCents(Number(amount)), toCents(Number(total)));
+  return percent === null ? null : Number(percent);
+}
+
 /**
  * Detalle de una restauración. Los datos de las piezas salen de las vistas
  * `*_operational` (logística no ve las pasadas, D24), con el precio de venta de cada
@@ -302,15 +352,11 @@ export async function getRestorationDetail(
             money.data.deposit_amount === null
               ? null
               : toCents(Number(money.data.deposit_amount)),
-          depositPercent:
-            money.data.deposit_amount !== null
-              ? depositPercentOf(
-                  toCents(Number(money.data.deposit_amount)),
-                  toCents(Number(money.data.total)),
-                )
-              : money.data.deposit_percent === null
-                ? null
-                : Number(money.data.deposit_percent),
+          depositPercent: depositPercentFrom(
+            money.data.deposit_amount,
+            money.data.deposit_percent,
+            money.data.total,
+          ),
           paymentStatus: money.data.payment_status,
         }
       : null,

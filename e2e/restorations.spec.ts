@@ -395,7 +395,7 @@ test.describe("Restauraciones", () => {
     );
   });
 
-  test("logística ve el detalle con el precio de cada pieza, sin cliente, totales, pagos ni historial", async ({
+  test("logística ve el detalle con el precio de cada pieza y el mensaje de cotización, sin cliente, totales, pagos ni historial", async ({
     page,
     loginAs,
   }) => {
@@ -412,10 +412,11 @@ test.describe("Restauraciones", () => {
     await expect(page.getByText("S/ 1,300.00").first()).toBeVisible();
     await expect(page.getByRole("tab", { name: "Pagos" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Historial" })).toHaveCount(0);
+    // El mensaje de cotización sí (2026-10-30), igual que admin y ventas.
     await expect(
       page.getByRole("button", { name: "Mensaje de cotización" }),
-    ).toHaveCount(0);
-    // Sin cliente; de la guía en PDF, solo la versión para taller.
+    ).toBeVisible();
+    // Sin cliente a la vista; de la guía en PDF, solo la versión para taller.
     await expect(page.getByText(clientName)).toHaveCount(0);
     await expect(page.getByRole("link", { name: clientName })).toHaveCount(0);
     await expect(

@@ -37,10 +37,10 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "talleres.eliminar": [A],
   "guias.exportar-pdf": [A, V],
   "guias.exportar-pdf-taller": [A, V, L],
+  "guias.mensaje-cotizacion": [A, V, L],
   "clientes.ver": [A, V],
   "clientes.editar": [A, V],
   "cotizador.usar": [A, V],
-  "cotizador.ver": [A, V, L],
   "cotizaciones-whatsapp.usar": [A, V],
   "dashboard.ver": [A, V],
   "dashboard.margenes": [A],
@@ -74,11 +74,11 @@ describe("matriz de permisos", () => {
     }
   });
 
-  it("logística edita piezas, exporta la guía para taller y ve cotizaciones, sin editarlas", () => {
+  it("logística edita piezas, exporta la guía para taller y ve el mensaje de cotización", () => {
     expect(can(L, "piezas.editar")).toBe(true);
     expect(can(L, "restauraciones.editar")).toBe(false);
     expect(can(L, "guias.exportar-pdf-taller")).toBe(true);
-    expect(can(L, "cotizador.ver")).toBe(true);
+    expect(can(L, "guias.mensaje-cotizacion")).toBe(true);
     expect(can(L, "cotizador.usar")).toBe(false);
   });
 

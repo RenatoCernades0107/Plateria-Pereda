@@ -50,12 +50,15 @@ const PERMISSIONS = {
    * también logística (2026-10-30).
    */
   "guias.exportar-pdf-taller": ["admin", "ventas", "logistica"],
+  /**
+   * "Mensaje de cotización" de la guía para WhatsApp (con el nombre, el documento y el
+   * teléfono del cliente): también logística (2026-10-30), igual que admin y ventas.
+   */
+  "guias.mensaje-cotizacion": ["admin", "ventas", "logistica"],
   /** Clientes y sus datos (nombre, teléfono, contactos): logística no los ve en ningún lado. */
   "clientes.ver": ["admin", "ventas"],
   "clientes.editar": ["admin", "ventas"],
   "cotizador.usar": ["admin", "ventas"],
-  /** Ver las cotizaciones (solo lectura): también logística (2026-10-30). */
-  "cotizador.ver": ["admin", "ventas", "logistica"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],
   "dashboard.ver": ["admin", "ventas"],

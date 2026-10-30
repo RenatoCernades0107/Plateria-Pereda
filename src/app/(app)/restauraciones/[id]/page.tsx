@@ -76,8 +76,10 @@ import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
   getProfileName,
+  getQuoteMessageClient,
   getRestorationClientName,
   getRestorationDetail,
+  type QuoteMessageClient,
   getStatusHistory,
 } from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
@@ -136,25 +138,40 @@ export default async function RestauracionDetallePage({
     typeof query.pestana === "string" && tabs.includes(query.pestana)
       ? query.pestana
       : "piezas";
-  // Datos de la empresa (los leen todos) para el PDF; el resto, solo admin y ventas.
+  // Datos de la empresa, plantilla y términos (los leen todos): PDF y mensaje de cotización.
   const company = await getSettings();
-  const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
+  // Logística (que no lee clientes ni montos) lo arma con los datos que le da la RPC.
+  const messageClient: QuoteMessageClient | null =
+    !charged || !can(user.role, "guias.mensaje-cotizacion")
+      ? null
+      : canSeeClient
+        ? {
+            clientName: restoration.client?.name ?? "",
+            clientDocument: restoration.client?.document?.number ?? null,
+            clientPhone: restoration.client?.phone ?? null,
+            contactName: restoration.contact?.name ?? null,
+            contactPhone: restoration.contact?.phone ?? null,
+            depositPercent: restoration.money?.depositPercent ?? null,
+          }
+        : await getQuoteMessageClient(restoration.id);
   const clientPhone =
-    restoration.client?.phone ?? restoration.contact?.phone ?? null;
-  const quoteData =
-    settings && charged
-      ? {
-          code: restoration.code,
-          clientName: restoration.client?.name ?? "",
-          contactName: restoration.contact?.name ?? null,
-          clientPhone: clientPhone ? formatPhone(clientPhone) : null,
-          clientDocument: restoration.client?.document?.number ?? null,
-          paymentType: restoration.paymentType,
-          depositPercent: restoration.money?.depositPercent ?? 0,
-          terms: settings.terms,
-        }
-      : null;
+    messageClient?.clientPhone ?? messageClient?.contactPhone ?? null;
+  const quoteData = messageClient
+    ? {
+        code: restoration.code,
+        clientName: messageClient.clientName,
+        contactName: messageClient.contactName,
+        clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+        clientDocument: messageClient.clientDocument,
+        paymentType: restoration.paymentType,
+        depositPercent: messageClient.depositPercent ?? 0,
+        terms: company.terms,
+      }
+    : null;
+  // Número al que se envía el mensaje: el del contacto, si hay; si no, el del cliente.
+  const messagePhone =
+    messageClient?.contactPhone ?? messageClient?.clientPhone ?? null;
   const serviceNames = quoteData ? await serviceNamesById() : new Map();
   const quotePieces = restoration.pieces.map((p) => ({
     id: p.id,
@@ -517,12 +534,12 @@ export default async function RestauracionDetallePage({
                   code={restoration.code}
                 />
               ) : null}
-              {settings && quoteData ? (
+              {quoteData ? (
                 <RestorationQuoteMessageButton
-                  template={settings.whatsappTemplate}
+                  template={company.whatsappTemplate}
                   data={quoteData}
                   pieces={quotePieces}
-                  phone={phone}
+                  phone={messagePhone}
                   autoOpen={justCreated}
                 />
               ) : null}

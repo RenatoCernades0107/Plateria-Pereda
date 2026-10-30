@@ -15,7 +15,6 @@ test.describe("Permisos por rol", () => {
     await expect(nav(page).getByRole("link")).toHaveText([
       "Restauraciones",
       "Piezas",
-      "Cotizaciones",
       "Talleres",
     ]);
   });
@@ -24,7 +23,7 @@ test.describe("Permisos por rol", () => {
     "/dashboard",
     "/usuarios",
     "/configuracion",
-    "/cotizaciones/nueva",
+    "/cotizaciones",
     "/cotizaciones-whatsapp",
     "/auditoria",
   ]) {

@@ -60,7 +60,7 @@ export const NAV_ITEMS: NavItem[] = [
     title: "Cotizaciones",
     href: "/cotizaciones",
     icon: FileText,
-    permission: "cotizador.ver",
+    permission: "cotizador.usar",
   },
   {
     title: "Talleres",

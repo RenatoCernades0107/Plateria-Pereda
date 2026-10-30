@@ -29,16 +29,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function CotizacionPage({
   params,
 }: PageProps<"/cotizaciones/[id]">) {
-  const user = await requirePermission("cotizador.ver");
-  // Logística la ve sin editarla, cambiar su estado ni exportarla.
-  const canEdit = can(user.role, "cotizador.usar");
+  const user = await requirePermission("cotizador.usar");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
   const quote = await getQuote(id);
   if (!quote) notFound();
 
   const draft = quote.status === "borrador";
-  const canExportPdf = canEdit && quote.lines.length > 0;
+  const canExportPdf = quote.lines.length > 0;
   const company = await getSettings();
   const client = quote.client;
   // "Sr(es):" es la empresa cuando se cotiza a un contacto; "Contacto:" es quien
@@ -80,11 +78,9 @@ export default async function CotizacionPage({
           <PageHeader
             title={`Cotización ${quote.code}`}
             description={
-              !canEdit
-                ? "Solo lectura."
-                : draft
-                  ? "Borrador: se puede editar hasta emitirla."
-                  : "Emitida: para cambiarla, duplícala."
+              draft
+                ? "Borrador: se puede editar hasta emitirla."
+                : "Emitida: para cambiarla, duplícala."
             }
           />
           <div className="-mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -106,16 +102,14 @@ export default async function CotizacionPage({
           {canExportPdf ? (
             <QuotePdfButton data={pdfData} phone={client.phone} />
           ) : null}
-          {canEdit ? (
-            <QuoteActions id={quote.id} status={quote.status} />
-          ) : null}
+          <QuoteActions id={quote.id} status={quote.status} />
         </div>
       </div>
       <QuoteForm
         // Al cambiar de estado se reinicia con los datos guardados.
         key={`${quote.id}:${quote.status}`}
         quoteId={quote.id}
-        readOnly={!draft || !canEdit}
+        readOnly={!draft}
         issueDate={quote.issueDate}
         canCreateClient={can(user.role, "clientes.editar")}
         initial={{
