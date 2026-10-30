@@ -165,11 +165,11 @@ describe("guidePdfModel", () => {
     expect(model.totalsNote).toBeNull();
   });
 
-  it("para taller quita cliente, precios, cláusula y firmas", () => {
+  it("para taller deja solo el nombre del cliente y quita precios, cláusula y firmas", () => {
     const model = guidePdfModel(data, new Set(["1", "2"]), {
       forWorkshop: true,
     });
-    expect(model.client).toEqual([]);
+    expect(model.client).toEqual(["Ana Torres"]);
     expect(model.showPrice).toBe(false);
     expect(model.rows.every((r) => r.price === null)).toBe(true);
     expect(model.totals).toEqual([]);
@@ -178,6 +178,13 @@ describe("guidePdfModel", () => {
     // Sin datos de la empresa: el membrete dice solo «TALLER».
     expect(model.companyLines).toEqual([{ text: "TALLER" }]);
     expect(model.footer).toBe("");
+  });
+
+  it("para taller sin nombre del cliente no dibuja su bloque", () => {
+    const model = guidePdfModel({ ...data, clientName: "" }, new Set(["1"]), {
+      forWorkshop: true,
+    });
+    expect(model.client).toEqual([]);
   });
 
   it("sin montos (logística) no muestra precios ni totales", () => {

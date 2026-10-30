@@ -2384,6 +2384,23 @@ export type Database = {
         Args: { p_id: string };
         Returns: Database["public"]["Enums"]["whatsapp_quote_status"];
       };
+      restoration_client_name: {
+        Args: { p_restoration_id: string };
+        Returns: string;
+      };
+      restoration_quote_message_data: {
+        Args: { p_restoration_id: string };
+        Returns: {
+          client_document_number: string;
+          client_name: string;
+          client_phone: string;
+          contact_name: string;
+          contact_phone: string;
+          deposit_amount: number;
+          deposit_percent: number;
+          total: number;
+        }[];
+      };
       restorations_balance_due: {
         Args: { p_restoration_ids: string[] };
         Returns: {
@@ -2470,6 +2487,26 @@ export type Database = {
           piece_id: string;
           status: Database["public"]["Enums"]["piece_status"];
         }[];
+      };
+      update_piece_as_logistics: {
+        Args: {
+          p_description: string;
+          p_estimated_delivery_date: string;
+          p_material_ids: string[];
+          p_measure: string;
+          p_notes: string;
+          p_piece_id: string;
+          p_price?: number;
+          p_quantity: number;
+          p_service_ids: string[];
+          p_set_price?: boolean;
+          p_set_workshop?: boolean;
+          p_urgent: boolean;
+          p_weight_grams: number;
+          p_workshop_delivery_date?: string;
+          p_workshop_id?: string;
+        };
+        Returns: string;
       };
       update_whatsapp_quote: {
         Args: {

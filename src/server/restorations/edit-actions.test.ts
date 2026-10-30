@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
-  role: "admin" as "admin" | "ventas",
+  role: "admin" as "admin" | "ventas" | "logistica",
   update: vi.fn(),
   insert: vi.fn(),
   eq: vi.fn(),
@@ -64,7 +64,10 @@ vi.mock("@/lib/supabase/server", () => ({
     }),
     rpc: async (name: string, args: object) => {
       mocks.rpc(name, args);
-      return { error: mocks.rpcError };
+      return {
+        data: mocks.rpcError ? null : "00000000-0000-4000-8000-000000000004",
+        error: mocks.rpcError,
+      };
     },
   }),
 }));
@@ -260,6 +263,36 @@ describe("edición de restauraciones", () => {
     ).toEqual({
       error: "Revisa los datos de la pieza.",
     });
+  });
+
+  it("logística edita la pieza por la RPC, con el taller y el precio de venta", async () => {
+    mocks.role = "logistica";
+    expect(
+      await updatePiece("00000000-0000-4000-8000-000000000001", piece),
+    ).toEqual({ ok: true });
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith(
+      "update_piece_as_logistics",
+      expect.objectContaining({
+        p_piece_id: "00000000-0000-4000-8000-000000000001",
+        p_description: "Fuente",
+        p_material_ids: ["1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e"],
+        p_set_workshop: true,
+        p_workshop_id: null,
+        p_set_price: true,
+        p_price: 1300,
+      }),
+    );
+    expect(mocks.revalidate).toHaveBeenCalledWith(
+      "/restauraciones/00000000-0000-4000-8000-000000000004",
+    );
+    mocks.rpcError = {
+      code: "23514",
+      message: "De una pieza entregada solo se editan las notas",
+    };
+    expect(
+      await updatePiece("00000000-0000-4000-8000-000000000001", piece),
+    ).toEqual({ error: "De una pieza entregada solo se editan las notas" });
   });
 
   it("addPiece agrega la pieza (la llegada la fija la BD según el origen, P48)", async () => {

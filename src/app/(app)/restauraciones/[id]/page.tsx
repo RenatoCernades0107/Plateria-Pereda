@@ -76,7 +76,10 @@ import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
   getProfileName,
+  getQuoteMessageClient,
+  getRestorationClientName,
   getRestorationDetail,
+  type QuoteMessageClient,
   getStatusHistory,
 } from "@/server/restorations/queries";
 import { getSettings } from "@/server/settings";
@@ -102,6 +105,8 @@ export default async function RestauracionDetallePage({
   // Cliente, contacto y PDF de la guía: logística no los ve.
   const canSeeClient = can(user.role, "clientes.ver");
   const canExportPdf = can(user.role, "guias.exportar-pdf");
+  // Logística exporta solo la versión para taller (con el nombre del cliente).
+  const canExportWorkshopPdf = can(user.role, "guias.exportar-pdf-taller");
   const restoration = await getRestorationDetail(id, {
     withMoney: canSeeMoney,
     withClient: canSeeClient,
@@ -133,25 +138,40 @@ export default async function RestauracionDetallePage({
     typeof query.pestana === "string" && tabs.includes(query.pestana)
       ? query.pestana
       : "piezas";
-  // Datos de la empresa (los leen todos) para el PDF; el resto, solo admin y ventas.
+  // Datos de la empresa, plantilla y términos (los leen todos): PDF y mensaje de cotización.
   const company = await getSettings();
-  const settings = canSeeMoney ? company : null;
   // Mensaje de cotización: se arma en el diálogo con las piezas que se elijan.
+  // Logística (que no lee clientes ni montos) lo arma con los datos que le da la RPC.
+  const messageClient: QuoteMessageClient | null =
+    !charged || !can(user.role, "guias.mensaje-cotizacion")
+      ? null
+      : canSeeClient
+        ? {
+            clientName: restoration.client?.name ?? "",
+            clientDocument: restoration.client?.document?.number ?? null,
+            clientPhone: restoration.client?.phone ?? null,
+            contactName: restoration.contact?.name ?? null,
+            contactPhone: restoration.contact?.phone ?? null,
+            depositPercent: restoration.money?.depositPercent ?? null,
+          }
+        : await getQuoteMessageClient(restoration.id);
   const clientPhone =
-    restoration.client?.phone ?? restoration.contact?.phone ?? null;
-  const quoteData =
-    settings && charged
-      ? {
-          code: restoration.code,
-          clientName: restoration.client?.name ?? "",
-          contactName: restoration.contact?.name ?? null,
-          clientPhone: clientPhone ? formatPhone(clientPhone) : null,
-          clientDocument: restoration.client?.document?.number ?? null,
-          paymentType: restoration.paymentType,
-          depositPercent: restoration.money?.depositPercent ?? 0,
-          terms: settings.terms,
-        }
-      : null;
+    messageClient?.clientPhone ?? messageClient?.contactPhone ?? null;
+  const quoteData = messageClient
+    ? {
+        code: restoration.code,
+        clientName: messageClient.clientName,
+        contactName: messageClient.contactName,
+        clientPhone: clientPhone ? formatPhone(clientPhone) : null,
+        clientDocument: messageClient.clientDocument,
+        paymentType: restoration.paymentType,
+        depositPercent: messageClient.depositPercent ?? 0,
+        terms: company.terms,
+      }
+    : null;
+  // Número al que se envía el mensaje: el del contacto, si hay; si no, el del cliente.
+  const messagePhone =
+    messageClient?.contactPhone ?? messageClient?.clientPhone ?? null;
   const serviceNames = quoteData ? await serviceNamesById() : new Map();
   const quotePieces = restoration.pieces.map((p) => ({
     id: p.id,
@@ -196,11 +216,15 @@ export default async function RestauracionDetallePage({
       ? await getQuoteCode(restoration.whatsappQuoteId)
       : null;
 
-  // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita.
+  // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita. Logística
+  // edita las piezas, pero no los datos de la guía (sin contactos).
   const editing =
     canSeeMoney && restoration.client
       ? await loadEditingData(restoration.client)
-      : null;
+      : can(user.role, "piezas.editar")
+        ? await loadEditingData(null)
+        : null;
+  const editingGuide = canSeeMoney ? editing : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
   // En una guía que no se cobra, la pieza no lleva precio de venta (la BD lo rechaza).
@@ -269,6 +293,13 @@ export default async function RestauracionDetallePage({
   const attendedBy = restoration.createdBy
     ? await getProfileName(restoration.createdBy)
     : null;
+  // Logística no lee los clientes: para la guía de taller, solo el nombre.
+  const clientName =
+    restoration.client?.name ??
+    (!canExportPdf && canExportWorkshopPdf
+      ? await getRestorationClientName(restoration.id)
+      : null) ??
+    "";
   // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
   const pdfData = {
     company: {
@@ -281,7 +312,7 @@ export default async function RestauracionDetallePage({
     status: restoration.status,
     kind,
     paymentType: restoration.paymentType,
-    clientName: restoration.client?.name ?? "",
+    clientName,
     document: restoration.client?.document ?? null,
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
@@ -463,7 +494,7 @@ export default async function RestauracionDetallePage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {editing ? (
+              {editingGuide ? (
                 <EditRestorationDialog
                   restorationId={restoration.id}
                   initial={{
@@ -478,22 +509,23 @@ export default async function RestauracionDetallePage({
                     totalCents: restoration.money?.totalCents ?? 0,
                     notes: restoration.notes,
                   }}
-                  contacts={editing.contacts}
+                  contacts={editingGuide.contacts}
                   hasPayments={payments.length > 0}
                   kind={kind}
                 />
               ) : null}
-              {editing ? (
+              {editingGuide ? (
                 <ChangeRestorationKindButton
                   restorationId={restoration.id}
                   kind={kind}
                 />
               ) : null}
-              {canExportPdf ? (
+              {canExportPdf || canExportWorkshopPdf ? (
                 <GuidePdfButton
                   data={pdfData}
                   photos={photos}
                   clientId={restoration.client?.id ?? null}
+                  workshopOnly={!canExportPdf}
                 />
               ) : null}
               {canClose ? (
@@ -502,12 +534,12 @@ export default async function RestauracionDetallePage({
                   code={restoration.code}
                 />
               ) : null}
-              {settings && quoteData ? (
+              {quoteData ? (
                 <RestorationQuoteMessageButton
-                  template={settings.whatsappTemplate}
+                  template={company.whatsappTemplate}
                   data={quoteData}
                   pieces={quotePieces}
-                  phone={phone}
+                  phone={messagePhone}
                   autoOpen={justCreated}
                 />
               ) : null}
@@ -764,13 +796,13 @@ export default async function RestauracionDetallePage({
   );
 }
 
-/** Catálogos y contactos de la empresa para los diálogos de edición. */
-async function loadEditingData(client: { id: string; kind: string }) {
+/** Catálogos y contactos de la empresa para los diálogos de edición (sin cliente, sin contactos). */
+async function loadEditingData(client: { id: string; kind: string } | null) {
   const supabase = await createClient();
   const [materials, services, contacts] = await Promise.all([
     listCatalog("materials"),
     listCatalog("services"),
-    client.kind === "empresa"
+    client?.kind === "empresa"
       ? supabase
           .from("contacts")
           .select("id, display_name, position")

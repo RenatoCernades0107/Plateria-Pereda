@@ -239,7 +239,7 @@ insert into matriz values
   ('restorations_operational',     'insert',  'no', 'no',    'no',    'no'),
   ('restorations_operational',     'update',  'no', 'no',    'no',    'no'),
   ('restorations_operational',     'delete',  'no', 'no',    'no',    'no'),
-  ('services',                     'select',  'no', 'si',    'si',    'no'),
+  ('services',                     'select',  'no', 'si',    'si',    'si'),
   ('services',                     'insert',  'no', 'si',    'no',    'no'),
   ('services',                     'update',  'no', 'si',    'no',    'no'),
   ('services',                     'delete',  'no', 'si',    'no',    'no'),

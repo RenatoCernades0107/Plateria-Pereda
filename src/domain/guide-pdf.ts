@@ -93,7 +93,7 @@ export type GuidePdfData = {
 };
 
 export type GuidePdfOptions = {
-  /** Versión para el taller: sin datos del cliente ni precios de venta. */
+  /** Versión para el taller: del cliente solo el nombre, sin precios de venta. */
   forWorkshop?: boolean;
 };
 
@@ -126,7 +126,7 @@ export type GuidePdfModel = {
   companyLines: GuidePdfLetterheadLine[];
   /** Recuadro de la esquina: fecha y número de guía. */
   meta: [label: string, value: string][];
-  /** Vacío en la versión para taller (no se dibuja el bloque del cliente). */
+  /** En la versión para taller, solo el nombre del cliente. */
   client: string[];
   guide: [label: string, value: string][];
   showPrice: boolean;
@@ -216,8 +216,9 @@ export function guidePdfModel(
       ["Fecha", formatDate(data.createdAt)],
       ["Guía N°", data.code],
     ],
+    // El taller ve a quién pertenecen las piezas (2026-10-30), sin sus datos de contacto.
     client: forWorkshop
-      ? []
+      ? [data.clientName].filter(Boolean)
       : [
           data.clientName,
           data.document

@@ -107,7 +107,8 @@ export async function drawGuidePdf(
   y = Math.max(y + (logo ? 28 : 0), companyY, metaY) + 5;
 
   // --- Bloques de cliente y de la guía.
-  // Versión para taller: sin bloque del cliente, el de la guía va a la izquierda.
+  // Sin cliente (p. ej., la versión para taller de una guía sin nombre), el bloque de la
+  // guía va a la izquierda.
   const gap = 8;
   const blockW = (contentW - gap) / 2;
   const hasClient = model.client.length > 0;

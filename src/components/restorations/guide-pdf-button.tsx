@@ -30,17 +30,22 @@ import { loadPhotos, PDF_LOGO_URL, thumbnail } from "./pdf-images";
  * Botón "Exportar PDF" del detalle de la guía. El diálogo deja elegir qué piezas van
  * en el PDF (por defecto, todas) y si se incluye la foto "Antes" de cada una. Sin el
  * teléfono del cliente no se genera el PDF: el diálogo avisa y lleva a actualizarlo.
+ * Con `workshopOnly` (logística) solo se exporta la versión para taller, que no pide
+ * el teléfono.
  */
 export function GuidePdfButton({
   data,
   photos = {},
   clientId = null,
+  workshopOnly = false,
 }: {
   data: GuidePdfData;
   /** Primera foto "Antes" de cada pieza (por id). */
   photos?: Record<string, string>;
   /** Cliente de la guía, para llevar a actualizar su teléfono. */
   clientId?: string | null;
+  /** Solo la versión para taller (logística). */
+  workshopOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,8 +55,9 @@ export function GuidePdfButton({
   );
   const hasPhotos = data.pieces.some((p) => photos[p.id]);
   const [withPhotos, setWithPhotos] = useState(true);
-  // Versión para el taller: sin cliente ni precios, con la foto de cada pieza.
-  const [forWorkshop, setForWorkshop] = useState(false);
+  // Versión para el taller: del cliente solo el nombre, sin precios y con la foto de
+  // cada pieza.
+  const [forWorkshop, setForWorkshop] = useState(workshopOnly);
 
   function toggle(id: string, checked: boolean) {
     setSelected((prev) => {
@@ -62,7 +68,8 @@ export function GuidePdfButton({
     });
   }
 
-  const missingPhone = !data.phone;
+  // El teléfono solo hace falta en la versión para el cliente.
+  const missingPhone = !data.phone && !forWorkshop;
 
   async function exportPdf() {
     if (missingPhone) return;
@@ -104,18 +111,22 @@ export function GuidePdfButton({
         onClick={() => {
           // Cada vez que se abre, todas las piezas vuelven a estar elegidas.
           setSelected(new Set(allIds));
-          setForWorkshop(false);
+          setForWorkshop(workshopOnly);
           setOpen(true);
         }}
         disabled={data.pieces.length === 0}
       >
         <FileDown className={PDF_ICON_CLASS} />
-        Exportar PDF
+        {workshopOnly ? "Guía para taller" : "Exportar PDF"}
       </Button>
       <Dialog open={open} onOpenChange={(value) => !busy && setOpen(value)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Exportar guía en PDF</DialogTitle>
+            <DialogTitle>
+              {workshopOnly
+                ? "Exportar guía para taller en PDF"
+                : "Exportar guía en PDF"}
+            </DialogTitle>
             <DialogDescription>
               Elige las piezas que van en el PDF de {data.code}.
             </DialogDescription>
@@ -168,21 +179,28 @@ export function GuidePdfButton({
               Incluir la foto «Antes» de cada pieza
             </label>
           ) : null}
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="accent-primary mt-0.5 size-4"
-              checked={forWorkshop}
-              onChange={(e) => setForWorkshop(e.target.checked)}
-            />
-            <span>
-              Para taller
-              <span className="text-muted-foreground block text-xs">
-                Sin datos del cliente ni precios de venta, con la foto de cada
-                pieza.
+          {workshopOnly ? (
+            <p className="text-muted-foreground text-xs">
+              Versión para taller: con el nombre del cliente, sin sus datos de
+              contacto ni precios de venta, y con la foto de cada pieza.
+            </p>
+          ) : (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="accent-primary mt-0.5 size-4"
+                checked={forWorkshop}
+                onChange={(e) => setForWorkshop(e.target.checked)}
+              />
+              <span>
+                Para taller
+                <span className="text-muted-foreground block text-xs">
+                  Con el nombre del cliente, sin sus datos de contacto ni
+                  precios de venta, y con la foto de cada pieza.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
           {missingPhone ? (
             <Notice tone="destructive" className="space-y-2">
               <p className="flex items-start gap-2 font-medium">
