@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AlertKind } from "@/domain/alerts";
 import { createClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
@@ -242,85 +242,91 @@ export function AlertsBell({ userId }: { userId: string }) {
             ) : null}
           </div>
         </div>
-        <Tabs value={tab} onValueChange={setTab} className="border-b px-2 py-2">
-          <TabsList className="grid w-full grid-cols-4 group-data-[orientation=horizontal]/tabs:h-auto">
-            {ALERT_TABS.map((t) => {
-              const count = alerts.filter(
-                (a) => !a.read && inTab(t.id, a),
-              ).length;
-              return (
-                <TabsTrigger
-                  key={t.id}
-                  value={t.id}
-                  className="h-auto min-w-0 flex-col gap-0.5 px-1 py-1 text-xs leading-tight whitespace-normal"
-                >
-                  {t.label}
-                  {count > 0 ? (
-                    <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4">
-                      {count}
-                    </span>
-                  ) : null}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+        <Tabs value={tab} onValueChange={setTab} className="gap-0">
+          <div className="border-b px-2 py-2">
+            <TabsList className="grid w-full grid-cols-4 group-data-[orientation=horizontal]/tabs:h-auto">
+              {ALERT_TABS.map((t) => {
+                const count = alerts.filter(
+                  (a) => !a.read && inTab(t.id, a),
+                ).length;
+                return (
+                  <TabsTrigger
+                    key={t.id}
+                    value={t.id}
+                    className="h-auto min-w-0 flex-col gap-0.5 px-1 py-1 text-xs leading-tight whitespace-normal"
+                  >
+                    {t.label}
+                    {count > 0 ? (
+                      <span className="bg-primary text-primary-foreground rounded-full px-1.5 text-[10px] leading-4">
+                        {count}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+          {ALERT_TABS.map((t) => (
+            <TabsContent key={t.id} value={t.id}>
+              {visible.length === 0 ? (
+                <p className="text-muted-foreground px-4 py-8 text-center text-sm">
+                  {alerts.length === 0
+                    ? "No tienes alertas."
+                    : "No hay alertas de este tipo."}
+                </p>
+              ) : (
+                <ul className="max-h-[min(28rem,70vh)] divide-y overflow-y-auto">
+                  {visible.map((alert) => (
+                    <li key={alert.id} className="group relative">
+                      <Link
+                        href={alert.href}
+                        onClick={() => {
+                          setOpen(false);
+                          if (!alert.read) void markRead([alert.id]);
+                        }}
+                        className={cn(
+                          "hover:bg-muted/60 flex gap-3 py-3 pr-10 pl-4 text-sm transition-colors",
+                          !alert.read && "bg-muted/30",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "mt-1.5 size-2 shrink-0 rounded-full",
+                            alert.read ? "bg-transparent" : "bg-primary",
+                          )}
+                        />
+                        <span className="min-w-0 space-y-1">
+                          <span className="text-heading block font-medium">
+                            {alert.title}
+                            {alert.read ? null : (
+                              <span className="sr-only"> (sin leer)</span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground block">
+                            {alert.body}
+                          </span>
+                          <span className="text-muted-foreground block text-xs">
+                            {timeAgo(alert.createdAt)}
+                          </span>
+                        </span>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground absolute top-2 right-2 size-7"
+                        aria-label={`Ocultar alerta: ${alert.title}`}
+                        onClick={() => void dismiss([alert.id])}
+                      >
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          ))}
         </Tabs>
-        {visible.length === 0 ? (
-          <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-            {alerts.length === 0
-              ? "No tienes alertas."
-              : "No hay alertas de este tipo."}
-          </p>
-        ) : (
-          <ul className="max-h-[min(28rem,70vh)] divide-y overflow-y-auto">
-            {visible.map((alert) => (
-              <li key={alert.id} className="group relative">
-                <Link
-                  href={alert.href}
-                  onClick={() => {
-                    setOpen(false);
-                    if (!alert.read) void markRead([alert.id]);
-                  }}
-                  className={cn(
-                    "hover:bg-muted/60 flex gap-3 py-3 pr-10 pl-4 text-sm transition-colors",
-                    !alert.read && "bg-muted/30",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "mt-1.5 size-2 shrink-0 rounded-full",
-                      alert.read ? "bg-transparent" : "bg-primary",
-                    )}
-                  />
-                  <span className="min-w-0 space-y-1">
-                    <span className="text-heading block font-medium">
-                      {alert.title}
-                      {alert.read ? null : (
-                        <span className="sr-only"> (sin leer)</span>
-                      )}
-                    </span>
-                    <span className="text-muted-foreground block">
-                      {alert.body}
-                    </span>
-                    <span className="text-muted-foreground block text-xs">
-                      {timeAgo(alert.createdAt)}
-                    </span>
-                  </span>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground absolute top-2 right-2 size-7"
-                  aria-label={`Ocultar alerta: ${alert.title}`}
-                  onClick={() => void dismiss([alert.id])}
-                >
-                  <X />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
         <PushToggle {...push} />
       </PopoverContent>
       <span role="status" aria-live="polite" className="sr-only">
