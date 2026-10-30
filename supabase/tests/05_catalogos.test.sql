@@ -64,7 +64,8 @@ select is(
   1,
   'logística lee los materiales'
 );
-select is((select count(*)::int from public.services), 0, 'logística no ve los servicios (tienen precios)');
+-- Logística elige los servicios al editar la pieza (2026-10-30): los lee.
+select ok((select count(*)::int from public.services) > 0, 'logística lee los servicios');
 select is((select count(*)::int from public.payment_methods), 0, 'logística no ve los métodos de pago');
 select throws_ok(
   $$ insert into public.materials (name) values ('Oro de logística') $$,
