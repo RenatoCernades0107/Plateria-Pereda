@@ -450,8 +450,9 @@ test.describe("Estados de las piezas", () => {
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
     // Logística no consulta, aprueba ni anula; la pieza ya está en la tienda (P48).
-    // Su menú solo lleva al detalle de la pieza.
+    // Su menú edita la pieza (2026-10-30) y lleva a su detalle.
     expect(await pieceActionNames(page, `${r.code}-1`)).toEqual([
+      "Editar",
       "Ver detalle",
     ]);
 
