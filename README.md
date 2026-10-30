@@ -2,8 +2,18 @@
 
 Sistema interno para registrar restauraciones (piezas, estados, taller, pagos) y generar cotizaciones, integrado con la tienda de Shopify de Platería Pereda.
 
-- Plan de trabajo paso a paso: [`Todo.md`](./Todo.md)
-- Preguntas, respuestas y decisiones: [`Notas.md`](./Notas.md)
+**Estado:** funcional en local y en el CI; falta desplegar a producción. Si vas a continuar el trabajo, empieza por [`docs/pendientes.md`](./docs/pendientes.md).
+
+## Documentación
+
+| Documento                                        | Para qué                                                    |
+| ------------------------------------------------ | ----------------------------------------------------------- |
+| [`docs/pendientes.md`](./docs/pendientes.md)     | Estado actual y qué falta hacer                             |
+| [`docs/arquitectura.md`](./docs/arquitectura.md) | Cómo está armado el sistema y decisiones clave              |
+| [`docs/runbook.md`](./docs/runbook.md)           | Qué hacer cuando algo falla en producción                   |
+| [`Todo.md`](./Todo.md)                           | Plan paso a paso (historial de lo hecho)                    |
+| [`Notas.md`](./Notas.md)                         | Preguntas al negocio, respuestas y decisiones (`Pxx`/`Dxx`) |
+| [`MejorasUI.md`](./MejorasUI.md)                 | Mejoras de interfaz pedidas                                 |
 
 ## Stack
 
@@ -69,6 +79,9 @@ Servicios locales:
 | `pnpm shopify:sync`                       | Procesa el outbox de Shopify (con `pnpm dev` corriendo; en producción lo hace Vercel Cron)         |
 | `pnpm shopify:webhook <topic> <fixture>`  | Firma y envía un webhook de prueba a la app local (fixtures en `tests/fixtures/shopify/webhooks/`) |
 | `pnpm shopify:register-webhooks`          | Suscribe la tienda a los webhooks del sistema (`APP_URL` https del entorno)                        |
+| `pnpm shopify:import-customers`           | Importa los clientes de Shopify al sistema (carga inicial, Paso 6.6)                               |
+| `pnpm shopify:seed-customers`             | Crea clientes de ejemplo en la tienda de desarrollo                                                |
+| `pnpm shopify:spike` / `cleanup-spike`    | Pruebas manuales contra la tienda de desarrollo (Paso 4.1) y su limpieza                           |
 
 ## Estructura
 
