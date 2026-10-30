@@ -58,8 +58,10 @@ export function ClientWorkTabs({
   const customQuoteFilters = { ...parseQuoteFilters({}), clientId };
   return (
     <Tabs defaultValue="restauraciones">
-      {/* Con tres pestañas no entra en un celular: se desliza dentro de la barra. */}
-      <TabsList className="max-w-full justify-start overflow-x-auto">
+      {/* Con tres pestañas no entra en un celular: se desliza dentro de la barra.
+          overflow-y-hidden: el subrayado (::after) de cada pestaña sobresale 5px
+          por debajo y, con overflow-x-auto, abría una barra vertical. */}
+      <TabsList className="max-w-full justify-start overflow-x-auto overflow-y-hidden">
         <TabsTrigger value="restauraciones">
           Restauraciones ({restorationsTotal})
         </TabsTrigger>
