@@ -134,20 +134,42 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
   if (error) throw error;
   if (!q) return null;
 
-  const c = q.clients!;
+  // Logística no lee los clientes ni los contactos (RLS): ve los datos copiados en la
+  // cotización (se copian al crearla, al cambiar el cliente y al emitirla).
+  const c = q.clients ?? {
+    id: q.client_id,
+    kind: "persona" as const,
+    display_name: q.client_name,
+    document_type: q.client_document_type,
+    document_number: q.client_document_number,
+    phone: q.client_phone,
+    email: q.client_email,
+    shopify_customer_id: null,
+  };
+  const k =
+    q.contacts ??
+    (q.contact_id
+      ? {
+          id: q.contact_id,
+          display_name: q.contact_name,
+          phone: q.contact_phone,
+          email: q.contact_email,
+          shopify_customer_id: null,
+        }
+      : null);
   // Mientras es borrador se muestran los datos vigentes; emitida, los copiados.
   const issued = q.status !== "borrador";
-  const client: ClientOption = q.contacts
+  const client: ClientOption = k
     ? {
         source: "local",
         kind: "contacto",
         clientId: c.id,
-        contactId: q.contacts.id,
-        name: issued ? (q.contact_name ?? "") : (q.contacts.display_name ?? ""),
+        contactId: k.id,
+        name: issued ? (q.contact_name ?? "") : (k.display_name ?? ""),
         companyName: issued ? q.client_name : (c.display_name ?? ""),
-        phone: issued ? q.contact_phone : q.contacts.phone,
-        email: issued ? q.contact_email : q.contacts.email,
-        shopifyCustomerId: q.contacts.shopify_customer_id,
+        phone: issued ? q.contact_phone : k.phone,
+        email: issued ? q.contact_email : k.email,
+        shopifyCustomerId: k.shopify_customer_id,
       }
     : {
         source: "local",

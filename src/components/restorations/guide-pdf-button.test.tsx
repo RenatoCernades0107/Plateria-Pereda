@@ -94,4 +94,18 @@ describe("GuidePdfButton", () => {
     await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("solo para taller (logística): sin casilla y sin pedir el teléfono", async () => {
+    const user = userEvent.setup();
+    render(<GuidePdfButton data={{ ...data, phone: null }} workshopOnly />);
+    await user.click(screen.getByRole("button", { name: "Guía para taller" }));
+
+    expect(
+      screen.queryByRole("checkbox", { name: /Para taller/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Exportar PDF" }),
+    ).not.toBeDisabled();
+  });
 });

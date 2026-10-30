@@ -9,20 +9,29 @@ import {
 } from "./restoration-edit";
 
 describe("editableFields", () => {
-  it("logística no edita nada", () => {
-    for (const hasOrder of [false, true]) {
-      expect(
-        editableFields(
-          { role: "logistica", hasOrder },
-          { status: "registrada" },
-        ),
-      ).toEqual({
-        restoration: [],
-        piece: [],
-        priceNeedsOrderFlow: false,
-        canAddPieces: false,
-      });
-    }
+  it("logística edita los campos de la pieza como el admin, pero no la guía ni agrega piezas", () => {
+    expect(
+      editableFields(
+        { role: "logistica", hasOrder: false },
+        { status: "registrada" },
+      ),
+    ).toEqual({
+      restoration: [],
+      piece: [...PIECE_FREE_FIELDS, "price"],
+      priceNeedsOrderFlow: false,
+      canAddPieces: false,
+    });
+    expect(
+      editableFields(
+        { role: "logistica", hasOrder: true },
+        { status: "registrada", priceCents: 1000 },
+      ),
+    ).toEqual({
+      restoration: [],
+      piece: PIECE_FREE_FIELDS,
+      priceNeedsOrderFlow: true,
+      canAddPieces: false,
+    });
   });
 
   it("antes de la orden, ventas y admin editan todo, también el precio de venta", () => {

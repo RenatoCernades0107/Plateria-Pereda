@@ -415,12 +415,15 @@ test.describe("Restauraciones", () => {
     await expect(
       page.getByRole("button", { name: "Mensaje de cotización" }),
     ).toHaveCount(0);
-    // Sin cliente y sin exportar la guía en PDF.
+    // Sin cliente; de la guía en PDF, solo la versión para taller.
     await expect(page.getByText(clientName)).toHaveCount(0);
     await expect(page.getByRole("link", { name: clientName })).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Exportar PDF" }),
     ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Guía para taller" }),
+    ).toBeVisible();
   });
 
   test("logística no abre restauraciones entregadas o anuladas", async ({

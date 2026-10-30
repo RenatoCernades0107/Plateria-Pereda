@@ -229,18 +229,55 @@ const permissionsOf = (role: AppRole) => ({
   withWorkshop: can(role, "piezas.asignar-taller"),
 });
 
-/** Edita una pieza; la BD bloquea lo que su estado o la orden de Shopify no permiten. */
+/**
+ * Edita una pieza; la BD bloquea lo que su estado o la orden de Shopify no permiten.
+ * Logística (sin UPDATE directo sobre las piezas) edita por la RPC
+ * `update_piece_as_logistics`, solo en guías activas.
+ */
 export async function updatePiece(
   pieceId: string,
   input: PieceFormInput,
 ): Promise<ActionResult> {
-  const user = await requirePermission("restauraciones.editar");
+  const user = await requirePermission("piezas.editar");
   if (!validArgs([idArg, z.unknown()], [pieceId, input]))
     return { error: INVALID_ARGS };
   const parsed = pieceColumns(input, permissionsOf(user.role));
   if (!parsed) return { error: "Revisa los datos de la pieza." };
 
   const supabase = await createClient();
+  if (!can(user.role, "restauraciones.editar")) {
+    const c = parsed.columns;
+    const withWorkshop = "workshop_id" in c;
+    const withPrice = "price" in c;
+    // Los tipos generados no admiten null, pero la función sí.
+    const { data: restorationId, error } = await supabase.rpc(
+      "update_piece_as_logistics",
+      {
+        p_piece_id: pieceId,
+        p_quantity: c.quantity,
+        p_description: c.description,
+        p_measure: c.measure,
+        p_material_ids: c.material_ids,
+        p_service_ids: c.service_ids,
+        p_weight_grams: c.weight_grams as number,
+        p_notes: c.notes,
+        p_urgent: c.urgent,
+        p_estimated_delivery_date: c.estimated_delivery_date as string,
+        p_set_workshop: withWorkshop,
+        p_workshop_id: (withWorkshop ? c.workshop_id : null) as string,
+        p_workshop_delivery_date: (withWorkshop
+          ? c.workshop_delivery_date
+          : null) as string,
+        p_set_price: withPrice,
+        p_price: (withPrice ? c.price : null) as number,
+      },
+    );
+    if (error)
+      return { error: editError(error, "No se pudo guardar la pieza.") };
+    if (withPrice) scheduleShopifySync();
+    revalidatePath(`/restauraciones/${restorationId}`);
+    return { ok: true };
+  }
   const { data, error } = await supabase
     .from("pieces")
     .update(parsed.columns)

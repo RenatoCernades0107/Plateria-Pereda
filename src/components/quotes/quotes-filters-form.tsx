@@ -31,10 +31,13 @@ const ALL = "todos";
 export function QuotesFiltersForm({
   filters,
   clientName,
+  showClient = true,
 }: {
   filters: QuoteFilters;
   /** Nombre del cliente filtrado (si hay). */
   clientName: string | null;
+  /** Filtro por cliente: logística no ve los clientes. */
+  showClient?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -102,30 +105,32 @@ export function QuotesFiltersForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-cliente">Cliente</Label>
-        {client ? (
-          <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
-            <span className="min-w-0 flex-1 truncate">{client.name}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Quitar filtro de cliente"
-              onClick={() => set({ clientId: null })}
-            >
-              <X aria-hidden />
-            </Button>
-          </div>
-        ) : (
-          <ClientPicker
-            id="filtro-cliente"
-            placeholder="Todos los clientes"
-            onSelect={chooseClient}
-          />
-        )}
-      </div>
+      {showClient ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="filtro-cliente">Cliente</Label>
+          {client ? (
+            <div className="flex h-9 items-center gap-1 rounded-md border px-3 text-sm">
+              <span className="min-w-0 flex-1 truncate">{client.name}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Quitar filtro de cliente"
+                onClick={() => set({ clientId: null })}
+              >
+                <X aria-hidden />
+              </Button>
+            </div>
+          ) : (
+            <ClientPicker
+              id="filtro-cliente"
+              placeholder="Todos los clientes"
+              onSelect={chooseClient}
+            />
+          )}
+        </div>
+      ) : null}
       <div className="space-y-1.5">
         <Label htmlFor="filtro-desde">Desde</Label>
         <Input

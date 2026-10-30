@@ -142,6 +142,21 @@ export async function getProfileName(id: string): Promise<string | null> {
 }
 
 /**
+ * Nombre del cliente de una guía, para la versión para taller del PDF. Logística no lee
+ * los clientes: la RPC `restoration_client_name` le da solo el nombre (de guías activas).
+ */
+export async function getRestorationClientName(
+  id: string,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("restoration_client_name", {
+    p_restoration_id: id,
+  });
+  if (error) throw error;
+  return data ?? null;
+}
+
+/**
  * Detalle de una restauración. Los datos de las piezas salen de las vistas
  * `*_operational` (logística no ve las pasadas, D24), con el precio de venta de cada
  * pieza (admin, ventas y logística); totales y pagos solo se leen si `withMoney`

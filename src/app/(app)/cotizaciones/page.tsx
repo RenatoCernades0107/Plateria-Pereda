@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { QuotesFiltersForm } from "@/components/quotes/quotes-filters-form";
 import { QuotesList } from "@/components/quotes/quotes-list";
 import { Button } from "@/components/ui/button";
+import { can } from "@/domain/permissions";
 import { parseQuoteFilters, quoteFiltersHref } from "@/domain/quote-filters";
 import { requirePermission } from "@/server/auth";
 import { getClientName, listQuotes } from "@/server/quotes/queries";
@@ -17,8 +18,12 @@ export const metadata: Metadata = { title: "Cotizaciones" };
 export default async function CotizacionesPage({
   searchParams,
 }: PageProps<"/cotizaciones">) {
-  await requirePermission("cotizador.usar");
-  const filters = parseQuoteFilters(await searchParams);
+  const user = await requirePermission("cotizador.ver");
+  // Logística las ve sin crearlas ni filtrar por cliente (no ve los clientes).
+  const canCreate = can(user.role, "cotizador.usar");
+  const showClient = can(user.role, "clientes.ver");
+  const parsed = parseQuoteFilters(await searchParams);
+  const filters = showClient ? parsed : { ...parsed, clientId: null };
   const [{ quotes, total, pages }, clientName] = await Promise.all([
     listQuotes(filters),
     filters.clientId ? getClientName(filters.clientId) : null,
@@ -32,14 +37,20 @@ export default async function CotizacionesPage({
           title="Cotizaciones"
           description="Cotizaciones de productos personalizados del catálogo de Shopify."
         />
-        <Button asChild>
-          <Link href="/cotizaciones/nueva">
-            <Plus aria-hidden />
-            Nueva cotización
-          </Link>
-        </Button>
+        {canCreate ? (
+          <Button asChild>
+            <Link href="/cotizaciones/nueva">
+              <Plus aria-hidden />
+              Nueva cotización
+            </Link>
+          </Button>
+        ) : null}
       </div>
-      <QuotesFiltersForm filters={filters} clientName={clientName} />
+      <QuotesFiltersForm
+        filters={filters}
+        clientName={clientName}
+        showClient={showClient}
+      />
       <QuotesList
         quotes={quotes}
         emptyMessage="Aún no hay cotizaciones."

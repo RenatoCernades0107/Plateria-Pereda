@@ -76,6 +76,7 @@ import { getBalanceDue, listPayments } from "@/server/payments/queries";
 import { getSyncStates } from "@/server/clients/queries";
 import {
   getProfileName,
+  getRestorationClientName,
   getRestorationDetail,
   getStatusHistory,
 } from "@/server/restorations/queries";
@@ -102,6 +103,8 @@ export default async function RestauracionDetallePage({
   // Cliente, contacto y PDF de la guía: logística no los ve.
   const canSeeClient = can(user.role, "clientes.ver");
   const canExportPdf = can(user.role, "guias.exportar-pdf");
+  // Logística exporta solo la versión para taller (con el nombre del cliente).
+  const canExportWorkshopPdf = can(user.role, "guias.exportar-pdf-taller");
   const restoration = await getRestorationDetail(id, {
     withMoney: canSeeMoney,
     withClient: canSeeClient,
@@ -196,11 +199,15 @@ export default async function RestauracionDetallePage({
       ? await getQuoteCode(restoration.whatsappQuoteId)
       : null;
 
-  // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita.
+  // Edición (Paso 7.7): catálogos, talleres y contactos solo para quien edita. Logística
+  // edita las piezas, pero no los datos de la guía (sin contactos).
   const editing =
     canSeeMoney && restoration.client
       ? await loadEditingData(restoration.client)
-      : null;
+      : can(user.role, "piezas.editar")
+        ? await loadEditingData(null)
+        : null;
+  const editingGuide = canSeeMoney ? editing : null;
   const ctx = { role: user.role, hasOrder: restoration.hasOrder };
   const workshops = await listActiveWorkshops();
   // En una guía que no se cobra, la pieza no lleva precio de venta (la BD lo rechaza).
@@ -269,6 +276,13 @@ export default async function RestauracionDetallePage({
   const attendedBy = restoration.createdBy
     ? await getProfileName(restoration.createdBy)
     : null;
+  // Logística no lee los clientes: para la guía de taller, solo el nombre.
+  const clientName =
+    restoration.client?.name ??
+    (!canExportPdf && canExportWorkshopPdf
+      ? await getRestorationClientName(restoration.id)
+      : null) ??
+    "";
   // Exportar la guía en PDF (con las piezas que se elijan; montos solo si se ven).
   const pdfData = {
     company: {
@@ -281,7 +295,7 @@ export default async function RestauracionDetallePage({
     status: restoration.status,
     kind,
     paymentType: restoration.paymentType,
-    clientName: restoration.client?.name ?? "",
+    clientName,
     document: restoration.client?.document ?? null,
     contactName: restoration.contact?.name ?? null,
     phone: phone ? formatPhone(phone) : null,
@@ -463,7 +477,7 @@ export default async function RestauracionDetallePage({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              {editing ? (
+              {editingGuide ? (
                 <EditRestorationDialog
                   restorationId={restoration.id}
                   initial={{
@@ -478,22 +492,23 @@ export default async function RestauracionDetallePage({
                     totalCents: restoration.money?.totalCents ?? 0,
                     notes: restoration.notes,
                   }}
-                  contacts={editing.contacts}
+                  contacts={editingGuide.contacts}
                   hasPayments={payments.length > 0}
                   kind={kind}
                 />
               ) : null}
-              {editing ? (
+              {editingGuide ? (
                 <ChangeRestorationKindButton
                   restorationId={restoration.id}
                   kind={kind}
                 />
               ) : null}
-              {canExportPdf ? (
+              {canExportPdf || canExportWorkshopPdf ? (
                 <GuidePdfButton
                   data={pdfData}
                   photos={photos}
                   clientId={restoration.client?.id ?? null}
+                  workshopOnly={!canExportPdf}
                 />
               ) : null}
               {canClose ? (
@@ -764,13 +779,13 @@ export default async function RestauracionDetallePage({
   );
 }
 
-/** Catálogos y contactos de la empresa para los diálogos de edición. */
-async function loadEditingData(client: { id: string; kind: string }) {
+/** Catálogos y contactos de la empresa para los diálogos de edición (sin cliente, sin contactos). */
+async function loadEditingData(client: { id: string; kind: string } | null) {
   const supabase = await createClient();
   const [materials, services, contacts] = await Promise.all([
     listCatalog("materials"),
     listCatalog("services"),
-    client.kind === "empresa"
+    client?.kind === "empresa"
       ? supabase
           .from("contacts")
           .select("id, display_name, position")

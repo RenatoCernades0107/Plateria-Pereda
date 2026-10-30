@@ -5,6 +5,13 @@ const PERMISSIONS = {
   "restauraciones.ver": ["admin", "ventas", "logistica"],
   "restauraciones.editar": ["admin", "ventas"],
   "restauraciones.ver-pasadas": ["admin", "ventas"],
+  /**
+   * Editar los datos de una pieza desde el detalle de la guía. Logística (2026-10-30)
+   * edita los mismos campos de la pieza que el admin, pero no los datos de la guía
+   * (contacto, tipo de pago, adelanto) ni agrega piezas: eso sigue en
+   * `restauraciones.editar`.
+   */
+  "piezas.editar": ["admin", "ventas", "logistica"],
   "dinero.ver": ["admin", "ventas"],
   "pagos.registrar": ["admin", "ventas"],
   "pagos.corregir": ["admin"],
@@ -38,10 +45,17 @@ const PERMISSIONS = {
   "talleres.eliminar": ["admin"],
   /** PDF de la guía: lleva los datos del cliente, así que logística no lo exporta. */
   "guias.exportar-pdf": ["admin", "ventas"],
+  /**
+   * Versión para taller del PDF de la guía (sin precios; del cliente, solo el nombre):
+   * también logística (2026-10-30).
+   */
+  "guias.exportar-pdf-taller": ["admin", "ventas", "logistica"],
   /** Clientes y sus datos (nombre, teléfono, contactos): logística no los ve en ningún lado. */
   "clientes.ver": ["admin", "ventas"],
   "clientes.editar": ["admin", "ventas"],
   "cotizador.usar": ["admin", "ventas"],
+  /** Ver las cotizaciones (solo lectura): también logística (2026-10-30). */
+  "cotizador.ver": ["admin", "ventas", "logistica"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],
   "dashboard.ver": ["admin", "ventas"],

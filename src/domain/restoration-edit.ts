@@ -64,12 +64,10 @@ const NOTHING: EditableFields = {
   canAddPieces: false,
 };
 
-const canEdit = (role: AppRole) => role === "admin" || role === "ventas";
-
 /**
  * Campos editables según el rol, si existe la orden y el estado de la pieza.
- * Logística no edita nada (solo sube fotos, Fase 10; el taller lo asigna con sus
- * acciones). Ventas no cambia el taller (D60). Una pieza anulada, rechazada o
+ * Logística (2026-10-30) edita los mismos campos de la pieza que el admin, pero no los
+ * datos de la guía ni agrega piezas. Ventas no cambia el taller (D60). Una pieza anulada, rechazada o
  * sin arreglo no se edita;
  * de una entregada solo las notas. El precio de venta lo asignan y cambian el admin
  * (D58) y ventas (2026-10-21): una pieza sin precio lo recibe siempre (así entra a la orden); con la
@@ -80,13 +78,15 @@ export function editableFields(
   ctx: EditContext,
   piece?: { status: PieceStatus; priceCents?: number | null },
 ): EditableFields {
-  if (!canEdit(ctx.role)) return NOTHING;
-  const admin = ctx.role === "admin";
+  if (!can(ctx.role, "piezas.editar")) return NOTHING;
+  const editsGuide = can(ctx.role, "restauraciones.editar");
   const price = can(ctx.role, "piezas.precio-venta");
-  const free = admin ? PIECE_FREE_FIELDS : SALES_PIECE_FIELDS;
+  const free = can(ctx.role, "piezas.asignar-taller")
+    ? PIECE_FREE_FIELDS
+    : SALES_PIECE_FIELDS;
   const base = {
-    restoration: RESTORATION_EDITABLE_FIELDS,
-    canAddPieces: true,
+    restoration: editsGuide ? RESTORATION_EDITABLE_FIELDS : [],
+    canAddPieces: editsGuide,
   };
   if (!piece) {
     return {
