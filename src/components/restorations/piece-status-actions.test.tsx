@@ -264,7 +264,8 @@ describe("PieceStatusPanel", () => {
     expect(mocks.error).toHaveBeenCalledWith(
       "Tu rol no puede hacer este cambio de estado.",
     );
-    expect(screen.getByText("Registrada")).toBeInTheDocument();
+    // El estado optimista vuelve atrás cuando termina la transición, no al avisar.
+    expect(await screen.findByText("Registrada")).toBeInTheDocument();
   });
 
   it("el diálogo exige la nota al anular", async () => {
