@@ -22,6 +22,13 @@ const TEMPORARY =
 
 const RULES: Rule[] = [
   {
+    match:
+      /ya está registrado en el sistema como|clients_shopify_customer_id_key/i,
+    problem:
+      "Este cliente ya está en el sistema con otra ficha: en Shopify son la misma persona (mismo teléfono o email).",
+    fix: "Abre la otra ficha (el nombre está en el mensaje de abajo, o búscala por el teléfono o el email) y, desde ella, usa «Fusionar duplicado» para pasarle las guías de esta. Conserva esa otra, que es la que ya está en Shopify: al fusionar, este aviso desaparece.",
+  },
+  {
     match: /phone has already been taken/i,
     problem:
       "Ese teléfono ya lo tiene otro cliente en Shopify, y Shopify no deja que dos clientes compartan teléfono.",

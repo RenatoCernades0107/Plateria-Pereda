@@ -55,6 +55,15 @@ export const supabaseClientSyncRepository: ClientSyncRepository = {
       .eq("id", id);
     if (error) throw error;
   },
+  async findClientByShopifyCustomer(shopifyCustomerId) {
+    const { data, error } = await createAdminClient()
+      .from("clients")
+      .select("id, display_name")
+      .eq("shopify_customer_id", shopifyCustomerId)
+      .maybeSingle();
+    if (error) throw error;
+    return data && { id: data.id, name: data.display_name ?? "" };
+  },
   async getContact(id) {
     const { data, error } = await createAdminClient()
       .from("contacts")

@@ -10,6 +10,17 @@ describe("explainSyncError", () => {
     expect(e.original).toBe("Phone has already been taken");
   });
 
+  it("explica el cliente duplicado que ya está vinculado en Shopify", () => {
+    for (const message of [
+      "Ya está registrado en el sistema como «ANA PÉREZ» (mismo teléfono en Shopify)",
+      'Error de la base de datos (23505): duplicate key value violates unique constraint "clients_shopify_customer_id_key"',
+    ]) {
+      const e = explainSyncError(message);
+      expect(e.problem).toMatch(/ya está en el sistema con otra ficha/);
+      expect(e.fix).toMatch(/Fusionar duplicado/);
+    }
+  });
+
   it("explica el reembolso bloqueado por la clave de idempotencia", () => {
     const e = explainSyncError(
       "The previous refund attempt with this idempotency key failed. Retrying with the same key won't process the refund.",

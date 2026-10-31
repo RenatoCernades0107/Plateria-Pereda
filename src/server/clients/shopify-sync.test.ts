@@ -67,6 +67,14 @@ function memoryRepo(clients: ClientRecord[], contacts: ContactRecord[] = []) {
     setClientShopifyIds: async (id, ids) => {
       Object.assign(db.clients.get(id)!, ids);
     },
+    findClientByShopifyCustomer: async (shopifyCustomerId) => {
+      const found = [...db.clients.values()].find(
+        (c) => c.shopifyCustomerId === shopifyCustomerId,
+      );
+      return found
+        ? { id: found.id, name: `${found.firstName} ${found.lastName}` }
+        : null;
+    },
     getContact: async (id) => db.contacts.get(id) ?? null,
     setContactShopifyIds: async (id, ids) => {
       Object.assign(db.contacts.get(id)!, ids);
@@ -123,6 +131,34 @@ describe("handlers de clientes", () => {
     expect(result).toEqual({ shopifyCustomerId: existing.id, linked: true });
     expect(db.clients.get("c1")!.shopifyCustomerId).toBe(existing.id);
     expect(fakeShopify.snapshot().customers).toHaveLength(1);
+  });
+
+  it("si ese cliente de Shopify ya es de otro cliente del sistema, avisa quién es", async () => {
+    const existing = await gateway.createCustomer({
+      firstName: "Ana",
+      lastName: "Pérez",
+      phone: "+51999888777",
+    });
+    const { repo, db } = memoryRepo([
+      { ...person, email: null },
+      {
+        ...person,
+        id: "c9",
+        firstName: "ANA",
+        lastName: "PÉREZ",
+        email: null,
+        shopifyCustomerId: existing.id,
+      },
+    ]);
+    await expect(
+      clientJobHandlers(repo)["customer.create"]!(
+        job("customer.create", "c1"),
+        gateway,
+      ),
+    ).rejects.toThrow(
+      "Ya está registrado en el sistema como «ANA PÉREZ» (mismo teléfono en Shopify)",
+    );
+    expect(db.clients.get("c1")!.shopifyCustomerId).toBeNull();
   });
 
   it("si el teléfono ya existe también vincula", async () => {
