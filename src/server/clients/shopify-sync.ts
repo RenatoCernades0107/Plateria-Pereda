@@ -47,6 +47,10 @@ export interface ClientSyncRepository {
       >
     >,
   ): Promise<void>;
+  /** Cliente del sistema ya vinculado a ese Customer de Shopify, si hay. */
+  findClientByShopifyCustomer(
+    shopifyCustomerId: string,
+  ): Promise<{ id: string; name: string } | null>;
   getContact(id: string): Promise<ContactRecord | null>;
   setContactShopifyIds(
     id: string,
@@ -154,6 +158,17 @@ export function clientJobHandlers(
         const existing =
           field && (await findExistingCustomer(gateway, field, client[field]));
         if (!existing) throw error;
+        // Ese Customer ya es de otro cliente del sistema: es un duplicado. Vincularlo
+        // chocaría con la clave única; se avisa quién es para fusionarlos.
+        const owner = await repo.findClientByShopifyCustomer(existing.id);
+        if (owner && owner.id !== client.id) {
+          throw new ShopifyUserError([
+            {
+              field: null,
+              message: `Ya está registrado en el sistema como «${owner.name}» (mismo ${field === "phone" ? "teléfono" : "email"} en Shopify)`,
+            },
+          ]);
+        }
         customerId = existing.id;
         linked = true;
       }
