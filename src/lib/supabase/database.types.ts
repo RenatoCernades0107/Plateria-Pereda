@@ -106,6 +106,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["client_kind"];
           last_name: string;
           legal_name: string;
+          merged_into: string | null;
           notes: string;
           phone: string | null;
           region: string | null;
@@ -129,6 +130,7 @@ export type Database = {
           kind: Database["public"]["Enums"]["client_kind"];
           last_name?: string;
           legal_name?: string;
+          merged_into?: string | null;
           notes?: string;
           phone?: string | null;
           region?: string | null;
@@ -152,6 +154,7 @@ export type Database = {
           kind?: Database["public"]["Enums"]["client_kind"];
           last_name?: string;
           legal_name?: string;
+          merged_into?: string | null;
           notes?: string;
           phone?: string | null;
           region?: string | null;
@@ -166,6 +169,13 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "clients_merged_into_fkey";
+            columns: ["merged_into"];
+            isOneToOne: false;
+            referencedRelation: "clients";
             referencedColumns: ["id"];
           },
         ];
@@ -2356,6 +2366,10 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
         }[];
       };
+      merge_clients: {
+        Args: { p_keep: string; p_remove: string };
+        Returns: Json;
+      };
       my_notifications: {
         Args: { p_limit?: number };
         Returns: {
@@ -2530,6 +2544,28 @@ export type Database = {
           job_id: number;
           last_error: string;
           status: string;
+        }[];
+      };
+      similar_clients: {
+        Args: {
+          p_document_number: string;
+          p_email: string;
+          p_exclude?: string;
+          p_name: string;
+          p_phone: string;
+        };
+        Returns: {
+          display_name: string;
+          document_number: string;
+          document_type: Database["public"]["Enums"]["document_type"];
+          email: string;
+          id: string;
+          kind: Database["public"]["Enums"]["client_kind"];
+          phone: string;
+          same_document: boolean;
+          same_email: boolean;
+          same_name: boolean;
+          same_phone: boolean;
         }[];
       };
       undo_piece_move: {

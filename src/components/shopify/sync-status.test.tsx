@@ -90,7 +90,25 @@ describe("SyncStatus", () => {
     );
     await user.hover(screen.getByTestId("estado-shopify"));
     expect(
-      (await screen.findAllByText("Shopify no responde")).length,
+      (await screen.findAllByText(/Shopify no respondió a tiempo/)).length,
     ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Mensaje de Shopify: Shopify no responde").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("en la ficha explica el error debajo, en español", () => {
+    render(
+      <SyncStatus
+        jobId={9}
+        status="error"
+        lastError="Phone has already been taken"
+        detail="inline"
+      />,
+    );
+    expect(screen.getByRole("note")).toHaveTextContent(
+      /teléfono ya lo tiene otro cliente en Shopify/,
+    );
+    expect(screen.getByRole("note")).toHaveTextContent(/Qué hacer:/);
   });
 });

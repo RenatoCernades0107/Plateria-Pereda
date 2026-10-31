@@ -40,6 +40,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "guias.mensaje-cotizacion": [A, V, L],
   "clientes.ver": [A, V],
   "clientes.editar": [A, V],
+  "clientes.fusionar": [A],
   "cotizador.usar": [A, V],
   "cotizaciones-whatsapp.usar": [A, V],
   "dashboard.ver": [A, V],

@@ -451,6 +451,7 @@ export default async function RestauracionDetallePage({
                     jobId={sync.jobId}
                     status={sync.status}
                     lastError={sync.lastError}
+                    detail="inline"
                   />
                 ) : null}
               </div>

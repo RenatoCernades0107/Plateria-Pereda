@@ -77,6 +77,7 @@ const company: ClientDetail = {
   notes: "",
   active: true,
   createdAt: "2026-10-04T10:00:00Z",
+  mergedInto: null,
   sync: { jobId: 1, status: "ok", lastError: null },
   contacts: [
     contact,

@@ -9,11 +9,13 @@ import { NewClientDialog } from "./new-client-dialog";
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  findSimilarClients: vi.fn(),
   success: vi.fn(),
 }));
 
 vi.mock("@/server/clients/actions", () => ({
   createClient: (...a: unknown[]) => mocks.createClient(...a),
+  findSimilarClients: (...a: unknown[]) => mocks.findSimilarClients(...a),
 }));
 vi.mock("@/server/shopify-sync/actions", () => ({ retryShopifyJob: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/clientes" }));
@@ -26,7 +28,93 @@ describe("NewClientDialog", () => {
     mocks.createClient
       .mockReset()
       .mockResolvedValue({ ok: true, id: "c1", displayName: "Ana Pérez" });
+    mocks.findSimilarClients.mockReset().mockResolvedValue([]);
     mocks.success.mockReset();
+  });
+
+  const similar = {
+    id: "c9",
+    kind: "persona",
+    name: "ANA PÉREZ",
+    documentType: null,
+    documentNumber: null,
+    phone: "+51999888777",
+    email: null,
+    reasons: ["telefono", "nombre"],
+  };
+
+  async function fillPerson(user: ReturnType<typeof userEvent.setup>) {
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Nombres"), "Ana");
+    await user.type(within(dialog).getByLabelText("Apellidos"), "Pérez");
+    await user.type(within(dialog).getByLabelText("Teléfono"), "999 888 777");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Registrar persona" }),
+    );
+    return dialog;
+  }
+
+  it("avisa si ya hay un cliente parecido y permite usarlo", async () => {
+    mocks.findSimilarClients.mockResolvedValue([similar]);
+    const onCreated = vi.fn();
+    const user = userEvent.setup();
+    render(<NewClientDialog onCreated={onCreated} />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = await fillPerson(user);
+
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent("¿Ya está registrado?");
+    expect(alert).toHaveTextContent("Mismo teléfono y nombre");
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    // El formulario no se borra mientras se decide.
+    expect(within(dialog).getByLabelText("Nombres")).toHaveValue("Ana");
+
+    await user.click(
+      within(alert).getByRole("button", { name: "Usar este cliente" }),
+    );
+    expect(onCreated).toHaveBeenCalledWith({
+      id: "c9",
+      displayName: "ANA PÉREZ",
+      kind: "persona",
+    });
+    expect(mocks.createClient).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("si no es el mismo, registra el nuevo igual", async () => {
+    mocks.findSimilarClients.mockResolvedValue([similar]);
+    const user = userEvent.setup();
+    render(<NewClientDialog />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = await fillPerson(user);
+    const alert = await within(dialog).findByRole("alert");
+    // Sin `onCreated`, se enlaza a la ficha del existente.
+    expect(
+      within(alert).getByRole("link", { name: "Ver ficha" }),
+    ).toHaveAttribute("href", "/clientes/c9");
+    await user.click(
+      within(alert).getByRole("button", {
+        name: "No es el mismo: registrar nuevo",
+      }),
+    );
+    expect(mocks.createClient).toHaveBeenCalledWith(
+      expect.objectContaining({ firstName: "Ana", lastName: "Pérez" }),
+    );
+  });
+
+  it("con el mismo documento no ofrece registrar otro", async () => {
+    mocks.findSimilarClients.mockResolvedValue([
+      { ...similar, reasons: ["documento"] },
+    ]);
+    const user = userEvent.setup();
+    render(<NewClientDialog />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = await fillPerson(user);
+    const alert = await within(dialog).findByRole("alert");
+    expect(alert).toHaveTextContent("Ya existe un cliente con ese documento.");
+    expect(
+      within(alert).queryByRole("button", { name: /registrar nuevo/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("registra una persona y avisa a quien la abrió", async () => {

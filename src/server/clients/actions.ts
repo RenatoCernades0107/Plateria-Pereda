@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import type { TablesInsert } from "@/lib/supabase/database.types";
+import {
+  duplicateReasons,
+  mergeSummary,
+  type SimilarClient,
+} from "@/domain/client-duplicates";
+import type { Database, TablesInsert } from "@/lib/supabase/database.types";
 import { createClient as createSupabase } from "@/lib/supabase/server";
 import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
@@ -128,6 +133,111 @@ export async function updateClient(
   scheduleShopifySync();
   revalidateClient(id);
   return { ok: true };
+}
+
+type SimilarRow =
+  Database["public"]["Functions"]["similar_clients"]["Returns"][number];
+
+const similarClient = (c: SimilarRow): SimilarClient => ({
+  id: c.id,
+  kind: c.kind,
+  name: c.display_name,
+  documentType: c.document_type,
+  documentNumber: c.document_number,
+  phone: c.phone,
+  email: c.email,
+  reasons: duplicateReasons(c),
+});
+
+/**
+ * Clientes activos que se parecen a los datos ingresados (mismo nombre, documento,
+ * teléfono o email), para avisar antes de registrar un duplicado. Es solo una ayuda: si
+ * la consulta falla, no frena el registro.
+ */
+export async function findSimilarClients(
+  input: ClientFormInput,
+): Promise<SimilarClient[]> {
+  await requirePermission("clientes.editar");
+  const parsed = clientSchema.safeParse(input);
+  if (!parsed.success) return [];
+  const v = parsed.data;
+  const supabase = await createSupabase();
+  const { data, error } = await supabase.rpc("similar_clients", {
+    p_name: v.kind === "persona" ? `${v.firstName} ${v.lastName}` : v.legalName,
+    p_document_number: v.documentNumber ?? "",
+    p_phone: v.phone ?? "",
+    p_email: v.email ?? "",
+  });
+  if (error) return [];
+  return data.map(similarClient);
+}
+
+/** Posibles duplicados de un cliente ya registrado (sugerencias para fusionar). */
+export async function findDuplicatesOf(
+  clientId: string,
+): Promise<SimilarClient[]> {
+  await requirePermission("clientes.fusionar");
+  if (!validArgs([idArg], [clientId])) return [];
+  const supabase = await createSupabase();
+  const { data: c } = await supabase
+    .from("clients")
+    .select("display_name, document_number, phone, email")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!c) return [];
+  const { data, error } = await supabase.rpc("similar_clients", {
+    p_name: c.display_name ?? "",
+    p_document_number: c.document_number ?? "",
+    p_phone: c.phone ?? "",
+    p_email: c.email ?? "",
+    p_exclude: clientId,
+  });
+  if (error) return [];
+  return data.map(similarClient);
+}
+
+export type MergeClientsResult =
+  { ok: true; summary: string } | { error: string };
+
+/**
+ * Fusiona dos personas duplicadas (solo admin): las guías y cotizaciones de `removeId`
+ * pasan a `keepId` y `removeId` queda desactivado. Shopify no se toca.
+ */
+export async function mergeClients(
+  keepId: string,
+  removeId: string,
+): Promise<MergeClientsResult> {
+  await requirePermission("clientes.fusionar");
+  if (!validArgs([idArg, idArg], [keepId, removeId]))
+    return { error: INVALID_ARGS };
+  const supabase = await createSupabase();
+  const { data, error } = await supabase.rpc("merge_clients", {
+    p_keep: keepId,
+    p_remove: removeId,
+  });
+  if (error) {
+    // Los motivos esperables (otra persona, ya fusionado…) vienen en español de la BD.
+    return {
+      error:
+        error.code === "23514" || error.code === "42501"
+          ? `${error.message}.`
+          : "No se pudo fusionar los clientes.",
+    };
+  }
+  const { data: kept } = await supabase
+    .from("clients")
+    .select("display_name")
+    .eq("id", keepId)
+    .single();
+  revalidateClient(keepId);
+  revalidatePath(`/clientes/${removeId}`);
+  return {
+    ok: true,
+    summary: mergeSummary(
+      data as { restorations: number; quotes: number; whatsappQuotes: number },
+      kept?.display_name ?? "el cliente",
+    ),
+  };
 }
 
 /** Desactiva o reactiva un cliente (no se borran: tienen historial). */

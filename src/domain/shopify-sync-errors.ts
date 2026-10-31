@@ -1,3 +1,5 @@
+import { explainSyncError } from "./shopify-sync-messages";
+
 /**
  * Aviso al admin de las sincronizaciones con Shopify que quedaron en error (Paso 15.4).
  * Un job en error deja de contar si después se completó otro del mismo tipo para el
@@ -11,12 +13,16 @@ export type SyncJobRow = {
   entityId: string;
   status: string;
   createdAt: string;
+  /** Mensaje con que falló (solo se lee para los jobs en error). */
+  lastError?: string | null;
 };
 
 export type SyncErrorLink = {
   jobId: number;
   label: string;
   href: string | null;
+  /** Por qué falló, en español (ver `explainSyncError`). */
+  problem?: string;
 };
 
 const key = (job: SyncJobRow) =>
@@ -60,11 +66,20 @@ export function syncErrorLink(
   const action = KIND_LABELS[job.kind] ?? job.kind;
   const name = names.get(job.entityId);
   const label = name ? `${action}: ${name}` : action;
+  const problem =
+    job.lastError === undefined
+      ? undefined
+      : explainSyncError(job.lastError).problem;
   if (job.entityTable === "restorations") {
-    return { jobId: job.id, label, href: `/restauraciones/${job.entityId}` };
+    return {
+      jobId: job.id,
+      label,
+      href: `/restauraciones/${job.entityId}`,
+      problem,
+    };
   }
   if (job.entityTable === "clients") {
-    return { jobId: job.id, label, href: `/clientes/${job.entityId}` };
+    return { jobId: job.id, label, href: `/clientes/${job.entityId}`, problem };
   }
   if (job.entityTable === "contacts") {
     const clientId = clientOf.get(job.entityId);
@@ -72,7 +87,8 @@ export function syncErrorLink(
       jobId: job.id,
       label,
       href: clientId ? `/clientes/${clientId}` : null,
+      problem,
     };
   }
-  return { jobId: job.id, label, href: null };
+  return { jobId: job.id, label, href: null, problem };
 }
