@@ -57,7 +57,7 @@ export async function processShopifyJobs({
       await repo.complete(job.id, result ?? null);
       summary.ok += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = errorMessage(error);
       // Un error que no es de Shopify (red, base de datos) también se reintenta.
       const retryable = error instanceof ShopifyError ? error.retryable : true;
       if (retryable && job.attempts < job.maxAttempts) {
@@ -72,6 +72,29 @@ export async function processShopifyJobs({
     }
   }
   return summary;
+}
+
+/**
+ * Texto del error para `last_error`. Los errores de Supabase (PostgrestError) llegan
+ * como objetos planos con `message` y `code`: con `String()` quedaban como
+ * «[object Object]».
+ */
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    const { message, code } = error as { message: unknown; code?: unknown };
+    if (typeof message === "string" && message) {
+      return typeof code === "string" && code
+        ? `Error de la base de datos (${code}): ${message}`
+        : message;
+    }
+  }
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error) ?? String(error);
+  } catch {
+    return String(error);
+  }
 }
 
 function logFailure(job: SyncJob, message: string) {

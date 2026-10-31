@@ -48,6 +48,21 @@ describe("explainSyncError", () => {
     }
   });
 
+  it("distingue la base de datos ocupada de Shopify caído", () => {
+    const e = explainSyncError(
+      "Error de la base de datos (57014): canceling statement due to statement timeout",
+    );
+    expect(e.problem).toMatch(/base de datos del sistema tardó/);
+    expect(e.fix).toMatch(/Reintentar/);
+    expect(
+      explainSyncError("Error de la base de datos (42P01): relation x").problem,
+    ).toMatch(/consulta a la base de datos/);
+  });
+
+  it("explica los errores viejos guardados como [object Object]", () => {
+    expect(explainSyncError("[object Object]").problem).not.toMatch(/object/);
+  });
+
   it("un mensaje desconocido se muestra tal cual con una indicación general", () => {
     const e = explainSyncError("Something odd");
     expect(e.problem).toBe(

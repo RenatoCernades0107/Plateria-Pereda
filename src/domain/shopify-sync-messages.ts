@@ -124,6 +124,25 @@ const RULES: Rule[] = [
   },
   {
     match:
+      /statement timeout|\(57014\)|connection terminated|too many connections/i,
+    problem:
+      "La base de datos del sistema tardó demasiado en responder (estaba ocupada).",
+    fix: TEMPORARY,
+  },
+  {
+    match: /^Error de la base de datos/i,
+    problem:
+      "Falló una consulta a la base de datos del sistema antes de llegar a Shopify.",
+    fix: "Pulsa «Reintentar». Si se repite, envía este mensaje a soporte.",
+  },
+  {
+    match: /^\[object Object\]$/,
+    problem:
+      "Falló un paso interno antes de llegar a Shopify y el motivo no quedó guardado (pasaba con versiones anteriores del sistema).",
+    fix: "Pulsa «Reintentar»: ahora, si vuelve a fallar, se guarda el motivo real.",
+  },
+  {
+    match:
       /error de red|no responde|respondió (429|5\d\d)|throttled|timeout|aún no muestra/i,
     problem:
       "Shopify no respondió a tiempo (conexión o Shopify con problemas).",

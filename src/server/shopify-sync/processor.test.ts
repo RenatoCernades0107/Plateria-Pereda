@@ -8,7 +8,7 @@ import {
 import { FakeShopifyGateway } from "@/server/shopify/fake";
 
 import { jobBackoffMs, type JobRepository, type SyncJob } from "./jobs";
-import { processShopifyJobs } from "./processor";
+import { errorMessage, processShopifyJobs } from "./processor";
 
 const NOW = new Date("2026-10-03T12:00:00Z");
 
@@ -206,5 +206,29 @@ describe("jobBackoffMs", () => {
     expect([0, 1, 2, 3, 8, 20].map(jobBackoffMs)).toEqual([
       30_000, 30_000, 60_000, 120_000, 3_600_000, 3_600_000,
     ]);
+  });
+});
+
+describe("errorMessage", () => {
+  it("lee el mensaje de los errores de Supabase (objetos planos)", () => {
+    expect(
+      errorMessage({
+        code: "57014",
+        details: null,
+        hint: null,
+        message: "canceling statement due to statement timeout",
+      }),
+    ).toBe(
+      "Error de la base de datos (57014): canceling statement due to statement timeout",
+    );
+  });
+
+  it("errores, textos y otros valores", () => {
+    expect(errorMessage(new Error("Shopify no responde"))).toBe(
+      "Shopify no responde",
+    );
+    expect(errorMessage("falló")).toBe("falló");
+    expect(errorMessage({ foo: 1 })).toBe('{"foo":1}');
+    expect(errorMessage(undefined)).toBe("undefined");
   });
 });
