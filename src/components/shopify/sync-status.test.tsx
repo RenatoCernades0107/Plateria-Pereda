@@ -97,6 +97,19 @@ describe("SyncStatus", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("un pendiente que ya falló también se puede reintentar", () => {
+    const { rerender } = render(
+      <SyncStatus jobId={9} status="pending" lastError="Shopify no responde" />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Reintentar" }),
+    ).toBeInTheDocument();
+    rerender(<SyncStatus jobId={9} status="pending" />);
+    expect(
+      screen.queryByRole("button", { name: "Reintentar" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("en la ficha explica el error debajo, en español", () => {
     render(
       <SyncStatus

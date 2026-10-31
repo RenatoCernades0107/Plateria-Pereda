@@ -39,13 +39,24 @@ test.describe("Listado de restauraciones", () => {
       .order("code");
     if (insertError) throw insertError;
     codes.push(...data.map((r) => r.code));
+    // Las 27 nacen en la misma sentencia (misma fecha) y el listado desempata por un
+    // id al azar: las dos que se buscan van como las más recientes, en la página 1.
+    const newest = Date.now() + 60_000;
     await admin
       .from("restorations")
-      .update({ status: "parcialmente_lista", payment_status: "parcial" })
+      .update({
+        status: "parcialmente_lista",
+        payment_status: "parcial",
+        created_at: new Date(newest).toISOString(),
+      })
       .eq("id", data[0]!.id);
     await admin
       .from("restorations")
-      .update({ status: "lista", payment_status: "pagado" })
+      .update({
+        status: "lista",
+        payment_status: "pagado",
+        created_at: new Date(newest - 1000).toISOString(),
+      })
       .eq("id", data[1]!.id);
   });
 

@@ -87,6 +87,9 @@ export function SyncStatus({
   const [pending, startTransition] = useTransition();
   const inline = detail === "inline" && status === "error";
   const withDetail = Boolean(lastError) && status !== "ok" && !inline;
+  // Un pendiente que ya falló espera su próximo intento: se puede adelantar.
+  const retryable =
+    status === "error" || (status === "pending" && Boolean(lastError));
   // Con detalle del error, el cursor de ayuda indica que hay más información.
   const badge = (
     <Badge
@@ -116,7 +119,7 @@ export function SyncStatus({
       ) : (
         badge
       )}
-      {status === "error" && canRetry && jobId !== null ? (
+      {retryable && canRetry && jobId !== null ? (
         <Button
           variant="outline"
           size="sm"
