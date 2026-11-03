@@ -46,9 +46,25 @@ describe("clientSchema: persona", () => {
       documentType: "dni",
       documentNumber: "45678912",
       phone: "+51999888777",
+      contactPhone: null,
       email: "ana@correo.pe",
       address: "",
       notes: "",
+    });
+  });
+
+  it("con `phoneIsContact` el número se guarda como teléfono de contacto", () => {
+    expect(
+      clientSchema.parse({ ...person, phoneIsContact: true }),
+    ).toMatchObject({ phone: null, contactPhone: "+51999888777" });
+  });
+
+  it("el teléfono de contacto también es obligatorio y se valida", () => {
+    expect(
+      errorsOf(clientSchema, { ...person, phone: "12", phoneIsContact: true }),
+    ).toEqual({
+      phone:
+        "Ingresa un teléfono válido (celular de 9 dígitos o fijo con código)",
     });
   });
 

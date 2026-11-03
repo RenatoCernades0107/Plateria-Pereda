@@ -52,17 +52,20 @@ export async function searchClients(
 
   const like = `%${text}%`;
   const phoneFilter = digits.length >= 3 ? `,phone.ilike.%${digits}%` : "";
+  // Las personas también se buscan por su teléfono de contacto.
+  const clientPhoneFilter =
+    digits.length >= 3 ? `${phoneFilter},contact_phone.ilike.%${digits}%` : "";
   const supabase = await createClient();
 
   const [clients, contacts, shopify] = await Promise.all([
     supabase
       .from("clients")
       .select(
-        "id, kind, display_name, document_type, document_number, phone, email, shopify_customer_id",
+        "id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id",
       )
       .eq("active", true)
       .or(
-        `display_name.ilike.${like},document_number.ilike.${like},email.ilike.${like}${phoneFilter}`,
+        `display_name.ilike.${like},document_number.ilike.${like},email.ilike.${like}${clientPhoneFilter}`,
       )
       .order("display_name")
       .limit(LIMIT),
@@ -93,7 +96,7 @@ export async function searchClients(
       name: c.display_name ?? "",
       documentType: c.document_type,
       documentNumber: c.document_number,
-      phone: c.phone,
+      phone: c.phone ?? c.contact_phone,
       email: c.email,
       shopifyCustomerId: c.shopify_customer_id,
     })),
@@ -142,7 +145,7 @@ export async function importShopifyCustomer(
   }
   const supabase = await createClient();
   const select =
-    "id, kind, display_name, document_type, document_number, phone, email, shopify_customer_id";
+    "id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id";
 
   const existing = await supabase
     .from("clients")
@@ -183,7 +186,7 @@ export async function importShopifyCustomer(
       name: row.display_name ?? "",
       documentType: row.document_type,
       documentNumber: row.document_number,
-      phone: row.phone,
+      phone: row.phone ?? row.contact_phone,
       email: row.email,
       shopifyCustomerId: row.shopify_customer_id,
     },

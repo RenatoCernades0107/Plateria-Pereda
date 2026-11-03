@@ -114,6 +114,51 @@ test.describe("Clientes", () => {
     ).toEqual([]);
   });
 
+  test("dos personas comparten el teléfono: la segunda lo usa como teléfono de contacto", async ({
+    page,
+    request,
+  }) => {
+    const phone = `9${digits(8)}`;
+    const daughter = `Lucía ${run}`;
+    const mother = `Carmen ${run}`;
+    created.push(`${daughter} Prueba E2E`, `${mother} Prueba E2E`);
+
+    await page.goto("/clientes");
+    await createPerson(page, daughter, phone);
+    await expect(
+      page.getByText(`${daughter} Prueba E2E registrado`),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId(`cliente-${daughter} Prueba E2E`)
+        .getByTestId("estado-shopify"),
+    ).toHaveText("Shopify: Sincronizado", { timeout: 20_000 });
+
+    // La mamá, con el mismo número: el aviso ofrece guardarlo como teléfono de contacto.
+    await createPerson(page, mother, phone);
+    const alert = page.getByRole("dialog").getByRole("alert");
+    await expect(alert).toContainText("Mismo teléfono");
+    await alert
+      .getByRole("button", { name: "Registrar con teléfono de contacto" })
+      .click();
+    await expect(
+      page.getByText(`${mother} Prueba E2E registrado`),
+    ).toBeVisible();
+    const row = page.getByTestId(`cliente-${mother} Prueba E2E`);
+    await expect(row.getByTestId("estado-shopify")).toHaveText(
+      "Shopify: Sincronizado",
+      { timeout: 20_000 },
+    );
+
+    // En Shopify la mamá queda sin teléfono (no choca); en el sistema, con el de contacto.
+    const state = await shopifyState(request);
+    expect(state.customers).toContainEqual(
+      expect.objectContaining({ firstName: mother, phone: null }),
+    );
+    await row.getByRole("link", { name: `${mother} Prueba E2E` }).click();
+    await expect(page.getByText("Teléfono de contacto")).toBeVisible();
+  });
+
   test("ventas registra una empresa como Company de Shopify", async ({
     page,
     request,

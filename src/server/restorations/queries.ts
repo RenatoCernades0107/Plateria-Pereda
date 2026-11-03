@@ -236,7 +236,7 @@ export async function getRestorationDetail(
       ? supabase
           .from("clients")
           .select(
-            "id, display_name, phone, kind, document_type, document_number",
+            "id, display_name, phone, contact_phone, kind, document_type, document_number",
           )
           .eq("id", r.client_id!)
           .single()
@@ -289,7 +289,8 @@ export async function getRestorationDetail(
       ? {
           id: client.data.id,
           name: client.data.display_name ?? "",
-          phone: client.data.phone,
+          // El propio o, si comparte el número con otro cliente, el de contacto.
+          phone: client.data.phone ?? client.data.contact_phone,
           kind: client.data.kind,
           document:
             client.data.document_type && client.data.document_number

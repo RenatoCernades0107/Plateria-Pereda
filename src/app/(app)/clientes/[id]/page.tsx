@@ -186,10 +186,17 @@ export default async function ClienteDetallePage({
                   : null
               }
             />
-            <Field
-              label="Teléfono"
-              value={client.phone ? formatPhone(client.phone) : null}
-            />
+            {client.contactPhone ? (
+              <Field
+                label="Teléfono de contacto"
+                value={formatPhone(client.contactPhone)}
+              />
+            ) : (
+              <Field
+                label="Teléfono"
+                value={client.phone ? formatPhone(client.phone) : null}
+              />
+            )}
             <Field label="Email" value={client.email} />
             <Field label="Dirección" value={client.address} />
             {client.kind === "empresa" ? (

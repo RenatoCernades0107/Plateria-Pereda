@@ -13,7 +13,8 @@ function details(client: SimilarClient): string {
     client.kind === "empresa" ? "Empresa" : "Persona",
     client.documentType &&
       `${DOCUMENT_LABELS[client.documentType]} ${client.documentNumber}`,
-    client.phone && formatPhone(client.phone),
+    client.phone &&
+      `${formatPhone(client.phone)}${client.usesContactPhone ? " (de contacto)" : ""}`,
     client.email,
   ]
     .filter(Boolean)
@@ -23,22 +24,27 @@ function details(client: SimilarClient): string {
 /**
  * Aviso antes de registrar un cliente que se parece a otro ya registrado. Con `onUse`
  * (p. ej., al elegir el cliente de una guía) se puede usar el existente; si no, se
- * enlaza a su ficha.
+ * enlaza a su ficha. Con `onCreateWithContactPhone`, si el teléfono ya lo tiene otro
+ * cliente, se puede registrar igual con ese número como teléfono de contacto.
  */
 export function SimilarClientsAlert({
   clients,
   pending,
   onUse,
   onCreateAnyway,
+  onCreateWithContactPhone,
 }: {
   clients: SimilarClient[];
   pending: boolean;
   onUse?: (client: SimilarClient) => void;
   onCreateAnyway: () => void;
+  onCreateWithContactPhone?: () => void;
 }) {
   const many = clients.length > 1;
   // El documento no se repite: con ese, registrar otro igual no se puede.
   const sameDocument = clients.some((c) => c.reasons.includes("documento"));
+  const samePhone = clients.some((c) => c.reasons.includes("telefono"));
+  const withContactPhone = samePhone && onCreateWithContactPhone;
   return (
     <div
       role="alert"
@@ -93,6 +99,33 @@ export function SimilarClientsAlert({
           Ya existe un cliente con ese documento. Usa el que ya está registrado
           o corrige el número.
         </p>
+      ) : withContactPhone ? (
+        <div className="space-y-2">
+          <p>
+            Si es otra persona que comparte el número (p. ej., un familiar),
+            regístrala con ese número como <strong>teléfono de contacto</strong>
+            : sirve para WhatsApp y la guía y no choca en Shopify.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending}
+              onClick={onCreateWithContactPhone}
+            >
+              {pending ? "Guardando…" : "Registrar con teléfono de contacto"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={onCreateAnyway}
+            >
+              Registrar con el mismo teléfono
+            </Button>
+          </div>
+        </div>
       ) : (
         <Button
           type="button"

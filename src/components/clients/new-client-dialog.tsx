@@ -76,6 +76,7 @@ const PERSON_DEFAULTS: PersonFormInput = {
   lastName: "",
   document: { documentType: null, documentNumber: "" },
   phone: "",
+  phoneIsContact: false,
   email: "",
   address: "",
   notes: "",
@@ -150,6 +151,7 @@ export function PersonForm({
     save,
     resetAfterSave,
   );
+  const phoneIsContact = Boolean(form.watch("phoneIsContact"));
   return (
     <Form {...form}>
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
@@ -163,7 +165,44 @@ export function PersonForm({
             name="document.documentNumber"
             label="Número de documento"
           />
-          <PhoneField form={form} name="phone" />
+          <div className="space-y-2">
+            <PhoneField
+              form={form}
+              name="phone"
+              label={phoneIsContact ? "Teléfono de contacto" : "Teléfono"}
+            />
+            <FormField
+              control={form.control}
+              name="phoneIsContact"
+              render={({ field }) => (
+                <FormItem className="space-y-1">
+                  <label className="flex cursor-pointer items-start gap-2 text-sm">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        className="accent-primary mt-0.5 size-4 shrink-0"
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        checked={Boolean(field.value)}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                      />
+                    </FormControl>
+                    <span>
+                      Es el número de otra persona (lo comparte con otro
+                      cliente)
+                    </span>
+                  </label>
+                  {phoneIsContact ? (
+                    <p className="text-muted-foreground text-xs">
+                      Se usa para WhatsApp y la guía, pero no se envía a
+                      Shopify, donde cada teléfono es de un solo cliente.
+                    </p>
+                  ) : null}
+                </FormItem>
+              )}
+            />
+          </div>
           <TextField
             form={form}
             name="email"
@@ -318,6 +357,19 @@ export function NewClientDialog({
       const message = await create(similar.input);
       if (message) toast.error(message);
     });
+  // El teléfono ya lo tiene otro cliente: se registra con él como teléfono de contacto.
+  const createWithContactPhone =
+    similar?.input.kind === "persona" && !similar.input.phoneIsContact
+      ? () =>
+          startCreating(async () => {
+            if (similar?.input.kind !== "persona") return;
+            const message = await create({
+              ...similar.input,
+              phoneIsContact: true,
+            });
+            if (message) toast.error(message);
+          })
+      : undefined;
   const pickExisting = onCreated
     ? (client: SimilarClient) => {
         setOpen(false);
@@ -354,6 +406,7 @@ export function NewClientDialog({
             pending={creating}
             onUse={pickExisting}
             onCreateAnyway={createAnyway}
+            onCreateWithContactPhone={createWithContactPhone}
           />
         ) : null}
         <Tabs defaultValue="persona" onValueChange={() => setSimilar(null)}>

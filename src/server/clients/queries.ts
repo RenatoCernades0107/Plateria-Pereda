@@ -122,6 +122,8 @@ export type ClientDetail = {
   documentType: DocumentType | null;
   documentNumber: string | null;
   phone: string | null;
+  /** Teléfono de contacto (de otra persona), en lugar del propio: no va a Shopify. */
+  contactPhone: string | null;
   email: string | null;
   address: string;
   city: string;
@@ -180,6 +182,7 @@ export async function getClientDetail(
     documentType: c.document_type,
     documentNumber: c.document_number,
     phone: c.phone,
+    contactPhone: c.contact_phone,
     email: c.email,
     address: c.address,
     city: c.city,
