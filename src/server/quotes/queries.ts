@@ -28,6 +28,9 @@ export type QuoteListItem = {
   validUntil: string | null;
   total: Cents;
   createdAt: string;
+  /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
+  deliveryDate: string | null;
+  supplierDeliveryDate: string | null;
 };
 
 export type QuotesPage = {
@@ -49,7 +52,7 @@ export async function listQuotes(
   let query = supabase
     .from("quotes")
     .select(
-      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at",
+      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at, delivery_date, supplier_delivery_date",
       { count: "exact" },
     );
 
@@ -96,6 +99,8 @@ export async function listQuotes(
       validUntil: q.valid_until,
       total: toCents(Number(q.total)),
       createdAt: q.created_at,
+      deliveryDate: q.delivery_date,
+      supplierDeliveryDate: q.supplier_delivery_date,
     })),
   };
 }
@@ -109,6 +114,9 @@ export type QuoteDetail = {
   validityDays: number;
   paymentCondition: QuotePaymentCondition;
   deliveryDays: number;
+  /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
+  deliveryDate: string | null;
+  supplierDeliveryDate: string | null;
   applyIgv: boolean;
   issueDate: string | null;
   validUntil: string | null;
@@ -173,6 +181,8 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     validityDays: q.validity_days,
     paymentCondition: q.payment_condition,
     deliveryDays: q.delivery_days,
+    deliveryDate: q.delivery_date,
+    supplierDeliveryDate: q.supplier_delivery_date,
     applyIgv: q.apply_igv,
     issueDate: q.issue_date,
     validUntil: q.valid_until,

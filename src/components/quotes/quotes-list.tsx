@@ -15,6 +15,7 @@ import { formatQuoteDate } from "@/domain/quote";
 import { formatDate } from "@/lib/format";
 import type { QuoteListItem } from "@/server/quotes/queries";
 
+import { QuoteDeliveryDates } from "./quote-delivery-dates";
 import { QuoteStatusBadge } from "./quote-status-badge";
 
 function Client({ quote }: { quote: QuoteListItem }) {
@@ -86,7 +87,15 @@ export function QuotesList({
               <TableCell>
                 <QuoteStatusBadge status={q.status} />
               </TableCell>
-              <TableCell>{dates(q)}</TableCell>
+              <TableCell>
+                <span className="flex flex-col gap-0.5">
+                  <span>{dates(q)}</span>
+                  <QuoteDeliveryDates
+                    deliveryDate={q.deliveryDate}
+                    supplierDeliveryDate={q.supplierDeliveryDate}
+                  />
+                </span>
+              </TableCell>
               <TableCell>
                 {q.validUntil ? formatQuoteDate(q.validUntil) : "—"}
               </TableCell>
@@ -110,6 +119,10 @@ export function QuotesList({
               <QuoteStatusBadge status={q.status} />
             </div>
             <Client quote={q} />
+            <QuoteDeliveryDates
+              deliveryDate={q.deliveryDate}
+              supplierDeliveryDate={q.supplierDeliveryDate}
+            />
             <div className="text-muted-foreground flex justify-between gap-2 text-sm">
               <span>{dates(q)}</span>
               <span className="text-foreground font-medium tabular-nums">

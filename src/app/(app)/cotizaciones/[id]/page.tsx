@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { PageBreadcrumb } from "@/components/page-breadcrumb";
 import { PageHeader } from "@/components/page-header";
 import { QuoteActions } from "@/components/quotes/quote-actions";
+import { QuoteDeliveryButton } from "@/components/quotes/quote-delivery-dialog";
 import { QuoteForm } from "@/components/quotes/quote-form";
 import { QuotePdfButton } from "@/components/quotes/quote-pdf-button";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
@@ -86,6 +87,14 @@ export default async function CotizacionPage({
           />
           <div className="-mt-4 flex flex-wrap items-center gap-2 text-sm">
             <QuoteStatusBadge status={quote.displayStatus} />
+            {quote.status === "aceptada" ? (
+              <QuoteDeliveryButton
+                quoteId={quote.id}
+                deliveryDays={quote.deliveryDays}
+                deliveryDate={quote.deliveryDate}
+                supplierDeliveryDate={quote.supplierDeliveryDate}
+              />
+            ) : null}
             {quote.duplicatedFrom ? (
               <span className="text-muted-foreground">
                 Copia de{" "}
@@ -103,7 +112,11 @@ export default async function CotizacionPage({
           {canExportPdf ? (
             <QuotePdfButton data={pdfData} phone={client.phone} />
           ) : null}
-          <QuoteActions id={quote.id} status={quote.status} />
+          <QuoteActions
+            id={quote.id}
+            status={quote.status}
+            deliveryDays={quote.deliveryDays}
+          />
         </div>
       </div>
       <QuoteForm

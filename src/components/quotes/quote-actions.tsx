@@ -2,12 +2,14 @@
 
 import { Check, Copy, RotateCcw, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { nextQuoteStatuses, type QuoteStatus } from "@/domain/quote";
 import { changeQuoteStatus, duplicateQuote } from "@/server/quotes/actions";
+
+import { QuoteDeliveryDialog } from "./quote-delivery-dialog";
 
 const STATUS_ACTIONS = {
   aceptada: {
@@ -30,17 +32,22 @@ const STATUS_ACTIONS = {
 /**
  * Acciones de una cotización guardada: cambiar el estado (una emitida se acepta o
  * rechaza; una aceptada o rechazada vuelve a emitida) y duplicarla como borrador.
- * El borrador se emite desde el formulario (se guarda antes).
+ * El borrador se emite desde el formulario (se guarda antes). Aceptarla (el cliente la
+ * aprobó) pide las fechas de entrega al cliente y del proveedor.
  */
 export function QuoteActions({
   id,
   status,
+  deliveryDays,
 }: {
   id: string;
   status: QuoteStatus;
+  /** Tiempo de entrega de la cotización: sugiere la fecha de entrega al aceptarla. */
+  deliveryDays: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [accepting, setAccepting] = useState(false);
   const targets =
     status === "borrador"
       ? []
@@ -80,7 +87,9 @@ export function QuoteActions({
             type="button"
             variant={to === "aceptada" ? "default" : "outline"}
             disabled={pending}
-            onClick={() => change(to)}
+            onClick={() =>
+              to === "aceptada" ? setAccepting(true) : change(to)
+            }
           >
             <Icon aria-hidden />
             {label}
@@ -96,6 +105,16 @@ export function QuoteActions({
         <Copy aria-hidden />
         Duplicar cotización
       </Button>
+      <QuoteDeliveryDialog
+        key={accepting ? "abierto" : "cerrado"}
+        open={accepting}
+        onOpenChange={setAccepting}
+        quoteId={id}
+        mode="aceptar"
+        deliveryDays={deliveryDays}
+        deliveryDate={null}
+        supplierDeliveryDate={null}
+      />
     </div>
   );
 }

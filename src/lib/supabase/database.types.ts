@@ -946,6 +946,7 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           delivery_days: number;
+          delivery_date: string | null;
           discount_total: number;
           duplicated_from: string | null;
           id: string;
@@ -957,6 +958,7 @@ export type Database = {
           payment_condition: Database["public"]["Enums"]["quote_payment_condition"];
           status: Database["public"]["Enums"]["quote_status"];
           subtotal: number;
+          supplier_delivery_date: string | null;
           terms: string;
           total: number;
           updated_at: string;
@@ -982,6 +984,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           delivery_days?: number;
+          delivery_date?: string | null;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
@@ -993,6 +996,7 @@ export type Database = {
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
+          supplier_delivery_date?: string | null;
           terms?: string;
           total?: number;
           updated_at?: string;
@@ -1017,6 +1021,7 @@ export type Database = {
           created_at?: string;
           created_by?: string | null;
           delivery_days?: number;
+          delivery_date?: string | null;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
@@ -1028,6 +1033,7 @@ export type Database = {
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
+          supplier_delivery_date?: string | null;
           terms?: string;
           total?: number;
           updated_at?: string;
