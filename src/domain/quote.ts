@@ -3,8 +3,10 @@ import { percentOf, sumCents, type Cents } from "./money";
 /**
  * Cálculos de la cotización (Fase 14). Mismas reglas que la BD (migración
  * `cotizaciones`): subtotal de la línea = cantidad × precio; descuento opcional por
- * línea en monto o % (P35, propuesta) redondeado a céntimos; total = suma de las
- * líneas (con su descuento), tal como se escriben los precios.
+ * línea en monto o % (P35, propuesta) redondeado a céntimos. Los precios se escriben
+ * sin IGV; si la cotización lo suma (`apply_igv`, por defecto sí), IGV = 18 % de
+ * subtotal − descuentos redondeado una sola vez a céntimos (migración `igv_cotizador`).
+ * Total = subtotal − descuentos + IGV.
  */
 
 export const QUOTE_STATUSES = [
@@ -100,22 +102,32 @@ export function lineTotal(line: QuoteLineAmounts): Cents {
   return lineGross(line) - lineDiscount(line);
 }
 
+/** IGV que se suma en el cotizador (solo en `COT-`; restauraciones y WhatsApp no). */
+export const QUOTE_IGV_PERCENT = 18;
+
 export type QuoteTotals = {
   /** Suma de cantidad × precio. */
   subtotal: Cents;
   /** Suma de los descuentos por línea. */
   discount: Cents;
-  /** Lo que paga el cliente: subtotal menos descuentos. */
+  /** Subtotal menos descuentos (sin IGV). */
+  base: Cents;
+  /** 18 % de `base` si la cotización suma el IGV; 0 si no. */
+  igv: Cents;
+  /** Lo que paga el cliente: subtotal − descuentos + IGV. */
   total: Cents;
 };
 
-/** Subtotal, descuentos y total de las líneas. */
-export function quoteTotals(lines: readonly QuoteLineAmounts[]): QuoteTotals {
-  return {
-    subtotal: sumCents(lines.map(lineGross)),
-    discount: sumCents(lines.map(lineDiscount)),
-    total: sumCents(lines.map(lineTotal)),
-  };
+/** Subtotal, descuentos, IGV y total de las líneas. */
+export function quoteTotals(
+  lines: readonly QuoteLineAmounts[],
+  applyIgv: boolean,
+): QuoteTotals {
+  const subtotal = sumCents(lines.map(lineGross));
+  const discount = sumCents(lines.map(lineDiscount));
+  const base = sumCents(lines.map(lineTotal));
+  const igv = applyIgv ? percentOf(base, QUOTE_IGV_PERCENT) : 0;
+  return { subtotal, discount, base, igv, total: base + igv };
 }
 
 // --- Vigencia (fechas calendario en Lima, como `private.lima_today()` de la BD) ---

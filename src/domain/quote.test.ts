@@ -70,38 +70,55 @@ describe("líneas de la cotización", () => {
 });
 
 describe("quoteTotals", () => {
-  it("suma subtotales, descuentos y total", () => {
-    expect(
-      quoteTotals([
-        { quantity: 2, unitPrice: 120_10 },
-        {
-          quantity: 3,
-          unitPrice: 33_33,
-          discount: { type: "porcentaje", percent: 10 },
-        },
-      ]),
-    ).toEqual({
+  const lines = [
+    { quantity: 2, unitPrice: 120_10 },
+    {
+      quantity: 3,
+      unitPrice: 33_33,
+      discount: { type: "porcentaje", percent: 10 },
+    },
+  ] as const;
+
+  it("sin IGV: total = subtotal − descuentos", () => {
+    expect(quoteTotals(lines, false)).toEqual({
       subtotal: 340_19,
       discount: 10_00,
+      base: 330_19,
+      igv: 0,
       total: 330_19,
     });
   });
 
-  it("sin líneas todo es 0", () => {
-    expect(quoteTotals([])).toEqual({ subtotal: 0, discount: 0, total: 0 });
+  it("con IGV: 18 % de subtotal − descuentos, redondeado una sola vez", () => {
+    // 330.19 × 18 % = 59.4342 → 59.43.
+    expect(quoteTotals(lines, true)).toEqual({
+      subtotal: 340_19,
+      discount: 10_00,
+      base: 330_19,
+      igv: 59_43,
+      total: 389_62,
+    });
   });
 
-  it("nunca suma IGV: el total es lo que se escribió menos los descuentos", () => {
-    expect(
-      quoteTotals([
-        { quantity: 2, unitPrice: 50_00 },
-        {
-          quantity: 1,
-          unitPrice: 100_00,
-          discount: { type: "porcentaje", percent: 10 },
-        },
-      ]),
-    ).toEqual({ subtotal: 200_00, discount: 10_00, total: 190_00 });
+  it("el IGV va sobre el total con descuentos, no línea por línea", () => {
+    // Por línea: 0.03 × 18 % = 0.0054 → 0.01 cada una (0.03 en total); sobre el
+    // total: 0.09 × 18 % = 0.0162 → 0.02.
+    const small = [1, 2, 3].map(() => ({ quantity: 1, unitPrice: 3 }));
+    expect(quoteTotals(small, true)).toMatchObject({ igv: 2, total: 11 });
+  });
+
+  it("redondea el medio céntimo lejos del cero, como la BD", () => {
+    // 0.25 × 18 % = 0.045 → 0.05.
+    expect(quoteTotals([{ quantity: 1, unitPrice: 25 }], true)).toMatchObject({
+      igv: 5,
+      total: 30,
+    });
+  });
+
+  it("sin líneas todo es 0", () => {
+    const zero = { subtotal: 0, discount: 0, base: 0, igv: 0, total: 0 };
+    expect(quoteTotals([], true)).toEqual(zero);
+    expect(quoteTotals([], false)).toEqual(zero);
   });
 });
 

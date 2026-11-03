@@ -80,20 +80,20 @@ select lives_ok(
 );
 select results_eq(
   $$ select subtotal, discount_total, total from public.quotes where id = '00000000-0000-0000-0000-0000000020e1' $$,
-  $$ values (340.19::numeric, 10.00::numeric, 330.19::numeric) $$,
-  'los totales se recalculan al agregar líneas (10 % de 99.99 = 10.00)'
+  $$ values (340.19::numeric, 10.00::numeric, 389.62::numeric) $$,
+  'los totales se recalculan al agregar líneas (10 % de 99.99 = 10.00; IGV 18 % de 330.19 = 59.43)'
 );
 update public.quote_items set discount_type = 'monto', discount_value = 9.99
   where id = '00000000-0000-0000-0000-0000000020f2';
 select results_eq(
   $$ select subtotal, discount_total, total from public.quotes where id = '00000000-0000-0000-0000-0000000020e1' $$,
-  $$ values (340.19::numeric, 9.99::numeric, 330.20::numeric) $$,
+  $$ values (340.19::numeric, 9.99::numeric, 389.64::numeric) $$,
   'los totales se recalculan al editar una línea'
 );
 delete from public.quote_items where id = '00000000-0000-0000-0000-0000000020f2';
 select results_eq(
   $$ select subtotal, discount_total, total from public.quotes where id = '00000000-0000-0000-0000-0000000020e1' $$,
-  $$ values (240.20::numeric, 0::numeric, 240.20::numeric) $$,
+  $$ values (240.20::numeric, 0::numeric, 283.44::numeric) $$,
   'los totales se recalculan al quitar una línea'
 );
 select throws_ok(

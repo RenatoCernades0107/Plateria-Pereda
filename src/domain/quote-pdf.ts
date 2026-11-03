@@ -47,6 +47,8 @@ export type QuotePdfData = {
   /** Nombre del contacto; igual al del cliente cuando no se cotiza a un contacto. */
   contactName: string;
   lines: QuotePdfLine[];
+  /** Suma el IGV (18 %) a subtotal − descuentos (casilla del formulario). */
+  applyIgv: boolean;
   /** Detalles para el cliente (campo "Notas"). */
   notes: string;
   /** Forma de pago, cuentas bancarias, etc. (campo "Condiciones"). */
@@ -101,6 +103,9 @@ export type QuotePdfModel = {
   subtotal: string;
   /** Null sin descuentos (no se muestra la fila). */
   discount: string | null;
+  /** Null si la cotización no suma IGV (no se muestra la fila). */
+  igv: string | null;
+  /** Lo que paga el cliente (con IGV si se suma). */
   total: string;
   /** "Son:", el total en letras. */
   amountInWords: string;
@@ -117,7 +122,7 @@ export type QuotePdfModel = {
 };
 
 export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
-  const totals = quoteTotals(data.lines);
+  const totals = quoteTotals(data.lines, data.applyIgv);
   const rows: QuotePdfRow[] = data.lines.map((line) => ({
     sku: line.sku ?? "",
     description: line.description,
@@ -139,6 +144,7 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     rows,
     subtotal: formatCents(totals.subtotal),
     discount: totals.discount > 0 ? formatCents(totals.discount) : null,
+    igv: data.applyIgv ? formatCents(totals.igv) : null,
     total: formatCents(totals.total),
     amountInWords: amountInWords(totals.total),
     validityText: `Los precios que figuran en el presente documento tienen una validez de ${data.validityDays} día${data.validityDays === 1 ? "" : "s"}, hasta el ${formatQuoteDateLong(validUntil)}.`,

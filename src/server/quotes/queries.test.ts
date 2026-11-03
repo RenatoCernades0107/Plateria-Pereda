@@ -111,7 +111,7 @@ describe("listQuotes", () => {
 });
 
 describe("getQuote", () => {
-  it("devuelve la condición de pago y el tiempo de entrega", async () => {
+  it("devuelve la condición de pago, el tiempo de entrega y el IGV", async () => {
     mocks.quote = {
       id: "q1",
       code: "COT-000001",
@@ -121,6 +121,7 @@ describe("getQuote", () => {
       validity_days: 15,
       payment_condition: "credito",
       delivery_days: 45,
+      apply_igv: false,
       issue_date: null,
       valid_until: null,
       notes: "",
@@ -144,6 +145,7 @@ describe("getQuote", () => {
       validityDays: 15,
       paymentCondition: "credito",
       deliveryDays: 45,
+      applyIgv: false,
     });
   });
 });

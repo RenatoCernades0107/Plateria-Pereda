@@ -43,6 +43,7 @@ const input = (patch: Partial<QuoteFormInput> = {}): QuoteFormInput => ({
   validityDays: "15",
   paymentCondition: "contado",
   deliveryDays: "30",
+  applyIgv: true,
   notes: "",
   terms: "",
   lines: [anillo, libre],
@@ -177,6 +178,22 @@ describe("quoteSchema", () => {
   });
 });
 
+describe("IGV", () => {
+  it('lleva la casilla "Sumar IGV" tal cual', () => {
+    expect(quoteSchema.parse(input({ applyIgv: false })).applyIgv).toBe(false);
+    expect(
+      quoteRpcArgs(quoteSchema.parse(input({ applyIgv: false }))).p_quote
+        .apply_igv,
+    ).toBe(false);
+  });
+
+  it("la casilla es obligatoria", () => {
+    expect(
+      quoteSchema.safeParse({ ...input(), applyIgv: undefined }).success,
+    ).toBe(false);
+  });
+});
+
 describe("quoteRpcArgs", () => {
   it("arma los datos de save_quote con montos en soles", () => {
     const args = quoteRpcArgs(
@@ -197,6 +214,7 @@ describe("quoteRpcArgs", () => {
       validity_days: 15,
       payment_condition: "a_cuenta",
       delivery_days: 45,
+      apply_igv: true,
       notes: "",
       terms: "",
     });

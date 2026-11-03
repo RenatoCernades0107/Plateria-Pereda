@@ -929,6 +929,7 @@ export type Database = {
       };
       quotes: {
         Row: {
+          apply_igv: boolean;
           client_address: string;
           client_document_number: string | null;
           client_document_type:
@@ -948,6 +949,7 @@ export type Database = {
           discount_total: number;
           duplicated_from: string | null;
           id: string;
+          igv: number;
           issue_date: string | null;
           issued_at: string | null;
           notes: string;
@@ -963,6 +965,7 @@ export type Database = {
           effective_status: string | null;
         };
         Insert: {
+          apply_igv?: boolean;
           client_address?: string;
           client_document_number?: string | null;
           client_document_type?:
@@ -982,6 +985,7 @@ export type Database = {
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
+          igv?: number;
           issue_date?: string | null;
           issued_at?: string | null;
           notes?: string;
@@ -996,6 +1000,7 @@ export type Database = {
           validity_days?: number;
         };
         Update: {
+          apply_igv?: boolean;
           client_address?: string;
           client_document_number?: string | null;
           client_document_type?:
@@ -1015,6 +1020,7 @@ export type Database = {
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
+          igv?: number;
           issue_date?: string | null;
           issued_at?: string | null;
           notes?: string;

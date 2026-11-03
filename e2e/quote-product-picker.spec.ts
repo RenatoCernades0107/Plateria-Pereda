@@ -27,11 +27,11 @@ test.describe("Selector de productos del cotizador", () => {
     await expect(line).toBeVisible();
     await expect(line.getByLabel("Precio unitario (S/)")).toHaveValue("165.50");
     await expect(line.getByLabel("Cantidad")).toHaveValue("1");
-    await expect(page.getByTestId("total")).toHaveText("S/ 165.50");
+    await expect(page.getByTestId("subtotal")).toHaveText("S/ 165.50");
 
     // La línea es editable: personalización y cantidad.
     await line.getByLabel("Personalización").fill("Grabado interior: Ana");
     await line.getByLabel("Cantidad").fill("2");
-    await expect(page.getByTestId("total")).toHaveText("S/ 331.00");
+    await expect(page.getByTestId("subtotal")).toHaveText("S/ 331.00");
   });
 });

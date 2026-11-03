@@ -129,6 +129,7 @@ export const quoteSchema = z.object({
   validityDays: days("La vigencia debe ser de 1 a 365 días"),
   paymentCondition: z.enum(QUOTE_PAYMENT_CONDITIONS),
   deliveryDays: days("El tiempo de entrega debe ser de 1 a 365 días"),
+  applyIgv: z.boolean(),
   notes: text(2000),
   terms: text(5000),
   lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
@@ -140,6 +141,8 @@ export type QuoteFormInput = {
   validityDays: string;
   paymentCondition: QuotePaymentCondition;
   deliveryDays: string;
+  /** "Sumar IGV (18 %)". */
+  applyIgv: boolean;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -156,6 +159,7 @@ export function quoteRpcArgs(v: QuoteInput) {
       validity_days: v.validityDays,
       payment_condition: v.paymentCondition,
       delivery_days: v.deliveryDays,
+      apply_igv: v.applyIgv,
       notes: v.notes,
       terms: v.terms,
     },

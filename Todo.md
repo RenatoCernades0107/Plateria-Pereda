@@ -263,7 +263,7 @@ _(P56, 2026-10-13: se quitó "En proceso"; mientras las piezas están en el tall
 
 ### 7.5 Pagos (P28 ✅, P29 ✅, 2026-10-12)
 
-- **IGV:** ya no existe en el sistema (se maneja fuera, 2026-10-16): el total es la suma de los precios tal como se escriben, sin preguntar ni sumar IGV. _(Reemplaza la regla de P13.)_
+- **IGV:** ya no existe en restauraciones ni cotizaciones de WhatsApp (se maneja fuera, 2026-10-16): el total es la suma de los precios tal como se escriben, sin preguntar ni sumar IGV. _(Reemplaza la regla de P13.)_ El cotizador de productos (`COT-`) sí lo suma desde el 2026-11-03 (Paso 14.7).
 - Tipo de pago: **Al contado** (paga el total al aprobar), **A cuenta** (adelanto + saldo), **Al crédito** (sin adelanto; cualquier cliente, lo eligen ventas o admin). Se cambia solo mientras no haya pagos registrados (P28).
 - **Adelanto** ("A cuenta"): se cobra después de aprobar la cotización; por defecto el **50 %** del total (configurable) y editable en cada restauración (P10, N2).
 - Los pagos se registran **desde el sistema** (ventas y admin): monto, método (efectivo, tarjeta, Yape, Plin) y fecha.
@@ -1276,6 +1276,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
   - [x] En desktop se ofrece descarga + enlace de WhatsApp; `@mobile` el botón "Compartir" está disponible (Web Share simulado) (`quotes.spec.ts`).
 - Hecho (2026-10-26): `src/components/quotes/web-share.ts` (`canShareFiles`) y el botón "Compartir por WhatsApp" de `quote-pdf-button.tsx`.
 - Commit: `feat(cotizador): permite compartir la cotización`
+
+#### Paso 14.7 — IGV en el cotizador (P13, pedido del 2026-11-03)
+- [x] Casilla "Sumar IGV (18 %)" en `/cotizaciones/nueva` y `/cotizaciones/[id]`, marcada por defecto; los precios de las líneas se escriben sin IGV. IGV = 18 % de (subtotal − descuentos), redondeado una sola vez a céntimos; total = subtotal − descuentos + IGV (lo que paga el cliente: el listado y el dashboard usan ese total). Solo se cambia en borrador; duplicar la conserva. Las cotizaciones existentes quedan sin IGV (no cambia el total de las ya emitidas). Restauraciones y cotizaciones de WhatsApp no cambian.
+- [x] PDF: fila "IGV (18 %)" entre Sub Total (y Descuento) y Total Venta; "Son:" con el total con IGV; se quitó la fila "Impuesto: LOS PRECIOS NO INCLUYEN IGV".
+- **Unit:** `quoteTotals(lines, applyIgv)` (IGV sobre el total, redondeo), modelo y dibujo del PDF, casilla del formulario (por defecto, totales en vivo, se envía, deshabilitada en emitidas), validación y `getQuote`.
+- **BD:** `66_igv_cotizador` (por defecto marcada, recalcula al cambiar líneas o la casilla, redondeo, no se escribe a mano, duplicar, emitida); `20`, `21` y `39` con los nuevos totales.
+- **E2E:** `quotes.spec.ts` (IGV por defecto, desmarcar, emitida deshabilitada) y `quote-product-picker.spec.ts` (subtotal).
+- Hecho (2026-11-03): migración `20261103130000_igv_cotizador.sql` (`quotes.apply_igv` e `quotes.igv`; trigger `quotes_set_totals` calcula IGV y total desde subtotal, descuentos y la casilla; `recalculate_quote_totals` solo suma las líneas; `private.quote_total` eliminada; `save_quote` lee `p_quote.apply_igv`, `duplicate_quote` la copia; `quote_guard_update` la bloquea fuera de borrador; `igv` fuera de la auditoría como `total`).
+- Commit: `feat(cotizador): suma el IGV (18 %) en las cotizaciones personalizadas`
 
 ### Fase 15 — Calidad transversal
 

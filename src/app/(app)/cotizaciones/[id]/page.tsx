@@ -59,6 +59,7 @@ export default async function CotizacionPage({
     clientName,
     contactName: client.name,
     lines: quote.lines.map(quotePdfLineFromDraft),
+    applyIgv: quote.applyIgv,
     notes: quote.notes,
     terms: quote.terms,
   };
@@ -117,6 +118,7 @@ export default async function CotizacionPage({
           validityDays: String(quote.validityDays),
           paymentCondition: quote.paymentCondition,
           deliveryDays: String(quote.deliveryDays),
+          applyIgv: quote.applyIgv,
           notes: quote.notes,
           terms: quote.terms,
           lines: quote.lines,

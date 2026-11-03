@@ -30,6 +30,7 @@ const baseData: QuotePdfData = {
       unitPrice: 1_906_78,
     },
   ],
+  applyIgv: false,
   notes: "",
   terms: "",
 };
@@ -91,6 +92,7 @@ describe("quotePdfModel", () => {
     ]);
     expect(model.subtotal).toBe("S/ 1,906.78");
     expect(model.discount).toBeNull();
+    expect(model.igv).toBeNull();
     expect(model.total).toBe("S/ 1,906.78");
     expect(model.amountInWords).toBe("MIL NOVECIENTOS SEIS Y 78/100 SOLES");
     expect(model.validityText).toContain("validez de 7 días");
@@ -98,6 +100,37 @@ describe("quotePdfModel", () => {
     expect(model.signer).toBe("Platería Pereda");
     expect(model.paymentConditionText).toBe("Al contado");
     expect(model.deliveryText).toBe("30 días hábiles desde su aprobación");
+  });
+
+  it("con IGV: fila del IGV y total y monto en letras con IGV", () => {
+    const model = quotePdfModel({ ...baseData, applyIgv: true });
+    expect(model.subtotal).toBe("S/ 1,906.78");
+    // 1,906.78 × 18 % = 343.2204 → 343.22.
+    expect(model.igv).toBe("S/ 343.22");
+    expect(model.total).toBe("S/ 2,250.00");
+    expect(model.amountInWords).toBe(
+      "DOS MIL DOSCIENTOS CINCUENTA Y 00/100 SOLES",
+    );
+    // Los precios de la tabla siguen sin IGV.
+    expect(model.rows[0]!.unitPrice).toBe("S/ 1,906.78");
+    expect(model.rows[0]!.total).toBe("S/ 1,906.78");
+  });
+
+  it("con IGV y descuento, el IGV va sobre subtotal − descuentos", () => {
+    const model = quotePdfModel({
+      ...baseData,
+      applyIgv: true,
+      lines: [
+        {
+          ...baseData.lines[0]!,
+          discount: { type: "porcentaje", percent: 10 },
+        },
+      ],
+    });
+    // 1,906.78 − 190.68 = 1,716.10; IGV 308.898 → 308.90; total 2,025.00.
+    expect(model.discount).toBe("S/ 190.68");
+    expect(model.igv).toBe("S/ 308.90");
+    expect(model.total).toBe("S/ 2,025.00");
   });
 
   it("condición de pago con su etiqueta", () => {
