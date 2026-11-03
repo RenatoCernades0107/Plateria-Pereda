@@ -95,6 +95,7 @@ export type Database = {
           active: boolean;
           address: string;
           city: string;
+          contact_phone: string | null;
           created_at: string;
           created_by: string | null;
           display_name: string | null;
@@ -119,6 +120,7 @@ export type Database = {
           active?: boolean;
           address?: string;
           city?: string;
+          contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
           display_name?: never;
@@ -143,6 +145,7 @@ export type Database = {
           active?: boolean;
           address?: string;
           city?: string;
+          contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
           display_name?: never;
@@ -2566,6 +2569,7 @@ export type Database = {
           same_email: boolean;
           same_name: boolean;
           same_phone: boolean;
+          uses_contact_phone: boolean;
         }[];
       };
       undo_piece_move: {

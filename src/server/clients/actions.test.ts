@@ -118,11 +118,22 @@ describe("createClient", () => {
       document_type: "dni",
       document_number: "45678912",
       phone: "+51999888777",
+      contact_phone: null,
       email: null,
       address: "",
       notes: "",
     });
     expect(mocks.schedule).toHaveBeenCalled();
+  });
+
+  it("con teléfono de contacto no guarda teléfono propio (no va a Shopify)", async () => {
+    await createClient({ ...person, phoneIsContact: true });
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone: null,
+        contact_phone: "+51999888777",
+      }),
+    );
   });
 
   it("registra una empresa con RUC, ciudad y región", async () => {

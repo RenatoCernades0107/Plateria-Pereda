@@ -42,6 +42,10 @@ export function personDefaults(client: ClientDetail): PersonFormInput {
       documentNumber: client.documentNumber ?? "",
     },
     ...common(client),
+    ...(client.contactPhone && {
+      phone: formatPhone(client.contactPhone),
+      phoneIsContact: true,
+    }),
   };
 }
 

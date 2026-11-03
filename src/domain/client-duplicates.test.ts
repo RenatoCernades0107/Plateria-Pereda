@@ -4,6 +4,7 @@ import {
   duplicateReasons,
   mergeSummary,
   reasonsLabel,
+  sharesContactPhoneOnly,
 } from "./client-duplicates";
 
 describe("duplicateReasons", () => {
@@ -47,5 +48,29 @@ describe("mergeSummary", () => {
     expect(
       mergeSummary({ restorations: 0, quotes: 0, whatsappQuotes: 0 }, "Ana"),
     ).toMatch(/no tenía guías ni cotizaciones/);
+  });
+});
+
+describe("sharesContactPhoneOnly", () => {
+  it("compartir solo el número como teléfono de contacto no es un duplicado", () => {
+    expect(
+      sharesContactPhoneOnly(
+        { reasons: ["telefono"], usesContactPhone: true },
+        false,
+      ),
+    ).toBe(true);
+    expect(sharesContactPhoneOnly({ reasons: ["telefono"] }, true)).toBe(true);
+  });
+
+  it("con otra coincidencia o sin teléfono de contacto, sí puede serlo", () => {
+    expect(
+      sharesContactPhoneOnly(
+        { reasons: ["telefono", "nombre"], usesContactPhone: true },
+        false,
+      ),
+    ).toBe(false);
+    expect(sharesContactPhoneOnly({ reasons: ["telefono"] }, false)).toBe(
+      false,
+    );
   });
 });

@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   duplicateReasons,
   mergeSummary,
+  sharesContactPhoneOnly,
   type SimilarClient,
 } from "@/domain/client-duplicates";
 import type { Database, TablesInsert } from "@/lib/supabase/database.types";
@@ -40,7 +41,12 @@ function clientRow(v: ClientInput): TablesInsert<"clients"> {
     notes: v.notes,
   };
   return v.kind === "persona"
-    ? { ...shared, first_name: v.firstName, last_name: v.lastName }
+    ? {
+        ...shared,
+        first_name: v.firstName,
+        last_name: v.lastName,
+        contact_phone: v.contactPhone,
+      }
     : { ...shared, legal_name: v.legalName, city: v.city, region: v.region };
 }
 
@@ -147,6 +153,7 @@ const similarClient = (c: SimilarRow): SimilarClient => ({
   phone: c.phone,
   email: c.email,
   reasons: duplicateReasons(c),
+  usesContactPhone: c.uses_contact_phone,
 });
 
 /**
@@ -165,7 +172,7 @@ export async function findSimilarClients(
   const { data, error } = await supabase.rpc("similar_clients", {
     p_name: v.kind === "persona" ? `${v.firstName} ${v.lastName}` : v.legalName,
     p_document_number: v.documentNumber ?? "",
-    p_phone: v.phone ?? "",
+    p_phone: v.phone ?? (v.kind === "persona" ? v.contactPhone : null) ?? "",
     p_email: v.email ?? "",
   });
   if (error) return [];
@@ -181,19 +188,22 @@ export async function findDuplicatesOf(
   const supabase = await createSupabase();
   const { data: c } = await supabase
     .from("clients")
-    .select("display_name, document_number, phone, email")
+    .select("display_name, document_number, phone, contact_phone, email")
     .eq("id", clientId)
     .maybeSingle();
   if (!c) return [];
   const { data, error } = await supabase.rpc("similar_clients", {
     p_name: c.display_name ?? "",
     p_document_number: c.document_number ?? "",
-    p_phone: c.phone ?? "",
+    p_phone: c.phone ?? c.contact_phone ?? "",
     p_email: c.email ?? "",
     p_exclude: clientId,
   });
   if (error) return [];
-  return data.map(similarClient);
+  // Compartir el número como teléfono de contacto no los hace duplicados.
+  return data
+    .map(similarClient)
+    .filter((s) => !sharesContactPhoneOnly(s, c.contact_phone !== null));
 }
 
 export type MergeClientsResult =

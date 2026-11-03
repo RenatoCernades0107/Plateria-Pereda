@@ -111,6 +111,11 @@ const common = {
   notes: optionalText(2000),
 };
 
+/**
+ * Persona. Su teléfono puede ser propio o de contacto (`phoneIsContact`): el de otra
+ * persona que lo comparte (p. ej., la hija que hace el pedido para su mamá). El de
+ * contacto no es único ni va a Shopify, donde el teléfono del Customer sí es único.
+ */
 export const personSchema = z
   .object({
     kind: z.literal("persona"),
@@ -118,8 +123,14 @@ export const personSchema = z
     lastName: requiredName("Ingresa los apellidos"),
     document: personDocument,
     ...common,
+    phoneIsContact: z.boolean().optional(),
   })
-  .transform(({ document, ...rest }) => ({ ...rest, ...document }));
+  .transform(({ document, phone, phoneIsContact, ...rest }) => ({
+    ...rest,
+    ...document,
+    phone: phoneIsContact ? null : phone,
+    contactPhone: phoneIsContact ? phone : null,
+  }));
 
 export const companySchema = z
   .object({

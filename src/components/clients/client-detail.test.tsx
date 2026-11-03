@@ -70,6 +70,7 @@ const company: ClientDetail = {
   documentType: "ruc",
   documentNumber: "20100047218",
   phone: "+5112345678",
+  contactPhone: null,
   email: null,
   address: "Av. Larco 123",
   city: "Arequipa",

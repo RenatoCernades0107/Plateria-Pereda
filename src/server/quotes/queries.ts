@@ -127,7 +127,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
   const { data: q, error } = await supabase
     .from("quotes")
     .select(
-      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code)",
+      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -156,7 +156,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
         name: issued ? q.client_name : (c.display_name ?? ""),
         documentType: issued ? q.client_document_type : c.document_type,
         documentNumber: issued ? q.client_document_number : c.document_number,
-        phone: issued ? q.client_phone : c.phone,
+        phone: issued ? q.client_phone : (c.phone ?? c.contact_phone),
         email: issued ? q.client_email : c.email,
         shopifyCustomerId: c.shopify_customer_id,
       };

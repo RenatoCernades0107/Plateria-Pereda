@@ -16,6 +16,8 @@ export type SimilarClient = {
   phone: string | null;
   email: string | null;
   reasons: DuplicateReason[];
+  /** Su teléfono es de contacto (lo comparte con otra persona). */
+  usesContactPhone?: boolean;
 };
 
 const REASON_LABELS: Record<DuplicateReason, string> = {
@@ -38,6 +40,21 @@ export function duplicateReasons(row: {
   if (row.same_email) reasons.push("email");
   if (row.same_name) reasons.push("nombre");
   return reasons;
+}
+
+/**
+ * Solo comparten el teléfono y uno de los dos lo tiene como teléfono de contacto: son
+ * personas distintas que comparten número (p. ej., madre e hija), no un duplicado.
+ */
+export function sharesContactPhoneOnly(
+  candidate: Pick<SimilarClient, "reasons" | "usesContactPhone">,
+  targetUsesContactPhone: boolean,
+): boolean {
+  return (
+    candidate.reasons.length === 1 &&
+    candidate.reasons[0] === "telefono" &&
+    (Boolean(candidate.usesContactPhone) || targetUsesContactPhone)
+  );
 }
 
 /** "Mismo teléfono y nombre". */

@@ -84,7 +84,9 @@ export async function getWhatsappQuote(
     q.client_id
       ? supabase
           .from("clients")
-          .select("id, display_name, phone, kind, document_number")
+          .select(
+            "id, display_name, phone, contact_phone, kind, document_number",
+          )
           .eq("id", q.client_id)
           .single()
       : Promise.resolve({ data: null, error: null }),
@@ -123,7 +125,8 @@ export async function getWhatsappQuote(
       ? {
           id: client.data.id,
           name: client.data.display_name ?? "",
-          phone: client.data.phone,
+          // El propio o, si comparte el número con otro cliente, el de contacto.
+          phone: client.data.phone ?? client.data.contact_phone,
           kind: client.data.kind,
           documentNumber: client.data.document_number,
         }

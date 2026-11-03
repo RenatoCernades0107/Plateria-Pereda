@@ -94,12 +94,73 @@ describe("NewClientDialog", () => {
     ).toHaveAttribute("href", "/clientes/c9");
     await user.click(
       within(alert).getByRole("button", {
-        name: "No es el mismo: registrar nuevo",
+        name: "Registrar con el mismo teléfono",
       }),
     );
     expect(mocks.createClient).toHaveBeenCalledWith(
-      expect.objectContaining({ firstName: "Ana", lastName: "Pérez" }),
+      expect.objectContaining({
+        firstName: "Ana",
+        lastName: "Pérez",
+        phoneIsContact: false,
+      }),
     );
+  });
+
+  it("si comparte el teléfono, lo registra como teléfono de contacto", async () => {
+    mocks.findSimilarClients.mockResolvedValue([similar]);
+    const user = userEvent.setup();
+    render(<NewClientDialog />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = await fillPerson(user);
+    const alert = await within(dialog).findByRole("alert");
+    await user.click(
+      within(alert).getByRole("button", {
+        name: "Registrar con teléfono de contacto",
+      }),
+    );
+    expect(mocks.createClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: "Ana",
+        phone: "+51 999888777",
+        phoneIsContact: true,
+      }),
+    );
+  });
+
+  it("sin coincidir el teléfono, solo ofrece registrar nuevo", async () => {
+    mocks.findSimilarClients.mockResolvedValue([
+      { ...similar, reasons: ["nombre"] },
+    ]);
+    const user = userEvent.setup();
+    render(<NewClientDialog />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = await fillPerson(user);
+    const alert = await within(dialog).findByRole("alert");
+    expect(
+      within(alert).queryByRole("button", { name: /teléfono de contacto/ }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      within(alert).getByRole("button", {
+        name: "No es el mismo: registrar nuevo",
+      }),
+    );
+    expect(mocks.createClient).toHaveBeenCalled();
+  });
+
+  it("la casilla guarda el número como teléfono de contacto", async () => {
+    const user = userEvent.setup();
+    render(<NewClientDialog />);
+    await user.click(screen.getByRole("button", { name: "Nuevo cliente" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("checkbox", {
+        name: /Es el número de otra persona/,
+      }),
+    );
+    expect(
+      within(dialog).getByLabelText("Teléfono de contacto"),
+    ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("no se envía a Shopify");
   });
 
   it("con el mismo documento no ofrece registrar otro", async () => {
