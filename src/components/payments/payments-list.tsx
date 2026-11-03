@@ -13,20 +13,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCents } from "@/domain/money";
+import { paymentShopifyLabel } from "@/domain/payments";
 import { formatDate } from "@/lib/format";
 import type { PaymentRecord } from "@/server/payments/queries";
 
-/** Estado de envío a Shopify de cada pago (§7.5); con su pedido, su descripción. */
-export function shopifyLabel(p: PaymentRecord): string {
-  if (p.source === "shopify") return "Hecho en Shopify";
-  if (p.skipShopify) return "Solo en el sistema";
-  if (p.orderName) return p.orderTitle ?? p.orderName;
-  return p.syncedToShopify ? "En Shopify" : "Pendiente de envío";
-}
-
 /** Estado en Shopify; el pedido del pago, con enlace a su admin si lo hay. */
 function ShopifyCell({ payment: p }: { payment: PaymentRecord }) {
-  const label = shopifyLabel(p);
+  const label = paymentShopifyLabel(p);
   if (p.orderUrl)
     return (
       <>

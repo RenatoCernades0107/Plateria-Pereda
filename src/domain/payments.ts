@@ -8,6 +8,29 @@ import type { Cents, PaymentStatus, PaymentType } from "./money";
 export const PAYMENT_KINDS = ["pago", "reembolso"] as const;
 export type PaymentKind = (typeof PAYMENT_KINDS)[number];
 
+export const PAYMENT_KIND_LABELS: Record<PaymentKind, string> = {
+  pago: "Pago",
+  reembolso: "Reembolso",
+};
+
+/** Lo que hace falta de un pago para saber su estado en Shopify. */
+export type PaymentShopifyState = {
+  source: "sistema" | "shopify";
+  /** Queda solo en el sistema (sin pedido en Shopify). */
+  skipShopify: boolean;
+  syncedToShopify: boolean;
+  orderTitle: string | null;
+  orderName: string | null;
+};
+
+/** Estado de envío a Shopify de un pago (§7.5); con su pedido, su descripción. */
+export function paymentShopifyLabel(p: PaymentShopifyState): string {
+  if (p.source === "shopify") return "Hecho en Shopify";
+  if (p.skipShopify) return "Solo en el sistema";
+  if (p.orderName) return p.orderTitle ?? p.orderName;
+  return p.syncedToShopify ? "En Shopify" : "Pendiente de envío";
+}
+
 /**
  * Estado de pago (P29): Pendiente (nada pagado), Parcial, Pagado (pagado ≥ total) y
  * Reembolsado (se devolvió todo lo que se había pagado). Con total 0 y nada pagado

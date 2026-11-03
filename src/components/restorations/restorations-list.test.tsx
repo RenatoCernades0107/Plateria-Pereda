@@ -24,6 +24,7 @@ const item: RestorationListItem = {
   balanceCents: 61725,
   createdAt: "2026-10-01T15:00:00Z",
   origin: "oficina",
+  archived: false,
 };
 
 describe("RestorationsList", () => {
@@ -152,6 +153,54 @@ describe("RestorationsList", () => {
     expect(badge).toHaveAttribute("data-origin", "whatsapp");
     expect(badge).toHaveClass("bg-whatsapp/10");
     expect(badge.querySelector("svg[data-icon=whatsapp]")).not.toBeNull();
+  });
+
+  it("separa las terminadas (al final) con un aviso, una sola vez", () => {
+    render(
+      <RestorationsList
+        items={[
+          item,
+          {
+            ...item,
+            id: "r2",
+            code: "RES-00002",
+            status: "completada",
+            archived: true,
+          },
+          {
+            ...item,
+            id: "r3",
+            code: "RES-00003",
+            status: "anulada",
+            archived: true,
+          },
+        ]}
+        filters={parseRestorationFilters({})}
+        showMoney
+        emptyMessage="Vacío"
+      />,
+    );
+    const separator = screen.getByTestId("separador-terminadas");
+    expect(separator).toHaveTextContent("Terminadas");
+    expect(screen.getAllByTestId("separador-terminadas")).toHaveLength(1);
+    // Va justo antes de la primera terminada.
+    expect(separator.nextElementSibling).toBe(
+      screen.getByTestId("restauracion-RES-00002"),
+    );
+    expect(within(separator).getByRole("cell")).toHaveAttribute("colspan", "8");
+    expect(screen.getAllByTestId("separador-terminadas-movil")).toHaveLength(1);
+  });
+
+  it("sin terminadas no hay separador", () => {
+    render(
+      <RestorationsList
+        items={[item]}
+        filters={parseRestorationFilters({})}
+        showMoney
+        emptyMessage="Vacío"
+      />,
+    );
+    expect(screen.queryByTestId("separador-terminadas")).toBeNull();
   });
 
   it("sin resultados muestra el mensaje", () => {

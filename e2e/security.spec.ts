@@ -16,6 +16,7 @@ const PAGES: { path: string; needs: Permission[] }[] = [
     path: "/restauraciones/nueva",
     needs: ["restauraciones.editar", "cotizaciones-whatsapp.usar"],
   },
+  { path: "/restauraciones/pagos", needs: ["restauraciones.editar"] },
   { path: "/piezas", needs: ["restauraciones.ver"] },
   { path: "/piezas/historial", needs: ["restauraciones.ver"] },
   { path: "/cotizaciones-whatsapp", needs: ["cotizaciones-whatsapp.usar"] },

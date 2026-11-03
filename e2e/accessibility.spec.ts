@@ -19,6 +19,7 @@ const PAGES: { path: string; role: AppRole }[] = [
   { path: "/dashboard", role: "admin" },
   { path: "/restauraciones", role: "ventas" },
   { path: "/restauraciones/nueva", role: "ventas" },
+  { path: "/restauraciones/pagos", role: "ventas" },
   { path: `/restauraciones/${SEED.restoration}`, role: "admin" },
   { path: "/piezas", role: "logistica" },
   { path: "/piezas/historial", role: "ventas" },

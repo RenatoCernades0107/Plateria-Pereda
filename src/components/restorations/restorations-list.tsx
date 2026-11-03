@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { WhatsAppBadge } from "@/components/whatsapp-badge";
@@ -72,6 +73,14 @@ function Status({
     </span>
   );
 }
+
+/** Texto del separador antes de las terminadas (van al final del listado). */
+const ARCHIVED_LABEL =
+  "Terminadas: anuladas, rechazadas y completadas antes de hoy";
+
+/** ¿Va el separador de las terminadas antes de esta fila? Solo antes de la primera. */
+const startsArchived = (items: RestorationListItem[], index: number) =>
+  Boolean(items[index]?.archived) && !items[index - 1]?.archived;
 
 function Payment({ item }: { item: RestorationListItem }) {
   return (
@@ -156,89 +165,113 @@ export function RestorationsList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((r) => (
-            <ClickableRow key={r.id} data-testid={`restauracion-${r.code}`}>
-              <TableCell>
-                <Link
-                  href={`/restauraciones/${r.id}`}
-                  data-primary-link
-                  className="text-heading font-medium underline-offset-4 hover:underline"
+          {items.map((r, index) => (
+            <Fragment key={r.id}>
+              {startsArchived(items, index) ? (
+                <TableRow
+                  className="hover:bg-transparent"
+                  data-testid="separador-terminadas"
                 >
-                  {r.code}
-                </Link>
-              </TableCell>
-              <TableCell className="whitespace-nowrap">
-                {formatDate(r.createdAt)}
-              </TableCell>
-              {showClient ? (
-                <TableCell className="max-w-56">
-                  <span className="block truncate">{r.clientName}</span>
-                  {r.contactName ? (
-                    <span className="text-muted-foreground block truncate text-xs">
-                      {r.contactName}
-                    </span>
-                  ) : null}
+                  <TableCell
+                    colSpan={5 + (showClient ? 1 : 0) + (showMoney ? 2 : 0)}
+                    className="text-muted-foreground bg-muted/40 py-1.5 text-xs font-medium"
+                  >
+                    {ARCHIVED_LABEL}
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              <ClickableRow data-testid={`restauracion-${r.code}`}>
+                <TableCell>
+                  <Link
+                    href={`/restauraciones/${r.id}`}
+                    data-primary-link
+                    className="text-heading font-medium underline-offset-4 hover:underline"
+                  >
+                    {r.code}
+                  </Link>
                 </TableCell>
-              ) : null}
-              <TableCell>
-                <Status item={r} />
-              </TableCell>
-              <TableCell>
-                <Payment item={r} />
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {r.piecesCount}
-              </TableCell>
-              {showMoney ? (
-                <>
-                  <TableCell className="text-right tabular-nums">
-                    {r.totalCents === null ? "—" : formatCents(r.totalCents)}
+                <TableCell className="whitespace-nowrap">
+                  {formatDate(r.createdAt)}
+                </TableCell>
+                {showClient ? (
+                  <TableCell className="max-w-56">
+                    <span className="block truncate">{r.clientName}</span>
+                    {r.contactName ? (
+                      <span className="text-muted-foreground block truncate text-xs">
+                        {r.contactName}
+                      </span>
+                    ) : null}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {r.balanceCents === null
-                      ? "—"
-                      : formatCents(r.balanceCents)}
-                  </TableCell>
-                </>
-              ) : null}
-            </ClickableRow>
+                ) : null}
+                <TableCell>
+                  <Status item={r} />
+                </TableCell>
+                <TableCell>
+                  <Payment item={r} />
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {r.piecesCount}
+                </TableCell>
+                {showMoney ? (
+                  <>
+                    <TableCell className="text-right tabular-nums">
+                      {r.totalCents === null ? "—" : formatCents(r.totalCents)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {r.balanceCents === null
+                        ? "—"
+                        : formatCents(r.balanceCents)}
+                    </TableCell>
+                  </>
+                ) : null}
+              </ClickableRow>
+            </Fragment>
           ))}
         </TableBody>
       </Table>
 
       <ul className="space-y-3 md:hidden" aria-label="Restauraciones">
-        {items.map((r) => (
-          <ClickableItem
-            key={r.id}
-            className="space-y-2 rounded-lg border p-4"
-            data-testid={`restauracion-movil-${r.code}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <Link
-                  href={`/restauraciones/${r.id}`}
-                  data-primary-link
-                  className="text-heading font-medium underline-offset-4 hover:underline"
-                >
-                  {r.code}
-                </Link>
-                {showClient ? (
-                  <p className="truncate text-sm">{r.clientName}</p>
+        {items.map((r, index) => (
+          <Fragment key={r.id}>
+            {startsArchived(items, index) ? (
+              <li
+                className="text-muted-foreground pt-2 text-xs font-medium"
+                data-testid="separador-terminadas-movil"
+              >
+                {ARCHIVED_LABEL}
+              </li>
+            ) : null}
+            <ClickableItem
+              className="space-y-2 rounded-lg border p-4"
+              data-testid={`restauracion-movil-${r.code}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <Link
+                    href={`/restauraciones/${r.id}`}
+                    data-primary-link
+                    className="text-heading font-medium underline-offset-4 hover:underline"
+                  >
+                    {r.code}
+                  </Link>
+                  {showClient ? (
+                    <p className="truncate text-sm">{r.clientName}</p>
+                  ) : null}
+                </div>
+                <Status item={r} className="justify-end" />
+              </div>
+              <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span>{formatDate(r.createdAt)}</span>
+                <span>
+                  {r.piecesCount} {r.piecesCount === 1 ? "pieza" : "piezas"}
+                </span>
+                {showMoney && r.totalCents !== null ? (
+                  <span>Total {formatCents(r.totalCents)}</span>
                 ) : null}
               </div>
-              <Status item={r} className="justify-end" />
-            </div>
-            <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-              <span>{formatDate(r.createdAt)}</span>
-              <span>
-                {r.piecesCount} {r.piecesCount === 1 ? "pieza" : "piezas"}
-              </span>
-              {showMoney && r.totalCents !== null ? (
-                <span>Total {formatCents(r.totalCents)}</span>
-              ) : null}
-            </div>
-            <Payment item={r} />
-          </ClickableItem>
+              <Payment item={r} />
+            </ClickableItem>
+          </Fragment>
         ))}
       </ul>
     </>

@@ -30,6 +30,7 @@ import {
   RESTORATIONS_PAGE_SIZE,
   type RestorationFilters,
 } from "@/domain/restoration-filters";
+import type { CsvRestoration } from "@/domain/restorations-csv";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { signedPhotoUrls } from "@/server/files/queries";
@@ -464,6 +465,11 @@ export type RestorationListItem = {
   balanceCents: Cents | null;
   createdAt: string;
   origin: RestorationOrigin;
+  /**
+   * Terminada (anulada, rechazada o completada desde antes de hoy): va al final del
+   * listado, después de las vigentes.
+   */
+  archived: boolean;
 };
 
 export type RestorationsPage = {
@@ -514,8 +520,59 @@ export async function listRestorations(
       balanceCents: centsOrNull(r.balance),
       createdAt: r.created_at,
       origin: r.origin,
+      archived: r.is_archived ?? false,
     })),
   };
+}
+
+/**
+ * Todas las restauraciones con esos filtros (también las terminadas), con todos los
+ * datos del CSV. Solo admin y ventas: la BD no da montos ni contactos a los demás.
+ */
+export async function exportRestorations(
+  filters: RestorationFilters,
+): Promise<CsvRestoration[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    "list_restorations",
+    listRestorationsArgs({ ...filters, view: "tabla" }, { all: true }),
+  );
+  if (error) throw error;
+  return data.map((r) => ({
+    code: r.code,
+    createdAt: r.created_at,
+    clientName: r.client_name ?? "",
+    documentType: r.document_type ?? null,
+    documentNumber: r.document_number,
+    clientPhone: r.client_phone ?? null,
+    clientEmail: r.client_email ?? null,
+    contactName: r.contact_name,
+    contactPhone: r.contact_phone ?? null,
+    status: toRestorationStatus(r.status),
+    archived: r.is_archived ?? false,
+    finishedAt: r.finished_at ?? null,
+    kind: r.kind ?? "normal",
+    origin: r.origin,
+    piecesCount: r.pieces_count,
+    waitingCount: r.waiting_count ?? 0,
+    workshopNames: r.workshop_names ?? null,
+    paymentType: r.payment_type,
+    paymentStatus: r.payment_status,
+    totalCents: centsOrNull(r.total),
+    expectedDepositCents: centsOrNull(r.expected_deposit),
+    depositPercent: depositPercentFrom(
+      r.deposit_amount,
+      r.deposit_percent,
+      r.total,
+    ),
+    paidCents: centsOrNull(r.paid),
+    refundedCents: centsOrNull(r.refunded),
+    balanceCents: centsOrNull(r.balance),
+    lastPaidOn: r.last_paid_on ?? null,
+    shopifyOrderName: r.shopify_order_name ?? null,
+    createdByName: r.created_by_name ?? null,
+    notes: r.notes ?? "",
+  }));
 }
 
 /**

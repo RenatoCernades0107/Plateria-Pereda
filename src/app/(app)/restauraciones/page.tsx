@@ -1,10 +1,4 @@
-import {
-  ArrowLeft,
-  Download,
-  History,
-  MoreHorizontal,
-  Plus,
-} from "lucide-react";
+import { Download, MoreHorizontal, Plus, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -86,13 +80,11 @@ export default async function RestauracionesPage({
       sort: "created_at",
       dir: "desc",
       view: "tabla",
-      scope: filters.scope,
     }) !== "";
   const exportQuery = restorationFiltersQuery(filters, {
     page: 1,
     view: "tabla",
   });
-  const history = filters.scope === "historial";
   const kanban = filters.view === "kanban";
   const progress = kanban ? await getPartialProgress(items) : undefined;
 
@@ -100,13 +92,11 @@ export default async function RestauracionesPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
-          title={history ? "Historial de restauraciones" : "Restauraciones"}
+          title="Restauraciones"
           description={
-            history
-              ? "Restauraciones anuladas, rechazadas o completadas desde antes de hoy. La vista de restauraciones muestra las completadas solo el día en que se completan."
-              : canEdit
-                ? "Restauraciones en curso, con su estado y sus pagos."
-                : "Restauraciones en curso."
+            canEdit
+              ? "Restauraciones con su estado y sus pagos. Las terminadas (anuladas, rechazadas y completadas desde antes de hoy) van al final."
+              : "Restauraciones en curso."
           }
         />
         {canEdit ? (
@@ -133,9 +123,11 @@ export default async function RestauracionesPage({
         <p className="text-muted-foreground text-sm" data-testid="resumen">
           {kanban && items.length < total
             ? `Se muestran ${items.length} de ${total} restauraciones. Usa los filtros para ver las demás.`
-            : total === 1
-              ? "1 restauración"
-              : `${total} restauraciones`}
+            : kanban && filters.status.length === 0 && canEdit
+              ? `${total === 1 ? "1 restauración vigente" : `${total} restauraciones vigentes`}. Filtra por estado para ver las terminadas.`
+              : total === 1
+                ? "1 restauración"
+                : `${total} restauraciones`}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <ViewToggle
@@ -146,17 +138,14 @@ export default async function RestauracionesPage({
             })}
             kanbanHref={restorationFiltersHref(filters, { view: "kanban" })}
           />
-          <Button asChild variant="outline">
-            <Link
-              href={restorationFiltersHref(parseRestorationFilters({}), {
-                scope: history ? "activas" : "historial",
-                view: filters.view,
-              })}
-            >
-              {history ? <ArrowLeft /> : <History />}
-              {history ? "Volver a restauraciones" : "Historial"}
-            </Link>
-          </Button>
+          {canEdit ? (
+            <Button asChild variant="outline">
+              <Link href="/restauraciones/pagos">
+                <Wallet />
+                Pagos
+              </Link>
+            </Button>
+          ) : null}
           {canEdit ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -183,7 +172,6 @@ export default async function RestauracionesPage({
         <FilteredEmptyState
           resetHref={restorationFiltersHref(parseRestorationFilters({}), {
             view: filters.view,
-            scope: filters.scope,
           })}
         />
       ) : kanban ? (
@@ -203,13 +191,9 @@ export default async function RestauracionesPage({
             emptyMessage="Aún no hay restauraciones registradas."
             empty={
               <EmptyState
-                title={
-                  history
-                    ? "Aún no hay restauraciones en el historial."
-                    : "Aún no hay restauraciones registradas."
-                }
+                title="Aún no hay restauraciones registradas."
                 action={
-                  canEdit && !history ? (
+                  canEdit ? (
                     <Button asChild>
                       <Link href="/restauraciones/nueva">
                         <Plus />
