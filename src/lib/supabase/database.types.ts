@@ -2443,7 +2443,10 @@ export type Database = {
           unread_count: number;
         }[];
       };
-      payment_method_names: { Args: never; Returns: string[] };
+      payment_method_names: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[];
+      };
       piece_location_since: {
         Args: {
           p_arrived_at?: string;
