@@ -152,6 +152,7 @@
   - **Incluye:** el total es la suma de los precios; el desglose (op. gravada + IGV) solo se informa.
   - Se puede cambiar mientras no exista la orden de Shopify (restauración) o mientras la cotización se pueda editar.
 - **Respuesta (2026-10-16):** ✅ **Se quita todo lo relacionado con el IGV** (reemplaza las respuestas anteriores): el IGV se maneja fuera del sistema. No se pregunta si el precio lo incluye, no aparece en ninguna pantalla, mensaje ni PDF, y nunca se suma al total: el total de una restauración o cotización es la suma de los precios tal como se escriben (la orden de Shopify lleva esos mismos precios). Ver D66.
+- **Respuesta (2026-11-03):** ✅ **El cotizador de productos (`COT-`, /cotizaciones) vuelve a sumar el IGV**; restauraciones y cotizaciones de WhatsApp siguen sin IGV. Casilla "Sumar IGV (18 %)" marcada por defecto; los precios se escriben sin IGV y el IGV es el 18 % de (subtotal − descuentos), redondeado una vez. El total con IGV es lo que paga el cliente (listado, PDF y dashboard). Las cotizaciones existentes quedan sin IGV. El PDF muestra la fila del IGV y ya no dice "LOS PRECIOS NO INCLUYEN IGV".
 
 ### P14 · ¿Cómo registramos a las empresas en Shopify?
 - **Contexto:** desde abril de 2026 el plan Grow incluye perfiles de empresa (Companies), con contactos y ubicaciones.

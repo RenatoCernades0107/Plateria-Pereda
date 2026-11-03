@@ -24,6 +24,7 @@ const data: QuotePdfData = {
       unitPrice: 1_906_78,
     },
   ],
+  applyIgv: false,
   notes: "",
   terms: "",
 };
@@ -66,12 +67,33 @@ describe("drawQuotePdf", () => {
       "Tiempo de entrega:",
       "30 días hábiles desde su aprobación",
       "Validez:",
-      "Impuesto:",
-      "LOS PRECIOS NO INCLUYEN IGV",
       "Atentamente,",
       "Platería Pereda",
     ])
       expect(raw).toContain(`(${text})`);
+  });
+
+  it('ya no dibuja la fila "Impuesto:"', async () => {
+    for (const applyIgv of [true, false]) {
+      const raw = (
+        await drawQuotePdf(quotePdfModel({ ...data, applyIgv }))
+      ).output();
+      expect(raw).not.toContain("(Impuesto:)");
+      expect(raw).not.toContain("INCLUYEN IGV");
+    }
+  });
+
+  it("sin IGV no dibuja su fila; con IGV, la fila y el total con IGV", async () => {
+    const without = (await drawQuotePdf(quotePdfModel(data))).output();
+    expect(without).not.toContain("(IGV \\(18 %\\):)");
+    const raw = (
+      await drawQuotePdf(quotePdfModel({ ...data, applyIgv: true }))
+    ).output();
+    // 1,906.78 × 18 % = 343.2204 → 343.22; total 2,250.00.
+    expect(raw).toContain("(IGV \\(18 %\\):)");
+    expect(raw).toContain("(S/ 343.22)");
+    expect(raw).toContain("(S/ 2,250.00)");
+    expect(raw).toContain("(DOS MIL DOSCIENTOS CINCUENTA Y 00/100 SOLES)");
   });
 
   it("sin notas ni condiciones, no dibuja esas etiquetas", async () => {

@@ -62,6 +62,7 @@ const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   validityDays: "15",
   paymentCondition: "contado",
   deliveryDays: "30",
+  applyIgv: true,
   notes: "",
   terms: "Pago al contado.",
   lines: [
@@ -83,7 +84,7 @@ describe("QuoteForm", () => {
 
   it("recalcula los totales en vivo al editar las líneas", async () => {
     const user = userEvent.setup();
-    render(<QuoteForm initial={values()} />);
+    render(<QuoteForm initial={values({ applyIgv: false })} />);
     expect(screen.getByTestId("subtotal")).toHaveTextContent("S/ 840.00");
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 840.00");
     expect(screen.queryByTestId("descuentos")).not.toBeInTheDocument();
@@ -110,12 +111,52 @@ describe("QuoteForm", () => {
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 500.00");
   });
 
-  it("no pregunta por el IGV ni lo suma al total", () => {
-    const { container } = render(<QuoteForm initial={values()} />);
-    expect(container).not.toHaveTextContent(/IGV/i);
-    expect(screen.queryByRole("radio")).toBeNull();
-    // 300.00 + 540.00, tal como se escribió.
-    expect(screen.getByTestId("total")).toHaveTextContent("S/ 840.00");
+  it('con "Sumar IGV" marcado suma el 18 % de subtotal − descuentos', async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm initial={values()} />);
+    const igv = screen.getByRole("checkbox", { name: "Sumar IGV (18 %)" });
+    expect(igv).toBeChecked();
+    // 840.00 × 18 % = 151.20.
+    expect(screen.getByTestId("subtotal")).toHaveTextContent("S/ 840.00");
+    expect(screen.getByTestId("igv")).toHaveTextContent("S/ 151.20");
+    expect(screen.getByTestId("total")).toHaveTextContent("S/ 991.20");
+
+    // Descuento de S/ 40: IGV sobre 800.00 = 144.00.
+    await user.click(within(lineGroup(2)).getByLabelText("Descuento"));
+    await user.click(screen.getByRole("option", { name: "Monto (S/)" }));
+    await user.type(
+      within(lineGroup(2)).getByLabelText("Descuento (S/)"),
+      "40",
+    );
+    expect(screen.getByTestId("igv")).toHaveTextContent("S/ 144.00");
+    expect(screen.getByTestId("total")).toHaveTextContent("S/ 944.00");
+
+    // Al desmarcarla no hay fila de IGV y el total es subtotal − descuentos.
+    await user.click(igv);
+    expect(screen.queryByTestId("igv")).not.toBeInTheDocument();
+    expect(screen.getByTestId("total")).toHaveTextContent("S/ 800.00");
+  });
+
+  it("envía la casilla del IGV al guardar", async () => {
+    const user = userEvent.setup();
+    render(<QuoteForm initial={values()} />);
+    await user.click(
+      screen.getByRole("checkbox", { name: "Sumar IGV (18 %)" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+    expect(mocks.save).toHaveBeenCalledWith(
+      null,
+      expect.objectContaining({ applyIgv: false }),
+    );
+  });
+
+  it("emitida: la casilla del IGV no se puede cambiar", () => {
+    render(<QuoteForm initial={values()} readOnly />);
+    expect(
+      screen.getByRole("checkbox", { name: "Sumar IGV (18 %)" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("igv")).toHaveTextContent("S/ 151.20");
   });
 
   it("muestra la fecha de vencimiento según la vigencia", async () => {

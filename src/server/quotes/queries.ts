@@ -109,6 +109,7 @@ export type QuoteDetail = {
   validityDays: number;
   paymentCondition: QuotePaymentCondition;
   deliveryDays: number;
+  applyIgv: boolean;
   issueDate: string | null;
   validUntil: string | null;
   notes: string;
@@ -172,6 +173,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     validityDays: q.validity_days,
     paymentCondition: q.payment_condition,
     deliveryDays: q.delivery_days,
+    applyIgv: q.apply_igv,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
     notes: q.notes,

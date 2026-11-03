@@ -23,6 +23,7 @@ import {
   addDays,
   formatQuoteDate,
   limaDateOf,
+  QUOTE_IGV_PERCENT,
   QUOTE_PAYMENT_CONDITION_LABELS,
   QUOTE_PAYMENT_CONDITIONS,
   quoteTotals,
@@ -44,6 +45,8 @@ export type QuoteFormValues = {
   paymentCondition: QuotePaymentCondition;
   /** Tiempo de entrega en días hábiles (texto del input). */
   deliveryDays: string;
+  /** "Sumar IGV (18 %)": los precios de las líneas no lo incluyen. */
+  applyIgv: boolean;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -60,6 +63,7 @@ function toInput(values: QuoteFormValues): QuoteFormInput {
     validityDays: values.validityDays,
     paymentCondition: values.paymentCondition,
     deliveryDays: values.deliveryDays,
+    applyIgv: values.applyIgv,
     notes: values.notes,
     terms: values.terms,
     lines: values.lines,
@@ -147,7 +151,7 @@ function ClientSummary({ client }: { client: ClientOption }) {
 
 /**
  * Formulario de la cotización: cliente (o contacto de una empresa), líneas con
- * totales en vivo, vigencia, condición de pago, tiempo de entrega, notas y
+ * totales en vivo (con la casilla "Sumar IGV", marcada por defecto), vigencia, condición de pago, tiempo de entrega, notas y
  * condiciones. Guarda el borrador y lo emite.
  * Si la cotización ya se emitió se muestra sin edición.
  */
@@ -172,7 +176,7 @@ export function QuoteForm({
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<"save" | "issue" | null>(null);
 
-  const totals = quoteTotals(values.lines.map(draftAmounts));
+  const totals = quoteTotals(values.lines.map(draftAmounts), values.applyIgv);
   const days = Number(values.validityDays);
   const validDays = /^\d{1,3}$/.test(values.validityDays) && days >= 1;
 
@@ -265,7 +269,17 @@ export function QuoteForm({
           disabled={readOnly}
         />
         <FormError id="lineas-error" message={errors?.lines} />
-        <div className="ml-auto max-w-56 space-y-1 border-t pt-3 text-sm">
+        <div className="ml-auto max-w-64 space-y-2 border-t pt-3 text-sm">
+          <label className="flex cursor-pointer items-center gap-2 font-medium has-disabled:cursor-default">
+            <input
+              type="checkbox"
+              className="accent-primary size-4"
+              checked={values.applyIgv}
+              disabled={readOnly}
+              onChange={(e) => set({ applyIgv: e.target.checked })}
+            />
+            Sumar IGV ({QUOTE_IGV_PERCENT} %)
+          </label>
           <dl className="space-y-1">
             <TotalRow
               label="Subtotal"
@@ -277,6 +291,13 @@ export function QuoteForm({
                 label="Descuentos"
                 value={`− ${formatCents(totals.discount)}`}
                 testId="descuentos"
+              />
+            ) : null}
+            {values.applyIgv ? (
+              <TotalRow
+                label={`IGV (${QUOTE_IGV_PERCENT} %)`}
+                value={formatCents(totals.igv)}
+                testId="igv"
               />
             ) : null}
             <TotalRow

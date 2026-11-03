@@ -32,6 +32,7 @@ const data: QuotePdfData = {
   deliveryDays: 30,
   clientName: "Lorena",
   contactName: "Lorena",
+  applyIgv: true,
   lines: [
     {
       sku: "TNS01",

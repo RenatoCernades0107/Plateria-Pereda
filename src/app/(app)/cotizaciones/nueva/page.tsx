@@ -37,6 +37,8 @@ export default async function NuevaCotizacionPage() {
           validityDays: String(settings.quoteValidityDays),
           paymentCondition: DEFAULT_QUOTE_PAYMENT_CONDITION,
           deliveryDays: String(DEFAULT_QUOTE_DELIVERY_DAYS),
+          // Por defecto se suma el IGV a los precios.
+          applyIgv: true,
           notes: "",
           terms: settings.terms,
           lines: [],

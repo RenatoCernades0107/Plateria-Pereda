@@ -56,6 +56,7 @@ const input = {
   validityDays: "15",
   paymentCondition: "credito" as const,
   deliveryDays: "45",
+  applyIgv: true,
   notes: "Nota",
   terms: "",
   lines: [
@@ -88,6 +89,7 @@ describe("saveQuote", () => {
           validity_days: 15,
           payment_condition: "credito",
           delivery_days: 45,
+          apply_igv: true,
           notes: "Nota",
         }),
         p_items: [

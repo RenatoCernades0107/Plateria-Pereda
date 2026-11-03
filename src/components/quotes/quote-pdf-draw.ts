@@ -6,7 +6,8 @@ import type { QuotePdfModel } from "@/domain/quote-pdf";
  * Dibuja la cotización en un A4 vertical (mm), al estilo de la cotización en papel de
  * la tienda: fecha a la izquierda, logo con la dirección centrada debajo a la
  * derecha, código, cliente y contacto, tabla de productos sin grilla, totales, monto en
- * letras, condición de pago, tiempo de entrega y condiciones. `logo` va como data
+ * letras, condición de pago, tiempo de entrega y condiciones. Con IGV, la fila
+ * "IGV (18 %)" va entre el subtotal (y el descuento) y el total. `logo` va como data
  * URL PNG/JPEG. Los textos fijos usan solo caracteres de WinAnsi (Helvetica de
  * jsPDF no tiene, p. ej., el signo menos U+2212).
  */
@@ -171,6 +172,7 @@ export async function drawQuotePdf(
   totalRow("Sub Total:", model.subtotal, false);
   // Guion ASCII: el signo menos (U+2212) no existe en Helvetica/WinAnsi de jsPDF.
   if (model.discount) totalRow("Descuento:", `- ${model.discount}`, false);
+  if (model.igv) totalRow("IGV (18 %):", model.igv, false);
   totalRow("Total Venta:", model.total, true);
   y += 4;
 
@@ -184,10 +186,10 @@ export async function drawQuotePdf(
 
   // Columna de etiquetas con espacio para la más larga ("Tiempo de entrega:").
   const infoLabelW = 34;
-  const infoRow = (label: string, value: string, bold = false) => {
+  const infoRow = (label: string, value: string) => {
     font("normal", 9.5, GRAY);
     pdf.text(label, MARGIN, y);
-    font(bold ? "bold" : "normal", 9.5);
+    font("normal", 9.5);
     const text = pdf.splitTextToSize(value, contentW - infoLabelW);
     pdf.text(text, MARGIN + infoLabelW, y);
     y += Math.max(1, text.length) * 4.2 + 1.5;
@@ -196,7 +198,6 @@ export async function drawQuotePdf(
   infoRow("Tiempo de entrega:", model.deliveryText);
   if (model.notes) infoRow("Notas:", model.notes);
   infoRow("Validez:", model.validityText);
-  infoRow("Impuesto:", "LOS PRECIOS NO INCLUYEN IGV", true);
   if (model.terms) {
     y += 2;
     font("normal", 9.5, GRAY);

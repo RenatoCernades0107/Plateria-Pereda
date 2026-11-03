@@ -2,8 +2,9 @@ begin;
 
 select plan(14);
 
--- Sin IGV: los totales son la suma de los precios tal como se escriben; el sistema ya
--- no pregunta ni suma nunca el IGV.
+-- Sin IGV: los totales son la suma de los precios tal como se escriben; restauraciones
+-- y cotizaciones de WhatsApp no preguntan ni suman nunca el IGV. El cotizador (`COT-`)
+-- volvió a sumarlo con su casilla `apply_igv` (66_igv_cotizador); aquí, desmarcada.
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000039a01', 'admin@sin-igv.test', '{"role":"admin"}', '{}');
@@ -13,7 +14,7 @@ insert into public.clients (id, kind, first_name, shopify_customer_id)
 -- 1. Ya no hay respuesta ni función del IGV.
 select hasnt_column('public', 'restorations', 'prices_include_igv', 'restorations ya no guarda si el precio incluye IGV');
 select hasnt_column('public', 'whatsapp_quotes', 'prices_include_igv', 'las cotizaciones de WhatsApp tampoco');
-select hasnt_column('public', 'quotes', 'prices_include_igv', 'ni el cotizador');
+select hasnt_column('public', 'quotes', 'prices_include_igv', 'ni el cotizador (usa apply_igv)');
 select hasnt_function('public', 'price_with_igv', 'ya no existe el precio con IGV');
 
 set local role authenticated;
@@ -87,12 +88,13 @@ select is(
   200.00::numeric, 'al editarla se recalcula el total'
 );
 
--- 7. Cotizador: 2 × 50.00 + 100.00 con 10 % de descuento = 190.00, sin IGV.
+-- 7. Cotizador con "Sumar IGV" desmarcado: 2 × 50.00 + 100.00 con 10 % de descuento =
+--    190.00, sin IGV.
 create temp table ids (name text primary key, id uuid);
 grant all on ids to authenticated;
 insert into ids select 'q', public.save_quote(
   null,
-  '{"client_id":"00000000-0000-0000-0000-000000039c01"}',
+  '{"client_id":"00000000-0000-0000-0000-000000039c01","apply_igv":false}',
   '[{"title":"Anillo","quantity":2,"unit_price":"50.00"},
     {"title":"Medalla","quantity":1,"unit_price":"100.00","discount_type":"porcentaje","discount_value":"10"}]'
 );

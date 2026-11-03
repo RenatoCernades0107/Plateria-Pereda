@@ -35,8 +35,8 @@ insert into ids select 'q1', public.save_quote(
 select results_eq(
   $$ select status::text, validity_days, notes, terms, subtotal, discount_total, total, client_name
      from public.quotes where id = (select id from ids where name = 'q1') $$,
-  $$ values ('borrador', 10, 'Entrega en 15 días', '50% adelanto', 451.00::numeric, 10.00::numeric, 441.00::numeric, 'Elsa Editada') $$,
-  'crea la cotización con sus datos y los totales de sus líneas'
+  $$ values ('borrador', 10, 'Entrega en 15 días', '50% adelanto', 451.00::numeric, 10.00::numeric, 520.38::numeric, 'Elsa Editada') $$,
+  'crea la cotización con sus datos y los totales de sus líneas (+ IGV por defecto)'
 );
 select results_eq(
   $$ select position::int, title, sku from public.quote_items
@@ -64,7 +64,7 @@ select results_eq(
 select results_eq(
   $$ select client_name, contact_name, validity_days, total from public.quotes
      where id = (select id from ids where name = 'q1') $$,
-  $$ values ('Joyas del Sur S.A.C.', 'Ciro Compras', 30, 70.00::numeric) $$,
+  $$ values ('Joyas del Sur S.A.C.', 'Ciro Compras', 30, 82.60::numeric) $$,
   'cambia el cliente, el contacto y recalcula el total'
 );
 
@@ -110,7 +110,7 @@ insert into ids select 'copia', public.duplicate_quote((select id from ids where
 select results_eq(
   $$ select status::text, client_id::text, contact_id::text, validity_days, total, duplicated_from = (select id from ids where name = 'q1'), issue_date is null
      from public.quotes where id = (select id from ids where name = 'copia') $$,
-  $$ values ('borrador', '00000000-0000-0000-0000-0000000021c2', '00000000-0000-0000-0000-0000000021d1', 30, 70.00::numeric, true, true) $$,
+  $$ values ('borrador', '00000000-0000-0000-0000-0000000021c2', '00000000-0000-0000-0000-0000000021d1', 30, 82.60::numeric, true, true) $$,
   'la copia es un borrador nuevo con el mismo cliente, vigencia y total'
 );
 select results_eq(
