@@ -12,11 +12,11 @@ import { QuotePdfButton } from "@/components/quotes/quote-pdf-button";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
-import { limaDateOf } from "@/domain/quote";
+import { DEFAULT_QUOTE_CREDIT_DAYS, limaDateOf } from "@/domain/quote";
 import { quotePdfLineFromDraft, type QuotePdfData } from "@/domain/quote-pdf";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
-import { getQuote } from "@/server/quotes/queries";
+import { getQuote, listQuoteIssuers } from "@/server/quotes/queries";
 import { getSettings } from "@/server/settings";
 
 export async function generateMetadata({
@@ -38,7 +38,15 @@ export default async function CotizacionPage({
 
   const draft = quote.status === "borrador";
   const canExportPdf = quote.lines.length > 0;
-  const company = await getSettings();
+  const [company, activeIssuers] = await Promise.all([
+    getSettings(),
+    listQuoteIssuers({ onlyActive: true }),
+  ]);
+  // La actual se ofrece aunque se haya desactivado.
+  const issuers =
+    quote.issuer && !activeIssuers.some((i) => i.id === quote.issuer!.id)
+      ? [...activeIssuers, quote.issuer]
+      : activeIssuers;
   const client = quote.client;
   // "Sr(es):" es la empresa cuando se cotiza a un contacto; "Contacto:" es quien
   // atiende (el mismo nombre si no hay un contacto aparte, como en la cotización
@@ -56,6 +64,8 @@ export default async function CotizacionPage({
     issueDate: quote.issueDate ?? limaDateOf(new Date()),
     validityDays: quote.validityDays,
     paymentCondition: quote.paymentCondition,
+    creditDays: quote.creditDays,
+    issuer: quote.issuer,
     deliveryDays: quote.deliveryDays,
     clientName,
     contactName: client.name,
@@ -126,10 +136,13 @@ export default async function CotizacionPage({
         readOnly={!draft}
         issueDate={quote.issueDate}
         canCreateClient={can(user.role, "clientes.editar")}
+        issuers={issuers}
         initial={{
           client: quote.client,
           validityDays: String(quote.validityDays),
           paymentCondition: quote.paymentCondition,
+          creditDays: String(quote.creditDays ?? DEFAULT_QUOTE_CREDIT_DAYS),
+          issuerId: quote.issuer?.id ?? null,
           deliveryDays: String(quote.deliveryDays),
           applyIgv: quote.applyIgv,
           notes: quote.notes,

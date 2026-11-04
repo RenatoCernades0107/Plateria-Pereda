@@ -10,6 +10,7 @@ import { QuoteForm, type QuoteFormValues } from "./quote-form";
 const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   status: vi.fn(),
+  issuer: vi.fn(),
   push: vi.fn(),
   refresh: vi.fn(),
   success: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/server/quotes/actions", () => ({
   saveQuote: (...a: unknown[]) => mocks.save(...a),
   changeQuoteStatus: (...a: unknown[]) => mocks.status(...a),
+  setQuoteIssuer: (...a: unknown[]) => mocks.issuer(...a),
 }));
 vi.mock("@/server/quotes/catalog-actions", () => ({
   searchCatalog: vi.fn(),
@@ -61,6 +63,8 @@ const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   client: ana,
   validityDays: "15",
   paymentCondition: "contado",
+  creditDays: "30",
+  issuerId: null,
   deliveryDays: "30",
   applyIgv: true,
   notes: "",
@@ -176,6 +180,10 @@ describe("QuoteForm", () => {
       expect(screen.getByRole("option", { name })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Al crédito" }));
     expect(condicion).toHaveTextContent("Al crédito");
+    const credito = screen.getByLabelText("Días de crédito");
+    expect(credito).toHaveValue("30");
+    await user.clear(credito);
+    await user.type(credito, "60");
 
     const entrega = screen.getByLabelText("Tiempo de entrega (días hábiles)");
     expect(entrega).toHaveValue("30");
@@ -187,6 +195,7 @@ describe("QuoteForm", () => {
       null,
       expect.objectContaining({
         paymentCondition: "credito",
+        creditDays: "60",
         deliveryDays: "45",
       }),
     );
@@ -300,5 +309,80 @@ describe("QuoteForm", () => {
     expect(
       screen.getByLabelText("Tiempo de entrega (días hábiles)"),
     ).toBeDisabled();
+  });
+
+  describe("sucursal", () => {
+    const issuers = [
+      {
+        id: "55555555-5555-4555-8555-555555555555",
+        name: "PEREDA SAC",
+        legalName: "PEREDA SAC",
+        documentType: "ruc" as const,
+        documentNumber: "20557169866",
+        bankName: "Banco de Crédito (BCP)",
+        accountLabel: "CTA CTE soles",
+        accountNumber: "1942229780029",
+        cci: "00219400222978002998",
+        active: true,
+      },
+      {
+        id: "66666666-6666-4666-8666-666666666666",
+        name: "CARMEN",
+        legalName: "Regina Pereda Luque",
+        documentType: "dni" as const,
+        documentNumber: "07863594",
+        bankName: "Banco de Crédito (BCP)",
+        accountLabel: "CTA AHORRO soles",
+        accountNumber: "19493993660088",
+        cci: "00219419399366008899",
+        active: true,
+      },
+    ];
+
+    it("en una nueva, se elige y se envía al guardar", async () => {
+      const user = userEvent.setup();
+      render(<QuoteForm initial={values()} issuers={issuers} />);
+      await user.click(screen.getByLabelText("Sucursal que emite"));
+      await user.click(
+        screen.getByRole("option", { name: "PEREDA SAC · RUC 20557169866" }),
+      );
+      expect(screen.getByTestId("sucursal-pdf")).toHaveTextContent(
+        "RUC: 20557169866",
+      );
+      expect(mocks.issuer).not.toHaveBeenCalled();
+      await user.click(
+        screen.getByRole("button", { name: "Guardar borrador" }),
+      );
+      await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+      expect(mocks.save).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ issuerId: issuers[0]!.id }),
+      );
+    });
+
+    it("en una emitida (solo lectura) se cambia y se guarda al momento", async () => {
+      mocks.issuer.mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(
+        <QuoteForm
+          quoteId="q1"
+          readOnly
+          initial={values({ issuerId: issuers[0]!.id })}
+          issuers={issuers}
+        />,
+      );
+      await user.click(screen.getByLabelText("Sucursal que emite"));
+      await user.click(
+        screen.getByRole("option", { name: "CARMEN · DNI 07863594" }),
+      );
+      await waitFor(() =>
+        expect(mocks.issuer).toHaveBeenCalledWith("q1", issuers[1]!.id),
+      );
+      expect(mocks.success).toHaveBeenCalledWith("Sucursal guardada.");
+      // Con DNI solo se muestra la cuenta.
+      expect(screen.getByTestId("sucursal-pdf")).not.toHaveTextContent(
+        "07863594",
+      );
+    });
   });
 });

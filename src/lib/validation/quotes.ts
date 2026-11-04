@@ -125,24 +125,48 @@ const days = (message: string) =>
     return n;
   });
 
-export const quoteSchema = z.object({
-  clientId: UUID,
-  contactId: z.guid().nullable(),
-  validityDays: days("La vigencia debe ser de 1 a 365 días"),
-  paymentCondition: z.enum(QUOTE_PAYMENT_CONDITIONS),
-  deliveryDays: days("El tiempo de entrega debe ser de 1 a 365 días"),
-  applyIgv: z.boolean(),
-  notes: text(2000),
-  terms: text(5000),
-  lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
-});
+const creditDays = days("Los días de crédito deben ser de 1 a 365");
+
+export const quoteSchema = z
+  .object({
+    clientId: UUID,
+    contactId: z.guid().nullable(),
+    validityDays: days("La vigencia debe ser de 1 a 365 días"),
+    paymentCondition: z.enum(QUOTE_PAYMENT_CONDITIONS),
+    /** Solo con «Crédito»; en las demás se ignora. */
+    creditDays: z.string(),
+    deliveryDays: days("El tiempo de entrega debe ser de 1 a 365 días"),
+    /** Sucursal que emite (se puede elegir después; sin ella no sale el PDF). */
+    issuerId: z.guid().nullable(),
+    applyIgv: z.boolean(),
+    notes: text(2000),
+    terms: text(5000),
+    lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
+  })
+  .transform((v, ctx) => {
+    let credit: number | null = null;
+    if (v.paymentCondition === "credito") {
+      const parsed = creditDays.safeParse(v.creditDays);
+      if (parsed.success) credit = parsed.data;
+      else
+        ctx.addIssue({
+          code: "custom",
+          path: ["creditDays"],
+          message: "Los días de crédito deben ser de 1 a 365",
+        });
+    }
+    return { ...v, creditDays: credit };
+  });
 
 export type QuoteFormInput = {
   clientId: string;
   contactId: string | null;
   validityDays: string;
   paymentCondition: QuotePaymentCondition;
+  /** Días de crédito (texto del input); solo cuenta con «Crédito». */
+  creditDays: string;
   deliveryDays: string;
+  issuerId: string | null;
   /** "Sumar IGV (18 %)". */
   applyIgv: boolean;
   notes: string;
@@ -160,7 +184,9 @@ export function quoteRpcArgs(v: QuoteInput) {
       contact_id: v.contactId,
       validity_days: v.validityDays,
       payment_condition: v.paymentCondition,
+      credit_days: v.creditDays,
       delivery_days: v.deliveryDays,
+      issuer_id: v.issuerId,
       apply_igv: v.applyIgv,
       notes: v.notes,
       terms: v.terms,
@@ -183,6 +209,7 @@ export function quoteRpcArgs(v: QuoteInput) {
 export type QuoteFormErrors = {
   clientId?: string;
   validityDays?: string;
+  creditDays?: string;
   deliveryDays?: string;
   notes?: string;
   terms?: string;
@@ -216,6 +243,7 @@ export function quoteFormErrors(input: QuoteFormInput): QuoteFormErrors | null {
     } else if (
       first === "clientId" ||
       first === "validityDays" ||
+      first === "creditDays" ||
       first === "deliveryDays" ||
       first === "notes" ||
       first === "terms"

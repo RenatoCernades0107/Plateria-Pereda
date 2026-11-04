@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
+import { QUOTE_PDF_MISSING_ISSUER } from "@/domain/quote-issuers";
 import {
   quotePdfFileName,
   quotePdfModel,
@@ -62,7 +63,15 @@ export function QuotePdfButton({
   const [sharing, setSharing] = useState(false);
   const busy = exporting || sharing;
 
+  /** Sin sucursal no hay cuentas que mostrar: no se genera el PDF. */
+  function missingIssuer(): boolean {
+    if (data.issuer) return false;
+    toast.error(QUOTE_PDF_MISSING_ISSUER);
+    return true;
+  }
+
   async function exportPdf() {
+    if (missingIssuer()) return;
     setExporting(true);
     try {
       const { pdf, fileName } = await buildPdf(data);
@@ -76,6 +85,7 @@ export function QuotePdfButton({
   }
 
   async function share() {
+    if (missingIssuer()) return;
     setSharing(true);
     try {
       const { pdf, fileName } = await buildPdf(data);

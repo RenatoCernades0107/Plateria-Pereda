@@ -57,8 +57,13 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 
-const { changeQuoteStatus, duplicateQuote, saveQuote, setQuoteDeliveryDates } =
-  await import("./actions");
+const {
+  changeQuoteStatus,
+  duplicateQuote,
+  saveQuote,
+  setQuoteDeliveryDates,
+  setQuoteIssuer,
+} = await import("./actions");
 const { todayInLima } = await import("@/domain/delivery-date");
 const { addDays } = await import("@/domain/quote");
 
@@ -68,7 +73,9 @@ const input = {
   contactId: null,
   validityDays: "15",
   paymentCondition: "credito" as const,
+  creditDays: "60",
   deliveryDays: "45",
+  issuerId: "55555555-5555-4555-8555-555555555555",
   applyIgv: true,
   notes: "Nota",
   terms: "",
@@ -111,7 +118,9 @@ describe("saveQuote", () => {
         p_quote: expect.objectContaining({
           validity_days: 15,
           payment_condition: "credito",
+          credit_days: 60,
           delivery_days: 45,
+          issuer_id: "55555555-5555-4555-8555-555555555555",
           apply_igv: true,
           notes: "Nota",
         }),
@@ -314,6 +323,30 @@ describe("duplicateQuote", () => {
     };
     expect(await duplicateQuote(ID)).toEqual({
       error: "La cotización no existe.",
+    });
+  });
+});
+
+describe("setQuoteIssuer", () => {
+  const ISSUER = "55555555-5555-4555-8555-555555555555";
+
+  it("guarda la sucursal (en cualquier estado) con el permiso del cotizador", async () => {
+    expect(await setQuoteIssuer(ID, ISSUER)).toEqual({ ok: true });
+    expect(mocks.permission).toBe("cotizador.usar");
+    expect(mocks.update).toHaveBeenCalledWith({ issuer_id: ISSUER });
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/cotizaciones/${ID}`);
+  });
+
+  it("rechaza argumentos inválidos sin tocar la BD", async () => {
+    expect(await setQuoteIssuer("x", ISSUER)).toHaveProperty("error");
+    expect(await setQuoteIssuer(ID, "x")).toHaveProperty("error");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("una sucursal que no existe", async () => {
+    mocks.updateResult = { data: null, error: { code: "23503" } };
+    expect(await setQuoteIssuer(ID, ISSUER)).toEqual({
+      error: "La sucursal no existe.",
     });
   });
 });
