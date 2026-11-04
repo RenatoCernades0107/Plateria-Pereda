@@ -27,6 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { describePrefill, prefillFromSearch } from "@/domain/client-prefill";
 import { optionKey, type ClientOption } from "@/domain/client-search";
 import { DOCUMENT_LABELS } from "@/domain/documents";
 import { formatPhone } from "@/domain/phone";
@@ -81,6 +82,19 @@ function OptionRow({ option }: { option: ClientOption }) {
 }
 
 /**
+ * Datos que propone «Crear nuevo cliente»: los ya anotados (`base`) y, encima, lo
+ * escrito en el buscador como nombre, DNI, RUC, teléfono o email según lo que parezca.
+ */
+export function mergePrefill(
+  base: ClientPrefill | null | undefined,
+  query: string,
+): ClientPrefill | null {
+  const found = prefillFromSearch(query);
+  if (!found) return base ?? null;
+  return { name: "", phone: "", ...base, ...found };
+}
+
+/**
  * Buscador de clientes y contactos: busca en el sistema y en Shopify; si se elige uno
  * que solo está en Shopify, se guarda en el sistema antes de devolverlo.
  */
@@ -103,6 +117,8 @@ export function ClientPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Lo que había en el buscador al elegir «Crear nuevo cliente».
+  const [searched, setSearched] = useState("");
   const [query, setQuery] = useState("");
   const [options, setOptions] = useState<ClientOption[]>([]);
   const [shopifyUnavailable, setShopifyUnavailable] = useState(false);
@@ -165,6 +181,9 @@ export function ClientPicker({
       finish(result.option);
     });
   };
+
+  const found = prefillFromSearch(query);
+  const searchHint = found ? describePrefill(found) : null;
 
   const local = options.filter((o) => o.source === "local");
   const remote = options.filter((o) => o.source === "shopify");
@@ -264,13 +283,24 @@ export function ClientPicker({
                   <CommandGroup>
                     <CommandItem
                       value="crear-nuevo-cliente"
+                      // Nombre fijo: lo buscado (la pista) no debe confundirse con
+                      // un resultado al buscar opciones por su nombre.
+                      aria-label="Crear nuevo cliente"
                       onSelect={() => {
+                        setSearched(query);
                         setOpen(false);
                         setCreating(true);
                       }}
                     >
                       <UserPlus className="size-4" aria-hidden />
-                      Crear nuevo cliente
+                      <span className="flex min-w-0 flex-col">
+                        <span>Crear nuevo cliente</span>
+                        {searchHint ? (
+                          <span className="text-muted-foreground truncate text-xs">
+                            {searchHint}
+                          </span>
+                        ) : null}
+                      </span>
                     </CommandItem>
                   </CommandGroup>
                 </>
@@ -284,7 +314,7 @@ export function ClientPicker({
           trigger={null}
           open={creating}
           onOpenChange={setCreating}
-          prefill={createPrefill}
+          prefill={mergePrefill(createPrefill, searched)}
           onCreated={(client) =>
             onSelect({
               source: "local",

@@ -19,7 +19,9 @@ import {
  * mostrar los errores en cada campo) y la acción del servidor (antes de guardar).
  */
 
-const UUID = z.uuid("Elige un cliente");
+// z.guid y no z.uuid: z.uuid exige versión RFC y rechaza IDs válidos en Postgres
+// (p. ej. los del seed, "50000000-0000-0000-0000-000000000001").
+const UUID = z.guid({ error: "Elige un cliente" });
 
 const text = (max: number) =>
   z.string().trim().max(max, `Máximo ${max} caracteres`);
@@ -41,7 +43,7 @@ const price = z.string().transform((value, ctx) => {
 
 export const quoteLineSchema = z
   .object({
-    key: z.uuid(),
+    key: z.guid(),
     shopifyProductId: z.string().max(200).nullable(),
     shopifyVariantId: z.string().max(200).nullable(),
     title: text(200).pipe(z.string().min(1, "Describe el producto")),
@@ -125,7 +127,7 @@ const days = (message: string) =>
 
 export const quoteSchema = z.object({
   clientId: UUID,
-  contactId: z.uuid().nullable(),
+  contactId: z.guid().nullable(),
   validityDays: days("La vigencia debe ser de 1 a 365 días"),
   paymentCondition: z.enum(QUOTE_PAYMENT_CONDITIONS),
   deliveryDays: days("El tiempo de entrega debe ser de 1 a 365 días"),
