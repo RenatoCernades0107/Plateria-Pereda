@@ -945,8 +945,8 @@ export type Database = {
           contact_phone: string | null;
           created_at: string;
           created_by: string | null;
-          delivery_days: number;
           delivery_date: string | null;
+          delivery_days: number;
           discount_total: number;
           duplicated_from: string | null;
           id: string;
@@ -983,8 +983,8 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
-          delivery_days?: number;
           delivery_date?: string | null;
+          delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
@@ -1020,8 +1020,8 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
-          delivery_days?: number;
           delivery_date?: string | null;
+          delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
           id?: string;
