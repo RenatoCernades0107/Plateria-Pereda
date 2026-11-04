@@ -57,6 +57,7 @@ export type ClientPrefill = {
   phone: string;
   ruc?: string;
   dni?: string;
+  email?: string;
 };
 
 /** Separa "Ana María Pérez" en nombres ("Ana María") y apellido ("Pérez"). */
@@ -437,6 +438,7 @@ export function NewClientDialog({
                         ? { documentType: "dni", documentNumber: prefill.dni }
                         : PERSON_DEFAULTS.document,
                       phone: prefill.phone,
+                      email: prefill.email ?? "",
                     }
                   : undefined
               }
@@ -452,6 +454,7 @@ export function NewClientDialog({
                       legalName: prefill.name.trim(),
                       ruc: prefill.ruc ?? "",
                       phone: prefill.phone,
+                      email: prefill.email ?? "",
                     }
                   : undefined
               }

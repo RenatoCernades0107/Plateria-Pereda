@@ -180,6 +180,8 @@ describe("ClientPicker", () => {
     ["Rosa Díaz", "Nombres", "Rosa"],
     ["987111222", "Teléfono", "987111222"],
     ["70123456", "Número de documento", "70123456"],
+    ["ana@joyeria.pe", "Email", "ana@joyeria.pe"],
+    ["ROSA DIAZ", "Apellidos", "Diaz"],
   ])(
     "propone lo buscado (%s) al crear un cliente",
     async (text, label, expected) => {

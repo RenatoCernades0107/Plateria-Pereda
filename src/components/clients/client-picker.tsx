@@ -83,7 +83,7 @@ function OptionRow({ option }: { option: ClientOption }) {
 
 /**
  * Datos que propone «Crear nuevo cliente»: los ya anotados (`base`) y, encima, lo
- * escrito en el buscador como nombre, DNI, RUC o teléfono según lo que parezca.
+ * escrito en el buscador como nombre, DNI, RUC, teléfono o email según lo que parezca.
  */
 export function mergePrefill(
   base: ClientPrefill | null | undefined,
