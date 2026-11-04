@@ -162,6 +162,23 @@ test.describe("Cotizaciones", () => {
       "Grabado: Ana",
     );
 
+    // Sin sucursal no se genera el PDF.
+    await page.getByRole("button", { name: "Exportar PDF" }).click();
+    await expect(
+      page.getByText(
+        "Elige la sucursal de la cotización antes de generar el PDF.",
+      ),
+    ).toBeVisible();
+    // Se elige la sucursal: en una cotización guardada se guarda al momento.
+    await page.getByLabel("Sucursal que emite").click();
+    await page
+      .getByRole("option", { name: /^PEREDA SAC · RUC 20557169866/ })
+      .click();
+    await expect(page.getByText("Sucursal guardada.")).toBeVisible();
+    await expect(page.getByTestId("sucursal-pdf")).toContainText(
+      "RUC: 20557169866",
+    );
+
     // Exportar PDF (Paso 14.5): descarga con el nombre esperado.
     const pdfDownload = page.waitForEvent("download");
     await page.getByRole("button", { name: "Exportar PDF" }).click();
@@ -274,6 +291,9 @@ test.describe("Cotizaciones", () => {
     await line(page, 1).getByLabel("Personalización").fill("Grabado móvil");
     // 165.50 + IGV 29.79.
     await expect(page.getByTestId("total")).toHaveText("S/ 195.29");
+    // La sucursal se guarda con el borrador (sin ella no se comparte el PDF).
+    await page.getByLabel("Sucursal que emite").click();
+    await page.getByRole("option", { name: /^CARMEN · DNI 07863594/ }).click();
     await page.getByRole("button", { name: "Guardar borrador" }).click();
     await expect(page.getByText("Borrador guardado.")).toBeVisible();
     await expect(page).toHaveURL(/\/cotizaciones\/[0-9a-f-]{36}$/);
