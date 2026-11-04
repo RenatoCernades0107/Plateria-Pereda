@@ -48,8 +48,11 @@ import { DocumentTypeField, TextField } from "./form-fields";
 import { PhoneField } from "./phone-field";
 import { SimilarClientsAlert } from "./similar-clients-alert";
 
-/** Datos ya anotados (p. ej., en una cotización de WhatsApp) para no volver a escribirlos. */
-export type ClientPrefill = { name: string; phone: string };
+/**
+ * Datos ya anotados (p. ej., en una cotización de WhatsApp o en el buscador) para no
+ * volver a escribirlos. Con RUC, el diálogo abre en la pestaña «Empresa».
+ */
+export type ClientPrefill = { name: string; phone: string; ruc?: string };
 
 /** Separa "Ana María Pérez" en nombres ("Ana María") y apellido ("Pérez"). */
 export function splitName(name: string): {
@@ -409,7 +412,10 @@ export function NewClientDialog({
             onCreateWithContactPhone={createWithContactPhone}
           />
         ) : null}
-        <Tabs defaultValue="persona" onValueChange={() => setSimilar(null)}>
+        <Tabs
+          defaultValue={prefill?.ruc ? "empresa" : "persona"}
+          onValueChange={() => setSimilar(null)}
+        >
           <TabsList className="w-full">
             <TabsTrigger value="persona">Persona</TabsTrigger>
             <TabsTrigger value="empresa">Empresa</TabsTrigger>
@@ -436,6 +442,7 @@ export function NewClientDialog({
                   ? {
                       ...COMPANY_DEFAULTS,
                       legalName: prefill.name.trim(),
+                      ruc: prefill.ruc ?? "",
                       phone: prefill.phone,
                     }
                   : undefined

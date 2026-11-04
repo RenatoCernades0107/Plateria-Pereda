@@ -176,6 +176,39 @@ describe("ClientPicker", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    ["Rosa Díaz", "Nombres", "Rosa"],
+    ["987111222", "Teléfono", "987111222"],
+  ])(
+    "propone lo buscado (%s) al crear un cliente",
+    async (text, label, expected) => {
+      mocks.search.mockResolvedValue({
+        options: [],
+        shopifyUnavailable: false,
+      });
+      render(<ClientPicker onSelect={vi.fn()} canCreate />);
+      await openAndType(text);
+      await userEvent
+        .setup()
+        .click(screen.getByRole("option", { name: /Crear nuevo cliente/ }));
+      expect(screen.getByLabelText(label)).toHaveValue(expected);
+    },
+  );
+
+  it("abre la pestaña Empresa con el RUC buscado", async () => {
+    mocks.search.mockResolvedValue({ options: [], shopifyUnavailable: false });
+    render(<ClientPicker onSelect={vi.fn()} canCreate />);
+    await openAndType("20512345678");
+    await userEvent
+      .setup()
+      .click(screen.getByRole("option", { name: /RUC: 20512345678/ }));
+    expect(screen.getByRole("tab", { name: "Empresa" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByLabelText("RUC")).toHaveValue("20512345678");
+  });
+
   it("muestra el cliente elegido", () => {
     render(<ClientPicker value={ana} onSelect={vi.fn()} />);
     expect(screen.getByRole("combobox")).toHaveTextContent("Ana Pérez");
