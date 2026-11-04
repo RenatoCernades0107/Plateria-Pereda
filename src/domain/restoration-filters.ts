@@ -30,10 +30,11 @@ export type ListView = (typeof LIST_VIEWS)[number];
 export const RESTORATIONS_KANBAN_LIMIT = 300;
 
 /**
- * Qué restauraciones se listan: las `activas` (vista principal), el `historial`
- * (anuladas, rechazadas y completadas desde antes de hoy) o `todas` (detalle de cliente).
+ * Qué restauraciones se listan: `todas` (la tabla, con las terminadas al final) o solo
+ * las `activas`, sin las terminadas (anuladas, rechazadas y completadas desde antes de
+ * hoy): el kanban, salvo que se filtre por estado.
  */
-export type RestorationScope = "activas" | "historial" | "todas";
+export type RestorationScope = "activas" | "todas";
 
 export type RestorationSort = (typeof RESTORATION_SORTS)[number];
 export type SortDir = "asc" | "desc";
@@ -58,7 +59,8 @@ export type RestorationFilters = {
   dir: SortDir;
   page: number;
   view: ListView;
-  scope: RestorationScope;
+  /** Fuerza el alcance (p. ej. `todas` en el detalle del cliente); si no, `restorationScope`. */
+  scope?: RestorationScope;
 };
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -118,8 +120,19 @@ export function parseRestorationFilters(
     dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
     view: first(params.vista) === "kanban" ? "kanban" : "tabla",
-    scope: first(params.historial) === "1" ? "historial" : "activas",
   };
+}
+
+/**
+ * La tabla muestra todas (las terminadas al final, paginadas). El kanban, solo las
+ * vigentes, para que no se llene de terminadas; si se filtra por estado (p. ej.
+ * "Completada"), todas las de ese estado.
+ */
+export function restorationScope(
+  view: ListView,
+  status: readonly RestorationStatus[],
+): RestorationScope {
+  return view === "kanban" && status.length === 0 ? "activas" : "todas";
 }
 
 /** Parámetros de la URL con esos filtros (omite los vacíos y los valores por defecto). */
@@ -144,7 +157,6 @@ export function restorationFiltersQuery(
   if (next.page > 1 && next.view === "tabla")
     params.set("pagina", String(next.page));
   if (next.view === "kanban") params.set("vista", "kanban");
-  if (next.scope === "historial") params.set("historial", "1");
   return params.toString();
 }
 
@@ -205,6 +217,6 @@ export function listRestorationsArgs(
         ? RESTORATIONS_KANBAN_LIMIT
         : limit,
     p_offset: all || filters.view === "kanban" ? 0 : (filters.page - 1) * limit,
-    p_scope: filters.scope,
+    p_scope: filters.scope ?? restorationScope(filters.view, filters.status),
   };
 }

@@ -1,7 +1,13 @@
 import "server-only";
 
 import { toCents, type Cents } from "@/domain/money";
+import {
+  listPaymentsArgs,
+  PAYMENTS_PAGE_SIZE,
+  type PaymentListFilters,
+} from "@/domain/payment-list-filters";
 import type { PaymentKind } from "@/domain/payments";
+import type { PaymentListRow } from "@/domain/payments-csv";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import { shopifyOrderAdminUrl } from "@/server/shopify/admin-url";
@@ -100,4 +106,67 @@ export async function getBalanceDue(restorationId: string): Promise<boolean> {
   });
   if (error) throw error;
   return data[0]?.balance_due ?? false;
+}
+
+export type PaymentListPage = {
+  items: (PaymentListRow & { orderUrl: string | null })[];
+  total: number;
+  pages: number;
+  /** Totales de todo lo filtrado (no solo de la página). */
+  paidCents: Cents;
+  refundedCents: Cents;
+};
+
+/**
+ * Pagos y reembolsos de todas las restauraciones (vista "Pagos", `list_payments`), del
+ * más reciente al más antiguo. Solo admin y ventas: la BD no devuelve nada a los demás.
+ */
+export async function listAllPayments(
+  filters: PaymentListFilters,
+  { all = false }: { all?: boolean } = {},
+): Promise<PaymentListPage> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    "list_payments",
+    listPaymentsArgs(filters, { all }),
+  );
+  if (error) throw error;
+  const shop = serverEnv().SHOPIFY_STORE_DOMAIN;
+  const total = Number(data[0]?.total_count ?? 0);
+  return {
+    total,
+    pages: Math.max(1, Math.ceil(total / PAYMENTS_PAGE_SIZE)),
+    paidCents: toCents(Number(data[0]?.total_paid ?? 0)),
+    refundedCents: toCents(Number(data[0]?.total_refunded ?? 0)),
+    items: data.map((p) => ({
+      id: p.id,
+      restorationId: p.restoration_id,
+      restorationCode: p.restoration_code,
+      clientId: p.client_id,
+      clientName: p.client_name ?? "",
+      documentNumber: p.document_number,
+      kind: p.kind,
+      amountCents: toCents(Number(p.amount)),
+      methodName: p.method_name,
+      branchName: p.branch_name,
+      paidOn: p.paid_on,
+      reason: p.reason ?? "",
+      source: p.source,
+      syncedToShopify: p.shopify_synced_at !== null,
+      skipShopify: p.skip_shopify ?? false,
+      orderTitle: p.shopify_order_title,
+      orderName: p.shopify_order_name,
+      orderUrl: shopifyOrderAdminUrl(shop, p.shopify_order_id),
+      createdByName: p.created_by_name,
+      createdAt: p.created_at,
+    })),
+  };
+}
+
+/** Métodos usados en algún pago (también las pasarelas de Shopify), para el filtro. */
+export async function listPaymentMethodNames(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("payment_method_names");
+  if (error) throw error;
+  return data;
 }

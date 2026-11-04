@@ -26,7 +26,6 @@ describe("filtros del listado de restauraciones", () => {
       dir: "desc",
       page: 1,
       view: "tabla",
-      scope: "activas",
     });
   });
 
@@ -67,7 +66,6 @@ describe("filtros del listado de restauraciones", () => {
       dir: "asc",
       page: 3,
       view: "tabla",
-      scope: "activas",
     });
     const bad = parseRestorationFilters({
       estado: "x",
@@ -88,7 +86,6 @@ describe("filtros del listado de restauraciones", () => {
       dir: "asc",
       page: 2,
       view: "tabla",
-      scope: "activas",
     });
     expect(href).toBe(
       "/restauraciones?q=Ana&estado=lista&pago=pendiente&orden=code&dir=asc&pagina=2",
@@ -166,7 +163,7 @@ describe("filtros del listado de restauraciones", () => {
       p_dir: "desc",
       p_limit: 25,
       p_offset: 50,
-      p_scope: "activas",
+      p_scope: "todas",
     });
     expect(listRestorationsArgs(filters, { all: true })).toMatchObject({
       p_limit: 5000,
@@ -174,11 +171,32 @@ describe("filtros del listado de restauraciones", () => {
     });
   });
 
-  it("el historial se guarda en la URL y llega a la BD como alcance", () => {
+  it("la tabla trae todas (las terminadas al final); el kanban, solo las vigentes", () => {
+    expect(listRestorationsArgs(parseRestorationFilters({})).p_scope).toBe(
+      "todas",
+    );
+    expect(
+      listRestorationsArgs(parseRestorationFilters({ vista: "kanban" }))
+        .p_scope,
+    ).toBe("activas");
+    // Con un estado elegido (p. ej. Completada), el kanban trae todas las de ese estado.
+    expect(
+      listRestorationsArgs(
+        parseRestorationFilters({ vista: "kanban", estado: "completada" }),
+      ).p_scope,
+    ).toBe("todas");
+    // Un alcance fijo (detalle del cliente, dashboard) manda.
+    expect(
+      listRestorationsArgs({
+        ...parseRestorationFilters({ vista: "kanban" }),
+        scope: "todas",
+      }).p_scope,
+    ).toBe("todas");
+  });
+
+  it("los enlaces antiguos al historial abren la vista única", () => {
     const filters = parseRestorationFilters({ historial: "1" });
-    expect(filters.scope).toBe("historial");
-    expect(restorationFiltersHref(filters)).toBe("/restauraciones?historial=1");
-    expect(listRestorationsArgs(filters).p_scope).toBe("historial");
+    expect(restorationFiltersHref(filters)).toBe("/restauraciones");
   });
 
   it("el filtro Esperando cliente se guarda en la URL y llega a la BD", () => {

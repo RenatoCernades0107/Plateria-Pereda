@@ -2192,6 +2192,44 @@ export type Database = {
           total_count: number;
         }[];
       };
+      list_payments: {
+        Args: {
+          p_branch_ids?: string[];
+          p_from?: string;
+          p_kind?: Database["public"]["Enums"]["payment_kind"][];
+          p_limit?: number;
+          p_methods?: string[];
+          p_offset?: number;
+          p_query?: string;
+          p_to?: string;
+        };
+        Returns: {
+          amount: number;
+          branch_name: string;
+          client_id: string;
+          client_name: string;
+          created_at: string;
+          created_by_name: string;
+          document_number: string;
+          id: string;
+          kind: Database["public"]["Enums"]["payment_kind"];
+          method_name: string;
+          paid_on: string;
+          reason: string;
+          refunded_payment_id: string;
+          restoration_code: string;
+          restoration_id: string;
+          shopify_order_id: string;
+          shopify_order_name: string;
+          shopify_order_title: string;
+          shopify_synced_at: string;
+          skip_shopify: boolean;
+          source: Database["public"]["Enums"]["payment_source"];
+          total_count: number;
+          total_paid: number;
+          total_refunded: number;
+        }[];
+      };
       list_pieces_board: {
         Args: {
           p_dir?: string;
@@ -2303,22 +2341,38 @@ export type Database = {
         };
         Returns: {
           balance: number;
+          client_email: string;
           client_id: string;
           client_name: string;
+          client_phone: string;
           code: string;
           contact_name: string;
+          contact_phone: string;
           created_at: string;
+          created_by_name: string;
+          deposit_amount: number;
+          deposit_percent: number;
           document_number: string;
+          document_type: Database["public"]["Enums"]["document_type"];
+          expected_deposit: number;
+          finished_at: string;
           id: string;
+          is_archived: boolean;
+          kind: Database["public"]["Enums"]["restoration_kind"];
+          last_paid_on: string;
+          notes: string;
           origin: Database["public"]["Enums"]["restoration_origin"];
           paid: number;
           payment_status: Database["public"]["Enums"]["payment_status"];
           payment_type: Database["public"]["Enums"]["payment_type"];
           pieces_count: number;
+          refunded: number;
+          shopify_order_name: string;
           status: Database["public"]["Enums"]["restoration_status"];
           total: number;
           total_count: number;
           waiting_count: number;
+          workshop_names: string;
         }[];
       };
       list_whatsapp_quotes: {
@@ -2394,6 +2448,10 @@ export type Database = {
           restoration_id: string;
           unread_count: number;
         }[];
+      };
+      payment_method_names: {
+        Args: Record<PropertyKey, never>;
+        Returns: string[];
       };
       piece_location_since: {
         Args: {

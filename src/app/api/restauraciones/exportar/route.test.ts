@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/server/auth", () => ({ getAuthState: async () => mocks.state }));
 vi.mock("@/server/restorations/queries", () => ({
-  listRestorations: mocks.list,
+  exportRestorations: mocks.list,
 }));
 
 const { GET } = await import("./route");
@@ -22,7 +22,7 @@ const call = (query = "") =>
 describe("/api/restauraciones/exportar", () => {
   beforeEach(() => {
     mocks.state = { status: "activo", user: { role: "ventas" } };
-    mocks.list.mockReset().mockResolvedValue({ items: [], total: 0, pages: 1 });
+    mocks.list.mockReset().mockResolvedValue([]);
   });
 
   it("exige sesión y permiso", async () => {
@@ -42,8 +42,14 @@ describe("/api/restauraciones/exportar", () => {
     );
     expect(mocks.list).toHaveBeenCalledWith(
       expect.objectContaining({ status: ["lista"], page: 3 }),
-      { all: true },
     );
-    expect(await response.text()).toContain("Código,Fecha,Cliente");
+    expect(await response.text()).toContain("Código,Fecha de registro,Cliente");
+  });
+
+  it("conserva los filtros de selección múltiple", async () => {
+    await call("?estado=lista&estado=completada");
+    expect(mocks.list).toHaveBeenCalledWith(
+      expect.objectContaining({ status: ["lista", "completada"] }),
+    );
   });
 });
