@@ -120,7 +120,9 @@ select throws_ok(
   '23514', 'Solo se puede editar una cotización en borrador',
   'en una emitida no se cambia la casilla del IGV'
 );
-update public.quotes set status = 'aceptada' where id = (select id from ids where name = 'q');
+update public.quotes set status = 'aceptada',
+  delivery_date = (now() at time zone 'America/Lima')::date + 10
+  where id = (select id from ids where name = 'q');
 select is(
   (select total from public.quotes where id = (select id from ids where name = 'q')),
   283.20::numeric, 'aceptarla conserva el total con IGV'
