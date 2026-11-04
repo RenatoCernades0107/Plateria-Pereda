@@ -125,7 +125,8 @@ describe("saveQuote", () => {
 
   it("no guarda datos inválidos", async () => {
     expect(await saveQuote(null, { ...input, lines: [] })).toEqual({
-      error: "Revisa los datos de la cotización.",
+      error:
+        "Revisa los datos de la cotización (lines: Agrega al menos un producto).",
     });
     expect(await saveQuote("no-es-uuid", input)).toEqual({
       error: "La cotización no existe.",

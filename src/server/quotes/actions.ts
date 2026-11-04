@@ -47,7 +47,15 @@ export async function saveQuote(
   if (id !== null && !UUID.test(id))
     return { error: "La cotización no existe." };
   const parsed = quoteSchema.safeParse(input);
-  if (!parsed.success) return { error: "Revisa los datos de la cotización." };
+  if (!parsed.success) {
+    // El formulario valida lo mismo antes de enviar: si llega aquí, algo difiere
+    // entre el navegador y el servidor. Se registra y se dice qué campo falló.
+    const issue = parsed.error.issues[0]!;
+    console.error("saveQuote: datos inválidos", parsed.error.issues);
+    return {
+      error: `Revisa los datos de la cotización (${issue.path.join(".")}: ${issue.message}).`,
+    };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("save_quote", {
