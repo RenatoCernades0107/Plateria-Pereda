@@ -29,13 +29,22 @@ import {
   quoteTotals,
   type QuotePaymentCondition,
 } from "@/domain/quote";
+import {
+  quoteIssuerOptionLabel,
+  quoteIssuerPdfLines,
+  type QuoteIssuer,
+} from "@/domain/quote-issuers";
 import { draftAmounts, type QuoteLineDraft } from "@/domain/quote-line";
 import {
   quoteFormErrors,
   type QuoteFormErrors,
   type QuoteFormInput,
 } from "@/lib/validation/quotes";
-import { changeQuoteStatus, saveQuote } from "@/server/quotes/actions";
+import {
+  changeQuoteStatus,
+  saveQuote,
+  setQuoteIssuer,
+} from "@/server/quotes/actions";
 
 import { QuoteLinesEditor } from "./quote-lines-editor";
 
@@ -43,6 +52,10 @@ export type QuoteFormValues = {
   client: ClientOption | null;
   validityDays: string;
   paymentCondition: QuotePaymentCondition;
+  /** Días de crédito (texto del input); solo con «Crédito». */
+  creditDays: string;
+  /** Sucursal que emite (razón social, RUC y cuenta del PDF). */
+  issuerId: string | null;
   /** Tiempo de entrega en días hábiles (texto del input). */
   deliveryDays: string;
   /** "Sumar IGV (18 %)": los precios de las líneas no lo incluyen. */
@@ -62,7 +75,9 @@ function toInput(values: QuoteFormValues): QuoteFormInput {
         : null,
     validityDays: values.validityDays,
     paymentCondition: values.paymentCondition,
+    creditDays: values.creditDays,
     deliveryDays: values.deliveryDays,
+    issuerId: values.issuerId,
     applyIgv: values.applyIgv,
     notes: values.notes,
     terms: values.terms,
@@ -161,9 +176,12 @@ export function QuoteForm({
   issueDate = null,
   readOnly = false,
   canCreateClient = false,
+  issuers = [],
 }: {
   quoteId?: string | null;
   initial: QuoteFormValues;
+  /** Sucursales que se pueden elegir (las activas y la actual). */
+  issuers?: QuoteIssuer[];
   /** Fecha de emisión (si ya se emitió). */
   issueDate?: string | null;
   readOnly?: boolean;
@@ -175,6 +193,7 @@ export function QuoteForm({
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const [action, setAction] = useState<"save" | "issue" | null>(null);
+  const [savingIssuer, startIssuerTransition] = useTransition();
 
   const totals = quoteTotals(values.lines.map(draftAmounts), values.applyIgv);
   const days = Number(values.validityDays);
@@ -219,6 +238,27 @@ export function QuoteForm({
     });
   };
 
+  /**
+   * La sucursal se puede cambiar en cualquier estado: en una cotización ya guardada se
+   * guarda al elegirla (así las emitidas también pueden sacar su PDF).
+   */
+  const chooseIssuer = (issuerId: string) => {
+    const previous = values.issuerId;
+    set({ issuerId });
+    if (!quoteId) return;
+    startIssuerTransition(async () => {
+      const result = await setQuoteIssuer(quoteId, issuerId);
+      if ("error" in result) {
+        toast.error(result.error);
+        setValues((v) => ({ ...v, issuerId: previous }));
+        return;
+      }
+      toast.success("Sucursal guardada.");
+      router.refresh();
+    });
+  };
+  const issuer = issuers.find((i) => i.id === values.issuerId) ?? null;
+
   const validUntil = issueDate
     ? addDays(issueDate, days)
     : validDays
@@ -259,6 +299,43 @@ export function QuoteForm({
             <FormError id="cliente-error" message={errors?.clientId} />
           </div>
         )}
+      </Section>
+
+      <Section id="seccion-sucursal" title="Sucursal">
+        <div className="max-w-xl space-y-1.5">
+          <Label htmlFor="cotizacion-sucursal">Sucursal que emite</Label>
+          <Select
+            value={values.issuerId ?? ""}
+            disabled={savingIssuer}
+            onValueChange={chooseIssuer}
+          >
+            <SelectTrigger id="cotizacion-sucursal" className="w-full">
+              <SelectValue placeholder="Elige la sucursal" />
+            </SelectTrigger>
+            <SelectContent>
+              {issuers.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {quoteIssuerOptionLabel(option)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {issuer ? (
+            <div
+              className="text-muted-foreground text-xs"
+              data-testid="sucursal-pdf"
+            >
+              {quoteIssuerPdfLines(issuer).map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Su razón social, RUC y cuenta bancaria salen en el PDF. Sin
+              sucursal no se genera el PDF.
+            </p>
+          )}
+        </div>
       </Section>
 
       <Section id="seccion-productos" title="Productos">
@@ -356,6 +433,23 @@ export function QuoteForm({
                 ))}
               </SelectContent>
             </Select>
+            {values.paymentCondition === "credito" ? (
+              <div className="space-y-1.5 pt-1">
+                <Label htmlFor="cotizacion-dias-credito">Días de crédito</Label>
+                <Input
+                  id="cotizacion-dias-credito"
+                  inputMode="numeric"
+                  value={values.creditDays}
+                  disabled={readOnly}
+                  aria-invalid={errors?.creditDays ? true : undefined}
+                  aria-describedby={
+                    errors?.creditDays ? "credito-error" : undefined
+                  }
+                  onChange={(e) => set({ creditDays: e.target.value })}
+                />
+                <FormError id="credito-error" message={errors?.creditDays} />
+              </div>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cotizacion-entrega">

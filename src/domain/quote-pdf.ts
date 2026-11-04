@@ -3,12 +3,17 @@ import { formatCents } from "./money";
 import {
   formatQuoteDateLong,
   lineTotal,
-  QUOTE_PAYMENT_CONDITION_LABELS,
+  quotePaymentConditionText,
   quoteTotals,
   quoteValidUntil,
   type QuoteLineAmounts,
   type QuotePaymentCondition,
 } from "./quote";
+import {
+  QUOTE_PDF_MISSING_ISSUER,
+  quoteIssuerPdfLines,
+  type QuoteIssuer,
+} from "./quote-issuers";
 import { draftAmounts, type QuoteLineDraft } from "./quote-line";
 
 /**
@@ -41,6 +46,10 @@ export type QuotePdfData = {
   validityDays: number;
   /** Forma de pago, fila "Condición:" bajo "Son:". */
   paymentCondition: QuotePaymentCondition;
+  /** Días de crédito («Crédito a N días»); null si no es crédito. */
+  creditDays: number | null;
+  /** Sucursal que emite: razón social, RUC y cuenta. Sin ella no se genera el PDF. */
+  issuer: QuoteIssuer | null;
   /** Tiempo de entrega en días hábiles desde la aprobación. */
   deliveryDays: number;
   clientName: string;
@@ -111,17 +120,28 @@ export type QuotePdfModel = {
   amountInWords: string;
   /** "Los precios... tienen una validez de {validityDays} días". */
   validityText: string;
-  /** "Al contado", "Al crédito" o "A cuenta". */
+  /** "Al contado", "Crédito a 30 días" o "A cuenta". */
   paymentConditionText: string;
   /** "30 días hábiles desde su aprobación". */
   deliveryText: string;
   notes: string;
   terms: string;
+  /** Razón social, RUC y cuenta de la sucursal, encima de "Atentamente,". */
+  issuerLines: string[];
   /** Nombre bajo "Atentamente,"; vacío si la empresa no tiene razón social. */
   signer: string;
 };
 
+/** El PDF necesita la sucursal (sus cuentas); si falta, lanza este error. */
+export class QuotePdfMissingIssuerError extends Error {
+  constructor() {
+    super(QUOTE_PDF_MISSING_ISSUER);
+    this.name = "QuotePdfMissingIssuerError";
+  }
+}
+
 export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
+  if (!data.issuer) throw new QuotePdfMissingIssuerError();
   const totals = quoteTotals(data.lines, data.applyIgv);
   const rows: QuotePdfRow[] = data.lines.map((line) => ({
     sku: line.sku ?? "",
@@ -148,13 +168,17 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     total: formatCents(totals.total),
     amountInWords: amountInWords(totals.total),
     validityText: `Los precios que figuran en el presente documento tienen una validez de ${data.validityDays} día${data.validityDays === 1 ? "" : "s"}, hasta el ${formatQuoteDateLong(validUntil)}.`,
-    paymentConditionText: QUOTE_PAYMENT_CONDITION_LABELS[data.paymentCondition],
+    paymentConditionText: quotePaymentConditionText(
+      data.paymentCondition,
+      data.creditDays,
+    ),
     deliveryText:
       data.deliveryDays === 1
         ? "1 día hábil desde su aprobación"
         : `${data.deliveryDays} días hábiles desde su aprobación`,
     notes: data.notes.trim(),
     terms: data.terms.trim(),
+    issuerLines: quoteIssuerPdfLines(data.issuer),
     signer: data.company.name.trim(),
   };
 }

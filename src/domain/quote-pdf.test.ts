@@ -5,6 +5,7 @@ import {
   DEFAULT_COMPANY_ADDRESS,
   quotePdfFileName,
   quotePdfLineFromDraft,
+  QuotePdfMissingIssuerError,
   quotePdfModel,
   quoteShareMessage,
   type QuotePdfData,
@@ -19,6 +20,19 @@ const baseData: QuotePdfData = {
   issueDate: "2026-08-17",
   validityDays: 7,
   paymentCondition: "contado",
+  creditDays: null,
+  issuer: {
+    id: "55555555-5555-4555-8555-555555555555",
+    name: "PEREDA SAC",
+    legalName: "PEREDA SAC",
+    documentType: "ruc",
+    documentNumber: "20557169866",
+    bankName: "Banco de Crédito (BCP)",
+    accountLabel: "CTA CTE soles",
+    accountNumber: "1942229780029",
+    cci: "00219400222978002998",
+    active: true,
+  },
   deliveryDays: 30,
   clientName: "Lorena Rodríguez di Laura",
   contactName: "Lorena Rodríguez di Laura",
@@ -133,15 +147,57 @@ describe("quotePdfModel", () => {
     expect(model.total).toBe("S/ 2,025.00");
   });
 
-  it("condición de pago con su etiqueta", () => {
+  it("condición de pago con su etiqueta; crédito con sus días", () => {
     expect(
-      quotePdfModel({ ...baseData, paymentCondition: "credito" })
+      quotePdfModel({
+        ...baseData,
+        paymentCondition: "credito",
+        creditDays: 30,
+      }).paymentConditionText,
+    ).toBe("Crédito a 30 días");
+    expect(
+      quotePdfModel({ ...baseData, paymentCondition: "credito", creditDays: 1 })
         .paymentConditionText,
-    ).toBe("Al crédito");
+    ).toBe("Crédito a 1 día");
     expect(
       quotePdfModel({ ...baseData, paymentCondition: "a_cuenta" })
         .paymentConditionText,
     ).toBe("A cuenta");
+  });
+
+  it("sin sucursal no se genera el PDF", () => {
+    expect(() => quotePdfModel({ ...baseData, issuer: null })).toThrow(
+      QuotePdfMissingIssuerError,
+    );
+  });
+
+  it("con RUC: razón social, RUC y cuenta de la sucursal", () => {
+    expect(quotePdfModel(baseData).issuerLines).toEqual([
+      "Razón social: PEREDA SAC",
+      "RUC: 20557169866",
+      "Banco de Crédito (BCP)",
+      "CTA CTE soles: 1942229780029; CCI: 00219400222978002998",
+    ]);
+  });
+
+  it("con DNI (CARMEN): solo la cuenta bancaria", () => {
+    const model = quotePdfModel({
+      ...baseData,
+      issuer: {
+        ...baseData.issuer!,
+        name: "CARMEN",
+        legalName: "Regina Pereda Luque",
+        documentType: "dni",
+        documentNumber: "07863594",
+        accountLabel: "CTA AHORRO soles",
+        accountNumber: "19493993660088",
+        cci: "00219419399366008899",
+      },
+    });
+    expect(model.issuerLines).toEqual([
+      "Banco de Crédito (BCP)",
+      "CTA AHORRO soles: 19493993660088; CCI: 00219419399366008899",
+    ]);
   });
 
   it("un día de entrega va en singular", () => {

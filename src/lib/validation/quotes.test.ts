@@ -42,7 +42,9 @@ const input = (patch: Partial<QuoteFormInput> = {}): QuoteFormInput => ({
   contactId: null,
   validityDays: "15",
   paymentCondition: "contado",
+  creditDays: "30",
   deliveryDays: "30",
+  issuerId: null,
   applyIgv: true,
   notes: "",
   terms: "",
@@ -175,6 +177,35 @@ describe("quoteSchema", () => {
     },
   );
 
+  it("crédito lleva sus días (1 a 365); las demás condiciones, null", () => {
+    const credito = quoteSchema.parse(
+      input({ paymentCondition: "credito", creditDays: " 45 " }),
+    );
+    expect(credito.creditDays).toBe(45);
+    expect(quoteRpcArgs(credito).p_quote.credit_days).toBe(45);
+    expect(
+      quoteSchema.parse(input({ paymentCondition: "contado", creditDays: "x" }))
+        .creditDays,
+    ).toBeNull();
+    for (const creditDays of ["", "0", "366", "abc"])
+      expect(
+        quoteFormErrors(input({ paymentCondition: "credito", creditDays })),
+      ).toMatchObject({
+        creditDays: "Los días de crédito deben ser de 1 a 365",
+      });
+  });
+
+  it("lleva la sucursal elegida (o ninguna)", () => {
+    const issuerId = "55555555-5555-4555-8555-555555555555";
+    expect(
+      quoteRpcArgs(quoteSchema.parse(input({ issuerId }))).p_quote.issuer_id,
+    ).toBe(issuerId);
+    expect(
+      quoteRpcArgs(quoteSchema.parse(input())).p_quote.issuer_id,
+    ).toBeNull();
+    expect(quoteSchema.safeParse(input({ issuerId: "x" })).success).toBe(false);
+  });
+
   it("rechaza una condición de pago desconocida", () => {
     expect(
       quoteSchema.safeParse(
@@ -221,7 +252,9 @@ describe("quoteRpcArgs", () => {
       contact_id: null,
       validity_days: 15,
       payment_condition: "a_cuenta",
+      credit_days: null,
       delivery_days: 45,
+      issuer_id: null,
       apply_igv: true,
       notes: "",
       terms: "",

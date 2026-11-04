@@ -18,6 +18,7 @@ describe("SettingsTabs", () => {
       "Servicios",
       "Métodos de pago",
       "Sucursales",
+      "Sucursales de cotización",
     ]);
     expect(screen.getByRole("link", { name: "Servicios" })).toHaveAttribute(
       "aria-current",

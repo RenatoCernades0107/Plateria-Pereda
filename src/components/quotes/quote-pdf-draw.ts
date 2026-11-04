@@ -209,6 +209,22 @@ export async function drawQuotePdf(
     y += terms.length * 4.2;
   }
 
+  // --- Sucursal: razón social, RUC y cuenta bancaria (como la cotización impresa).
+  if (model.issuerLines.length > 0) {
+    const issuerH = model.issuerLines.length * 4.6 + 10;
+    if (y + issuerH > bottomLimit) {
+      pdf.addPage();
+      y = MARGIN;
+    }
+    y += 10;
+    font("normal", 9.5);
+    for (const text of model.issuerLines) {
+      const wrapped = pdf.splitTextToSize(text, contentW);
+      pdf.text(wrapped, MARGIN, y);
+      y += Math.max(1, wrapped.length) * 4.6;
+    }
+  }
+
   // --- Firma.
   if (model.signer) {
     if (y + 20 > bottomLimit) {

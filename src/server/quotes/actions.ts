@@ -8,7 +8,12 @@ import { QUOTE_STATUSES, type QuoteStatus } from "@/domain/quote";
 import { quoteDeliveryDatesError } from "@/domain/quote-delivery";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
+import {
+  INVALID_ARGS,
+  idArg,
+  optionalIdArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import {
   quoteRpcArgs,
   quoteSchema,
@@ -169,6 +174,36 @@ export async function setQuoteDeliveryDates(
     .select("id");
   if (error) {
     return { error: dbMessage(error, "No se pudieron guardar las fechas.") };
+  }
+  if (data.length === 0) return { error: "La cotización no existe." };
+  revalidateQuote(id);
+  return { ok: true };
+}
+
+/**
+ * Elige o cambia la sucursal que emite la cotización (razón social, RUC y cuenta del
+ * PDF). Se puede en cualquier estado, para que las ya emitidas saquen su PDF.
+ */
+export async function setQuoteIssuer(
+  id: string,
+  issuerId: string | null,
+): Promise<QuoteActionResult> {
+  await requirePermission("cotizador.usar");
+  if (!validArgs([idArg, optionalIdArg], [id, issuerId]))
+    return { error: INVALID_ARGS };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotes")
+    .update({ issuer_id: issuerId })
+    .eq("id", id)
+    .select("id");
+  if (error) {
+    return {
+      error:
+        error.code === "23503"
+          ? "La sucursal no existe."
+          : "No se pudo guardar la sucursal.",
+    };
   }
   if (data.length === 0) return { error: "La cotización no existe." };
   revalidateQuote(id);

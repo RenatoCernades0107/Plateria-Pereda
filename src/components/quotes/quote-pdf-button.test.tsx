@@ -29,6 +29,19 @@ const data: QuotePdfData = {
   issueDate: "2026-08-17",
   validityDays: 7,
   paymentCondition: "contado",
+  creditDays: null,
+  issuer: {
+    id: "55555555-5555-4555-8555-555555555555",
+    name: "PEREDA SAC",
+    legalName: "PEREDA SAC",
+    documentType: "ruc",
+    documentNumber: "20557169866",
+    bankName: "Banco de Crédito (BCP)",
+    accountLabel: "CTA CTE soles",
+    accountNumber: "1942229780029",
+    cci: "00219400222978002998",
+    active: true,
+  },
   deliveryDays: 30,
   clientName: "Lorena",
   contactName: "Lorena",
@@ -65,6 +78,20 @@ describe("QuotePdfButton", () => {
     expect(drawQuotePdf).toHaveBeenCalled();
     expect(fakePdf.save).toHaveBeenCalledWith("cotizacion-COT-000001.pdf");
     expect(toast.success).toHaveBeenCalledWith("Cotización exportada en PDF.");
+  });
+
+  it("sin sucursal, no genera el PDF y avisa (exportar y compartir)", async () => {
+    const user = userEvent.setup();
+    render(<QuotePdfButton data={{ ...data, issuer: null }} />);
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    await user.click(
+      screen.getByRole("button", { name: /Compartir por WhatsApp/ }),
+    );
+    expect(drawQuotePdf).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledTimes(2);
+    expect(toast.error).toHaveBeenCalledWith(
+      "Elige la sucursal de la cotización antes de generar el PDF.",
+    );
   });
 
   it("con soporte de Web Share (celular), comparte el PDF por el menú nativo", async () => {

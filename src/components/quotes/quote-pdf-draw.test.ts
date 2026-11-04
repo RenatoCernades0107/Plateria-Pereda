@@ -13,6 +13,19 @@ const data: QuotePdfData = {
   issueDate: "2026-08-17",
   validityDays: 7,
   paymentCondition: "contado",
+  creditDays: null,
+  issuer: {
+    id: "55555555-5555-4555-8555-555555555555",
+    name: "PEREDA SAC",
+    legalName: "PEREDA SAC",
+    documentType: "ruc",
+    documentNumber: "20557169866",
+    bankName: "Banco de Crédito (BCP)",
+    accountLabel: "CTA CTE soles",
+    accountNumber: "1942229780029",
+    cci: "00219400222978002998",
+    active: true,
+  },
   deliveryDays: 30,
   clientName: "Lorena Rodríguez di Laura",
   contactName: "Lorena Rodríguez di Laura",
@@ -71,6 +84,28 @@ describe("drawQuotePdf", () => {
       "Platería Pereda",
     ])
       expect(raw).toContain(`(${text})`);
+  });
+
+  it("la sucursal (RUC y cuenta) va encima de «Atentamente,»", async () => {
+    const raw = (await drawQuotePdf(quotePdfModel(data))).output();
+    const ruc = raw.indexOf("(RUC: 20557169866)");
+    const account = raw.indexOf(
+      "(CTA CTE soles: 1942229780029; CCI: 00219400222978002998)",
+    );
+    const signature = raw.indexOf("(Atentamente,)");
+    expect(ruc).toBeGreaterThan(-1);
+    expect(account).toBeGreaterThan(ruc);
+    expect(signature).toBeGreaterThan(account);
+  });
+
+  it("crédito con sus días", async () => {
+    const raw = (
+      await drawQuotePdf(
+        quotePdfModel({ ...data, paymentCondition: "credito", creditDays: 30 }),
+      )
+    ).output();
+    expect(raw).toContain("(Cr");
+    expect(raw).toContain("dito a 30 d");
   });
 
   it('ya no dibuja la fila "Impuesto:"', async () => {

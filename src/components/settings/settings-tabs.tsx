@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 
 import { DragScroll } from "@/components/drag-scroll";
 import { CATALOGS } from "@/domain/catalogs";
+import {
+  QUOTE_ISSUERS_HREF,
+  QUOTE_ISSUERS_TITLE,
+} from "@/domain/quote-issuers";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { href: "/configuracion", title: "Empresa" },
   { href: "/configuracion/alertas", title: "Alertas" },
   ...Object.values(CATALOGS).map(({ href, title }) => ({ href, title })),
+  { href: QUOTE_ISSUERS_HREF, title: QUOTE_ISSUERS_TITLE },
 ];
 
 export function SettingsTabs() {

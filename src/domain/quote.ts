@@ -69,6 +69,22 @@ export const QUOTE_PAYMENT_CONDITION_LABELS: Record<
 export const DEFAULT_QUOTE_PAYMENT_CONDITION: QuotePaymentCondition = "contado";
 /** Tiempo de entrega por defecto, en días hábiles desde la aprobación. */
 export const DEFAULT_QUOTE_DELIVERY_DAYS = 30;
+/** Días de crédito por defecto al elegir «Crédito» (se pueden cambiar, 1 a 365). */
+export const DEFAULT_QUOTE_CREDIT_DAYS = 30;
+
+/**
+ * Texto de la condición de pago en el PDF: «Crédito a 30 días» con los días de crédito;
+ * las demás, su etiqueta («Al contado», «A cuenta»).
+ */
+export function quotePaymentConditionText(
+  condition: QuotePaymentCondition,
+  creditDays: number | null,
+): string {
+  if (condition !== "credito" || creditDays === null) {
+    return QUOTE_PAYMENT_CONDITION_LABELS[condition];
+  }
+  return `Crédito a ${creditDays} día${creditDays === 1 ? "" : "s"}`;
+}
 
 export type LineDiscount =
   | { type: "monto"; cents: Cents }

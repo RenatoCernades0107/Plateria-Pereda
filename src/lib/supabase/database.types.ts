@@ -850,6 +850,51 @@ export type Database = {
           },
         ];
       };
+      quote_issuers: {
+        Row: {
+          account_label: string;
+          account_number: string;
+          active: boolean;
+          bank_name: string;
+          cci: string;
+          created_at: string;
+          document_number: string;
+          document_type: string;
+          id: string;
+          legal_name: string;
+          name: string;
+          updated_at: string;
+        };
+        Insert: {
+          account_label: string;
+          account_number: string;
+          active?: boolean;
+          bank_name?: string;
+          cci: string;
+          created_at?: string;
+          document_number: string;
+          document_type: string;
+          id?: string;
+          legal_name: string;
+          name: string;
+          updated_at?: string;
+        };
+        Update: {
+          account_label?: string;
+          account_number?: string;
+          active?: boolean;
+          bank_name?: string;
+          cci?: string;
+          created_at?: string;
+          document_number?: string;
+          document_type?: string;
+          id?: string;
+          legal_name?: string;
+          name?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       quote_items: {
         Row: {
           catalog_price: number | null;
@@ -945,6 +990,7 @@ export type Database = {
           contact_phone: string | null;
           created_at: string;
           created_by: string | null;
+          credit_days: number | null;
           delivery_date: string | null;
           delivery_days: number;
           discount_total: number;
@@ -953,6 +999,7 @@ export type Database = {
           igv: number;
           issue_date: string | null;
           issued_at: string | null;
+          issuer_id: string | null;
           notes: string;
           number: number;
           payment_condition: Database["public"]["Enums"]["quote_payment_condition"];
@@ -983,6 +1030,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          credit_days?: number | null;
           delivery_date?: string | null;
           delivery_days?: number;
           discount_total?: number;
@@ -991,6 +1039,7 @@ export type Database = {
           igv?: number;
           issue_date?: string | null;
           issued_at?: string | null;
+          issuer_id?: string | null;
           notes?: string;
           number?: never;
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
@@ -1020,6 +1069,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          credit_days?: number | null;
           delivery_date?: string | null;
           delivery_days?: number;
           discount_total?: number;
@@ -1028,6 +1078,7 @@ export type Database = {
           igv?: number;
           issue_date?: string | null;
           issued_at?: string | null;
+          issuer_id?: string | null;
           notes?: string;
           number?: never;
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
@@ -1067,6 +1118,13 @@ export type Database = {
             columns: ["duplicated_from"];
             isOneToOne: false;
             referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_issuer_id_fkey";
+            columns: ["issuer_id"];
+            isOneToOne: false;
+            referencedRelation: "quote_issuers";
             referencedColumns: ["id"];
           },
         ];

@@ -15,7 +15,12 @@ import {
   type QuotePaymentCondition,
   type QuoteStatus,
 } from "@/domain/quote";
+import type {
+  QuoteIssuer,
+  QuoteIssuerDocumentType,
+} from "@/domain/quote-issuers";
 import type { QuoteLineDraft } from "@/domain/quote-line";
+import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 export type QuoteListItem = {
@@ -113,6 +118,10 @@ export type QuoteDetail = {
   client: ClientOption;
   validityDays: number;
   paymentCondition: QuotePaymentCondition;
+  /** Días de crédito; null si la condición no es crédito. */
+  creditDays: number | null;
+  /** Sucursal que emite (razón social, RUC y cuenta del PDF). */
+  issuer: QuoteIssuer | null;
   deliveryDays: number;
   /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
   deliveryDate: string | null;
@@ -136,7 +145,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
   const { data: q, error } = await supabase
     .from("quotes")
     .select(
-      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code)",
+      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code), quote_issuers(*)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -180,6 +189,8 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     client,
     validityDays: q.validity_days,
     paymentCondition: q.payment_condition,
+    creditDays: q.credit_days,
+    issuer: q.quote_issuers ? toQuoteIssuer(q.quote_issuers) : null,
     deliveryDays: q.delivery_days,
     deliveryDate: q.delivery_date,
     supplierDeliveryDate: q.supplier_delivery_date,
@@ -226,4 +237,35 @@ export async function getClientName(id: string): Promise<string | null> {
     .maybeSingle();
   if (error) throw error;
   return data?.display_name ?? null;
+}
+
+function toQuoteIssuer(row: Tables<"quote_issuers">): QuoteIssuer {
+  return {
+    id: row.id,
+    name: row.name,
+    legalName: row.legal_name,
+    documentType: row.document_type as QuoteIssuerDocumentType,
+    documentNumber: row.document_number,
+    bankName: row.bank_name,
+    accountLabel: row.account_label,
+    accountNumber: row.account_number,
+    cci: row.cci,
+    active: row.active,
+  };
+}
+
+/** Sucursales de cotización, las activas primero; `onlyActive` para el selector. */
+export async function listQuoteIssuers({ onlyActive = false } = {}): Promise<
+  QuoteIssuer[]
+> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("quote_issuers")
+    .select("*")
+    .order("active", { ascending: false })
+    .order("name");
+  if (onlyActive) query = query.eq("active", true);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data.map(toQuoteIssuer);
 }
