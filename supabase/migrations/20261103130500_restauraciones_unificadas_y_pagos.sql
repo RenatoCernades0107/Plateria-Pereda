@@ -11,7 +11,7 @@
 --   * payment_method_names: los métodos usados en algún pago (también las pasarelas de
 --     Shopify), para el filtro.
 -- Cambian las columnas de list_restorations: se recrea (los parámetros, iguales).
-drop function public.list_restorations(text, public.restoration_status[], public.payment_status[],
+drop function if exists public.list_restorations(text, public.restoration_status[], public.payment_status[],
   public.payment_type[], uuid, uuid[], date, date, text, text, integer, integer, public.restoration_origin[], text, boolean);
 
 create function public.list_restorations(
@@ -214,7 +214,7 @@ grant execute on function public.list_restorations(text, public.restoration_stat
 
 -- Pagos y reembolsos de todas las restauraciones (vista "Pagos"), del más reciente al
 -- más antiguo, con los totales de lo filtrado. Solo admin y ventas (P42).
-create function public.list_payments(
+create or replace function public.list_payments(
   p_query text default null,
   p_kind public.payment_kind[] default null,
   p_methods text[] default null,
@@ -305,7 +305,7 @@ grant execute on function public.list_payments(text, public.payment_kind[], text
 
 -- Métodos usados en algún pago (los del catálogo y las pasarelas de Shopify), para el
 -- filtro de la vista de pagos. Solo admin y ventas.
-create function public.payment_method_names()
+create or replace function public.payment_method_names()
 returns setof text
 language sql
 stable
