@@ -250,10 +250,16 @@ export function ProductPicker({
               <CommandGroup>
                 <CommandItem
                   value="linea-libre"
-                  onSelect={() => finish(freeLine())}
+                  onSelect={() => finish(freeLine(undefined, query))}
                 >
                   <PencilLine className="size-4" aria-hidden />
-                  Línea libre (producto que no está en el catálogo)
+                  {query.trim() ? (
+                    <span className="min-w-0 truncate">
+                      Línea libre: «{query.trim()}»
+                    </span>
+                  ) : (
+                    "Línea libre (producto que no está en el catálogo)"
+                  )}
                 </CommandItem>
               </CommandGroup>
             </CommandList>

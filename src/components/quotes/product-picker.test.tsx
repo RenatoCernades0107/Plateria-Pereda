@@ -141,6 +141,25 @@ describe("ProductPicker", () => {
     );
   });
 
+  it("usa lo escrito como título de la línea libre", async () => {
+    mocks.search.mockResolvedValue({ ok: true, products: [] });
+    const onSelect = vi.fn();
+    render(<ProductPicker onSelect={onSelect} />);
+    await searchFor("Jarrón grabado");
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole("option", {
+        name: /Línea libre: «Jarrón grabado»/,
+      }),
+    );
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shopifyProductId: null,
+        title: "Jarrón grabado",
+      }),
+    );
+  });
+
   it("avisa si Shopify no responde", async () => {
     mocks.search.mockResolvedValue({ error: "Shopify no respondió." });
     render(<ProductPicker onSelect={vi.fn()} />);

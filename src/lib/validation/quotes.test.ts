@@ -86,6 +86,14 @@ describe("quoteSchema", () => {
     );
   });
 
+  it("acepta IDs de Postgres que no son UUID RFC (los del seed)", () => {
+    expect(
+      quoteFormErrors(
+        input({ clientId: "50000000-0000-0000-0000-000000000001" }),
+      )?.clientId,
+    ).toBeUndefined();
+  });
+
   it.each(["0", "-1", "1.5", "", "100001", "abc"])(
     "rechaza la cantidad %j",
     (quantity) => {

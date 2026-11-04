@@ -94,12 +94,15 @@ export function lineFromCatalog(
 }
 
 /** Línea libre: un producto que no está en el catálogo (P37). */
-export function freeLine(key: string = newKey()): QuoteLineDraft {
+export function freeLine(
+  key: string = newKey(),
+  title: string = "",
+): QuoteLineDraft {
   return {
     key,
     shopifyProductId: null,
     shopifyVariantId: null,
-    title: "",
+    title: title.trim(),
     variantTitle: "",
     sku: null,
     imageUrl: null,
