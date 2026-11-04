@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
     data: [{ id: "00000000-0000-4000-8000-000000000015" }] as object[] | null,
     error: null as object | null,
   },
+  readResult: {
+    data: null as object | null,
+    error: null as object | null,
+  },
   revalidate: vi.fn(),
 }));
 
@@ -30,6 +34,13 @@ vi.mock("@/lib/supabase/server", () => ({
       return mocks.rpcResult;
     },
     from: () => ({
+      select: () => {
+        const chain = {
+          eq: () => chain,
+          maybeSingle: async () => mocks.readResult,
+        };
+        return chain;
+      },
       update: (row: object) => {
         mocks.update(row);
         const chain = {
@@ -46,8 +57,10 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 
-const { changeQuoteStatus, duplicateQuote, saveQuote } =
+const { changeQuoteStatus, duplicateQuote, saveQuote, setQuoteDeliveryDates } =
   await import("./actions");
+const { todayInLima } = await import("@/domain/delivery-date");
+const { addDays } = await import("@/domain/quote");
 
 const ID = "44444444-4444-4444-8444-444444444444";
 const input = {
@@ -75,7 +88,17 @@ beforeEach(() => {
   mocks.revalidate.mockReset();
   mocks.rpcResult = { data: "q-new", error: null };
   mocks.updateResult = { data: [{ id: ID }], error: null };
+  mocks.readResult = {
+    data: {
+      status: "aceptada",
+      delivery_date: null,
+      supplier_delivery_date: null,
+    },
+    error: null,
+  };
 });
+
+const inDays = (days: number) => addDays(todayInLima(), days);
 
 describe("saveQuote", () => {
   it("guarda el borrador con save_quote y el permiso del cotizador", async () => {
@@ -145,7 +168,7 @@ describe("changeQuoteStatus", () => {
 
   it("avisa si la cotización no existe o la BD rechaza el cambio", async () => {
     mocks.updateResult = { data: [], error: null };
-    expect(await changeQuoteStatus(ID, "aceptada")).toEqual({
+    expect(await changeQuoteStatus(ID, "rechazada")).toEqual({
       error: "La cotización no existe.",
     });
     mocks.updateResult = {
@@ -160,11 +183,121 @@ describe("changeQuoteStatus", () => {
     });
   });
 
+  it("al aceptarla guarda las fechas de entrega", async () => {
+    expect(
+      await changeQuoteStatus(ID, "aceptada", {
+        deliveryDate: inDays(10),
+        supplierDeliveryDate: inDays(5),
+      }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith({
+      status: "aceptada",
+      delivery_date: inDays(10),
+      supplier_delivery_date: inDays(5),
+    });
+  });
+
+  it("sin fecha del proveedor deja que la BD ponga la de por defecto", async () => {
+    await changeQuoteStatus(ID, "aceptada", {
+      deliveryDate: inDays(10),
+      supplierDeliveryDate: "",
+    });
+    expect(mocks.update).toHaveBeenCalledWith({
+      status: "aceptada",
+      delivery_date: inDays(10),
+      supplier_delivery_date: null,
+    });
+  });
+
+  it("no la acepta sin fecha de entrega o con fechas inválidas", async () => {
+    expect(await changeQuoteStatus(ID, "aceptada")).toEqual({
+      error: "Indica la fecha de entrega.",
+    });
+    expect(
+      await changeQuoteStatus(ID, "aceptada", {
+        deliveryDate: inDays(5),
+        supplierDeliveryDate: inDays(6),
+      }),
+    ).toEqual({
+      error: "La fecha del proveedor no puede ser posterior a la de entrega.",
+    });
+    expect(
+      await changeQuoteStatus(ID, "aceptada", {
+        deliveryDate: inDays(-1),
+        supplierDeliveryDate: "",
+      }),
+    ).toEqual({ error: "La fecha de entrega no puede ser anterior a hoy." });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
   it("rechaza estados desconocidos", async () => {
     expect(
       await changeQuoteStatus(ID, "vencida" as unknown as "emitida"),
     ).toEqual({ error: "No se pudo cambiar el estado." });
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("setQuoteDeliveryDates", () => {
+  it("cambia las fechas de una aceptada", async () => {
+    expect(
+      await setQuoteDeliveryDates(ID, {
+        deliveryDate: inDays(7),
+        supplierDeliveryDate: inDays(2),
+      }),
+    ).toEqual({ ok: true });
+    expect(mocks.update).toHaveBeenCalledWith({
+      delivery_date: inDays(7),
+      supplier_delivery_date: inDays(2),
+    });
+    expect(mocks.eq).toHaveBeenCalledWith("status", "aceptada");
+  });
+
+  it("conserva fechas que ya pasaron si no se cambian", async () => {
+    mocks.readResult = {
+      data: {
+        status: "aceptada",
+        delivery_date: inDays(-1),
+        supplier_delivery_date: inDays(-4),
+      },
+      error: null,
+    };
+    expect(
+      await setQuoteDeliveryDates(ID, {
+        deliveryDate: inDays(-1),
+        supplierDeliveryDate: inDays(-4),
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("solo en cotizaciones aceptadas", async () => {
+    mocks.readResult = {
+      data: {
+        status: "emitida",
+        delivery_date: null,
+        supplier_delivery_date: null,
+      },
+      error: null,
+    };
+    expect(
+      await setQuoteDeliveryDates(ID, {
+        deliveryDate: inDays(7),
+        supplierDeliveryDate: "",
+      }),
+    ).toEqual({
+      error: "Solo una cotización aceptada lleva fechas de entrega.",
+    });
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("exige el permiso", async () => {
+    mocks.forbidden = true;
+    await expect(
+      setQuoteDeliveryDates(ID, {
+        deliveryDate: inDays(1),
+        supplierDeliveryDate: "",
+      }),
+    ).rejects.toThrow("FORBIDDEN");
   });
 });
 

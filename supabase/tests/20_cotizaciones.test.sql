@@ -152,8 +152,10 @@ select is(
   'emitida', 'una emitida vigente no está vencida'
 );
 select lives_ok(
-  $$ update public.quotes set status = 'aceptada' where id = '00000000-0000-0000-0000-0000000020e1' $$,
-  'una emitida se acepta'
+  $$ update public.quotes set status = 'aceptada',
+       delivery_date = (now() at time zone 'America/Lima')::date + 10
+     where id = '00000000-0000-0000-0000-0000000020e1' $$,
+  'una emitida se acepta (con su fecha de entrega)'
 );
 select throws_ok(
   $$ delete from public.quotes where id = '00000000-0000-0000-0000-0000000020e1' $$,

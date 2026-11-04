@@ -945,6 +945,7 @@ export type Database = {
           contact_phone: string | null;
           created_at: string;
           created_by: string | null;
+          delivery_date: string | null;
           delivery_days: number;
           discount_total: number;
           duplicated_from: string | null;
@@ -957,6 +958,7 @@ export type Database = {
           payment_condition: Database["public"]["Enums"]["quote_payment_condition"];
           status: Database["public"]["Enums"]["quote_status"];
           subtotal: number;
+          supplier_delivery_date: string | null;
           terms: string;
           total: number;
           updated_at: string;
@@ -981,6 +983,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          delivery_date?: string | null;
           delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
@@ -993,6 +996,7 @@ export type Database = {
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
+          supplier_delivery_date?: string | null;
           terms?: string;
           total?: number;
           updated_at?: string;
@@ -1016,6 +1020,7 @@ export type Database = {
           contact_phone?: string | null;
           created_at?: string;
           created_by?: string | null;
+          delivery_date?: string | null;
           delivery_days?: number;
           discount_total?: number;
           duplicated_from?: string | null;
@@ -1028,6 +1033,7 @@ export type Database = {
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
+          supplier_delivery_date?: string | null;
           terms?: string;
           total?: number;
           updated_at?: string;
