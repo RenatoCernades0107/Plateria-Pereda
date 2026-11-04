@@ -52,4 +52,18 @@ describe("LoginForm", () => {
       "Tu usuario está desactivado.",
     );
   });
+
+  it("permite mostrar y ocultar la contraseña", async () => {
+    render(<LoginForm />);
+    const input = screen.getByLabelText("Contraseña");
+    expect(input).toHaveAttribute("type", "password");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Mostrar caracteres" }),
+    );
+    expect(input).toHaveAttribute("type", "text");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Ocultar caracteres" }),
+    );
+    expect(input).toHaveAttribute("type", "password");
+  });
 });

@@ -186,3 +186,132 @@
     box-shadow: none !important;
   }
 }
+
+/* ---------- Login: fondo animado (ver components/auth/auth-backdrop.tsx) ---------- */
+.auth-backdrop {
+  background:
+    radial-gradient(120% 90% at 0% 0%, #6b1410 0%, transparent 60%),
+    radial-gradient(100% 80% at 100% 100%, #3a0705 0%, transparent 65%),
+    linear-gradient(150deg, #530000 0%, #3b0a07 55%, #240503 100%);
+}
+.auth-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+}
+.auth-orb-1 {
+  width: 32rem;
+  height: 32rem;
+  top: -10rem;
+  left: -8rem;
+  background: radial-gradient(circle, #a47668 0%, transparent 70%);
+  animation: auth-drift-1 22s ease-in-out infinite alternate;
+}
+.auth-orb-2 {
+  width: 26rem;
+  height: 26rem;
+  bottom: -8rem;
+  right: -6rem;
+  background: radial-gradient(circle, #d9d4cf 0%, transparent 70%);
+  opacity: 0.28;
+  animation: auth-drift-2 28s ease-in-out infinite alternate;
+}
+.auth-orb-3 {
+  width: 20rem;
+  height: 20rem;
+  top: 40%;
+  left: 45%;
+  background: radial-gradient(circle, #c9a99c 0%, transparent 70%);
+  opacity: 0.35;
+  animation: auth-drift-3 34s ease-in-out infinite alternate;
+}
+/* Brillo plateado que cruza el panel en diagonal, como luz sobre metal. */
+.auth-sheen {
+  position: absolute;
+  inset: -50%;
+  background: linear-gradient(
+    115deg,
+    transparent 42%,
+    rgb(255 255 255 / 0.07) 48%,
+    rgb(255 255 255 / 0.14) 50%,
+    rgb(255 255 255 / 0.07) 52%,
+    transparent 58%
+  );
+  animation: auth-sheen 9s ease-in-out infinite;
+}
+.auth-watermark {
+  position: absolute;
+  width: min(70vh, 34rem);
+  height: auto;
+  right: -6rem;
+  bottom: -6rem;
+  opacity: 0.07;
+  filter: brightness(0) invert(1);
+  animation: auth-spin 120s linear infinite;
+}
+.auth-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image: radial-gradient(
+    rgb(255 255 255 / 0.35) 1px,
+    transparent 1px
+  );
+  background-size: 3px 3px;
+  mix-blend-mode: overlay;
+}
+.auth-logo-light {
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+.auth-enter {
+  animation: auth-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes auth-drift-1 {
+  to {
+    transform: translate(18rem, 12rem) scale(1.15);
+  }
+}
+@keyframes auth-drift-2 {
+  to {
+    transform: translate(-16rem, -14rem) scale(1.2);
+  }
+}
+@keyframes auth-drift-3 {
+  to {
+    transform: translate(-14rem, 8rem) scale(0.85);
+  }
+}
+@keyframes auth-sheen {
+  0%,
+  15% {
+    transform: translateX(-60%);
+  }
+  65%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-orb,
+  .auth-sheen,
+  .auth-watermark,
+  .auth-enter {
+    animation: none;
+  }
+}
