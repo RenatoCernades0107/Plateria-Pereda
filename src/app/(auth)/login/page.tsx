@@ -14,7 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <p className="text-brand text-xs font-medium tracking-[0.2em] uppercase">
+        <p className="text-primary text-xs font-medium tracking-[0.2em] uppercase">
           Acceso al sistema
         </p>
         <h1 className="text-heading text-3xl font-semibold tracking-tight">
