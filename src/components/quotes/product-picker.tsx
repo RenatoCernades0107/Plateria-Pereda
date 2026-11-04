@@ -250,6 +250,8 @@ export function ProductPicker({
               <CommandGroup>
                 <CommandItem
                   value="linea-libre"
+                  // Nombre fijo: lo buscado no debe confundirse con un resultado.
+                  aria-label="Línea libre (producto que no está en el catálogo)"
                   onSelect={() => finish(freeLine(undefined, query))}
                 >
                   <PencilLine className="size-4" aria-hidden />

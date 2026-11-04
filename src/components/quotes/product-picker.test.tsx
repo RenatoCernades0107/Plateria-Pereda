@@ -147,11 +147,13 @@ describe("ProductPicker", () => {
     render(<ProductPicker onSelect={onSelect} />);
     await searchFor("Jarrón grabado");
     const user = userEvent.setup();
-    await user.click(
-      await screen.findByRole("option", {
-        name: /Línea libre: «Jarrón grabado»/,
-      }),
-    );
+    const free = await screen.findByRole("option", { name: /Línea libre/ });
+    expect(free).toHaveTextContent("Línea libre: «Jarrón grabado»");
+    // El nombre de la opción no incluye lo buscado (no se confunde con un resultado).
+    expect(
+      screen.queryByRole("option", { name: /Jarrón grabado/ }),
+    ).not.toBeInTheDocument();
+    await user.click(free);
     expect(onSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         shopifyProductId: null,

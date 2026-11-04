@@ -193,7 +193,7 @@ describe("ClientPicker", () => {
       await openAndType(text);
       await userEvent
         .setup()
-        .click(screen.getByRole("option", { name: /Crear nuevo cliente/ }));
+        .click(screen.getByRole("option", { name: "Crear nuevo cliente" }));
       expect(screen.getByLabelText(label)).toHaveValue(expected);
     },
   );
@@ -202,9 +202,13 @@ describe("ClientPicker", () => {
     mocks.search.mockResolvedValue({ options: [], shopifyUnavailable: false });
     render(<ClientPicker onSelect={vi.fn()} canCreate />);
     await openAndType("20512345678");
-    await userEvent
-      .setup()
-      .click(screen.getByRole("option", { name: /RUC: 20512345678/ }));
+    const create = screen.getByRole("option", { name: "Crear nuevo cliente" });
+    // La pista se ve, pero el nombre de la opción no cambia con lo buscado.
+    expect(create).toHaveTextContent("RUC: 20512345678");
+    expect(
+      screen.queryByRole("option", { name: /20512345678/ }),
+    ).not.toBeInTheDocument();
+    await userEvent.setup().click(create);
     expect(screen.getByRole("tab", { name: "Empresa" })).toHaveAttribute(
       "aria-selected",
       "true",

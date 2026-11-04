@@ -283,6 +283,9 @@ export function ClientPicker({
                   <CommandGroup>
                     <CommandItem
                       value="crear-nuevo-cliente"
+                      // Nombre fijo: lo buscado (la pista) no debe confundirse con
+                      // un resultado al buscar opciones por su nombre.
+                      aria-label="Crear nuevo cliente"
                       onSelect={() => {
                         setSearched(query);
                         setOpen(false);
