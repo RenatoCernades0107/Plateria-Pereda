@@ -179,6 +179,7 @@ describe("ClientPicker", () => {
   it.each([
     ["Rosa Díaz", "Nombres", "Rosa"],
     ["987111222", "Teléfono", "987111222"],
+    ["70123456", "Número de documento", "70123456"],
   ])(
     "propone lo buscado (%s) al crear un cliente",
     async (text, label, expected) => {

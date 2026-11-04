@@ -52,7 +52,12 @@ import { SimilarClientsAlert } from "./similar-clients-alert";
  * Datos ya anotados (p. ej., en una cotización de WhatsApp o en el buscador) para no
  * volver a escribirlos. Con RUC, el diálogo abre en la pestaña «Empresa».
  */
-export type ClientPrefill = { name: string; phone: string; ruc?: string };
+export type ClientPrefill = {
+  name: string;
+  phone: string;
+  ruc?: string;
+  dni?: string;
+};
 
 /** Separa "Ana María Pérez" en nombres ("Ana María") y apellido ("Pérez"). */
 export function splitName(name: string): {
@@ -428,6 +433,9 @@ export function NewClientDialog({
                   ? {
                       ...PERSON_DEFAULTS,
                       ...splitName(prefill.name),
+                      document: prefill.dni
+                        ? { documentType: "dni", documentNumber: prefill.dni }
+                        : PERSON_DEFAULTS.document,
                       phone: prefill.phone,
                     }
                   : undefined

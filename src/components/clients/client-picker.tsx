@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { prefillFromSearch } from "@/domain/client-prefill";
+import { describePrefill, prefillFromSearch } from "@/domain/client-prefill";
 import { optionKey, type ClientOption } from "@/domain/client-search";
 import { DOCUMENT_LABELS } from "@/domain/documents";
 import { formatPhone } from "@/domain/phone";
@@ -38,8 +38,6 @@ import {
 } from "@/server/clients/search-actions";
 
 import { NewClientDialog, type ClientPrefill } from "./new-client-dialog";
-
-const PREFILL_LABELS = { name: "Nombre", ruc: "RUC", phone: "Teléfono" };
 
 const ICONS = { persona: User, empresa: Building2, contacto: Users } as const;
 
@@ -85,7 +83,7 @@ function OptionRow({ option }: { option: ClientOption }) {
 
 /**
  * Datos que propone «Crear nuevo cliente»: los ya anotados (`base`) y, encima, lo
- * escrito en el buscador como nombre, RUC o teléfono según lo que parezca.
+ * escrito en el buscador como nombre, DNI, RUC o teléfono según lo que parezca.
  */
 export function mergePrefill(
   base: ClientPrefill | null | undefined,
@@ -93,11 +91,7 @@ export function mergePrefill(
 ): ClientPrefill | null {
   const found = prefillFromSearch(query);
   if (!found) return base ?? null;
-  const prefill: ClientPrefill = { name: "", phone: "", ...base };
-  if (found.field === "name") prefill.name = found.value;
-  else if (found.field === "phone") prefill.phone = found.value;
-  else prefill.ruc = found.value;
-  return prefill;
+  return { name: "", phone: "", ...base, ...found };
 }
 
 /**
@@ -189,9 +183,7 @@ export function ClientPicker({
   };
 
   const found = prefillFromSearch(query);
-  const searchHint = found
-    ? `${PREFILL_LABELS[found.field]}: ${found.value}`
-    : null;
+  const searchHint = found ? describePrefill(found) : null;
 
   const local = options.filter((o) => o.source === "local");
   const remote = options.filter((o) => o.source === "shopify");
