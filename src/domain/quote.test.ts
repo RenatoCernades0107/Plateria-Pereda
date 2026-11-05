@@ -188,11 +188,14 @@ describe("cambios de estado", () => {
       "emitida→rechazada",
       "emitida→anulada",
       "aceptada→emitida",
+      "aceptada→facturada",
       "aceptada→anulada",
+      "facturada→reembolsada",
       "rechazada→emitida",
       "rechazada→anulada",
     ]);
     expect(nextQuoteStatuses("anulada")).toEqual([]);
+    expect(nextQuoteStatuses("reembolsada")).toEqual([]);
     expect(nextQuoteStatuses("borrador")).toEqual(["emitida"]);
   });
 });

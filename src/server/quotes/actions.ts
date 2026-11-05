@@ -141,7 +141,7 @@ export async function changeQuoteStatus(
   return { ok: true };
 }
 
-/** Cambia las fechas de entrega de una cotización aceptada. */
+/** Cambia las fechas de entrega de una cotización aceptada o facturada. */
 export async function setQuoteDeliveryDates(
   id: string,
   dates: QuoteDeliveryDates,
@@ -158,8 +158,10 @@ export async function setQuoteDeliveryDates(
     .maybeSingle();
   if (readError) return { error: "No se pudieron guardar las fechas." };
   if (!current) return { error: "La cotización no existe." };
-  if (current.status !== "aceptada") {
-    return { error: "Solo una cotización aceptada lleva fechas de entrega." };
+  if (current.status !== "aceptada" && current.status !== "facturada") {
+    return {
+      error: "Solo una cotización aceptada o facturada cambia sus fechas de entrega.",
+    };
   }
   const row = deliveryDatesRow(dates, {
     deliveryDate: current.delivery_date,
@@ -170,7 +172,7 @@ export async function setQuoteDeliveryDates(
     .from("quotes")
     .update(row)
     .eq("id", id)
-    .eq("status", "aceptada")
+    .in("status", ["aceptada", "facturada"])
     .select("id");
   if (error) {
     return { error: dbMessage(error, "No se pudieron guardar las fechas.") };

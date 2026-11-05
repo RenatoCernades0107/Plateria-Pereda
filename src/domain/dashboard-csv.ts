@@ -414,6 +414,8 @@ export function quotesCsv(data: DashboardQuotes, period: string): string {
         ["Borradores", cot.borrador],
         ["Emitidas", cot.emitida],
         ["Aceptadas", cot.aceptada],
+        ["Facturadas", cot.facturada],
+        ["Reembolsadas", cot.reembolsada],
         ["Rechazadas", cot.rechazada],
         ["Vencidas", cot.vencida],
         ["Anuladas", cot.anulada],
