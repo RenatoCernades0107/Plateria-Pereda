@@ -932,7 +932,7 @@ export type Database = {
           position?: number;
           quantity: number;
           quote_id: string;
-          reference_image_path: string | null;
+          reference_image_path?: string | null;
           shopify_product_id?: string | null;
           shopify_variant_id?: string | null;
           sku?: string | null;
