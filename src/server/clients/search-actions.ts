@@ -7,7 +7,12 @@ import {
 } from "@/domain/client-search";
 import { personFromShopify } from "@/domain/shopify-customer";
 import { createClient } from "@/lib/supabase/server";
-import { INVALID_ARGS, textArg, validArgs } from "@/lib/validation/action-args";
+import {
+  INVALID_ARGS,
+  idArg,
+  textArg,
+  validArgs,
+} from "@/lib/validation/action-args";
 import { requirePermission } from "@/server/auth";
 import { getShopifyGateway } from "@/server/shopify";
 
@@ -190,5 +195,61 @@ export async function importShopifyCustomer(
       email: row.email,
       shopifyCustomerId: row.shopify_customer_id,
     },
+  };
+}
+
+export type CompanyContacts = {
+  /** La empresa como opción del buscador (para cotizarle sin contacto). */
+  company: ClientOption;
+  /** Sus contactos activos, por nombre. */
+  contacts: ClientOption[];
+};
+
+/**
+ * La empresa y sus contactos activos, para elegir a quién se dirige una cotización.
+ * Null si el cliente no existe o no es una empresa.
+ */
+export async function listCompanyContacts(
+  clientId: string,
+): Promise<CompanyContacts | null> {
+  await requirePermission("clientes.ver");
+  if (!validArgs([idArg], [clientId])) return null;
+  const supabase = await createClient();
+  const { data: c, error } = await supabase
+    .from("clients")
+    .select(
+      "id, kind, display_name, document_type, document_number, phone, email, shopify_customer_id, contacts(id, display_name, phone, email, shopify_customer_id, active)",
+    )
+    .eq("id", clientId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!c || c.kind !== "empresa") return null;
+  const companyName = c.display_name ?? "";
+  return {
+    company: {
+      source: "local",
+      kind: "empresa",
+      clientId: c.id,
+      name: companyName,
+      documentType: c.document_type,
+      documentNumber: c.document_number,
+      phone: c.phone,
+      email: c.email,
+      shopifyCustomerId: c.shopify_customer_id,
+    },
+    contacts: c.contacts
+      .filter((k) => k.active)
+      .map((k): ClientOption => ({
+        source: "local",
+        kind: "contacto",
+        clientId: c.id,
+        contactId: k.id,
+        name: k.display_name ?? "",
+        companyName,
+        phone: k.phone,
+        email: k.email,
+        shopifyCustomerId: k.shopify_customer_id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, "es")),
   };
 }

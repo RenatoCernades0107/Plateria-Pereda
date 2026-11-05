@@ -6,6 +6,7 @@ import {
   QUOTE_PAYMENT_CONDITIONS,
   type QuotePaymentCondition,
 } from "@/domain/quote";
+import { QUOTE_IMAGE_PATH } from "@/domain/quote-images";
 import {
   parsePercent,
   parseQuantity,
@@ -50,6 +51,12 @@ export const quoteLineSchema = z
     variantTitle: text(200),
     sku: z.string().trim().max(100).nullable(),
     imageUrl: z.url().max(2000).nullable(),
+    referenceImagePath: z
+      .string()
+      .regex(QUOTE_IMAGE_PATH, "Foto inválida")
+      .nullable(),
+    // Solo para mostrarla; no se guarda.
+    referenceImageUrl: z.string().nullable(),
     catalogPrice: z.string().nullable(),
     customization: text(2000),
     quantity: z.string().transform((value, ctx) => {
@@ -103,6 +110,7 @@ export const quoteLineSchema = z
       variant_title: line.variantTitle,
       sku: line.sku || null,
       image_url: line.imageUrl,
+      reference_image_path: line.referenceImagePath,
       catalog_price:
         line.catalogPrice === null ? null : parseMoney(line.catalogPrice),
       customization: line.customization,

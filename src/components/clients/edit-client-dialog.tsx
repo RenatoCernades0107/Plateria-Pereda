@@ -60,9 +60,31 @@ export function companyDefaults(client: ClientDetail): CompanyFormInput {
   };
 }
 
-/** Edición de los datos de un cliente; si ya está en Shopify, se actualiza ahí (P16). */
-export function EditClientDialog({ client }: { client: ClientDetail }) {
-  const [open, setOpen] = useState(false);
+/**
+ * Edición de los datos de un cliente; si ya está en Shopify, se actualiza ahí (P16).
+ * Se puede abrir desde fuera (`open`/`onOpenChange`, con `trigger={null}`); `onSaved`
+ * avisa que se guardó.
+ */
+export function EditClientDialog({
+  client,
+  open: openProp,
+  onOpenChange,
+  trigger,
+  onSaved,
+}: {
+  client: ClientDetail;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** null: sin botón (se abre con `open`). */
+  trigger?: React.ReactNode | null;
+  onSaved?: () => void;
+}) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (value: boolean) => {
+    setOpenState(value);
+    onOpenChange?.(value);
+  };
   const save: SaveClient = async (input) => {
     const result = await updateClient(client.id, input);
     if ("error" in result) return result.error;
@@ -72,17 +94,22 @@ export function EditClientDialog({ client }: { client: ClientDetail }) {
         : "Cambios guardados.",
     );
     setOpen(false);
+    onSaved?.();
     return null;
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <Pencil className={EDIT_ICON_CLASS} />
-          Editar
-        </Button>
-      </DialogTrigger>
+      {trigger === null ? null : (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="outline">
+              <Pencil className={EDIT_ICON_CLASS} />
+              Editar
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Editar {client.displayName}</DialogTitle>

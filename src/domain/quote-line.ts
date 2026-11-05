@@ -20,6 +20,10 @@ export type QuoteLineDraft = {
   variantTitle: string;
   sku: string | null;
   imageUrl: string | null;
+  /** Foto referencial subida (ruta en el bucket `quote-images`); null si no tiene. */
+  referenceImagePath: string | null;
+  /** URL firmada para mostrar la foto referencial (no se guarda). */
+  referenceImageUrl: string | null;
   /** Precio del catálogo al elegir la variante ("150.00"). */
   catalogPrice: string | null;
   /** Descripción de la personalización. */
@@ -84,6 +88,8 @@ export function lineFromCatalog(
     variantTitle: variantName(variant),
     sku: variant.sku || null,
     imageUrl: variant.imageUrl ?? product.imageUrl,
+    referenceImagePath: null,
+    referenceImageUrl: null,
     catalogPrice: price,
     customization: "",
     quantity: "1",
@@ -106,6 +112,8 @@ export function freeLine(
     variantTitle: "",
     sku: null,
     imageUrl: null,
+    referenceImagePath: null,
+    referenceImageUrl: null,
     catalogPrice: null,
     customization: "",
     quantity: "1",

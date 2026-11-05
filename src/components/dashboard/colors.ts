@@ -29,6 +29,7 @@ export const COT_STATUS_COLORS = {
   aceptada: "bg-viz-seq-600",
   rechazada: "bg-muted-foreground/60",
   vencida: "bg-viz-seq-200",
+  anulada: "bg-muted-foreground/20",
 } as const;
 
 /** Un color por serie categórica, en orden fijo (nunca se cicla ni se reasigna). */

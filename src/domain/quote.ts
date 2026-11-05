@@ -14,6 +14,7 @@ export const QUOTE_STATUSES = [
   "emitida",
   "aceptada",
   "rechazada",
+  "anulada",
 ] as const;
 export type QuoteStatus = (typeof QUOTE_STATUSES)[number];
 
@@ -25,15 +26,20 @@ export const QUOTE_STATUS_LABELS: Record<QuoteDisplayStatus, string> = {
   emitida: "Emitida",
   aceptada: "Aceptada",
   rechazada: "Rechazada",
+  anulada: "Anulada",
   vencida: "Vencida",
 };
 
-/** Cambios de estado permitidos (los mismos que valida el trigger de la BD). */
+/**
+ * Cambios de estado permitidos (los mismos que valida el trigger de la BD). «Anulada»
+ * es para una cotización emitida por error: es definitiva (para corregirla, se duplica).
+ */
 const TRANSITIONS: Record<QuoteStatus, readonly QuoteStatus[]> = {
   borrador: ["emitida"],
-  emitida: ["aceptada", "rechazada"],
-  aceptada: ["emitida"],
-  rechazada: ["emitida"],
+  emitida: ["aceptada", "rechazada", "anulada"],
+  aceptada: ["emitida", "anulada"],
+  rechazada: ["emitida", "anulada"],
+  anulada: [],
 };
 
 export function nextQuoteStatuses(from: QuoteStatus): readonly QuoteStatus[] {

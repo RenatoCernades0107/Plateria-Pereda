@@ -21,6 +21,8 @@ const anillo: QuoteLineDraft = {
   variantTitle: "Talla 8",
   sku: "ANI-950-08",
   imageUrl: "https://cdn.shopify.com/anillo.jpg",
+  referenceImagePath: null,
+  referenceImageUrl: null,
   catalogPrice: "165.50",
   customization: "  Grabado: Ana  ",
   quantity: "2",

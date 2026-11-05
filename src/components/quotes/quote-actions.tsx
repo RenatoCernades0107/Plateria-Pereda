@@ -1,11 +1,19 @@
 "use client";
 
-import { Check, Copy, RotateCcw, X } from "lucide-react";
+import { Ban, Check, Copy, Loader2, RotateCcw, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { nextQuoteStatuses, type QuoteStatus } from "@/domain/quote";
 import { changeQuoteStatus, duplicateQuote } from "@/server/quotes/actions";
 
@@ -27,11 +35,17 @@ const STATUS_ACTIONS = {
     done: "La cotización volvió a emitida.",
     Icon: RotateCcw,
   },
+  anulada: {
+    label: "Anular",
+    done: "Cotización anulada.",
+    Icon: Ban,
+  },
 } as const;
 
 /**
  * Acciones de una cotización guardada: cambiar el estado (una emitida se acepta o
- * rechaza; una aceptada o rechazada vuelve a emitida) y duplicarla como borrador.
+ * rechaza; una aceptada o rechazada vuelve a emitida; si se emitió por error se anula,
+ * con confirmación porque es definitivo) y duplicarla como borrador.
  * El borrador se emite desde el formulario (se guarda antes). Aceptarla (el cliente la
  * aprobó) pide las fechas de entrega al cliente y del proveedor.
  */
@@ -48,6 +62,7 @@ export function QuoteActions({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [accepting, setAccepting] = useState(false);
+  const [voiding, setVoiding] = useState(false);
   const targets =
     status === "borrador"
       ? []
@@ -63,6 +78,7 @@ export function QuoteActions({
         return;
       }
       toast.success(STATUS_ACTIONS[to].done);
+      setVoiding(false);
       router.refresh();
     });
 
@@ -88,7 +104,11 @@ export function QuoteActions({
             variant={to === "aceptada" ? "default" : "outline"}
             disabled={pending}
             onClick={() =>
-              to === "aceptada" ? setAccepting(true) : change(to)
+              to === "aceptada"
+                ? setAccepting(true)
+                : to === "anulada"
+                  ? setVoiding(true)
+                  : change(to)
             }
           >
             <Icon aria-hidden />
@@ -105,6 +125,43 @@ export function QuoteActions({
         <Copy aria-hidden />
         Duplicar cotización
       </Button>
+      <Dialog
+        open={voiding}
+        onOpenChange={(value) => {
+          if (!pending) setVoiding(value);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anular cotización</DialogTitle>
+            <DialogDescription>
+              Úsalo si la cotización se emitió por error. No se puede deshacer:
+              para corregirla, duplícala.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() => setVoiding(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={pending}
+              onClick={() => change("anulada")}
+            >
+              {pending ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <Ban aria-hidden />
+              )}
+              Anular cotización
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <QuoteDeliveryDialog
         key={accepting ? "abierto" : "cerrado"}
         open={accepting}

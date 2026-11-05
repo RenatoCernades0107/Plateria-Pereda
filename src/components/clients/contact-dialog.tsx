@@ -132,14 +132,24 @@ export function ContactDialog({
   contact,
   trigger,
   onSaved,
+  open: openProp,
+  onOpenChange,
 }: {
   clientId: string;
   companyName: string;
   contact?: ContactDetail;
-  trigger?: React.ReactNode;
+  /** null: sin botón (se abre desde fuera con `open`). */
+  trigger?: React.ReactNode | null;
   onSaved?: (saved: SavedContact) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (value: boolean) => {
+    setOpenState(value);
+    onOpenChange?.(value);
+  };
   const handleSaved = (saved: SavedContact) => {
     toast.success(
       contact
@@ -152,14 +162,16 @@ export function ContactDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" size="sm">
-            <UserPlus />
-            Agregar contacto
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger === null ? null : (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="outline" size="sm">
+              <UserPlus />
+              Agregar contacto
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>

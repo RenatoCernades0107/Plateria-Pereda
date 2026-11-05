@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Package, Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
 } from "@/domain/quote-line";
 
 import { ProductPicker } from "./product-picker";
+import { QuoteLinePhoto } from "./quote-line-photo";
 
 const NO_DISCOUNT = "ninguno";
 
@@ -75,19 +76,12 @@ function LineEditor({
         className="space-y-3 rounded-lg border p-3 sm:p-4"
       >
         <div className="flex items-start gap-3">
-          {line.imageUrl ? (
-            // Imagen del CDN de Shopify.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={line.imageUrl}
-              alt=""
-              className="size-12 shrink-0 rounded border object-cover"
-            />
-          ) : (
-            <span className="bg-muted text-muted-foreground flex size-12 shrink-0 items-center justify-center rounded border">
-              <Package className="size-5" aria-hidden />
-            </span>
-          )}
+          <QuoteLinePhoto
+            line={line}
+            label={`línea ${index + 1}`}
+            disabled={disabled}
+            onChange={onChange}
+          />
           <div className="min-w-0 flex-1 space-y-1">
             {fromCatalog ? (
               <>
@@ -256,7 +250,8 @@ function LineEditor({
 
 /**
  * Líneas de la cotización: se agregan desde el catálogo de Shopify o como línea libre,
- * y se editan la personalización, la cantidad, el precio y el descuento.
+ * y se editan la foto referencial, la personalización, la cantidad, el precio y el
+ * descuento.
  */
 export function QuoteLinesEditor({
   lines,

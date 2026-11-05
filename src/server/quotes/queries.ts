@@ -19,7 +19,9 @@ import type {
   QuoteIssuer,
   QuoteIssuerDocumentType,
 } from "@/domain/quote-issuers";
+import { QUOTE_IMAGES_BUCKET } from "@/domain/quote-images";
 import type { QuoteLineDraft } from "@/domain/quote-line";
+import type { QuotePdfClientDocument } from "@/domain/quote-pdf";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -133,6 +135,15 @@ export type QuoteDetail = {
   terms: string;
   total: Cents;
   duplicatedFrom: { id: string; code: string } | null;
+  /**
+   * Documento y teléfono del PDF: RUC de la empresa (o documento de la persona) y
+   * teléfono del contacto (o del cliente). En las emitidas se usan los datos copiados
+   * al emitir y, si faltan, los actuales (p. ej., un teléfono agregado después).
+   */
+  pdfClient: {
+    document: QuotePdfClientDocument | null;
+    phone: string | null;
+  };
   lines: QuoteLineDraft[];
 };
 
@@ -181,6 +192,22 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
 
   const source = q.source as { id: string; code: string | null } | null;
 
+  const currentClientPhone = c.phone ?? c.contact_phone;
+  const documentType =
+    (issued ? q.client_document_type : null) ?? c.document_type;
+  const documentNumber =
+    (issued ? q.client_document_number : null) ?? c.document_number;
+  const clientPhone = (issued ? q.client_phone : null) ?? currentClientPhone;
+  const pdfPhone = q.contacts
+    ? ((issued ? q.contact_phone : null) ?? q.contacts.phone ?? clientPhone)
+    : clientPhone;
+
+  const items = [...q.quote_items].sort((a, b) => a.position - b.position);
+  const imageUrls = await signedQuoteImageUrls(
+    supabase,
+    items.map((item) => item.reference_image_path),
+  );
+
   return {
     id: q.id,
     code: q.code ?? "",
@@ -201,30 +228,56 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     terms: q.terms,
     total: toCents(Number(q.total)),
     duplicatedFrom: source ? { id: source.id, code: source.code ?? "" } : null,
-    lines: [...q.quote_items]
-      .sort((a, b) => a.position - b.position)
-      .map((item) => ({
-        key: item.id,
-        shopifyProductId: item.shopify_product_id,
-        shopifyVariantId: item.shopify_variant_id,
-        title: item.title,
-        variantTitle: item.variant_title,
-        sku: item.sku,
-        imageUrl: item.image_url,
-        catalogPrice: money(item.catalog_price),
-        customization: item.customization,
-        quantity: String(item.quantity),
-        unitPrice: money(item.unit_price) ?? "0.00",
-        discountType: (item.discount_type ??
-          "") as QuoteLineDraft["discountType"],
-        discountValue:
-          item.discount_type === "monto"
-            ? (money(item.discount_value) ?? "")
-            : item.discount_type === "porcentaje"
-              ? String(Number(item.discount_value))
-              : "",
-      })),
+    pdfClient: {
+      document:
+        documentType && documentNumber
+          ? { type: documentType, number: documentNumber }
+          : null,
+      phone: pdfPhone,
+    },
+    lines: items.map((item) => ({
+      key: item.id,
+      shopifyProductId: item.shopify_product_id,
+      shopifyVariantId: item.shopify_variant_id,
+      title: item.title,
+      variantTitle: item.variant_title,
+      sku: item.sku,
+      imageUrl: item.image_url,
+      referenceImagePath: item.reference_image_path,
+      referenceImageUrl: item.reference_image_path
+        ? (imageUrls.get(item.reference_image_path) ?? null)
+        : null,
+      catalogPrice: money(item.catalog_price),
+      customization: item.customization,
+      quantity: String(item.quantity),
+      unitPrice: money(item.unit_price) ?? "0.00",
+      discountType: (item.discount_type ??
+        "") as QuoteLineDraft["discountType"],
+      discountValue:
+        item.discount_type === "monto"
+          ? (money(item.discount_value) ?? "")
+          : item.discount_type === "porcentaje"
+            ? String(Number(item.discount_value))
+            : "",
+    })),
   };
+}
+
+/** URLs firmadas (1 h) de las fotos referenciales, por ruta. */
+async function signedQuoteImageUrls(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  paths: (string | null)[],
+): Promise<Map<string, string>> {
+  const unique = [...new Set(paths.filter((p): p is string => Boolean(p)))];
+  if (unique.length === 0) return new Map();
+  const { data, error } = await supabase.storage
+    .from(QUOTE_IMAGES_BUCKET)
+    .createSignedUrls(unique, 60 * 60);
+  // Sin la URL la línea se muestra sin foto; no se rompe la página.
+  if (error || !data) return new Map();
+  return new Map(
+    data.flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl]] : [])),
+  );
 }
 
 /** Nombre de un cliente (para mostrar el filtro por cliente del listado). */

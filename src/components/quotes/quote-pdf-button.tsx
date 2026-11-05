@@ -1,12 +1,23 @@
 "use client";
 
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2, Pencil } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { ContactDialog } from "@/components/clients/contact-dialog";
+import { EditClientDialog } from "@/components/clients/edit-client-dialog";
 import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { QUOTE_PDF_MISSING_ISSUER } from "@/domain/quote-issuers";
 import {
   quotePdfFileName,
@@ -15,6 +26,8 @@ import {
   type QuotePdfData,
 } from "@/domain/quote-pdf";
 import { whatsappUrl } from "@/domain/whatsapp-quote";
+import { getClientForEdit } from "@/server/clients/actions";
+import type { ClientDetail } from "@/server/clients/queries";
 
 import { drawQuotePdf } from "./quote-pdf-draw";
 import { canShareFiles } from "./web-share";
@@ -38,12 +51,57 @@ async function logoDataUrl(): Promise<string | null> {
   }
 }
 
+/** Lado mayor (px) de las fotos de las filas: bastan para 16 mm a buena resolución. */
+const PHOTO_PX = 400;
+
+/**
+ * Foto de una fila como data URL JPEG (reducida, sobre fondo blanco): así jsPDF la
+ * dibuja aunque sea WebP o PNG. Si no se puede descargar o leer, la fila va sin foto.
+ */
+async function photoDataUrl(url: string): Promise<string | null> {
+  if (typeof createImageBitmap !== "function") return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const bitmap = await createImageBitmap(await res.blob());
+    const scale = Math.min(1, PHOTO_PX / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } catch {
+    return null;
+  }
+}
+
 async function buildPdf(data: QuotePdfData) {
   const model = quotePdfModel(data);
-  const logo = await logoDataUrl();
-  const pdf = await drawQuotePdf(model, { logo });
+  const [logo, images] = await Promise.all([
+    logoDataUrl(),
+    Promise.all(
+      model.rows.map((row) => (row.image ? photoDataUrl(row.image) : null)),
+    ),
+  ]);
+  const pdf = await drawQuotePdf(model, { logo, images });
   return { pdf, fileName: quotePdfFileName(data.code) };
 }
+
+type PdfAction = "export" | "share";
+
+/** Quién se edita desde el aviso «sin teléfono»: el cliente o el contacto. */
+type Editing =
+  | { kind: "client"; client: ClientDetail }
+  | {
+      kind: "contact";
+      client: ClientDetail;
+      contact: ClientDetail["contacts"][number];
+    };
 
 /**
  * Botones "Exportar PDF" y "Compartir por WhatsApp" del detalle de la cotización
@@ -54,14 +112,73 @@ async function buildPdf(data: QuotePdfData) {
 export function QuotePdfButton({
   data,
   phone = null,
+  clientId = null,
+  contactId = null,
+  canEditClient = false,
 }: {
   data: QuotePdfData;
   /** Teléfono del cliente o del contacto, para el enlace de WhatsApp. */
   phone?: string | null;
+  /** Cliente (y contacto) de la cotización, para agregarle el teléfono que falta. */
+  clientId?: string | null;
+  contactId?: string | null;
+  /** Quien puede editar clientes ve «Editar cliente» en el aviso sin teléfono. */
+  canEditClient?: boolean;
 }) {
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const busy = exporting || sharing;
+  const [loadingClient, setLoadingClient] = useState(false);
+  // Acción que espera la respuesta al aviso «sin teléfono».
+  const [warning, setWarning] = useState<PdfAction | null>(null);
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const busy = exporting || sharing || loadingClient;
+  const who = contactId ? "El contacto" : "El cliente";
+
+  /** Sin teléfono, primero se avisa; si acepta, se genera igual. */
+  function start(action: PdfAction) {
+    if (missingIssuer()) return;
+    if (!data.phone) {
+      setWarning(action);
+      return;
+    }
+    void run(action);
+  }
+
+  function run(action: PdfAction) {
+    return action === "export" ? exportPdf() : share();
+  }
+
+  async function editClient() {
+    if (!clientId) return;
+    setLoadingClient(true);
+    try {
+      const client = await getClientForEdit(clientId);
+      const contact = contactId
+        ? client?.contacts.find((k) => k.id === contactId)
+        : null;
+      if (!client || (contactId && !contact)) {
+        toast.error("No se encontró el cliente.");
+        return;
+      }
+      setWarning(null);
+      setEditing(
+        contact
+          ? { kind: "contact", client, contact }
+          : { kind: "client", client },
+      );
+    } catch {
+      toast.error("No se pudo abrir el cliente. Inténtalo de nuevo.");
+    } finally {
+      setLoadingClient(false);
+    }
+  }
+
+  function edited() {
+    setEditing(null);
+    router.refresh();
+    toast.info("Ya puedes volver a generar el PDF con el teléfono.");
+  }
 
   /** Sin sucursal no hay cuentas que mostrar: no se genera el PDF. */
   function missingIssuer(): boolean {
@@ -71,7 +188,6 @@ export function QuotePdfButton({
   }
 
   async function exportPdf() {
-    if (missingIssuer()) return;
     setExporting(true);
     try {
       const { pdf, fileName } = await buildPdf(data);
@@ -85,7 +201,6 @@ export function QuotePdfButton({
   }
 
   async function share() {
-    if (missingIssuer()) return;
     setSharing(true);
     try {
       const { pdf, fileName } = await buildPdf(data);
@@ -115,7 +230,7 @@ export function QuotePdfButton({
 
   return (
     <>
-      <Button variant="outline" onClick={exportPdf} disabled={busy}>
+      <Button variant="outline" onClick={() => start("export")} disabled={busy}>
         {exporting ? (
           <Loader2 className="animate-spin" aria-hidden />
         ) : (
@@ -123,7 +238,7 @@ export function QuotePdfButton({
         )}
         Exportar PDF
       </Button>
-      <Button variant="outline" onClick={share} disabled={busy}>
+      <Button variant="outline" onClick={() => start("share")} disabled={busy}>
         {sharing ? (
           <Loader2 className="animate-spin" aria-hidden />
         ) : (
@@ -131,6 +246,74 @@ export function QuotePdfButton({
         )}
         Compartir por WhatsApp
       </Button>
+      <Dialog
+        open={warning !== null}
+        onOpenChange={(open) => {
+          if (!open && !loadingClient) setWarning(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{who} no tiene teléfono</DialogTitle>
+            <DialogDescription>
+              Si continúas, la cotización se generará sin teléfono.
+              {canEditClient && clientId
+                ? ` También puedes editar ${contactId ? "el contacto" : "el cliente"} y agregarle su teléfono.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            {canEditClient && clientId ? (
+              <Button
+                variant="outline"
+                disabled={loadingClient}
+                onClick={() => void editClient()}
+              >
+                {loadingClient ? (
+                  <Loader2 className="animate-spin" aria-hidden />
+                ) : (
+                  <Pencil aria-hidden />
+                )}
+                {contactId ? "Editar contacto" : "Editar cliente"}
+              </Button>
+            ) : null}
+            <Button
+              disabled={loadingClient}
+              onClick={() => {
+                const action = warning;
+                setWarning(null);
+                if (action) void run(action);
+              }}
+            >
+              Generar sin teléfono
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {editing?.kind === "client" ? (
+        <EditClientDialog
+          client={editing.client}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+          onSaved={edited}
+        />
+      ) : null}
+      {editing?.kind === "contact" ? (
+        <ContactDialog
+          clientId={editing.client.id}
+          companyName={editing.client.displayName}
+          contact={editing.contact}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+          onSaved={edited}
+        />
+      ) : null}
     </>
   );
 }
