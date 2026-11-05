@@ -7,6 +7,7 @@ const TONES = {
   emitida: "info",
   aceptada: "success",
   rechazada: "critical",
+  anulada: "neutral",
   vencida: "neutral",
 } as const satisfies Record<QuoteDisplayStatus, BadgeTone>;
 

@@ -416,6 +416,7 @@ export function quotesCsv(data: DashboardQuotes, period: string): string {
         ["Aceptadas", cot.aceptada],
         ["Rechazadas", cot.rechazada],
         ["Vencidas", cot.vencida],
+        ["Anuladas", cot.anulada],
         ["Aceptación (%)", cot.acceptance],
         ["Monto emitido (S/)", cot.amount],
         ["Monto aceptado (S/)", cot.accepted_amount],

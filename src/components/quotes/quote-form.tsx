@@ -46,6 +46,7 @@ import {
   setQuoteIssuer,
 } from "@/server/quotes/actions";
 
+import { CompanyContactPicker, companyIdOf } from "./company-contact-picker";
 import { QuoteLinesEditor } from "./quote-lines-editor";
 
 export type QuoteFormValues = {
@@ -289,6 +290,16 @@ export function QuoteForm({
               canCreate={canCreateClient}
               onSelect={(client) => set({ client })}
             />
+            <FormError id="cliente-error" message={errors?.clientId} />
+            {values.client && companyIdOf(values.client) ? (
+              <div className="pt-2">
+                <CompanyContactPicker
+                  client={values.client}
+                  canCreate={canCreateClient}
+                  onChange={(client) => set({ client })}
+                />
+              </div>
+            ) : null}
             {values.client?.source === "local" &&
             values.client.kind === "contacto" ? (
               <p className="text-muted-foreground text-xs">
@@ -296,7 +307,6 @@ export function QuoteForm({
                 {values.client.name}.
               </p>
             ) : null}
-            <FormError id="cliente-error" message={errors?.clientId} />
           </div>
         )}
       </Section>

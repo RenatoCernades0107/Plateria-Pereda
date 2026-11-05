@@ -37,7 +37,8 @@ export default async function CotizacionPage({
   if (!quote) notFound();
 
   const draft = quote.status === "borrador";
-  const canExportPdf = quote.lines.length > 0;
+  // Una anulada (emitida por error) no se exporta ni se comparte.
+  const canExportPdf = quote.lines.length > 0 && quote.status !== "anulada";
   const [company, activeIssuers] = await Promise.all([
     getSettings(),
     listQuoteIssuers({ onlyActive: true }),
@@ -69,6 +70,8 @@ export default async function CotizacionPage({
     deliveryDays: quote.deliveryDays,
     clientName,
     contactName: client.name,
+    clientDocument: quote.pdfClient.document,
+    phone: quote.pdfClient.phone,
     lines: quote.lines.map(quotePdfLineFromDraft),
     applyIgv: quote.applyIgv,
     notes: quote.notes,
@@ -92,7 +95,9 @@ export default async function CotizacionPage({
             description={
               draft
                 ? "Borrador: se puede editar hasta emitirla."
-                : "Emitida: para cambiarla, duplícala."
+                : quote.status === "anulada"
+                  ? "Anulada: se emitió por error. Para corregirla, duplícala."
+                  : "Emitida: para cambiarla, duplícala."
             }
           />
           <div className="-mt-4 flex flex-wrap items-center gap-2 text-sm">
@@ -120,7 +125,17 @@ export default async function CotizacionPage({
         </div>
         <div className="flex flex-wrap gap-2">
           {canExportPdf ? (
-            <QuotePdfButton data={pdfData} phone={client.phone} />
+            <QuotePdfButton
+              data={pdfData}
+              phone={quote.pdfClient.phone}
+              clientId={client.source === "local" ? client.clientId : null}
+              contactId={
+                client.source === "local" && client.kind === "contacto"
+                  ? client.contactId
+                  : null
+              }
+              canEditClient={can(user.role, "clientes.editar")}
+            />
           ) : null}
           <QuoteActions
             id={quote.id}

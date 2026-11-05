@@ -1,5 +1,7 @@
 import { amountInWords } from "./amount-in-words";
+import type { DocumentType } from "./documents";
 import { formatCents } from "./money";
+import { formatPhone } from "./phone";
 import {
   formatQuoteDateLong,
   lineTotal,
@@ -36,6 +38,19 @@ export type QuotePdfLine = QuoteLineAmounts & {
   sku: string | null;
   /** Título, variante y personalización ya unidos en una sola descripción. */
   description: string;
+  /** Foto de la fila: la referencial subida o, si no hay, la de Shopify. */
+  image: string | null;
+};
+
+/** Documento del cliente en el PDF: RUC de la empresa o el documento de la persona. */
+export type QuotePdfClientDocument = { type: DocumentType; number: string };
+
+/** Etiqueta corta del documento en el PDF. */
+const PDF_DOCUMENT_LABELS: Record<DocumentType, string> = {
+  dni: "DNI",
+  ce: "C.E.",
+  pasaporte: "Pasaporte",
+  ruc: "RUC",
 };
 
 export type QuotePdfData = {
@@ -55,6 +70,10 @@ export type QuotePdfData = {
   clientName: string;
   /** Nombre del contacto; igual al del cliente cuando no se cotiza a un contacto. */
   contactName: string;
+  /** RUC de la empresa o documento de la persona; null si no tiene (no se muestra). */
+  clientDocument: QuotePdfClientDocument | null;
+  /** Teléfono (E.164) del contacto o del cliente; null si no tiene (no se muestra). */
+  phone: string | null;
   lines: QuotePdfLine[];
   /** Suma el IGV (18 %) a subtotal − descuentos (casilla del formulario). */
   applyIgv: boolean;
@@ -74,6 +93,7 @@ export function quotePdfLineFromDraft(line: QuoteLineDraft): QuotePdfLine {
   return {
     ...draftAmounts(line),
     sku: line.sku,
+    image: line.referenceImageUrl ?? line.imageUrl,
     description: [line.title, line.variantTitle, line.customization]
       .map((s) => s.trim())
       .filter(Boolean)
@@ -91,6 +111,8 @@ function cityFromAddress(address: string): string {
 }
 
 export type QuotePdfRow = {
+  /** URL de la foto de la fila (se descarga al dibujar); null sin foto. */
+  image: string | null;
   sku: string;
   description: string;
   quantity: string;
@@ -107,7 +129,11 @@ export type QuotePdfModel = {
   /** Va debajo del logo; `DEFAULT_COMPANY_ADDRESS` si la configuración está vacía. */
   companyAddress: string;
   clientName: string;
+  /** "RUC: 20…" o "DNI: 1234…"; null si el cliente no tiene documento. */
+  clientDocumentLine: string | null;
   contactName: string;
+  /** "+51 987 654 321"; null si no hay teléfono. */
+  phone: string | null;
   rows: QuotePdfRow[];
   subtotal: string;
   /** Null sin descuentos (no se muestra la fila). */
@@ -144,6 +170,7 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
   if (!data.issuer) throw new QuotePdfMissingIssuerError();
   const totals = quoteTotals(data.lines, data.applyIgv);
   const rows: QuotePdfRow[] = data.lines.map((line) => ({
+    image: line.image,
     sku: line.sku ?? "",
     description: line.description,
     quantity: String(line.quantity),
@@ -160,7 +187,11 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     companyName: data.company.name,
     companyAddress: address,
     clientName: data.clientName,
+    clientDocumentLine: data.clientDocument?.number.trim()
+      ? `${PDF_DOCUMENT_LABELS[data.clientDocument.type]}: ${data.clientDocument.number.trim()}`
+      : null,
     contactName: data.contactName,
+    phone: data.phone ? formatPhone(data.phone) : null,
     rows,
     subtotal: formatCents(totals.subtotal),
     discount: totals.discount > 0 ? formatCents(totals.discount) : null,

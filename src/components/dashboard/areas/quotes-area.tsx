@@ -32,6 +32,7 @@ const COT_LABELS = {
   aceptada: "Aceptadas",
   rechazada: "Rechazadas",
   vencida: "Vencidas",
+  anulada: "Anuladas",
 } as const;
 
 export async function QuotesArea({ range }: { range: DashboardRange }) {
@@ -50,7 +51,14 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
     }))
     .filter((s) => s.value > 0);
   const cotSegments = (
-    ["borrador", "emitida", "aceptada", "rechazada", "vencida"] as const
+    [
+      "borrador",
+      "emitida",
+      "aceptada",
+      "rechazada",
+      "vencida",
+      "anulada",
+    ] as const
   )
     .map((key) => ({
       key,

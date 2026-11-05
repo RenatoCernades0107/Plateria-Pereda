@@ -8,23 +8,43 @@ import type { QuotePdfModel } from "@/domain/quote-pdf";
  * derecha, código, cliente y contacto, tabla de productos sin grilla, totales, monto en
  * letras, condición de pago, tiempo de entrega y condiciones. Con IGV, la fila
  * "IGV (18 %)" va entre el subtotal (y el descuento) y el total. `logo` va como data
- * URL PNG/JPEG. Los textos fijos usan solo caracteres de WinAnsi (Helvetica de
+ * URL PNG/JPEG; `images`, las fotos de las filas (data URL JPEG, en el orden de
+ * `model.rows`; null sin foto): con alguna, la tabla suma una columna de foto a la
+ * izquierda. Los textos fijos usan solo caracteres de WinAnsi (Helvetica de
  * jsPDF no tiene, p. ej., el signo menos U+2212).
  */
 
 const MARGIN = 18;
 const GRAY = 110;
 
+/** Lado máximo de la foto de una fila (mm). */
+const PHOTO_SIZE = 16;
+
 type Column = {
-  key: "sku" | "description" | "quantity" | "unitPrice" | "total";
+  key: "photo" | "sku" | "description" | "quantity" | "unitPrice" | "total";
   title: string;
   width: number;
   align?: "left" | "center" | "right";
 };
 
+/** Tamaño de la foto dentro de un cuadro de PHOTO_SIZE, sin deformarla. */
+function photoBox(pdf: jsPDF, image: string): { w: number; h: number } | null {
+  try {
+    const { width, height } = pdf.getImageProperties(image);
+    if (!width || !height) return null;
+    const scale = PHOTO_SIZE / Math.max(width, height);
+    return { w: width * scale, h: height * scale };
+  } catch {
+    return null;
+  }
+}
+
 export async function drawQuotePdf(
   model: QuotePdfModel,
-  { logo = null }: { logo?: string | null } = {},
+  {
+    logo = null,
+    images = [],
+  }: { logo?: string | null; images?: (string | null)[] } = {},
 ): Promise<jsPDF> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
@@ -82,12 +102,27 @@ export async function drawQuotePdf(
   const client = pdf.splitTextToSize(model.clientName, contentW - fieldLabelW);
   pdf.text(client, MARGIN + fieldLabelW, y);
   y += Math.max(1, client.length) * 4.6 + 1.4;
+  // RUC de la empresa o documento de la persona (si tiene).
+  if (model.clientDocumentLine) {
+    pdf.text(model.clientDocumentLine, MARGIN + fieldLabelW, y);
+    y += 6;
+  }
   pdf.text("Contacto:", MARGIN, y);
   pdf.text(model.contactName, MARGIN + fieldLabelW, y);
+  if (model.phone) {
+    y += 6;
+    pdf.text("Teléfono:", MARGIN, y);
+    pdf.text(model.phone, MARGIN + fieldLabelW, y);
+  }
   y += 12;
 
   // --- Tabla de productos: sin grilla, solo una línea bajo el encabezado.
+  const photos = model.rows.map((_, i) => images[i] ?? null);
+  const withPhotos = photos.some(Boolean);
   const columns: Column[] = [
+    ...(withPhotos
+      ? [{ key: "photo", title: "Foto", width: PHOTO_SIZE + 3 } as Column]
+      : []),
     { key: "sku", title: "SKU", width: 24 },
     { key: "description", title: "Descripción", width: 0 },
     { key: "quantity", title: "Cant.", width: 16, align: "center" },
@@ -117,11 +152,15 @@ export async function drawQuotePdf(
   drawTableHeader();
 
   const lineH = 4.6;
-  for (const row of model.rows) {
+  for (const [index, row] of model.rows.entries()) {
     font("normal", 9.5);
     const desc = pdf.splitTextToSize(row.description, description.width - 2);
     const rows = Math.max(1, desc.length);
-    if (y + rows * lineH > bottomLimit) {
+    const photo = photos[index] ?? null;
+    const photoSize = photo ? photoBox(pdf, photo) : null;
+    // La foto empieza a la altura de las letras de la fila (≈ 3.5 mm sobre la base).
+    const rowH = Math.max(rows * lineH, photoSize ? photoSize.h - 0.5 : 0);
+    if (y + rowH > bottomLimit) {
       pdf.addPage();
       y = MARGIN;
       drawTableHeader();
@@ -130,6 +169,15 @@ export async function drawQuotePdf(
       const align = c.align ?? "left";
       const x = textX(i, c);
       switch (c.key) {
+        case "photo":
+          if (photo && photoSize) {
+            try {
+              pdf.addImage(photo, "JPEG", x, y - 3.5, photoSize.w, photoSize.h);
+            } catch {
+              // Una foto que jsPDF no puede leer no impide el PDF.
+            }
+          }
+          break;
         case "sku":
           font("normal", 9);
           pdf.text(row.sku || "—", x, y);
@@ -152,7 +200,7 @@ export async function drawQuotePdf(
           break;
       }
     });
-    y += rows * lineH + 3;
+    y += rowH + 3;
   }
 
   // --- Totales: línea arriba, Sub Total y Total Venta a la derecha.

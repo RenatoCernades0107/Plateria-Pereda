@@ -29,8 +29,11 @@ const data: QuotePdfData = {
   deliveryDays: 30,
   clientName: "Lorena Rodríguez di Laura",
   contactName: "Lorena Rodríguez di Laura",
+  clientDocument: null,
+  phone: null,
   lines: [
     {
+      image: null,
       sku: "TNS01",
       description: "Escultura en madera tallada a mano",
       quantity: 1,

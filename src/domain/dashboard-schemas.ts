@@ -208,6 +208,8 @@ export const quotesSchema = z.object({
     aceptada: num,
     rechazada: num,
     vencida: num,
+    // Antes de la migración de «Anulada» la BD no lo enviaba.
+    anulada: num.default(0),
     amount: num,
     accepted_amount: num,
     acceptance: nullableNum,

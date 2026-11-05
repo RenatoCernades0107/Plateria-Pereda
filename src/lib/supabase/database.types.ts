@@ -909,6 +909,7 @@ export type Database = {
           position: number;
           quantity: number;
           quote_id: string;
+          reference_image_path: string | null;
           shopify_product_id: string | null;
           shopify_variant_id: string | null;
           sku: string | null;
@@ -931,6 +932,7 @@ export type Database = {
           position?: number;
           quantity: number;
           quote_id: string;
+          reference_image_path?: string | null;
           shopify_product_id?: string | null;
           shopify_variant_id?: string | null;
           sku?: string | null;
@@ -953,6 +955,7 @@ export type Database = {
           position?: number;
           quantity?: number;
           quote_id?: string;
+          reference_image_path?: string | null;
           shopify_product_id?: string | null;
           shopify_variant_id?: string | null;
           sku?: string | null;
@@ -2809,7 +2812,8 @@ export type Database = {
         | "sin_arreglo"
         | "anulada";
       quote_payment_condition: "contado" | "credito" | "a_cuenta";
-      quote_status: "borrador" | "emitida" | "aceptada" | "rechazada";
+      quote_status:
+        "borrador" | "emitida" | "aceptada" | "rechazada" | "anulada";
       restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
@@ -2998,7 +3002,7 @@ export const Constants = {
         "anulada",
       ],
       quote_payment_condition: ["contado", "credito", "a_cuenta"],
-      quote_status: ["borrador", "emitida", "aceptada", "rechazada"],
+      quote_status: ["borrador", "emitida", "aceptada", "rechazada", "anulada"],
       restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [

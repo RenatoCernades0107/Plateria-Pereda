@@ -287,6 +287,7 @@ describe("CSV de cada pestaña", () => {
         aceptada: 1,
         rechazada: 0,
         vencida: 0,
+        anulada: 0,
         amount: 100,
         accepted_amount: 50,
         acceptance: 50,

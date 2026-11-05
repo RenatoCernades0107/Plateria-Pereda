@@ -10,6 +10,7 @@ export const QUOTE_STATUS_FILTERS = [
   "vencida",
   "aceptada",
   "rechazada",
+  "anulada",
 ] as const satisfies readonly QuoteDisplayStatus[];
 
 export type QuoteFilters = {

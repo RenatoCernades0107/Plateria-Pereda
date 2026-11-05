@@ -44,6 +44,8 @@ describe("lineFromCatalog", () => {
       variantTitle: "Talla 6",
       sku: "ANI-950-06",
       imageUrl: "https://cdn.shopify.com/anillo.jpg",
+      referenceImagePath: null,
+      referenceImageUrl: null,
       catalogPrice: "150.00",
       customization: "",
       quantity: "1",

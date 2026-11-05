@@ -21,6 +21,7 @@ import {
   type ContactInput,
 } from "@/lib/validation/clients";
 import { requirePermission } from "@/server/auth";
+import { getClientDetail, type ClientDetail } from "@/server/clients/queries";
 import { scheduleShopifySync } from "@/server/shopify-sync/run";
 
 export type CreateClientResult =
@@ -346,4 +347,16 @@ export async function setContactActive(
   }
   revalidateClient(data[0]!.client_id);
   return { ok: true };
+}
+
+/**
+ * Datos de un cliente (con sus contactos) para abrir su edición desde otra pantalla,
+ * p. ej. el aviso de «sin teléfono» del PDF de la cotización.
+ */
+export async function getClientForEdit(
+  id: string,
+): Promise<ClientDetail | null> {
+  await requirePermission("clientes.editar");
+  if (!validArgs([idArg], [id])) return null;
+  return getClientDetail(id);
 }

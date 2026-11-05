@@ -10,7 +10,13 @@ import { QuotePdfButton } from "./quote-pdf-button";
 import { drawQuotePdf } from "./quote-pdf-draw";
 import { canShareFiles } from "./web-share";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+vi.mock("@/server/clients/actions", () => ({ getClientForEdit: vi.fn() }));
 vi.mock("./quote-pdf-draw", () => ({ drawQuotePdf: vi.fn() }));
 vi.mock("./web-share", () => ({ canShareFiles: vi.fn(() => false) }));
 vi.mock("@/domain/whatsapp-quote", () => ({ whatsappUrl: vi.fn(() => null) }));
@@ -45,9 +51,12 @@ const data: QuotePdfData = {
   deliveryDays: 30,
   clientName: "Lorena",
   contactName: "Lorena",
+  clientDocument: null,
+  phone: "+51987654321",
   applyIgv: true,
   lines: [
     {
+      image: null,
       sku: "TNS01",
       description: "Escultura",
       quantity: 1,
@@ -78,6 +87,55 @@ describe("QuotePdfButton", () => {
     expect(drawQuotePdf).toHaveBeenCalled();
     expect(fakePdf.save).toHaveBeenCalledWith("cotizacion-COT-000001.pdf");
     expect(toast.success).toHaveBeenCalledWith("Cotización exportada en PDF.");
+  });
+
+  it("sin teléfono avisa antes; si acepta, genera el PDF igual", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("sin red"))),
+    );
+    vi.mocked(drawQuotePdf).mockResolvedValue(
+      fakePdf as unknown as Awaited<ReturnType<typeof drawQuotePdf>>,
+    );
+    const user = userEvent.setup();
+    render(
+      <QuotePdfButton
+        data={{ ...data, phone: null }}
+        clientId="66666666-6666-4666-8666-666666666666"
+        canEditClient
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    expect(drawQuotePdf).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "El cliente no tiene teléfono" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Editar cliente" }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Generar sin teléfono" }),
+    );
+    expect(drawQuotePdf).toHaveBeenCalled();
+    expect(fakePdf.save).toHaveBeenCalledWith("cotizacion-COT-000001.pdf");
+  });
+
+  it("sin permiso para editar clientes, el aviso no ofrece editar", async () => {
+    const user = userEvent.setup();
+    render(
+      <QuotePdfButton
+        data={{ ...data, phone: null }}
+        clientId="66666666-6666-4666-8666-666666666666"
+        contactId="77777777-7777-4777-8777-777777777777"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    expect(
+      screen.getByRole("dialog", { name: "El contacto no tiene teléfono" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Editar contacto" }),
+    ).not.toBeInTheDocument();
   });
 
   it("sin sucursal, no genera el PDF y avisa (exportar y compartir)", async () => {

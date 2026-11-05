@@ -36,8 +36,11 @@ const baseData: QuotePdfData = {
   deliveryDays: 30,
   clientName: "Lorena Rodríguez di Laura",
   contactName: "Lorena Rodríguez di Laura",
+  clientDocument: null,
+  phone: null,
   lines: [
     {
+      image: null,
       sku: "TNS01",
       description: "Escultura en madera · Pelota de tenis en plata 950",
       quantity: 1,
@@ -97,6 +100,7 @@ describe("quotePdfModel", () => {
     expect(model.companyAddress).toBe(baseData.company.address);
     expect(model.rows).toEqual([
       {
+        image: null,
         sku: "TNS01",
         description: baseData.lines[0]!.description,
         quantity: "1",
@@ -163,6 +167,33 @@ describe("quotePdfModel", () => {
       quotePdfModel({ ...baseData, paymentCondition: "a_cuenta" })
         .paymentConditionText,
     ).toBe("A cuenta");
+  });
+
+  it("RUC de la empresa y teléfono del contacto; sin ellos no se muestran", () => {
+    const model = quotePdfModel({
+      ...baseData,
+      clientName: "Joyería Andina SAC",
+      contactName: "Ana Pérez",
+      clientDocument: { type: "ruc", number: "20557169866" },
+      phone: "+51987654321",
+    });
+    expect(model.clientDocumentLine).toBe("RUC: 20557169866");
+    expect(model.phone).toBe("+51 987 654 321");
+    const person = quotePdfModel({
+      ...baseData,
+      clientDocument: { type: "dni", number: "12345678" },
+    });
+    expect(person.clientDocumentLine).toBe("DNI: 12345678");
+    expect(quotePdfModel(baseData).clientDocumentLine).toBeNull();
+    expect(quotePdfModel(baseData).phone).toBeNull();
+  });
+
+  it("la fila lleva la foto de la línea", () => {
+    const model = quotePdfModel({
+      ...baseData,
+      lines: [{ ...baseData.lines[0]!, image: "https://x/foto.jpg" }],
+    });
+    expect(model.rows[0]!.image).toBe("https://x/foto.jpg");
   });
 
   it("sin sucursal no se genera el PDF", () => {
