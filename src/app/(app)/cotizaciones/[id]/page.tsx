@@ -10,10 +10,12 @@ import { QuoteDeliveryButton } from "@/components/quotes/quote-delivery-dialog";
 import { QuoteForm } from "@/components/quotes/quote-form";
 import { QuotePdfButton } from "@/components/quotes/quote-pdf-button";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
+import { QuoteWorkshopNotes } from "@/components/quotes/quote-workshop-notes";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
 import { DEFAULT_QUOTE_CREDIT_DAYS, limaDateOf } from "@/domain/quote";
 import { quotePdfLineFromDraft, type QuotePdfData } from "@/domain/quote-pdf";
+import type { WorkshopQuote } from "@/domain/quote-workshop-pdf";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
 import { getQuote, listQuoteIssuers } from "@/server/quotes/queries";
@@ -37,8 +39,9 @@ export default async function CotizacionPage({
   if (!quote) notFound();
 
   const draft = quote.status === "borrador";
-  // Una anulada (emitida por error) no se exporta ni se comparte.
-  const canExportPdf = quote.lines.length > 0 && quote.status !== "anulada";
+  // Una anulada (emitida por error) no se exporta ni se comparte; para el taller, sí.
+  const canExportPdf = quote.lines.length > 0;
+  const voided = quote.status === "anulada";
   const [company, activeIssuers] = await Promise.all([
     getSettings(),
     listQuoteIssuers({ onlyActive: true }),
@@ -76,6 +79,26 @@ export default async function CotizacionPage({
     applyIgv: quote.applyIgv,
     notes: quote.notes,
     terms: quote.terms,
+  };
+  // Orden para taller: sin precios ni contacto, con las instrucciones para el taller.
+  const workshop: WorkshopQuote = {
+    id: quote.id,
+    code: quote.code,
+    status: quote.displayStatus,
+    clientName,
+    issueDate: quote.issueDate,
+    deliveryDate: quote.deliveryDate,
+    supplierDeliveryDate: quote.supplierDeliveryDate,
+    notes: quote.workshopNotes,
+    lines: quote.lines.map((line) => ({
+      id: line.key,
+      title: line.title,
+      variantTitle: line.variantTitle,
+      sku: line.sku,
+      customization: line.customization,
+      quantity: Number(line.quantity),
+      image: line.referenceImageUrl ?? line.imageUrl,
+    })),
   };
 
   return (
@@ -135,6 +158,8 @@ export default async function CotizacionPage({
                   : null
               }
               canEditClient={can(user.role, "clientes.editar")}
+              workshop={workshop}
+              workshopOnly={voided}
             />
           ) : null}
           <QuoteActions
@@ -144,6 +169,11 @@ export default async function CotizacionPage({
           />
         </div>
       </div>
+      <QuoteWorkshopNotes
+        key={`${quote.id}:${quote.workshopNotes}`}
+        quoteId={quote.id}
+        notes={quote.workshopNotes}
+      />
       <QuoteForm
         // Al cambiar de estado se reinicia con los datos guardados.
         key={`${quote.id}:${quote.status}`}

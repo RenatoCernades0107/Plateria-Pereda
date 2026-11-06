@@ -6,11 +6,17 @@ import { z } from "zod";
 import { todayInLima } from "@/domain/delivery-date";
 import { QUOTE_STATUSES, type QuoteStatus } from "@/domain/quote";
 import { quoteDeliveryDatesError } from "@/domain/quote-delivery";
+import {
+  MAX_WORKSHOP_NOTES,
+  MAX_WORKSHOP_QUOTES,
+  type WorkshopQuote,
+} from "@/domain/quote-workshop-pdf";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import {
   INVALID_ARGS,
   idArg,
+  idsArg,
   optionalIdArg,
   validArgs,
 } from "@/lib/validation/action-args";
@@ -20,6 +26,7 @@ import {
   type QuoteFormInput,
 } from "@/lib/validation/quotes";
 import { requirePermission } from "@/server/auth";
+import { listWorkshopQuotes } from "@/server/quotes/queries";
 
 export type SaveQuoteResult = { ok: true; id: string } | { error: string };
 export type QuoteActionResult = { ok: true } | { error: string };
@@ -211,6 +218,43 @@ export async function setQuoteIssuer(
   if (data.length === 0) return { error: "La cotización no existe." };
   revalidateQuote(id);
   return { ok: true };
+}
+
+/**
+ * Guarda las instrucciones para el taller. Se puede en cualquier estado: no las ve el
+ * cliente, solo van en la orden para taller.
+ */
+export async function setQuoteWorkshopNotes(
+  id: string,
+  notes: string,
+): Promise<QuoteActionResult> {
+  await requirePermission("cotizador.usar");
+  if (!validArgs([idArg, z.string().max(MAX_WORKSHOP_NOTES)], [id, notes]))
+    return { error: INVALID_ARGS };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotes")
+    .update({ workshop_notes: notes.trim() })
+    .eq("id", id)
+    .select("id");
+  if (error) return { error: "No se pudieron guardar las instrucciones." };
+  if (data.length === 0) return { error: "La cotización no existe." };
+  revalidateQuote(id);
+  return { ok: true };
+}
+
+/** Datos de la orden para taller de las cotizaciones elegidas en el listado. */
+export async function getWorkshopQuotes(
+  ids: string[],
+): Promise<{ ok: true; quotes: WorkshopQuote[] } | { error: string }> {
+  await requirePermission("cotizador.usar");
+  if (!validArgs([idsArg], [ids]) || ids.length > MAX_WORKSHOP_QUOTES)
+    return { error: INVALID_ARGS };
+  try {
+    return { ok: true, quotes: await listWorkshopQuotes(ids) };
+  } catch {
+    return { error: "No se pudieron leer las cotizaciones." };
+  }
 }
 
 /** Copia la cotización como un borrador nuevo. */

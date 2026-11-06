@@ -22,6 +22,7 @@ import type {
 import { QUOTE_IMAGES_BUCKET } from "@/domain/quote-images";
 import type { QuoteLineDraft } from "@/domain/quote-line";
 import type { QuotePdfClientDocument } from "@/domain/quote-pdf";
+import type { WorkshopQuote } from "@/domain/quote-workshop-pdf";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -133,6 +134,8 @@ export type QuoteDetail = {
   validUntil: string | null;
   notes: string;
   terms: string;
+  /** Instrucciones para el taller (PDF «Orden para taller»). */
+  workshopNotes: string;
   total: Cents;
   duplicatedFrom: { id: string; code: string } | null;
   /**
@@ -226,6 +229,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     validUntil: q.valid_until,
     notes: q.notes,
     terms: q.terms,
+    workshopNotes: q.workshop_notes,
     total: toCents(Number(q.total)),
     duplicatedFrom: source ? { id: source.id, code: source.code ?? "" } : null,
     pdfClient: {
@@ -261,6 +265,55 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
             : "",
     })),
   };
+}
+
+/**
+ * Cotizaciones elegidas para la orden para taller, por número, con sus productos y la
+ * foto de cada uno (la referencial firmada o, si no hay, la de Shopify).
+ */
+export async function listWorkshopQuotes(
+  ids: readonly string[],
+): Promise<WorkshopQuote[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotes")
+    .select(
+      "id, code, status, valid_until, client_name, issue_date, delivery_date, supplier_delivery_date, workshop_notes, quote_items(id, position, title, variant_title, sku, customization, quantity, image_url, reference_image_path)",
+    )
+    .in("id", [...ids])
+    .order("number");
+  if (error) throw error;
+  const imageUrls = await signedQuoteImageUrls(
+    supabase,
+    data.flatMap((q) => q.quote_items.map((i) => i.reference_image_path)),
+  );
+  return data.map((q) => ({
+    id: q.id,
+    code: q.code ?? "",
+    status: quoteDisplayStatus(q.status, q.valid_until),
+    clientName: q.client_name,
+    issueDate: q.issue_date,
+    deliveryDate: q.delivery_date,
+    supplierDeliveryDate: q.supplier_delivery_date,
+    notes: q.workshop_notes,
+    lines: [...q.quote_items]
+      .sort((a, b) => a.position - b.position)
+      .map((i) => ({
+        id: i.id,
+        title: i.title,
+        variantTitle: i.variant_title,
+        sku: i.sku,
+        customization: i.customization,
+        quantity: i.quantity,
+        image:
+          (i.reference_image_path
+            ? imageUrls.get(i.reference_image_path)
+            : null) ??
+          i.image_url ??
+          null,
+      })),
+  }));
 }
 
 /** URLs firmadas (1 h) de las fotos referenciales, por ruta. */

@@ -25,11 +25,13 @@ import {
   quoteShareMessage,
   type QuotePdfData,
 } from "@/domain/quote-pdf";
+import type { WorkshopQuote } from "@/domain/quote-workshop-pdf";
 import { whatsappUrl } from "@/domain/whatsapp-quote";
 import { getClientForEdit } from "@/server/clients/actions";
 import type { ClientDetail } from "@/server/clients/queries";
 
 import { drawQuotePdf } from "./quote-pdf-draw";
+import { exportWorkshopPdf } from "./quote-workshop-export";
 import { canShareFiles } from "./web-share";
 
 const PDF_LOGO_URL = "/logo-pereda.png";
@@ -107,7 +109,10 @@ type Editing =
  * Botones "Exportar PDF" y "Compartir por WhatsApp" del detalle de la cotización
  * (Pasos 14.5 y 14.6). En celular, "Compartir" abre el menú nativo con el PDF
  * adjunto (Web Share API); sin ese soporte (escritorio), descarga el PDF y abre
- * WhatsApp con un mensaje breve.
+ * WhatsApp con un mensaje breve. Con `workshop`, "Exportar PDF" abre un diálogo para
+ * marcar si es la versión para taller (la orden para taller, sin precios y con las
+ * instrucciones para el taller); con `workshopOnly` (p. ej. una anulada) solo se
+ * exporta esa.
  */
 export function QuotePdfButton({
   data,
@@ -115,8 +120,14 @@ export function QuotePdfButton({
   clientId = null,
   contactId = null,
   canEditClient = false,
+  workshop = null,
+  workshopOnly = false,
 }: {
   data: QuotePdfData;
+  /** La cotización para la orden para taller. */
+  workshop?: WorkshopQuote | null;
+  /** Solo la versión para taller. */
+  workshopOnly?: boolean;
   /** Teléfono del cliente o del contacto, para el enlace de WhatsApp. */
   phone?: string | null;
   /** Cliente (y contacto) de la cotización, para agregarle el teléfono que falta. */
@@ -132,6 +143,9 @@ export function QuotePdfButton({
   // Acción que espera la respuesta al aviso «sin teléfono».
   const [warning, setWarning] = useState<PdfAction | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
+  // Diálogo "Exportar PDF" con la casilla "Para taller".
+  const [choosing, setChoosing] = useState(false);
+  const [forWorkshop, setForWorkshop] = useState(false);
   const busy = exporting || sharing || loadingClient;
   const who = contactId ? "El contacto" : "El cliente";
 
@@ -200,6 +214,29 @@ export function QuotePdfButton({
     }
   }
 
+  async function exportWorkshop() {
+    if (!workshop) return;
+    setExporting(true);
+    try {
+      await exportWorkshopPdf([workshop]);
+      toast.success("Orden para taller exportada en PDF.");
+      setChoosing(false);
+    } catch {
+      toast.error("No se pudo exportar el PDF. Inténtalo de nuevo.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  function exportChosen() {
+    if (forWorkshop) {
+      void exportWorkshop();
+      return;
+    }
+    setChoosing(false);
+    start("export");
+  }
+
   async function share() {
     setSharing(true);
     try {
@@ -228,16 +265,94 @@ export function QuotePdfButton({
     }
   }
 
+  if (workshopOnly && workshop) {
+    return (
+      <Button
+        variant="outline"
+        onClick={() => void exportWorkshop()}
+        disabled={busy}
+      >
+        {exporting ? (
+          <Loader2 className="animate-spin" aria-hidden />
+        ) : (
+          <FileDown className={PDF_ICON_CLASS} />
+        )}
+        PDF para taller
+      </Button>
+    );
+  }
+
   return (
     <>
-      <Button variant="outline" onClick={() => start("export")} disabled={busy}>
-        {exporting ? (
+      <Button
+        variant="outline"
+        onClick={() => {
+          if (!workshop) {
+            start("export");
+            return;
+          }
+          setForWorkshop(false);
+          setChoosing(true);
+        }}
+        disabled={busy}
+      >
+        {exporting && !choosing ? (
           <Loader2 className="animate-spin" aria-hidden />
         ) : (
           <FileDown className={PDF_ICON_CLASS} />
         )}
         Exportar PDF
       </Button>
+      <Dialog
+        open={choosing}
+        onOpenChange={(open) => {
+          if (!exporting) setChoosing(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar cotización en PDF</DialogTitle>
+            <DialogDescription>
+              Elige qué versión de {data.code} quieres exportar.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary mt-0.5 size-4"
+              checked={forWorkshop}
+              onChange={(e) => setForWorkshop(e.target.checked)}
+            />
+            <span>
+              Para taller
+              <span className="text-muted-foreground block text-xs">
+                Orden para taller: con el nombre del cliente, sin sus datos de
+                contacto ni precios, con la foto, la variante y la
+                personalización de cada producto, y las instrucciones para el
+                taller.
+              </span>
+            </span>
+          </label>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setChoosing(false)}
+              disabled={exporting}
+            >
+              Cancelar
+            </Button>
+            <Button type="button" onClick={exportChosen} disabled={exporting}>
+              {exporting ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <FileDown aria-hidden />
+              )}
+              Exportar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Button variant="outline" onClick={() => start("share")} disabled={busy}>
         {sharing ? (
           <Loader2 className="animate-spin" aria-hidden />
