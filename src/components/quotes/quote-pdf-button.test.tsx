@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,7 +7,10 @@ import type { QuotePdfData } from "@/domain/quote-pdf";
 import { whatsappUrl } from "@/domain/whatsapp-quote";
 
 import { QuotePdfButton } from "./quote-pdf-button";
+import type { WorkshopQuote } from "@/domain/quote-workshop-pdf";
+
 import { drawQuotePdf } from "./quote-pdf-draw";
+import { exportWorkshopPdf } from "./quote-workshop-export";
 import { canShareFiles } from "./web-share";
 
 vi.mock("sonner", () => ({
@@ -19,6 +22,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/server/clients/actions", () => ({ getClientForEdit: vi.fn() }));
 vi.mock("./quote-pdf-draw", () => ({ drawQuotePdf: vi.fn() }));
 vi.mock("./web-share", () => ({ canShareFiles: vi.fn(() => false) }));
+vi.mock("./quote-workshop-export", () => ({
+  exportWorkshopPdf: vi.fn(() => Promise.resolve()),
+}));
 vi.mock("@/domain/whatsapp-quote", () => ({ whatsappUrl: vi.fn(() => null) }));
 
 const fakePdf = {
@@ -65,6 +71,18 @@ const data: QuotePdfData = {
   ],
   notes: "",
   terms: "",
+};
+
+const workshop: WorkshopQuote = {
+  id: "88888888-8888-4888-8888-888888888888",
+  code: "COT-000001",
+  status: "aceptada",
+  clientName: "Lorena",
+  issueDate: "2026-08-17",
+  deliveryDate: null,
+  supplierDeliveryDate: null,
+  notes: "Acabado mate",
+  lines: [],
 };
 
 afterEach(() => {
@@ -244,5 +262,54 @@ describe("QuotePdfButton", () => {
       screen.getByRole("button", { name: "Compartir por WhatsApp" }),
     );
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("con la versión para taller, el diálogo deja elegir 'Para taller'", async () => {
+    const user = userEvent.setup();
+    render(<QuotePdfButton data={data} workshop={workshop} />);
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    const dialog = screen.getByRole("dialog", {
+      name: "Exportar cotización en PDF",
+    });
+    await user.click(
+      within(dialog).getByRole("checkbox", { name: /Para taller/ }),
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Exportar PDF" }),
+    );
+    expect(exportWorkshopPdf).toHaveBeenCalledWith([workshop]);
+    expect(drawQuotePdf).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith(
+      "Orden para taller exportada en PDF.",
+    );
+  });
+
+  it("sin marcar 'Para taller', exporta la cotización del cliente", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("sin red"))),
+    );
+    vi.mocked(drawQuotePdf).mockResolvedValue(
+      fakePdf as unknown as Awaited<ReturnType<typeof drawQuotePdf>>,
+    );
+    const user = userEvent.setup();
+    render(<QuotePdfButton data={data} workshop={workshop} />);
+    await user.click(screen.getByRole("button", { name: "Exportar PDF" }));
+    const dialog = screen.getByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Exportar PDF" }),
+    );
+    expect(exportWorkshopPdf).not.toHaveBeenCalled();
+    expect(fakePdf.save).toHaveBeenCalledWith("cotizacion-COT-000001.pdf");
+  });
+
+  it("solo para taller (anulada): un botón que exporta la orden para taller", async () => {
+    const user = userEvent.setup();
+    render(<QuotePdfButton data={data} workshop={workshop} workshopOnly />);
+    expect(
+      screen.queryByRole("button", { name: /Compartir por WhatsApp/ }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "PDF para taller" }));
+    expect(exportWorkshopPdf).toHaveBeenCalledWith([workshop]);
   });
 });

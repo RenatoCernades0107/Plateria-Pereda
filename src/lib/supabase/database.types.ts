@@ -1014,6 +1014,7 @@ export type Database = {
           updated_at: string;
           valid_until: string | null;
           validity_days: number;
+          workshop_notes: string;
           effective_status: string | null;
         };
         Insert: {
@@ -1054,6 +1055,7 @@ export type Database = {
           updated_at?: string;
           valid_until?: never;
           validity_days?: number;
+          workshop_notes?: string;
         };
         Update: {
           apply_igv?: boolean;
@@ -1093,6 +1095,7 @@ export type Database = {
           updated_at?: string;
           valid_until?: never;
           validity_days?: number;
+          workshop_notes?: string;
         };
         Relationships: [
           {

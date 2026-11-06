@@ -10,6 +10,12 @@ import type { QuoteDisplayStatus } from "./quote";
  * `components/quotes/quote-workshop-pdf-draw.ts`.
  */
 
+/** Largo máximo de las instrucciones para taller (como el check de la BD). */
+export const MAX_WORKSHOP_NOTES = 2000;
+
+/** Máximo de cotizaciones en una orden para taller. */
+export const MAX_WORKSHOP_QUOTES = 100;
+
 export type WorkshopQuoteLine = {
   id: string;
   title: string;
@@ -32,7 +38,7 @@ export type WorkshopQuote = {
   supplierDeliveryDate: string | null;
   /** Fecha de entrega al cliente; null si no se fijó. */
   deliveryDate: string | null;
-  /** Notas de la cotización (detalles del pedido). */
+  /** Instrucciones para el taller (no las notas para el cliente). */
   notes: string;
   lines: WorkshopQuoteLine[];
 };

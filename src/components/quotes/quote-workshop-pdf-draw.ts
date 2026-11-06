@@ -7,7 +7,7 @@ import type { WorkshopPdfModel } from "@/domain/quote-workshop-pdf";
  * estilo de la guía para taller: logo y rótulo "TALLER", título y recuadro con la
  * fecha y los totales; luego, por cotización, una barra con el código, el cliente y
  * la fecha de entrega del taller, sus datos y la tabla de productos (foto grande,
- * SKU, cantidad, producto y variante, y la personalización completa), y sus notas.
+ * SKU, cantidad, producto y variante, y la personalización completa), y sus instrucciones para el taller.
  * `logo` y las fotos (por id de línea) van como data URL JPEG/PNG.
  */
 
@@ -236,7 +236,7 @@ export async function drawQuoteWorkshopPdf(
       y += r.h;
     }
 
-    // Notas de la cotización, si tiene.
+    // Instrucciones para el taller, si tiene.
     if (section.notes) {
       font("normal", 8.5);
       const notes = pdf.splitTextToSize(section.notes, contentW - pad * 2);
@@ -244,7 +244,7 @@ export async function drawQuoteWorkshopPdf(
       if (y + h > bottomLimit) newPage();
       pdf.setDrawColor(GRID).rect(MARGIN, y, contentW, h);
       font("bold", 7.5, 70);
-      pdf.text("NOTAS DE LA COTIZACIÓN", MARGIN + pad, y + 4);
+      pdf.text("INSTRUCCIONES PARA TALLER", MARGIN + pad, y + 4);
       font("normal", 8.5);
       pdf.text(notes, MARGIN + pad, y + 8.5);
       y += h;
