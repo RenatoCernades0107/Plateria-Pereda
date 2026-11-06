@@ -27,6 +27,8 @@ export const COT_STATUS_COLORS = {
   borrador: "bg-muted-foreground/35",
   emitida: "bg-viz-seq-300",
   aceptada: "bg-viz-seq-600",
+  facturada: "bg-viz-seq-700",
+  reembolsada: "bg-muted-foreground/45",
   rechazada: "bg-muted-foreground/60",
   vencida: "bg-viz-seq-200",
   anulada: "bg-muted-foreground/20",

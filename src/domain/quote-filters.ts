@@ -9,6 +9,8 @@ export const QUOTE_STATUS_FILTERS = [
   "emitida",
   "vencida",
   "aceptada",
+  "facturada",
+  "reembolsada",
   "rechazada",
   "anulada",
 ] as const satisfies readonly QuoteDisplayStatus[];

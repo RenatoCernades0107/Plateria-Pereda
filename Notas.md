@@ -356,7 +356,7 @@ Reporte: `tests/fixtures/shopify/spike/reporte-20261004193129.json`.
 
 ## I. Cotizador
 
-### P34 · ¿Guardamos historial de cotizaciones con estados?
+### P34 · ¿Guardamos historial de cotizaciones con estados? Luego (2026-11-05) se agregaron Anulada y, tras Aceptada, Facturada y Reembolsada (final).
 - **Propuesta:** sí: Borrador, Emitida, Aceptada, Rechazada y Vencida (automática al pasar la vigencia). Convertir una cotización aceptada en orden de Shopify queda como mejora futura (no incluida).
 - **Respuesta:** _pendiente_
 

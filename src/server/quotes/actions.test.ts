@@ -48,6 +48,10 @@ vi.mock("@/lib/supabase/server", () => ({
             mocks.eq(column, value);
             return chain;
           },
+          in: (column: string, values: unknown) => {
+            mocks.eq(column, values);
+            return chain;
+          },
           select: async () => mocks.updateResult,
         };
         return chain;
@@ -259,7 +263,7 @@ describe("setQuoteDeliveryDates", () => {
       delivery_date: inDays(7),
       supplier_delivery_date: inDays(2),
     });
-    expect(mocks.eq).toHaveBeenCalledWith("status", "aceptada");
+    expect(mocks.eq).toHaveBeenCalledWith("status", ["aceptada", "facturada"]);
   });
 
   it("conserva fechas que ya pasaron si no se cambian", async () => {
@@ -279,7 +283,24 @@ describe("setQuoteDeliveryDates", () => {
     ).toEqual({ ok: true });
   });
 
-  it("solo en cotizaciones aceptadas", async () => {
+  it("cambia las fechas de una facturada", async () => {
+    mocks.readResult = {
+      data: {
+        status: "facturada",
+        delivery_date: inDays(3),
+        supplier_delivery_date: inDays(1),
+      },
+      error: null,
+    };
+    expect(
+      await setQuoteDeliveryDates(ID, {
+        deliveryDate: inDays(7),
+        supplierDeliveryDate: inDays(2),
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("solo en cotizaciones aceptadas o facturadas", async () => {
     mocks.readResult = {
       data: {
         status: "emitida",
@@ -294,7 +315,8 @@ describe("setQuoteDeliveryDates", () => {
         supplierDeliveryDate: "",
       }),
     ).toEqual({
-      error: "Solo una cotización aceptada lleva fechas de entrega.",
+      error:
+        "Solo una cotización aceptada o facturada cambia sus fechas de entrega.",
     });
     expect(mocks.update).not.toHaveBeenCalled();
   });

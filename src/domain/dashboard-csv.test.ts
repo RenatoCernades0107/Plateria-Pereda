@@ -285,6 +285,8 @@ describe("CSV de cada pestaña", () => {
         borrador: 0,
         emitida: 1,
         aceptada: 1,
+        facturada: 0,
+        reembolsada: 0,
         rechazada: 0,
         vencida: 0,
         anulada: 0,

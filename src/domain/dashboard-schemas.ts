@@ -206,6 +206,9 @@ export const quotesSchema = z.object({
     borrador: num,
     emitida: num,
     aceptada: num,
+    // Antes de la migración de «Facturada» la BD no lo enviaba.
+    facturada: num.default(0),
+    reembolsada: num.default(0),
     rechazada: num,
     vencida: num,
     // Antes de la migración de «Anulada» la BD no lo enviaba.

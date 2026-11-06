@@ -102,7 +102,7 @@ export default async function CotizacionPage({
           />
           <div className="-mt-4 flex flex-wrap items-center gap-2 text-sm">
             <QuoteStatusBadge status={quote.displayStatus} />
-            {quote.status === "aceptada" ? (
+            {quote.status === "aceptada" || quote.status === "facturada" ? (
               <QuoteDeliveryButton
                 quoteId={quote.id}
                 deliveryDays={quote.deliveryDays}

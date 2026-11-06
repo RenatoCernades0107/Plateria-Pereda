@@ -6,6 +6,8 @@ const TONES = {
   borrador: "neutral",
   emitida: "info",
   aceptada: "success",
+  facturada: "info",
+  reembolsada: "neutral",
   rechazada: "critical",
   anulada: "neutral",
   vencida: "neutral",

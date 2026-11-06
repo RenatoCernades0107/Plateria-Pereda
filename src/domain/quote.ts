@@ -13,6 +13,8 @@ export const QUOTE_STATUSES = [
   "borrador",
   "emitida",
   "aceptada",
+  "facturada",
+  "reembolsada",
   "rechazada",
   "anulada",
 ] as const;
@@ -25,6 +27,8 @@ export const QUOTE_STATUS_LABELS: Record<QuoteDisplayStatus, string> = {
   borrador: "Borrador",
   emitida: "Emitida",
   aceptada: "Aceptada",
+  facturada: "Facturada",
+  reembolsada: "Reembolsada",
   rechazada: "Rechazada",
   anulada: "Anulada",
   vencida: "Vencida",
@@ -37,7 +41,9 @@ export const QUOTE_STATUS_LABELS: Record<QuoteDisplayStatus, string> = {
 const TRANSITIONS: Record<QuoteStatus, readonly QuoteStatus[]> = {
   borrador: ["emitida"],
   emitida: ["aceptada", "rechazada", "anulada"],
-  aceptada: ["emitida", "anulada"],
+  aceptada: ["emitida", "facturada", "anulada"],
+  facturada: ["reembolsada"],
+  reembolsada: [],
   rechazada: ["emitida", "anulada"],
   anulada: [],
 };

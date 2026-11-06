@@ -2813,7 +2813,13 @@ export type Database = {
         | "anulada";
       quote_payment_condition: "contado" | "credito" | "a_cuenta";
       quote_status:
-        "borrador" | "emitida" | "aceptada" | "rechazada" | "anulada";
+        | "borrador"
+        | "emitida"
+        | "aceptada"
+        | "rechazada"
+        | "anulada"
+        | "facturada"
+        | "reembolsada";
       restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
@@ -3002,7 +3008,15 @@ export const Constants = {
         "anulada",
       ],
       quote_payment_condition: ["contado", "credito", "a_cuenta"],
-      quote_status: ["borrador", "emitida", "aceptada", "rechazada", "anulada"],
+      quote_status: [
+        "borrador",
+        "emitida",
+        "aceptada",
+        "rechazada",
+        "anulada",
+        "facturada",
+        "reembolsada",
+      ],
       restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [
