@@ -2816,10 +2816,10 @@ export type Database = {
         | "borrador"
         | "emitida"
         | "aceptada"
-        | "facturada"
-        | "reembolsada"
         | "rechazada"
-        | "anulada";
+        | "anulada"
+        | "facturada"
+        | "reembolsada";
       restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
@@ -3012,10 +3012,10 @@ export const Constants = {
         "borrador",
         "emitida",
         "aceptada",
-        "facturada",
-        "reembolsada",
         "rechazada",
         "anulada",
+        "facturada",
+        "reembolsada",
       ],
       restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],

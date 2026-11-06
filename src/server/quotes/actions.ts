@@ -160,7 +160,8 @@ export async function setQuoteDeliveryDates(
   if (!current) return { error: "La cotización no existe." };
   if (current.status !== "aceptada" && current.status !== "facturada") {
     return {
-      error: "Solo una cotización aceptada o facturada cambia sus fechas de entrega.",
+      error:
+        "Solo una cotización aceptada o facturada cambia sus fechas de entrega.",
     };
   }
   const row = deliveryDatesRow(dates, {
