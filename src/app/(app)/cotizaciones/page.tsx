@@ -41,6 +41,7 @@ export default async function CotizacionesPage({
       </div>
       <QuotesFiltersForm filters={filters} clientName={clientName} />
       <QuotesList
+        selectable
         quotes={quotes}
         emptyMessage="Aún no hay cotizaciones."
         empty={

@@ -1,7 +1,14 @@
+"use client";
+
+import { FileDown, Loader2, X } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { EmptyState } from "@/components/empty-state";
 import { ClickableItem, ClickableRow } from "@/components/clickable-row";
+import { PDF_ICON_CLASS } from "@/components/icons/icon-colors";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -13,10 +20,12 @@ import {
 import { formatCents } from "@/domain/money";
 import { formatQuoteDate } from "@/domain/quote";
 import { formatDate } from "@/lib/format";
+import { getWorkshopQuotes } from "@/server/quotes/actions";
 import type { QuoteListItem } from "@/server/quotes/queries";
 
 import { QuoteDeliveryDates } from "./quote-delivery-dates";
 import { QuoteStatusBadge } from "./quote-status-badge";
+import { exportWorkshopPdf } from "./quote-workshop-export";
 
 function Client({ quote }: { quote: QuoteListItem }) {
   return (
@@ -48,25 +57,145 @@ const dates = (quote: QuoteListItem) =>
     ? `Emitida ${formatQuoteDate(quote.issueDate)}`
     : `Creada ${formatDate(quote.createdAt)}`;
 
+/**
+ * Barra de las cotizaciones elegidas: el contador, "Quitar selección" y "PDF para
+ * taller" (la orden para taller de todas ellas, sin precios).
+ */
+function WorkshopBar({
+  chosen,
+  total,
+  onClear,
+}: {
+  chosen: string[];
+  total: number;
+  onClear: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const n = chosen.length;
+
+  async function exportPdf() {
+    setBusy(true);
+    try {
+      const result = await getWorkshopQuotes(chosen);
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      await exportWorkshopPdf(result.quotes);
+      toast.success(
+        `Orden para taller exportada (${n === 1 ? "1 cotización" : `${n} cotizaciones`}).`,
+      );
+    } catch {
+      toast.error("No se pudo exportar el PDF. Inténtalo de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="bg-card border-primary/40 sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 shadow-sm"
+      role="region"
+      aria-label="Acciones para las cotizaciones elegidas"
+    >
+      <p
+        className="mr-auto text-sm font-medium whitespace-nowrap"
+        aria-live="polite"
+      >
+        {n} de {total} {total === 1 ? "seleccionada" : "seleccionadas"}
+      </p>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-muted-foreground"
+        onClick={onClear}
+        disabled={busy}
+      >
+        <X aria-hidden />
+        Quitar selección
+      </Button>
+      <Button size="sm" onClick={() => void exportPdf()} disabled={busy}>
+        {busy ? (
+          <Loader2 className="animate-spin" aria-hidden />
+        ) : (
+          <FileDown className={PDF_ICON_CLASS} />
+        )}
+        PDF para taller
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Listado de cotizaciones. Con `selectable` (página de Cotizaciones) cada una lleva su
+ * casilla para exportar la orden para taller de las elegidas.
+ */
 export function QuotesList({
   quotes,
   emptyMessage,
   empty,
+  selectable = false,
 }: {
   quotes: QuoteListItem[];
   emptyMessage: string;
   /** Reemplaza el vacío por defecto (p. ej. el de "sin resultados" por filtros). */
   empty?: React.ReactNode;
+  /** Casillas para exportar la orden para taller. */
+  selectable?: boolean;
 }) {
+  const [selected, setSelected] = useState<string[]>([]);
+  // Solo cuentan las de esta página (al cambiar de página o filtro, se descartan).
+  const chosen = selected.filter((id) => quotes.some((q) => q.id === id));
+  const allChosen = quotes.length > 0 && chosen.length === quotes.length;
+
   if (quotes.length === 0) {
     return empty ?? <EmptyState>{emptyMessage}</EmptyState>;
   }
 
+  const toggle = (id: string, checked: boolean) =>
+    setSelected((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id),
+    );
+  const checkbox = (q: QuoteListItem) => (
+    <input
+      type="checkbox"
+      className="accent-primary size-4"
+      aria-label={`Elegir ${q.code}`}
+      checked={chosen.includes(q.id)}
+      onChange={(e) => toggle(q.id, e.target.checked)}
+    />
+  );
+
   return (
     <>
+      {selectable && chosen.length > 0 ? (
+        <WorkshopBar
+          chosen={chosen}
+          total={quotes.length}
+          onClear={() => setSelected([])}
+        />
+      ) : null}
+      {selectable ? (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="accent-primary size-4"
+            checked={allChosen}
+            onChange={(e) =>
+              setSelected(e.target.checked ? quotes.map((q) => q.id) : [])
+            }
+          />
+          Elegir todas las de esta página
+        </label>
+      ) : null}
       <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
+            {selectable ? (
+              <TableHead className="w-8">
+                <span className="sr-only">Elegir</span>
+              </TableHead>
+            ) : null}
             <TableHead>Código</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Estado</TableHead>
@@ -78,6 +207,7 @@ export function QuotesList({
         <TableBody>
           {quotes.map((q) => (
             <ClickableRow key={q.id} data-testid={`cotizacion-${q.code}`}>
+              {selectable ? <TableCell>{checkbox(q)}</TableCell> : null}
               <TableCell>
                 <Code quote={q} />
               </TableCell>
@@ -115,7 +245,10 @@ export function QuotesList({
             data-testid={`cotizacion-movil-${q.code}`}
           >
             <div className="flex items-start justify-between gap-2">
-              <Code quote={q} />
+              <span className="flex items-center gap-2">
+                {selectable ? checkbox(q) : null}
+                <Code quote={q} />
+              </span>
               <QuoteStatusBadge status={q.status} />
             </div>
             <Client quote={q} />

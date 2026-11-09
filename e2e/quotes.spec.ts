@@ -162,8 +162,16 @@ test.describe("Cotizaciones", () => {
       "Grabado: Ana",
     );
 
-    // Sin sucursal no se genera el PDF.
-    await page.getByRole("button", { name: "Exportar PDF" }).click();
+    // "Exportar PDF" abre el diálogo con la casilla "Para taller" (la versión del
+    // cliente, sin marcarla). Sin sucursal no se genera el PDF del cliente.
+    const pdfDialog = page.getByRole("dialog", {
+      name: "Exportar cotización en PDF",
+    });
+    const exportFromDialog = async () => {
+      await page.getByRole("button", { name: "Exportar PDF" }).click();
+      await pdfDialog.getByRole("button", { name: "Exportar PDF" }).click();
+    };
+    await exportFromDialog();
     await expect(
       page.getByText(
         "Elige la sucursal de la cotización antes de generar el PDF.",
@@ -181,10 +189,20 @@ test.describe("Cotizaciones", () => {
 
     // Exportar PDF (Paso 14.5): descarga con el nombre esperado.
     const pdfDownload = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Exportar PDF" }).click();
+    await exportFromDialog();
     expect((await pdfDownload).suggestedFilename()).toBe(
       `cotizacion-${firstQuoteCode}.pdf`,
     );
+
+    // Versión para taller: marcando la casilla baja la orden para taller.
+    const workshopDownload = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Exportar PDF" }).click();
+    await pdfDialog.getByRole("checkbox", { name: /Para taller/ }).check();
+    await pdfDialog.getByRole("button", { name: "Exportar PDF" }).click();
+    expect((await workshopDownload).suggestedFilename()).toBe(
+      `taller-${firstQuoteCode}.pdf`,
+    );
+    await expect(pdfDialog).toBeHidden();
 
     // Compartir por WhatsApp (Paso 14.6): sin Web Share (escritorio), descarga
     // el PDF y abre WhatsApp con un mensaje (el cliente de Shopify tiene teléfono).
