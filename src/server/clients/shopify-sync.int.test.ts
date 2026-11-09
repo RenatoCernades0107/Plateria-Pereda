@@ -14,14 +14,14 @@ import { clientJobHandlers } from "./shopify-sync";
 const RUN = `${Date.now()}`.slice(-8);
 const created: string[] = [];
 
-async function ventasClient() {
+async function ventasClient(email = "ventas@pereda.test") {
   const client = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
   const { error } = await client.auth.signInWithPassword({
-    email: "ventas@pereda.test",
+    email,
     password: "Pereda-local-2026",
   });
   if (error) throw error;
@@ -61,7 +61,16 @@ async function processPending(entityId: string, kind: string) {
 describe("alta de clientes sincronizada con Shopify", () => {
   afterAll(async () => {
     const admin = createAdminClient();
-    await admin.from("shopify_sync_jobs").delete().in("entity_id", created);
+    const { data: contacts } = await admin
+      .from("contacts")
+      .select("id")
+      .in("client_id", created);
+    const contactIds = (contacts ?? []).map((c) => c.id);
+    await admin
+      .from("shopify_sync_jobs")
+      .delete()
+      .in("entity_id", [...created, ...contactIds]);
+    await admin.from("contacts").delete().in("id", contactIds);
     await admin.from("clients").delete().in("id", created);
   });
 
@@ -177,5 +186,75 @@ describe("alta de clientes sincronizada con Shopify", () => {
       .eq("entity_id", client!.id)
       .eq("status", "pending");
     expect(count).toBe(0);
+  });
+
+  it("convertir una persona sincronizada crea la Company con su Customer de contacto", async () => {
+    // Sin reiniciar el fake: sus ids volverían a empezar y chocarían con los de los
+    // otros tests de este archivo.
+    const ventas = await ventasClient();
+    const { data: client } = await ventas
+      .from("clients")
+      .insert({
+        kind: "persona",
+        first_name: "Conversión",
+        last_name: RUN,
+        email: `conv-${RUN}@correo.pe`,
+      })
+      .select("id")
+      .single();
+    created.push(client!.id);
+    const { shopifyCustomerId } = (await processPending(
+      client!.id,
+      "customer.create",
+    )) as { shopifyCustomerId: string };
+
+    const args = {
+      p_client: client!.id,
+      p_legal_name: `Conversión ${RUN} S.A.C.`,
+      p_ruc: `20${RUN}5`.slice(0, 11),
+      p_phone: `+519${RUN}`,
+      p_address: "",
+      p_city: "Lima",
+      p_region: "LIM",
+      p_notes: "",
+      p_keep_as_contact: true,
+    };
+    const denied = await ventas.rpc("convert_client_to_company", args);
+    expect(denied.error?.code).toBe("42501");
+
+    const adminUser = await ventasClient("admin@pereda.test");
+    const { error } = await adminUser.rpc("convert_client_to_company", args);
+    expect(error).toBeNull();
+
+    await processPending(client!.id, "company.create");
+    const admin = createAdminClient();
+    const { data: contact } = await admin
+      .from("contacts")
+      .select("id")
+      .eq("client_id", client!.id)
+      .single();
+    await processPending(contact!.id, "contact.create");
+
+    const { data: saved } = await admin
+      .from("contacts")
+      .select("shopify_customer_id, shopify_company_contact_id")
+      .eq("id", contact!.id)
+      .single();
+    expect(saved!.shopify_customer_id).toBe(shopifyCustomerId);
+    const snapshot = fakeShopify.snapshot();
+    expect(
+      snapshot.customers.filter((c) => c.email === `conv-${RUN}@correo.pe`),
+    ).toHaveLength(1);
+    expect(
+      snapshot.companies.find((c) => c.name === `Conversión ${RUN} S.A.C.`),
+    ).toMatchObject({
+      name: `Conversión ${RUN} S.A.C.`,
+      contacts: [
+        {
+          id: saved!.shopify_company_contact_id,
+          customerId: shopifyCustomerId,
+        },
+      ],
+    });
   });
 });

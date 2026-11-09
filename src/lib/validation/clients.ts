@@ -150,6 +150,14 @@ export const companySchema = z
     documentNumber,
   }));
 
+/** Datos de la empresa en la que se convierte una persona, y si se queda de contacto. */
+export const convertToCompanySchema = z.object({
+  company: companySchema,
+  keepAsContact: z.boolean(),
+});
+
+export type ConvertToCompanyFormInput = z.input<typeof convertToCompanySchema>;
+
 export const clientSchema = z.discriminatedUnion("kind", [
   personSchema,
   companySchema,

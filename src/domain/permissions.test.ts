@@ -41,6 +41,7 @@ const ESPERADO: Record<Permission, AppRole[]> = {
   "clientes.ver": [A, V],
   "clientes.editar": [A, V],
   "clientes.fusionar": [A],
+  "clientes.convertir": [A],
   "cotizador.usar": [A, V],
   "cotizaciones-whatsapp.usar": [A, V],
   "dashboard.ver": [A, V],

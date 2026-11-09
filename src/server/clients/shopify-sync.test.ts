@@ -298,6 +298,53 @@ describe("handlers de clientes", () => {
     expect(db.contacts.get("k1")!.shopifyCustomerId).toBe(existing.id);
   });
 
+  it("una persona convertida en empresa asigna su Customer a la Company, sin crear otro", async () => {
+    const customer = await gateway.createCustomer({
+      firstName: "Luis",
+      lastName: "Rojas",
+    });
+    const { repo, db } = memoryRepo(
+      [company],
+      [
+        {
+          ...contact,
+          email: null,
+          phone: null,
+          shopifyCustomerId: customer.id,
+        },
+      ],
+    );
+    const handlers = clientJobHandlers(repo);
+    await handlers["company.create"]!(job("company.create", "c2"), gateway);
+    const result = await handlers["contact.create"]!(
+      job("contact.create", "k1"),
+      gateway,
+    );
+    const saved = db.contacts.get("k1")!;
+    expect(result).toEqual({
+      shopifyCustomerId: customer.id,
+      shopifyCompanyContactId: saved.shopifyCompanyContactId,
+      linked: true,
+    });
+    expect(saved.shopifyCompanyContactId).toMatch(/CompanyContact\//);
+    const snapshot = fakeShopify.snapshot();
+    expect(snapshot.customers).toHaveLength(1);
+    expect(snapshot.companies[0]?.contacts).toEqual([
+      { id: saved.shopifyCompanyContactId, customerId: customer.id },
+    ]);
+  });
+
+  it("el alta pendiente de una persona que ya es empresa se omite", async () => {
+    const { repo } = memoryRepo([company]);
+    expect(
+      await clientJobHandlers(repo)["customer.create"]!(
+        job("customer.create", "c2"),
+        gateway,
+      ),
+    ).toEqual({ skipped: true });
+    expect(fakeShopify.snapshot().calls).toEqual([]);
+  });
+
   it("si el registro ya no existe no se reintenta", async () => {
     const { repo } = memoryRepo([]);
     const handlers = clientJobHandlers(repo);
