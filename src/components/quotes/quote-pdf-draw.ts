@@ -52,7 +52,7 @@ export async function drawQuotePdf(
   const pageH = pdf.internal.pageSize.getHeight();
   const right = pageW - MARGIN;
   const contentW = pageW - MARGIN * 2;
-  const bottomLimit = pageH - 16;
+  const bottomLimit = pageH - 12;
   const font = (style: "normal" | "bold" | "italic", size: number, gray = 0) =>
     pdf.setFont("helvetica", style).setFontSize(size).setTextColor(gray);
   const line = (x1: number, yy: number, x2: number) => {
@@ -85,7 +85,7 @@ export async function drawQuotePdf(
   }
   font("normal", 10.5);
   pdf.text(model.dateLine, MARGIN, y);
-  y = Math.max(y, rightBottom) + 12;
+  y = Math.max(y, rightBottom) + 7;
 
   // --- Código de la cotización, justo encima del cliente.
   font("bold", 12);
@@ -93,7 +93,7 @@ export async function drawQuotePdf(
   const labelW = pdf.getTextWidth("Cotización N°: ");
   font("normal", 12);
   pdf.text(model.code, MARGIN + labelW, y);
-  y += 10;
+  y += 8;
 
   // --- Cliente y contacto.
   const fieldLabelW = 22;
@@ -105,16 +105,16 @@ export async function drawQuotePdf(
   // RUC de la empresa o documento de la persona (si tiene).
   if (model.clientDocumentLine) {
     pdf.text(model.clientDocumentLine, MARGIN + fieldLabelW, y);
-    y += 6;
+    y += 5.5;
   }
   pdf.text("Contacto:", MARGIN, y);
   pdf.text(model.contactName, MARGIN + fieldLabelW, y);
   if (model.phone) {
-    y += 6;
+    y += 5.5;
     pdf.text("Teléfono:", MARGIN, y);
     pdf.text(model.phone, MARGIN + fieldLabelW, y);
   }
-  y += 12;
+  y += 8;
 
   // --- Tabla de productos: sin grilla, solo una línea bajo el encabezado.
   const photos = model.rows.map((_, i) => images[i] ?? null);
@@ -147,7 +147,7 @@ export async function drawQuotePdf(
     });
     y += 2;
     line(MARGIN, y, right);
-    y += 6;
+    y += 5;
   };
   drawTableHeader();
 
@@ -200,29 +200,29 @@ export async function drawQuotePdf(
           break;
       }
     });
-    y += rowH + 3;
+    y += rowH + 1.5;
   }
 
   // --- Totales: línea arriba, Sub Total y Total Venta a la derecha.
-  if (y + 40 > bottomLimit) {
+  if (y + 30 > bottomLimit) {
     pdf.addPage();
     y = MARGIN;
   }
-  y += 4;
+  y += 2;
   line(MARGIN, y, right);
-  y += 8;
+  y += 6;
   const totalRow = (label: string, value: string, strong: boolean) => {
     font(strong ? "bold" : "normal", strong ? 12 : 10);
     pdf.text(label, right - 55, y);
     pdf.text(value, right, y, { align: "right" });
-    y += strong ? 8 : 6;
+    y += strong ? 7 : 5;
   };
   totalRow("Sub Total:", model.subtotal, false);
   // Guion ASCII: el signo menos (U+2212) no existe en Helvetica/WinAnsi de jsPDF.
   if (model.discount) totalRow("Descuento:", `- ${model.discount}`, false);
   if (model.igv) totalRow("IGV (18 %):", model.igv, false);
   totalRow("Total Venta:", model.total, true);
-  y += 4;
+  y += 2;
 
   // --- "Son:" y condiciones fijas (validez, impuesto).
   font("italic", 10);
@@ -230,7 +230,7 @@ export async function drawQuotePdf(
   font("bold", 10);
   const words = pdf.splitTextToSize(model.amountInWords, contentW - 16);
   pdf.text(words, MARGIN + 12, y);
-  y += (Math.max(1, words.length) - 1) * 4.6 + 10;
+  y += (Math.max(1, words.length) - 1) * 4.6 + 7;
 
   // Columna de etiquetas con espacio para la más larga ("Tiempo de entrega:").
   const infoLabelW = 34;
@@ -259,12 +259,12 @@ export async function drawQuotePdf(
 
   // --- Sucursal: razón social, RUC y cuenta bancaria (como la cotización impresa).
   if (model.issuerLines.length > 0) {
-    const issuerH = model.issuerLines.length * 4.6 + 10;
+    const issuerH = model.issuerLines.length * 4.6 + 5;
     if (y + issuerH > bottomLimit) {
       pdf.addPage();
       y = MARGIN;
     }
-    y += 10;
+    y += 5;
     font("normal", 9.5);
     for (const text of model.issuerLines) {
       const wrapped = pdf.splitTextToSize(text, contentW);
@@ -279,7 +279,7 @@ export async function drawQuotePdf(
       pdf.addPage();
       y = MARGIN;
     }
-    y += 14;
+    y += 8;
     font("normal", 10);
     pdf.text("Atentamente,", MARGIN, y);
     y += 7;
