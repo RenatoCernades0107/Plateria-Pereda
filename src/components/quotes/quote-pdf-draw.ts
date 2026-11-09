@@ -85,7 +85,7 @@ export async function drawQuotePdf(
   }
   font("normal", 10.5);
   pdf.text(model.dateLine, MARGIN, y);
-  y = Math.max(y, rightBottom) + 7;
+  y = Math.max(y, rightBottom) + 3;
 
   // --- Código de la cotización, justo encima del cliente.
   font("bold", 12);
