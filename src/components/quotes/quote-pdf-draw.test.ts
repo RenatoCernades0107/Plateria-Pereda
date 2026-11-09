@@ -167,7 +167,7 @@ describe("drawQuotePdf", () => {
     expect(raw).not.toContain("\u2212");
   });
 
-  it("la dirección va centrada bajo el logo y el código justo encima de Sr(es):", async () => {
+  it("la dirección va centrada bajo el logo y el código a la altura de PEREDA, encima de Sr(es):", async () => {
     const logo =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const pdf = await drawQuotePdf(quotePdfModel(data), { logo });
@@ -199,10 +199,13 @@ describe("drawQuotePdf", () => {
     expect(block![1]).toBe("F2");
     expect(Number(block![2])).toBeGreaterThan(0);
     const miraflores = { y: address.y - Number(block![3]) / k };
-    // "Cotización N°:" va entre la dirección y "Sr(es):".
+    // "Cotización N°:" va a la izquierda, a la altura de "PEREDA" (dentro del
+    // logo, sobre la dirección), y "Sr(es):" justo debajo.
     const code = at(/Cotizaci/);
     const sr = at(/Sr\\\(es\\\):\)/);
-    expect(code.y).toBeGreaterThan(miraflores.y);
+    expect(code.y).toBeGreaterThan(12 + 34 * 0.8);
+    expect(code.y).toBeLessThan(address.y);
+    expect(miraflores.y).toBeGreaterThan(code.y);
     expect(sr.y).toBeGreaterThan(code.y);
     expect(sr.y - code.y).toBeLessThan(15);
   });

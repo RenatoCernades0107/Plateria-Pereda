@@ -20,6 +20,9 @@ const GRAY = 110;
 /** Lado máximo de la foto de una fila (mm). */
 const PHOTO_SIZE = 16;
 
+/** Posición vertical (0-1) de la base de "PEREDA" en public/logo-pereda.png. */
+const WORDMARK_BASELINE = 279 / 312;
+
 type Column = {
   key: "photo" | "sku" | "description" | "quantity" | "unitPrice" | "total";
   title: string;
@@ -66,11 +69,15 @@ export async function drawQuotePdf(
   const logoW = 34;
   const logoCenter = right - logoW / 2;
   let rightBottom = y - 6;
+  // Altura (mm) a la que cae la línea base de "PEREDA" dentro del logo: el código
+  // de la cotización se alinea con ella, a la izquierda.
+  let codeY: number | null = null;
   if (logo) {
     const props = pdf.getImageProperties(logo);
     const h = (props.height / props.width) * logoW;
     pdf.addImage(logo, right - logoW, y - 6, logoW, h);
     rightBottom = y - 6 + h;
+    codeY = y - 6 + h * WORDMARK_BASELINE;
   }
   if (model.companyAddress) {
     font("bold", 8.5);
@@ -85,7 +92,7 @@ export async function drawQuotePdf(
   }
   font("normal", 10.5);
   pdf.text(model.dateLine, MARGIN, y);
-  y = Math.max(y, rightBottom) + 3;
+  y = codeY ?? Math.max(y, rightBottom) + 3;
 
   // --- Código de la cotización, justo encima del cliente.
   font("bold", 12);
@@ -99,7 +106,11 @@ export async function drawQuotePdf(
   const fieldLabelW = 22;
   font("normal", 10);
   pdf.text("Sr(es):", MARGIN, y);
-  const client = pdf.splitTextToSize(model.clientName, contentW - fieldLabelW);
+  // Más angosto que la página: a esa altura el logo ocupa el lado derecho.
+  const client = pdf.splitTextToSize(
+    model.clientName,
+    contentW - fieldLabelW - logoW - 8,
+  );
   pdf.text(client, MARGIN + fieldLabelW, y);
   y += Math.max(1, client.length) * 4.6 + 1.4;
   // RUC de la empresa o documento de la persona (si tiene).
@@ -114,7 +125,7 @@ export async function drawQuotePdf(
     pdf.text("Teléfono:", MARGIN, y);
     pdf.text(model.phone, MARGIN + fieldLabelW, y);
   }
-  y += 8;
+  y = Math.max(y + 8, rightBottom + 6);
 
   // --- Tabla de productos: sin grilla, solo una línea bajo el encabezado.
   const photos = model.rows.map((_, i) => images[i] ?? null);
