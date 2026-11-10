@@ -38,6 +38,23 @@ export function shopifyGatewayContract(
 
     it("un cliente inexistente devuelve null", async () => {
       expect(await gateway.getCustomer("gid://shopify/Customer/1")).toBeNull();
+      expect(
+        await gateway.getCustomerUsage("gid://shopify/Customer/1"),
+      ).toBeNull();
+    });
+
+    it("borra un cliente sin pedidos", async () => {
+      const { id } = await gateway.createCustomer({
+        firstName: "Para",
+        lastName: "Borrar",
+      });
+      expect(await gateway.getCustomerUsage(id)).toEqual({
+        numberOfOrders: 0,
+        isCompanyContact: false,
+      });
+      await gateway.deleteCustomer(id);
+      expect(await gateway.getCustomer(id)).toBeNull();
+      await expect(gateway.deleteCustomer(id)).rejects.toThrow();
     });
 
     it("rechaza un email inválido con un error tipado", async () => {
@@ -249,6 +266,9 @@ export function shopifyGatewayContract(
           existente.id,
         );
         expect(vinculado.customerId).toBe(existente.id);
+        expect(await gateway.getCustomerUsage(existente.id)).toMatchObject({
+          isCompanyContact: true,
+        });
         await expect(
           gateway.assignCustomerAsContact(ref, existente.id),
         ).rejects.toBeInstanceOf(ShopifyUserError);
@@ -313,6 +333,17 @@ export function shopifyGatewayContract(
           tags: ["RES-00001"],
           payments,
         });
+
+      it("un cliente con pedidos no se borra", async () => {
+        await createOrder();
+        expect(await gateway.getCustomerUsage(customerId)).toMatchObject({
+          numberOfOrders: 1,
+        });
+        await expect(gateway.deleteCustomer(customerId)).rejects.toBeInstanceOf(
+          ShopifyUserError,
+        );
+        expect(await gateway.getCustomer(customerId)).not.toBeNull();
+      });
 
       it("la orden con adelanto queda parcialmente pagada y el saldo la completa (P43)", async () => {
         const order = await createOrder();

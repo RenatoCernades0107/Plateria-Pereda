@@ -42,6 +42,8 @@ insert into public.shopify_order_transactions (id, restoration_id, origin)
   values ('gid://shopify/OrderTransaction/e650', '00000000-0000-0000-0000-00000000e630', 'shopify');
 insert into public.shopify_sync_jobs (kind, entity_table, entity_id)
   values ('customer.create', 'clients', '00000000-0000-0000-0000-00000000e620');
+insert into public.unlinked_shopify_customers (shopify_customer_id, client_id)
+  values ('gid://shopify/Customer/6621', '00000000-0000-0000-0000-00000000e620');
 insert into public.shopify_webhook_events (webhook_id, topic, shop_domain, payload)
   values ('matriz-e660', 'orders/paid', 'matriz.myshopify.com', '{}');
 insert into public.shopify_tokens (shop_domain, access_token, expires_at)
@@ -277,6 +279,10 @@ insert into matriz values
   ('shopify_webhook_events',       'insert',  'no', 'no',    'no',    'no'),
   ('shopify_webhook_events',       'update',  'no', 'no',    'no',    'no'),
   ('shopify_webhook_events',       'delete',  'no', 'no',    'no',    'no'),
+  ('unlinked_shopify_customers',   'select',  'no', 'si',    'no',    'no'),
+  ('unlinked_shopify_customers',   'insert',  'no', 'no',    'no',    'no'),
+  ('unlinked_shopify_customers',   'update',  'no', 'no',    'no',    'no'),
+  ('unlinked_shopify_customers',   'delete',  'no', 'no',    'no',    'no'),
   ('whatsapp_quote_files',         'select',  'no', 'si',    'si',    'no'),
   ('whatsapp_quote_files',         'insert',  'no', 'si',    'si',    'no'),
   ('whatsapp_quote_files',         'update',  'no', 'no',    'no',    'no'),

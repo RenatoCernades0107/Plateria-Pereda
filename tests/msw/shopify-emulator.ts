@@ -640,6 +640,43 @@ const operations: Record<
       data: { customer: customer && customerNode(customer) },
     };
   },
+  CustomerUsage: async (variables: Vars) => {
+    const id = variables.id as string;
+    const usage = await store.getCustomerUsage(id);
+    return {
+      data: {
+        customer: usage && {
+          id,
+          numberOfOrders: String(usage.numberOfOrders),
+          companyContactProfiles: usage.isCompanyContact
+            ? [{ id: "gid://shopify/CompanyContact/1" }]
+            : [],
+        },
+      },
+    };
+  },
+  CustomerDelete: async (variables: Vars) => {
+    const { id } = (variables as { input: { id: string } }).input;
+    if (!(await store.getCustomer(id))) {
+      return {
+        data: {
+          customerDelete: {
+            deletedCustomerId: null,
+            userErrors: [{ field: ["id"], message: "Customer can't be found" }],
+          },
+        },
+      };
+    }
+    const { userErrors } = await withUserErrors(() => store.deleteCustomer(id));
+    return {
+      data: {
+        customerDelete: {
+          deletedCustomerId: userErrors.length ? null : id,
+          userErrors,
+        },
+      },
+    };
+  },
   OrderFindByTag: async (variables: Vars) => {
     // tag:'RES-00001' → RES-00001
     const tag = /^tag:'(.*)'$/.exec(variables.query as string)?.[1] ?? "";

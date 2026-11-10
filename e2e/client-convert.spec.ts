@@ -36,6 +36,9 @@ const firstName = `Rosa${run}`;
 const personName = `${firstName} Conversión`;
 const email = `rosa-${run}@correo.pe`;
 const legalName = `Rosa ${run} S.A.C.`;
+const dropName = `Pedro${run} Conversión`;
+const dropEmail = `pedro-${run}@correo.pe`;
+const dropLegalName = `Pedro ${run} S.A.C.`;
 let detailUrl = "";
 
 test.describe("Convertir persona en empresa", () => {
@@ -44,7 +47,7 @@ test.describe("Convertir persona en empresa", () => {
     const { data } = await admin
       .from("clients")
       .select("id, contacts(id)")
-      .eq("legal_name", legalName);
+      .in("legal_name", [legalName, dropLegalName]);
     for (const row of data ?? []) {
       const ids = [row.id, ...row.contacts.map((k) => k.id)];
       await admin.from("contacts").delete().eq("client_id", row.id);
@@ -127,5 +130,66 @@ test.describe("Convertir persona en empresa", () => {
     await expect(
       page.getByRole("button", { name: "Convertir en empresa" }),
     ).toHaveCount(0);
+  });
+
+  test("si no la conserva, su cliente sin pedidos se borra de Shopify", async ({
+    page,
+    request,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    await page.goto("/clientes");
+    await page.getByRole("button", { name: "Nuevo cliente" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Nombres").fill(`Pedro${run}`);
+    await dialog.getByLabel("Apellidos").fill("Conversión");
+    await dialog.getByLabel("Teléfono").fill(`9${digits(8)}`);
+    await dialog.getByLabel("Email").fill(dropEmail);
+    await dialog.getByRole("button", { name: "Registrar persona" }).click();
+    const fila = page.getByTestId(`cliente-${dropName}`);
+    await expect(fila.getByTestId("estado-shopify")).toHaveText(
+      "Shopify: Sincronizado",
+      { timeout: 20_000 },
+    );
+    expect(
+      (await shopifyState(request)).customers.filter(
+        (c) => c.email === dropEmail,
+      ),
+    ).toHaveLength(1);
+
+    await fila.getByRole("link", { name: dropName }).click();
+    await expect(page.getByRole("heading", { name: dropName })).toBeVisible({
+      timeout: 30_000,
+    });
+    await page.getByRole("button", { name: "Convertir en empresa" }).click();
+    const convert = page.getByRole("dialog");
+    await convert.getByRole("radio", { name: /No la conservo/ }).check();
+    await convert.getByLabel("Razón social").fill(dropLegalName);
+    await convert.getByLabel("RUC").fill(randomRuc());
+    await convert.getByRole("button", { name: "Convertir en empresa" }).click();
+    await expect(
+      page.getByText(
+        `${dropName} ahora es una empresa. Su cliente de Shopify se borrará si no tiene pedidos.`,
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: dropLegalName }),
+    ).toBeVisible();
+    await expect(page.getByTestId(`contacto-${dropName}`)).toHaveCount(0);
+
+    await expect
+      .poll(
+        async () =>
+          (await shopifyState(request)).customers.filter(
+            (c) => c.email === dropEmail,
+          ).length,
+        { timeout: 20_000 },
+      )
+      .toBe(0);
+    expect(
+      (await shopifyState(request)).companies.some(
+        (c) => c.name === dropLegalName,
+      ),
+    ).toBe(true);
   });
 });

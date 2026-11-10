@@ -257,4 +257,60 @@ describe("alta de clientes sincronizada con Shopify", () => {
       ],
     });
   });
+
+  it("convertir sin conservar a la persona borra su Customer sin pedidos y la importación no la trae de vuelta", async () => {
+    const ventas = await ventasClient();
+    const { data: client } = await ventas
+      .from("clients")
+      .insert({
+        kind: "persona",
+        first_name: "Borrado",
+        last_name: RUN,
+        email: `borr-${RUN}@correo.pe`,
+      })
+      .select("id")
+      .single();
+    created.push(client!.id);
+    const { shopifyCustomerId } = (await processPending(
+      client!.id,
+      "customer.create",
+    )) as { shopifyCustomerId: string };
+
+    const adminUser = await ventasClient("admin@pereda.test");
+    const { error } = await adminUser.rpc("convert_client_to_company", {
+      p_client: client!.id,
+      p_legal_name: `Borrado ${RUN} S.A.C.`,
+      p_ruc: `20${RUN}6`.slice(0, 11),
+      p_phone: `+518${RUN}`,
+      p_address: "",
+      p_city: "Lima",
+      p_region: "LIM",
+      p_notes: "",
+      p_keep_as_contact: false,
+    });
+    expect(error).toBeNull();
+
+    await processPending(client!.id, "company.create");
+    expect(await processPending(client!.id, "customer.delete")).toEqual({
+      customerId: shopifyCustomerId,
+      deleted: true,
+    });
+    expect(
+      fakeShopify.snapshot().customers.some((c) => c.id === shopifyCustomerId),
+    ).toBe(false);
+
+    const { data: outcome } = await createAdminClient().rpc(
+      "import_shopify_customer",
+      {
+        p_customer_id: shopifyCustomerId,
+        p_first_name: "Borrado",
+        p_last_name: RUN,
+        p_email: `borr-${RUN}@correo.pe`,
+        p_phone: "",
+        p_note: "",
+        p_fallback_name: "Borrado",
+      },
+    );
+    expect(outcome).toBe("ignored");
+  });
 });

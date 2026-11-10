@@ -14,6 +14,7 @@ const total = {
   updated: 0,
   unchanged: 0,
   contact: 0,
+  ignored: 0,
   failed: 0,
 };
 const errors = [];
@@ -47,7 +48,7 @@ do {
 } while (after);
 
 console.log(
-  `Listo. Nuevos: ${total.created} · vinculados a clientes del sistema: ${total.linked} · actualizados: ${total.updated} · sin cambios: ${total.unchanged} · contactos de empresas: ${total.contact} · con error: ${total.failed}`,
+  `Listo. Nuevos: ${total.created} · vinculados a clientes del sistema: ${total.linked} · actualizados: ${total.updated} · sin cambios: ${total.unchanged} · contactos de empresas: ${total.contact} · ignorados (personas convertidas en empresa): ${total.ignored} · con error: ${total.failed}`,
 );
 for (const e of errors) console.log(`  ✗ ${e.customerId}: ${e.message}`);
 if (total.failed > 0) process.exit(1);

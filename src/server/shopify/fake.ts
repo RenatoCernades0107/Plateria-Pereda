@@ -12,6 +12,7 @@ import type {
   CompanyRef,
   CompanyUpdate,
   CustomerInput,
+  CustomerUsage,
   CustomLine,
   FinancialStatus,
   OrderFinancials,
@@ -339,6 +340,17 @@ function getOrder(id: string) {
 }
 
 /** Adaptador en memoria con las mismas reglas visibles que la tienda real. */
+function customerUsage(id: string): CustomerUsage {
+  return {
+    numberOfOrders: [...state().orders.values()].filter(
+      (o) => o.customerId === id,
+    ).length,
+    isCompanyContact: [...state().companies.values()].some((c) =>
+      c.contacts.some((k) => k.customerId === id),
+    ),
+  };
+}
+
 export class FakeShopifyGateway implements ShopifyGateway {
   private track(method: GatewayMethod, args: unknown[]) {
     const s = state();
@@ -441,6 +453,28 @@ export class FakeShopifyGateway implements ShopifyGateway {
     this.track("getCustomer", [id]);
     const customer = state().customers.get(id);
     return customer ? { ...customer } : null;
+  }
+
+  async getCustomerUsage(id: string): Promise<CustomerUsage | null> {
+    this.track("getCustomerUsage", [id]);
+    if (!state().customers.has(id)) return null;
+    return customerUsage(id);
+  }
+
+  async deleteCustomer(id: string) {
+    this.track("deleteCustomer", [id]);
+    if (!state().customers.has(id)) throw new ShopifyNotFoundError(id);
+    // Como Shopify: un cliente con pedidos no se borra.
+    if (customerUsage(id).numberOfOrders > 0) {
+      throw new ShopifyUserError([
+        {
+          field: ["id"],
+          message:
+            "Customer can’t be deleted because they have existing orders",
+        },
+      ]);
+    }
+    state().customers.delete(id);
   }
 
   async createCompany(input: CompanyInput): Promise<ShopifyCompany> {

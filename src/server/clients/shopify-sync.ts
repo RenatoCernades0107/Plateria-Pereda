@@ -1,5 +1,6 @@
 import type { Json } from "@/lib/supabase/database.types";
 import {
+  ShopifyNotFoundError,
   ShopifyUnavailableError,
   ShopifyUserError,
 } from "@/server/shopify/errors";
@@ -51,6 +52,8 @@ export interface ClientSyncRepository {
   findClientByShopifyCustomer(
     shopifyCustomerId: string,
   ): Promise<{ id: string; name: string } | null>;
+  /** Si algún cliente o contacto del sistema usa ese Customer de Shopify. */
+  isShopifyCustomerLinked(shopifyCustomerId: string): Promise<boolean>;
   getContact(id: string): Promise<ContactRecord | null>;
   setContactShopifyIds(
     id: string,
@@ -263,6 +266,43 @@ export function clientJobHandlers(
         shopifyCompanyContactId: result.id,
         linked,
       };
+    },
+
+    // Customer de una persona que se convirtió en empresa y no quedó de contacto: se
+    // borra si nada lo usa. Que no se pueda borrar no es un error: queda en Shopify sin
+    // vínculo (la importación lo ignora) y el job termina con el motivo.
+    "customer.delete": async (job, gateway) => {
+      const customerId = (job.payload as { customerId?: unknown } | null)
+        ?.customerId;
+      if (typeof customerId !== "string") {
+        throw new ShopifyUserError([
+          { field: null, message: "Falta el cliente de Shopify a borrar" },
+        ]);
+      }
+      const notDeleted = (reason: string) => ({
+        customerId,
+        deleted: false,
+        reason,
+      });
+      if (await repo.isShopifyCustomerLinked(customerId)) {
+        return notDeleted("Está vinculado a un cliente o contacto del sistema");
+      }
+      const usage = await gateway.getCustomerUsage(customerId);
+      if (!usage) return notDeleted("Ya no existe en Shopify");
+      if (usage.numberOfOrders > 0) return notDeleted("Tiene pedidos");
+      if (usage.isCompanyContact) {
+        return notDeleted("Es contacto de una empresa en Shopify");
+      }
+      try {
+        await gateway.deleteCustomer(customerId);
+      } catch (error) {
+        if (error instanceof ShopifyUserError) return notDeleted(error.message);
+        if (error instanceof ShopifyNotFoundError) {
+          return notDeleted("Ya no existe en Shopify");
+        }
+        throw error;
+      }
+      return { customerId, deleted: true };
     },
 
     // Actualizaciones (P16): se envían los datos vigentes al procesar el job.
