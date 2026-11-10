@@ -69,6 +69,7 @@ vi.mock("@/server/shopify-sync/run", () => ({
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 
 const {
+  convertClientToCompany,
   createClient,
   createContact,
   findSimilarClients,
@@ -469,5 +470,89 @@ describe("clientes duplicados", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
     mocks.forbidden = true;
     await expect(mergeClients(keep, remove)).rejects.toThrow("FORBIDDEN");
+  });
+});
+
+describe("convertir persona en empresa", () => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const company = {
+    kind: "empresa" as const,
+    legalName: "  Pereda   S.A.C. ",
+    ruc: "20100047218",
+    city: "Lima",
+    region: "LIM" as const,
+    phone: "999888777",
+    email: "",
+    address: "Jr. Plata 1",
+    notes: "Clienta frecuente",
+  };
+
+  beforeEach(() => {
+    mocks.forbidden = false;
+    mocks.rpc.mockReset();
+    mocks.schedule.mockReset();
+    mocks.revalidate.mockReset();
+  });
+
+  it("convierte con los datos normalizados y sincroniza", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: { contactId: "k1", hadShopifyCustomer: true },
+      error: null,
+    });
+    await expect(
+      convertClientToCompany(id, { company, keepAsContact: true }),
+    ).resolves.toEqual({
+      ok: true,
+      keptAsContact: true,
+      hadShopifyCustomer: true,
+    });
+    expect(mocks.rpc).toHaveBeenCalledWith("convert_client_to_company", {
+      p_client: id,
+      p_legal_name: "Pereda S.A.C.",
+      p_ruc: "20100047218",
+      p_phone: "+51999888777",
+      p_email: undefined,
+      p_address: "Jr. Plata 1",
+      p_city: "Lima",
+      p_region: "LIM",
+      p_notes: "Clienta frecuente",
+      p_keep_as_contact: true,
+    });
+    expect(mocks.schedule).toHaveBeenCalled();
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/clientes/${id}`);
+  });
+
+  it("muestra el motivo de la BD y avisa el documento repetido", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: null,
+      error: { code: "23514", message: "El cliente ya es una empresa" },
+    });
+    await expect(
+      convertClientToCompany(id, { company, keepAsContact: false }),
+    ).resolves.toEqual({ error: "El cliente ya es una empresa." });
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "23505" } });
+    await expect(
+      convertClientToCompany(id, { company, keepAsContact: false }),
+    ).resolves.toEqual({
+      error: "Ya existe un cliente o contacto con ese documento.",
+    });
+    expect(mocks.schedule).not.toHaveBeenCalled();
+  });
+
+  it("valida los datos, el id y el permiso", async () => {
+    await expect(
+      convertClientToCompany(id, {
+        company: { ...company, ruc: "123" },
+        keepAsContact: true,
+      }),
+    ).resolves.toEqual({ error: "Revisa los datos ingresados." });
+    await expect(
+      convertClientToCompany("x", { company, keepAsContact: true }),
+    ).resolves.toEqual({ error: expect.any(String) });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    mocks.forbidden = true;
+    await expect(
+      convertClientToCompany(id, { company, keepAsContact: true }),
+    ).rejects.toThrow("FORBIDDEN");
   });
 });

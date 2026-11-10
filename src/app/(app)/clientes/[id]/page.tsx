@@ -8,6 +8,7 @@ import { EntityHistorySection } from "@/components/audit/entity-history-section"
 import { ActiveToggle } from "@/components/clients/active-toggle";
 import { ClientWorkTabs } from "@/components/clients/client-work-tabs";
 import { ContactsSection } from "@/components/clients/contacts-section";
+import { ConvertClientDialog } from "@/components/clients/convert-client-dialog";
 import { EditClientDialog } from "@/components/clients/edit-client-dialog";
 import { MergeClientDialog } from "@/components/clients/merge-client-dialog";
 import { Notice } from "@/components/notice";
@@ -75,6 +76,12 @@ export default async function ClienteDetallePage({
   // Solo personas activas que no se fusionaron (el duplicado se elige en el diálogo).
   const canMerge =
     can(user.role, "clientes.fusionar") &&
+    client.kind === "persona" &&
+    client.active &&
+    !client.mergedInto;
+  // Solo admin convierte una persona activa en empresa.
+  const canConvert =
+    can(user.role, "clientes.convertir") &&
     client.kind === "persona" &&
     client.active &&
     !client.mergedInto;
@@ -155,6 +162,7 @@ export default async function ClienteDetallePage({
               size="default"
             />
             {canMerge ? <MergeClientDialog client={client} /> : null}
+            {canConvert ? <ConvertClientDialog client={client} /> : null}
           </div>
         ) : null}
       </div>

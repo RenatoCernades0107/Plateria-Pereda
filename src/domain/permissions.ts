@@ -60,6 +60,8 @@ const PERMISSIONS = {
   "clientes.editar": ["admin", "ventas"],
   /** Fusionar dos clientes duplicados (2026-10-30): pasa sus guías a uno y desactiva el otro. */
   "clientes.fusionar": ["admin"],
+  /** Convertir una persona en empresa (Company en Shopify), con o sin quedar de contacto. */
+  "clientes.convertir": ["admin"],
   "cotizador.usar": ["admin", "ventas"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],

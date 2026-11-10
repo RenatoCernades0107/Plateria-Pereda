@@ -2087,6 +2087,21 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      convert_client_to_company: {
+        Args: {
+          p_address: string;
+          p_city: string;
+          p_client: string;
+          p_email?: string;
+          p_keep_as_contact: boolean;
+          p_legal_name: string;
+          p_notes: string;
+          p_phone: string;
+          p_region: string;
+          p_ruc: string;
+        };
+        Returns: Json;
+      };
       create_restoration: {
         Args: {
           p_client_id: string;

@@ -15,10 +15,12 @@ import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   clientSchema,
   contactSchema,
+  convertToCompanySchema,
   type ClientFormInput,
   type ClientInput,
   type ContactFormInput,
   type ContactInput,
+  type ConvertToCompanyFormInput,
 } from "@/lib/validation/clients";
 import { requirePermission } from "@/server/auth";
 import { getClientDetail, type ClientDetail } from "@/server/clients/queries";
@@ -248,6 +250,60 @@ export async function mergeClients(
       data as { restorations: number; quotes: number; whatsappQuotes: number },
       kept?.display_name ?? "el cliente",
     ),
+  };
+}
+
+export type ConvertClientResult =
+  | { ok: true; keptAsContact: boolean; hadShopifyCustomer: boolean }
+  | { error: string };
+
+/**
+ * Convierte una persona en empresa (solo admin). Conserva sus guías y cotizaciones; en
+ * Shopify se crea la Company y, si la persona se queda de contacto, su Customer se
+ * asigna a ella. Si no, su Customer queda en Shopify sin vínculo (no se borra).
+ */
+export async function convertClientToCompany(
+  id: string,
+  input: ConvertToCompanyFormInput,
+): Promise<ConvertClientResult> {
+  await requirePermission("clientes.convertir");
+  if (!validArgs([idArg], [id])) return { error: INVALID_ARGS };
+  const parsed = convertToCompanySchema.safeParse(input);
+  if (!parsed.success) return { error: "Revisa los datos ingresados." };
+  const { company: c, keepAsContact } = parsed.data;
+
+  const supabase = await createSupabase();
+  const { data, error } = await supabase.rpc("convert_client_to_company", {
+    p_client: id,
+    p_legal_name: c.legalName,
+    p_ruc: c.documentNumber,
+    p_phone: c.phone,
+    p_email: c.email ?? undefined,
+    p_address: c.address,
+    p_city: c.city,
+    p_region: c.region,
+    p_notes: c.notes,
+    p_keep_as_contact: keepAsContact,
+  });
+  if (error) {
+    // Los motivos esperables (ya es empresa, inactivo…) vienen en español de la BD.
+    return {
+      error:
+        error.code === "23505"
+          ? "Ya existe un cliente o contacto con ese documento."
+          : error.code === "23514" || error.code === "42501"
+            ? `${error.message}.`
+            : "No se pudo convertir el cliente.",
+    };
+  }
+
+  scheduleShopifySync();
+  revalidateClient(id);
+  const result = data as { hadShopifyCustomer: boolean };
+  return {
+    ok: true,
+    keptAsContact: keepAsContact,
+    hadShopifyCustomer: result.hadShopifyCustomer,
   };
 }
 

@@ -148,6 +148,8 @@ export function clientJobHandlers(
         ]);
       if (client.shopifyCustomerId)
         return { shopifyCustomerId: client.shopifyCustomerId };
+      // Se convirtió en empresa antes de llegar a Shopify: su alta es la de la Company.
+      if (client.kind !== "persona") return { skipped: true };
 
       let customerId: string;
       let linked = false;
@@ -217,6 +219,24 @@ export function clientJobHandlers(
         companyId: company.shopifyCompanyId,
         locationId: company.shopifyCompanyLocationId,
       };
+      // La persona que se convirtió en esta empresa ya tiene su Customer: se asigna
+      // ese en vez de crear otro.
+      if (contact.shopifyCustomerId) {
+        const result = await gateway.assignCustomerAsContact(
+          ref,
+          contact.shopifyCustomerId,
+        );
+        await repo.setContactShopifyIds(contact.id, {
+          shopifyCustomerId: result.customerId,
+          shopifyCompanyContactId: result.id,
+        });
+        return {
+          shopifyCustomerId: result.customerId,
+          shopifyCompanyContactId: result.id,
+          linked: true,
+        };
+      }
+
       let result;
       let linked = false;
       try {
@@ -249,6 +269,8 @@ export function clientJobHandlers(
     "customer.update": async (job, gateway) => {
       const client = await repo.getClient(job.entityId);
       if (!client) throw gone("El cliente");
+      // Se convirtió en empresa: su Customer ya no es del cliente.
+      if (client.kind !== "persona") return { skipped: true };
       if (!client.shopifyCustomerId) throw notSyncedYet("El cliente");
       await gateway.updateCustomer(
         client.shopifyCustomerId,
