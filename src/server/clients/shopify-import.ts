@@ -10,6 +10,8 @@ export const IMPORT_OUTCOMES = [
   "updated",
   "unchanged",
   "contact",
+  // Customer de una persona convertida en empresa que no quedó de contacto.
+  "ignored",
 ] as const;
 export type ImportOutcome = (typeof IMPORT_OUTCOMES)[number];
 
@@ -59,6 +61,7 @@ export async function importShopifyCustomers({
     updated: 0,
     unchanged: 0,
     contact: 0,
+    ignored: 0,
     failed: 0,
     errors: [],
     nextCursor: null,

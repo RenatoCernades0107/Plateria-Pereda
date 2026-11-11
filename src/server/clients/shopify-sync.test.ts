@@ -75,6 +75,10 @@ function memoryRepo(clients: ClientRecord[], contacts: ContactRecord[] = []) {
         ? { id: found.id, name: `${found.firstName} ${found.lastName}` }
         : null;
     },
+    isShopifyCustomerLinked: async (shopifyCustomerId) =>
+      [...db.clients.values(), ...db.contacts.values()].some(
+        (r) => r.shopifyCustomerId === shopifyCustomerId,
+      ),
     getContact: async (id) => db.contacts.get(id) ?? null,
     setContactShopifyIds: async (id, ids) => {
       Object.assign(db.contacts.get(id)!, ids);
@@ -343,6 +347,105 @@ describe("handlers de clientes", () => {
       ),
     ).toEqual({ skipped: true });
     expect(fakeShopify.snapshot().calls).toEqual([]);
+  });
+
+  describe("borrar el Customer de una persona convertida en empresa", () => {
+    const deleteJob = (customerId: unknown): SyncJob => ({
+      ...job("customer.delete", "c2"),
+      payload: { customerId } as never,
+    });
+    const run = (repo: ClientSyncRepository, customerId: unknown) =>
+      clientJobHandlers(repo)["customer.delete"]!(
+        deleteJob(customerId),
+        gateway,
+      );
+
+    it("borra el Customer sin pedidos", async () => {
+      const { id } = await gateway.createCustomer({
+        firstName: "Ana",
+        lastName: "Pérez",
+      });
+      const { repo } = memoryRepo([company]);
+      expect(await run(repo, id)).toEqual({ customerId: id, deleted: true });
+      expect(await gateway.getCustomer(id)).toBeNull();
+    });
+
+    it("con pedidos no lo borra y termina con el motivo", async () => {
+      const { id } = await gateway.createCustomer({
+        firstName: "Ana",
+        lastName: "Pérez",
+      });
+      await gateway.createOrder({
+        customerId: id,
+        lines: [{ title: "Restauración", price: "10.00", quantity: 1 }],
+        tags: ["RES-1"],
+      });
+      const { repo } = memoryRepo([company]);
+      expect(await run(repo, id)).toEqual({
+        customerId: id,
+        deleted: false,
+        reason: "Tiene pedidos",
+      });
+      expect(await gateway.getCustomer(id)).not.toBeNull();
+    });
+
+    it("no lo borra si está vinculado, si es contacto de una empresa o si ya no existe", async () => {
+      const linked = await gateway.createCustomer({
+        firstName: "Luis",
+        lastName: "",
+      });
+      const { repo } = memoryRepo(
+        [company],
+        [{ ...contact, shopifyCustomerId: linked.id }],
+      );
+      expect(await run(repo, linked.id)).toMatchObject({
+        deleted: false,
+        reason: "Está vinculado a un cliente o contacto del sistema",
+      });
+
+      const other = await gateway.createCompany({
+        name: "Otra S.A.C.",
+        externalId: "20100047219",
+        address: { address1: "Av. 1", city: "Lima", zoneCode: "LIM" },
+      });
+      const contactOfOther = await gateway.createCustomer({
+        firstName: "Rosa",
+        lastName: "",
+      });
+      await gateway.assignCustomerAsContact(
+        { companyId: other.id, locationId: other.locationId },
+        contactOfOther.id,
+      );
+      const { repo: empty } = memoryRepo([company]);
+      expect(await run(empty, contactOfOther.id)).toMatchObject({
+        deleted: false,
+        reason: "Es contacto de una empresa en Shopify",
+      });
+      expect(await run(empty, "gid://shopify/Customer/999")).toMatchObject({
+        deleted: false,
+        reason: "Ya no existe en Shopify",
+      });
+      expect(
+        fakeShopify
+          .snapshot()
+          .calls.filter((c) => c.method === "deleteCustomer"),
+      ).toEqual([]);
+    });
+
+    it("sin cliente en el job no se reintenta; si Shopify no responde, sí", async () => {
+      const { repo } = memoryRepo([company]);
+      await expect(run(repo, null)).rejects.toBeInstanceOf(ShopifyUserError);
+      const { id } = await gateway.createCustomer({
+        firstName: "Ana",
+        lastName: "",
+      });
+      gateway.getCustomerUsage = async () => {
+        throw new ShopifyUnavailableError("Shopify no responde");
+      };
+      await expect(run(repo, id)).rejects.toBeInstanceOf(
+        ShopifyUnavailableError,
+      );
+    });
   });
 
   it("si el registro ya no existe no se reintenta", async () => {

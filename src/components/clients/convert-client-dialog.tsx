@@ -60,7 +60,9 @@ export function ConvertClientDialog({ client }: { client: ClientDetail }) {
     toast.success(
       result.keptAsContact
         ? `${client.displayName} ahora es una empresa y queda como su contacto.`
-        : `${client.displayName} ahora es una empresa.`,
+        : result.hadShopifyCustomer
+          ? `${client.displayName} ahora es una empresa. Su cliente de Shopify se borrará si no tiene pedidos.`
+          : `${client.displayName} ahora es una empresa.`,
     );
     change(false);
     return null;
@@ -109,8 +111,9 @@ export function ConvertClientDialog({ client }: { client: ClientDetail }) {
               onChange={() => setKeepAsContact(false)}
             />
             <span>
-              No la conservo (su cliente sigue en Shopify con su historial, pero
-              ya no se vincula con el sistema).
+              No la conservo (su cliente se borra de Shopify si no tiene
+              pedidos; si los tiene, queda allí con su historial, sin vínculo
+              con el sistema).
             </span>
           </label>
         </fieldset>

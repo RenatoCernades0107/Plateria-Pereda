@@ -64,6 +64,22 @@ export const supabaseClientSyncRepository: ClientSyncRepository = {
     if (error) throw error;
     return data && { id: data.id, name: data.display_name ?? "" };
   },
+  async isShopifyCustomerLinked(shopifyCustomerId) {
+    const admin = createAdminClient();
+    const [clients, contacts] = await Promise.all([
+      admin
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("shopify_customer_id", shopifyCustomerId),
+      admin
+        .from("contacts")
+        .select("id", { count: "exact", head: true })
+        .eq("shopify_customer_id", shopifyCustomerId),
+    ]);
+    if (clients.error) throw clients.error;
+    if (contacts.error) throw contacts.error;
+    return (clients.count ?? 0) + (contacts.count ?? 0) > 0;
+  },
   async getContact(id) {
     const { data, error } = await createAdminClient()
       .from("contacts")

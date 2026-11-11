@@ -23,6 +23,12 @@ export type ShopifyCustomer = {
   updatedAt: string;
 };
 
+/** Lo que impide borrar un cliente de Shopify: sus pedidos o ser contacto de una empresa. */
+export type CustomerUsage = {
+  numberOfOrders: number;
+  isCompanyContact: boolean;
+};
+
 export type CustomerInput = {
   firstName: string;
   lastName: string;

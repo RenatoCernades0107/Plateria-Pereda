@@ -1554,6 +1554,32 @@ export type Database = {
         };
         Relationships: [];
       };
+      unlinked_shopify_customers: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          shopify_customer_id: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          shopify_customer_id: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          shopify_customer_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "unlinked_shopify_customers_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       whatsapp_quote_files: {
         Row: {
           category: Database["public"]["Enums"]["file_category"];

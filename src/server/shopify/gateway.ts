@@ -3,6 +3,7 @@ import type {
   CompanyRef,
   CompanyUpdate,
   CustomerInput,
+  CustomerUsage,
   OrderEdit,
   OrderFinancials,
   OrderInput,
@@ -34,6 +35,13 @@ export interface ShopifyGateway {
     options?: PageOptions,
   ): Promise<Page<ShopifyCustomer>>;
   getCustomer(id: string): Promise<ShopifyCustomer | null>;
+  /** Pedidos del cliente y si es contacto de alguna empresa; null si no existe. */
+  getCustomerUsage(id: string): Promise<CustomerUsage | null>;
+  /**
+   * Borra el cliente. Shopify lo rechaza (ShopifyUserError) si tiene pedidos; si no
+   * existe, ShopifyNotFoundError.
+   */
+  deleteCustomer(id: string): Promise<void>;
 
   /** Empresa como Company con su ubicación y, opcionalmente, su primer contacto (P14). */
   createCompany(input: CompanyInput): Promise<ShopifyCompany>;

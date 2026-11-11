@@ -6,6 +6,7 @@ import type {
   CompanyRef,
   CompanyUpdate,
   CustomerInput,
+  CustomerUsage,
   CustomLine,
   FinancialStatus,
   OrderEdit,
@@ -62,6 +63,21 @@ export const CUSTOMERS_SEARCH = `query CustomersSearch($query: String, $first: I
 
 export const CUSTOMER_GET = `query CustomerGet($id: ID!) {
   customer(id: $id) { ${CUSTOMER_FIELDS} }
+}`;
+
+export const CUSTOMER_USAGE = `query CustomerUsage($id: ID!) {
+  customer(id: $id) {
+    id
+    numberOfOrders
+    companyContactProfiles { id }
+  }
+}`;
+
+export const CUSTOMER_DELETE = `mutation CustomerDelete($input: CustomerDeleteInput!) {
+  customerDelete(input: $input) {
+    deletedCustomerId
+    userErrors { field message }
+  }
 }`;
 
 const ORDER_FIELDS = `
@@ -419,6 +435,33 @@ export class LiveShopifyGateway implements ShopifyGateway {
       { id },
     );
     return data.customer ? toCustomer(data.customer) : null;
+  }
+
+  async getCustomerUsage(id: string): Promise<CustomerUsage | null> {
+    const data = await this.client.request<{
+      customer: {
+        // UnsignedInt64: llega como texto.
+        numberOfOrders: string;
+        companyContactProfiles: { id: string }[];
+      } | null;
+    }>(CUSTOMER_USAGE, { id });
+    if (!data.customer) return null;
+    return {
+      numberOfOrders: Number(data.customer.numberOfOrders),
+      isCompanyContact: data.customer.companyContactProfiles.length > 0,
+    };
+  }
+
+  async deleteCustomer(id: string) {
+    const data = await this.client.request<{
+      customerDelete: {
+        deletedCustomerId: string | null;
+        userErrors: UserErrors;
+      } | null;
+    }>(CUSTOMER_DELETE, { input: { id } });
+    assertNoUserErrors(data.customerDelete?.userErrors ?? []);
+    if (!data.customerDelete?.deletedCustomerId)
+      throw new ShopifyNotFoundError(id);
   }
 
   async createCompany(input: CompanyInput): Promise<ShopifyCompany> {
