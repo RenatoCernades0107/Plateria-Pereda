@@ -2530,6 +2530,7 @@ export type Database = {
           status: Database["public"]["Enums"]["piece_status"];
           total_cost: number;
           total_count: number;
+          urgent: boolean;
           weight_grams: number;
         }[];
       };

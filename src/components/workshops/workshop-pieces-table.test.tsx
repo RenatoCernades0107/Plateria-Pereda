@@ -26,6 +26,7 @@ const base: WorkshopPiece = {
   status: "aprobada",
   code: "RES-00001-1",
   quantity: 2,
+  urgent: false,
   description: "Fuente con abolladuras",
   serviceName: "Pulido",
   measure: "40 cm",
@@ -46,6 +47,20 @@ const sinCosto: WorkshopPiece = {
 };
 
 describe("WorkshopPiecesTable", () => {
+  it("marca como urgente solo la pieza urgente", () => {
+    render(
+      <WorkshopPiecesTable
+        pieces={[{ ...base, urgent: true }, sinCosto]}
+        totalCostCents={15000}
+        canEditCost={false}
+      />,
+    );
+    const urgentRow = screen.getByTestId("pieza-RES-00001-1");
+    const normalRow = screen.getByTestId("pieza-RES-00001-2");
+    expect(urgentRow.querySelector("[data-urgent]")).not.toBeNull();
+    expect(normalRow.querySelector("[data-urgent]")).toBeNull();
+  });
+
   beforeEach(() => {
     for (const fn of Object.values(mocks)) fn.mockReset();
     mocks.setPieceServiceCost.mockResolvedValue({ ok: true });
