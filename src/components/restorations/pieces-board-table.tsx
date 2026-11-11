@@ -310,7 +310,7 @@ function BoardRow({
         <td className={cn(cell, STICKY.photo)}>
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, STICKY.code, "max-md:min-w-0 max-md:flex-1")}>
+        <td className={cn(cell, STICKY.code, "max-md:min-w-fit max-md:flex-1")}>
           {/* Urgente: solo el rayo, al costado del código; y la cantidad,
               siempre. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
