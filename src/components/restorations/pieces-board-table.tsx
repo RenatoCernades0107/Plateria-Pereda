@@ -394,12 +394,7 @@ function BoardRow({
         </td>
         {showCost ? (
           <td
-            className={cn(
-              cell,
-              RT.moneyTile,
-              RT.moneyCost,
-              "md:text-right",
-            )}
+            className={cn(cell, RT.moneyTile, RT.moneyCost, "md:text-right")}
             data-row-click="ignore"
           >
             <MoneyLabel kind="cost" />
@@ -412,12 +407,7 @@ function BoardRow({
         ) : null}
         {showPrice ? (
           <td
-            className={cn(
-              cell,
-              RT.moneyTile,
-              RT.moneySale,
-              "md:text-right",
-            )}
+            className={cn(cell, RT.moneyTile, RT.moneySale, "md:text-right")}
             data-row-click="ignore"
           >
             <MoneyLabel kind="sale" />
