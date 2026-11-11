@@ -36,6 +36,7 @@ import {
 import { pieceAnchor, pieceHref } from "@/domain/restoration-pieces-view";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
+import type { PieceStatus } from "@/domain/piece-state-machine";
 import type { PieceDetail } from "@/server/restorations/queries";
 
 import { PieceDialog } from "./edit-dialogs";
@@ -97,6 +98,8 @@ type RowProps = {
   photoUrl: string | null;
   approvalPayment: ApprovalPayment | null;
   balanceDue: boolean;
+  /** Estado al que vuelve «Retroceder estado» (null: no hay, o no se ofrece aquí). */
+  previousStatus: PieceStatus | null;
   /** Casilla para elegirla (null si la pieza no admite acciones). */
   checkbox: React.ReactNode;
   /** Tipo de guía: interna u observada no llevan precio de venta. */
@@ -115,6 +118,7 @@ function PieceRow({
   photoUrl,
   approvalPayment,
   balanceDue,
+  previousStatus,
   checkbox,
   guideKind,
   hasOrder,
@@ -132,6 +136,7 @@ function PieceRow({
     workshops,
     approvalPayment,
     balanceDue,
+    previousStatus,
   });
   const { primary } = arrangeActions(actions);
   const regular = actions.filter((a) => !a.destructive);
@@ -452,6 +457,7 @@ export function PiecesBoard({
   balanceDue = false,
   guideKind = "normal",
   hasOrder = false,
+  previousStatuses = {},
 }: {
   restorationId: string;
   pieces: PieceDetail[];
@@ -468,6 +474,8 @@ export function PiecesBoard({
   guideKind?: RestorationKind;
   /** La guía ya tiene orden de Shopify. */
   hasOrder?: boolean;
+  /** Estado anterior de las piezas que se pueden retroceder (id de la pieza → estado). */
+  previousStatuses?: Record<string, PieceStatus | null>;
 }) {
   // Por defecto están elegidas todas las piezas que admiten acciones: se guardan las
   // que la persona desmarca, así lo elegido sigue válido tras refrescar la página.
@@ -567,6 +575,7 @@ export function PiecesBoard({
                   piece.id === lastToApprove ? approvalPayment : null
                 }
                 balanceDue={balanceDue}
+                previousStatus={previousStatuses[piece.id] ?? null}
                 guideKind={guideKind}
                 hasOrder={hasOrder}
                 checkbox={

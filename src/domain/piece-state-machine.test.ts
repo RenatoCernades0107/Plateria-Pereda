@@ -899,11 +899,24 @@ describe("canUndoStatus (retroceder estado)", () => {
     );
   });
 
-  it("una pieza cerrada y devuelta al cliente no se reactiva", () => {
+  it("una pieza sin arreglo devuelta al cliente no se reactiva", () => {
+    const returned = new Date("2026-10-06T10:00:00Z");
+    expect(
+      canUndoStatus(piece("sin_arreglo", returned), "en_consulta", "admin"),
+    ).toBe(false);
+    expect(canUndoStatus(piece("sin_arreglo"), "en_consulta", "ventas")).toBe(
+      true,
+    );
+  });
+
+  it("una pieza rechazada se reactiva aunque ya se haya devuelto: el cliente cambia de opinión", () => {
     const returned = new Date("2026-10-06T10:00:00Z");
     expect(
       canUndoStatus(piece("rechazada", returned), "en_espera", "admin"),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      canUndoStatus(piece("rechazada", returned), "en_espera", "ventas"),
+    ).toBe(true);
     expect(canUndoStatus(piece("rechazada"), "en_espera", "ventas")).toBe(true);
   });
 });

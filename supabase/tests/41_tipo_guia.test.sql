@@ -51,14 +51,15 @@ select 'observada', id from public.create_restoration(
 select results_eq(
   $$ select r.kind::text, r.payment_type::text, r.status::text
      from public.restorations r join created c on c.id = r.id where c.label = 'observada' $$,
-  $$ values ('observado', 'sin_definir', 'registrada') $$,
-  'guía observada: sin cobro y Registrada como estado general'
+  $$ values ('observado', 'sin_definir', 'aprobada') $$,
+  'guía observada: sin cobro y Aprobada como estado general'
 );
 select results_eq(
-  $$ select p.status::text, p.observed_at is not null, p.price, p.service_cost, p.location::text
+  $$ select p.status::text, p.observed_at is not null, p.approved_at is not null, p.price, p.service_cost,
+       p.location::text
      from public.pieces p join created c on c.id = p.restoration_id where c.label = 'observada' $$,
-  $$ values ('observada', true, null::numeric, null::numeric, 'sin_enviar') $$,
-  'sus piezas nacen Observadas, sin precio ni costo, Sin enviar'
+  $$ values ('observada', true, true, null::numeric, null::numeric, 'sin_enviar') $$,
+  'sus piezas nacen Observadas y Aprobadas, sin precio ni costo, Sin enviar'
 );
 
 -- Agregar una pieza sigue la misma regla.
@@ -210,15 +211,16 @@ select is(
 );
 reset role;
 select results_eq(
-  $$ select p.status::text, p.price, p.service_cost, p.observed_at is not null, p.approved_at from public.pieces p
+  $$ select p.status::text, p.price, p.service_cost, p.observed_at is not null,
+       p.approved_at is not null from public.pieces p
      join created c on c.id = p.restoration_id where c.label = 'reclamo' order by p.number $$,
-  $$ values ('observada', null::numeric, null::numeric, true, null::timestamptz),
-            ('observada', null::numeric, null::numeric, true, null::timestamptz) $$,
-  'todas las vivas quedan Observadas, sin precio, costo ni aprobación'
+  $$ values ('observada', null::numeric, null::numeric, true, true),
+            ('observada', null::numeric, null::numeric, true, true) $$,
+  'todas las vivas quedan Observadas y Aprobadas, sin precio ni costo'
 );
 select is(
   (select status::text from public.restorations where id = (select id from created where label = 'reclamo')),
-  'registrada', 'el estado general se recalcula (Registrada)'
+  'aprobada', 'el estado general se recalcula (Aprobada)'
 );
 
 -- Bloqueos: pagos, orden de Shopify, piezas que fueron al taller.
