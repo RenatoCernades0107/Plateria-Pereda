@@ -22,7 +22,7 @@ export const RT = {
    * mosaicos de color, lado a lado, para no confundirlos. Desde `md` son celdas normales.
    */
   moneyTile:
-    "max-md:min-w-[calc(50%-0.625rem)] max-md:flex-1 max-md:rounded-md max-md:border max-md:p-2",
+    "max-md:min-w-[calc(50%-0.625rem)] max-md:flex-1 max-md:rounded-md max-md:border max-md:p-2 max-md:[&>div]:justify-start max-md:[&_span.inline-flex]:items-start",
   moneyCost:
     "max-md:border-amber-500/40 max-md:bg-amber-500/10 max-md:text-amber-950 dark:max-md:text-amber-100",
   moneySale:

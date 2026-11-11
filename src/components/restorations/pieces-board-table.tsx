@@ -385,7 +385,11 @@ function BoardRow({
             />
           </div>
         </td>
-        <td className={labeled} data-label="Taller" data-row-click="ignore">
+        <td
+          className={cn(labeled, RT.full)}
+          data-label="Taller"
+          data-row-click="ignore"
+        >
           <WorkshopCell
             piece={piece}
             workshops={workshops}
