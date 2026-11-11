@@ -23,6 +23,8 @@ export type ProviderReportPiece = {
   code: string;
   /** Unidades de la pieza (p. ej. 6 cucharitas). */
   quantity: number;
+  /** Pieza urgente: el reporte la marca para que el taller la priorice. */
+  urgent: boolean;
   status: PieceStatus;
   location: PieceLocation;
   description: string;
@@ -43,6 +45,7 @@ export type ProviderReportRow = {
   number: number;
   code: string;
   quantity: string;
+  urgent: boolean;
   status: string;
   location: string;
   description: string;
@@ -104,6 +107,7 @@ export function providerReportModel(
       number: i + 1,
       code: p.code,
       quantity: String(p.quantity),
+      urgent: p.urgent,
       status: PIECE_STATUS_LABELS[p.status],
       location: PIECE_LOCATION_LABELS[p.location],
       description: p.description.trim() || "—",
