@@ -1,6 +1,6 @@
 begin;
 
-select plan(9);
+select plan(8);
 
 -- Deshacer el rechazo del cliente (2026-11-11): a veces el cliente cambia de opinión. La
 -- pieza rechazada se reactiva con "Retroceder estado" aunque ya se le haya devuelto, y el
@@ -17,7 +17,7 @@ insert into public.pieces (id, restoration_id, description, price) values
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000073a1","role":"authenticated"}', true);
 
--- Consulta → Espera → el cliente rechaza → llega a la tienda → se le devuelve.
+-- Consulta → Espera → el cliente rechaza → se le devuelve (las piezas de oficina ya están en la tienda).
 select lives_ok(
   $$ select * from public.change_piece_status(
   array['00000000-0000-0000-0000-0000000073e1']::uuid[], 'en_consulta', 'Cotizar') $$,
@@ -32,10 +32,6 @@ select lives_ok(
   $$ select * from public.change_piece_status(
   array['00000000-0000-0000-0000-0000000073e1']::uuid[], 'rechazada', 'Muy caro') $$,
   'el cliente rechaza la pieza'
-);
-select lives_ok(
-  $$ select * from public.mark_pieces_arrived(array['00000000-0000-0000-0000-0000000073e1']::uuid[]) $$,
-  'la pieza llega a la tienda'
 );
 select lives_ok(
   $$ select * from public.return_pieces_to_client(array['00000000-0000-0000-0000-0000000073e1']::uuid[]) $$,
