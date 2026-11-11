@@ -6,6 +6,8 @@ import {
   Hammer,
   Loader2,
   MoreHorizontal,
+  Tag,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -58,6 +60,28 @@ import {
 } from "./status-badges";
 import { DeliveryDate } from "./urgent-toggle";
 import { WorkshopEditButton } from "./workshop-edit-button";
+
+/**
+ * Etiqueta de un mosaico de dinero, solo en el celular (desde `md` están los
+ * encabezados de la tabla). Color + ícono + texto distinto: costo = lo que le pagas al
+ * taller (ámbar, llave); venta = lo que cobras (verde, etiqueta de precio).
+ */
+function MoneyLabel({ kind }: { kind: "cost" | "sale" }) {
+  const Icon = kind === "cost" ? Wrench : Tag;
+  return (
+    <span
+      className={cn(
+        "mb-1 flex items-center gap-1 text-xs font-medium md:hidden",
+        kind === "cost"
+          ? "text-amber-800 dark:text-amber-300"
+          : "text-emerald-800 dark:text-emerald-300",
+      )}
+    >
+      <Icon className="size-3.5" aria-hidden />
+      {kind === "cost" ? "Te cuesta" : "Lo vendes en"}
+    </span>
+  );
+}
 
 /**
  * Total de días en el taller (todas las idas, P47), distinto del tiempo en el estado
@@ -286,7 +310,7 @@ function BoardRow({
         <td className={cn(cell, STICKY.photo)}>
           <PiecePhoto code={piece.code} url={piece.photoUrl} size="sm" />
         </td>
-        <td className={cn(cell, STICKY.code, "max-md:min-w-0 max-md:flex-1")}>
+        <td className={cn(cell, STICKY.code, "max-md:min-w-fit max-md:flex-1")}>
           {/* Urgente: solo el rayo, al costado del código; y la cantidad,
               siempre. El código ya dice la guía (el detalle de la pieza la enlaza). */}
           <span className="inline-flex items-center gap-1">
@@ -361,7 +385,11 @@ function BoardRow({
             />
           </div>
         </td>
-        <td className={labeled} data-label="Taller" data-row-click="ignore">
+        <td
+          className={cn(labeled, RT.full)}
+          data-label="Taller"
+          data-row-click="ignore"
+        >
           <WorkshopCell
             piece={piece}
             workshops={workshops}
@@ -370,10 +398,10 @@ function BoardRow({
         </td>
         {showCost ? (
           <td
-            className={cn(labeled, "md:text-right")}
-            data-label="Costo servicio"
+            className={cn(cell, RT.moneyTile, RT.moneyCost, "md:text-right")}
             data-row-click="ignore"
           >
+            <MoneyLabel kind="cost" />
             <BoardServiceCostCell
               piece={piece}
               cents={piece.serviceCostCents}
@@ -383,10 +411,10 @@ function BoardRow({
         ) : null}
         {showPrice ? (
           <td
-            className={cn(labeled, "md:text-right")}
-            data-label="Precio venta"
+            className={cn(cell, RT.moneyTile, RT.moneySale, "md:text-right")}
             data-row-click="ignore"
           >
+            <MoneyLabel kind="sale" />
             <BoardSalePriceCell
               piece={piece}
               cents={piece.priceCents}

@@ -44,6 +44,10 @@ type SaveResult = { error: string } | { ok: true } | object;
 export const EMPTY_VALUE_BUTTON_CLASS =
   "text-muted-foreground hover:text-foreground border-dashed font-normal print:hidden";
 
+/** Botón de ancho completo en el celular, con el tono del mosaico que lo contiene. */
+const MOBILE_FILL_BUTTON_CLASS =
+  "max-md:h-9 max-md:w-full max-md:border-dashed max-md:border-current/40 max-md:bg-transparent max-md:text-sm max-md:font-normal max-md:text-current max-md:hover:bg-current/10 max-md:pointer-coarse:size-auto max-md:pointer-coarse:h-9 max-md:pointer-coarse:w-full";
+
 /**
  * Monto con un botón de lápiz que abre un diálogo para cambiarlo (pedido del
  * 2026-10-14): la celda muestra el monto (o el texto vacío) y la edición es una acción
@@ -62,6 +66,7 @@ function MoneyEditCell({
   inputId,
   align = "end",
   emptyActionText,
+  mobileFill,
   shownCents,
   detail,
   onSave,
@@ -79,6 +84,11 @@ function MoneyEditCell({
   align?: "start" | "end";
   /** Sin monto, el botón muestra este texto (p. ej. "Definir precio") en vez del lápiz. */
   emptyActionText?: string;
+  /**
+   * Sin monto, en el celular el lápiz pasa a ser un botón de ancho completo con este
+   * texto (p. ej. "Definir costo"); desde `md` sigue el "Por definir" y el lápiz.
+   */
+  mobileFill?: string;
   /** Monto que se muestra si no es el que se edita (p. ej. el importe × cantidad). */
   shownCents?: Cents | null;
   /** Línea pequeña bajo el monto (p. ej. "3 × S/ 26.66"). */
@@ -86,6 +96,7 @@ function MoneyEditCell({
   onSave: (value: string) => Promise<SaveResult>;
 }) {
   const emptyAction = cents === null && emptyActionText !== undefined;
+  const fillOnMobile = cents === null && mobileFill !== undefined;
   const saved = cents === null ? "" : toDecimalString(cents);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(saved);
@@ -114,10 +125,18 @@ function MoneyEditCell({
       className={cn(
         "flex items-center gap-1 whitespace-nowrap",
         align === "end" ? "justify-end" : "justify-start",
+        fillOnMobile && "max-md:w-full",
       )}
     >
       {emptyAction ? null : cents === null ? (
-        <span className="text-muted-foreground">{emptyText}</span>
+        <span
+          className={cn(
+            "text-muted-foreground",
+            fillOnMobile && "max-md:hidden",
+          )}
+        >
+          {emptyText}
+        </span>
       ) : (
         <AmountWithDetail
           cents={shownCents ?? cents}
@@ -152,11 +171,22 @@ function MoneyEditCell({
               type="button"
               size="icon"
               variant="outline"
-              className="size-7 print:hidden pointer-coarse:size-10"
+              className={cn(
+                "size-7 print:hidden pointer-coarse:size-10",
+                fillOnMobile && MOBILE_FILL_BUTTON_CLASS,
+              )}
               aria-label={buttonLabel}
               title={buttonTitle}
             >
-              <Pencil className={EDIT_ICON_CLASS} />
+              <Pencil
+                className={cn(EDIT_ICON_CLASS, fillOnMobile && "max-md:hidden")}
+              />
+              {fillOnMobile ? (
+                <span className="inline-flex items-center gap-1 md:hidden">
+                  <Plus aria-hidden className="size-3.5" />
+                  {mobileFill}
+                </span>
+              ) : null}
             </Button>
           )}
         </DialogTrigger>
@@ -205,10 +235,13 @@ export function ServiceCostCell({
   quantity,
   align,
   emptyAsButton = false,
+  mobileFill,
 }: {
   piece: MoneyPiece;
   /** Costo de la pieza completa (no se multiplica por la cantidad). */
   cents: Cents | null;
+  /** Texto del botón de ancho completo en el celular cuando falta el costo. */
+  mobileFill?: string;
   /** Con más de una unidad, debajo va el costo por unidad (solo referencia). */
   quantity?: number;
   align?: "start" | "end";
@@ -220,6 +253,7 @@ export function ServiceCostCell({
       cents={cents}
       align={align}
       emptyActionText={emptyAsButton ? "Definir costo" : undefined}
+      mobileFill={mobileFill}
       detail={costDetail(cents, quantity)}
       emptyText="Por definir"
       fieldLabel="Costo de servicio (S/)"
@@ -338,7 +372,9 @@ export function BoardServiceCostCell({
 }) {
   if (cents !== null)
     return <PieceCostAmount cents={cents} quantity={quantity} />;
-  return <ServiceCostCell piece={piece} cents={cents} />;
+  return (
+    <ServiceCostCell piece={piece} cents={cents} mobileFill="Definir costo" />
+  );
 }
 
 /**
@@ -354,8 +390,11 @@ export function SalePriceCell({
   editable,
   align,
   emptyAsButton = false,
+  mobileFill,
 }: {
   piece: MoneyPiece;
+  /** Texto del botón de ancho completo en el celular cuando falta el precio. */
+  mobileFill?: string;
   /** Precio por unidad (lo que se edita). */
   cents: Cents | null;
   /** Se muestra el importe (precio × cantidad) y el precio por unidad debajo. */
@@ -389,6 +428,7 @@ export function SalePriceCell({
       cents={cents}
       align={align}
       emptyActionText={emptyAsButton ? "Definir precio" : undefined}
+      mobileFill={mobileFill}
       shownCents={cents === null ? null : lineCents(cents, quantity)}
       detail={
         cents !== null && quantity && quantity > 1
@@ -438,6 +478,7 @@ export function BoardSalePriceCell({
       quantity={quantity}
       hasOrder={false}
       editable
+      mobileFill="Definir precio"
     />
   );
 }

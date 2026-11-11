@@ -17,6 +17,16 @@ export const RT = {
   /** Celda con su etiqueta encima en el celular (toma el texto de `data-label`). */
   labeled:
     "max-md:before:text-muted-foreground max-md:before:mb-1 max-md:before:block max-md:before:text-xs max-md:before:content-[attr(data-label)]",
+  /**
+   * Bloque de dinero en el celular: costo (ámbar, sale) y precio (verde, entra) como
+   * mosaicos de color, lado a lado, para no confundirlos. Desde `md` son celdas normales.
+   */
+  moneyTile:
+    "max-md:min-w-[calc(50%-0.625rem)] max-md:flex-1 max-md:rounded-md max-md:border max-md:p-2 max-md:[&>div]:justify-start max-md:[&_span.inline-flex]:items-start",
+  moneyCost:
+    "max-md:border-amber-500/40 max-md:bg-amber-500/10 max-md:text-amber-950 dark:max-md:text-amber-100",
+  moneySale:
+    "max-md:border-emerald-500/40 max-md:bg-emerald-500/10 max-md:text-emerald-950 dark:max-md:text-emerald-100",
   /** Ocupa todo el ancho de la tarjeta en el celular. */
   full: "max-md:basis-full",
   headTint: HEAD_TINT,
