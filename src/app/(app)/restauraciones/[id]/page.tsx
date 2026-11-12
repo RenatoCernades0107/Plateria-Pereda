@@ -78,6 +78,7 @@ import {
   getProfileName,
   getQuoteMessageClient,
   getRestorationClientName,
+  getPreviousStatus,
   getRestorationDetail,
   type QuoteMessageClient,
   getStatusHistory,
@@ -119,6 +120,16 @@ export default async function RestauracionDetallePage({
   const kindNotice = charged
     ? null
     : `Guía ${RESTORATION_KIND_LABELS[kind].toLowerCase()}: sin cobro`;
+
+  // Piezas rechazadas por el cliente: se pueden reactivar con «Retroceder estado» si
+  // cambia de opinión (el estado anterior sale del historial de cada pieza).
+  const previousStatuses = Object.fromEntries(
+    await Promise.all(
+      restoration.pieces
+        .filter((p) => p.status === "rechazada")
+        .map(async (p) => [p.id, await getPreviousStatus(p.id)] as const),
+    ),
+  );
 
   const query = await searchParams;
   const justCreated = query.registrada === "1";
@@ -677,6 +688,7 @@ export default async function RestauracionDetallePage({
                   photos={photos}
                   approvalPayment={approvalPayment}
                   balanceDue={balanceDue}
+                  previousStatuses={previousStatuses}
                   guideKind={restoration.kind}
                   hasOrder={restoration.hasOrder}
                   editing={

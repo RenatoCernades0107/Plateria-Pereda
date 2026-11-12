@@ -427,8 +427,10 @@ export function applyTransition(
 /**
  * "Retroceder estado" (2026-10-15): la pieza vuelve al estado anterior de su historial
  * (`previous`, que calcula la BD). Lo puede hacer quien podía hacer el avance; sin esa
- * transición en la tabla, solo el admin. Una pieza ya devuelta al cliente no se reactiva,
- * y la que está en el taller por trabajo no retrocede hasta marcar que volvió.
+ * transición en la tabla, solo el admin. Una pieza sin arreglo ya devuelta al cliente no se
+ * reactiva; la rechazada sí, aunque ya se haya devuelto, porque el cliente puede cambiar de
+ * opinión (la devolución se deshace). La que está en el taller por trabajo no retrocede
+ * hasta marcar que volvió.
  */
 export function canUndoStatus(
   piece: Pick<PieceSnapshot, "status" | "returnedAt"> & Partial<WorkshopDates>,
@@ -437,7 +439,12 @@ export function canUndoStatus(
 ): boolean {
   if (!previous) return false;
   if (isInWorkshop(piece)) return false;
-  if (isClosedStatus(piece.status) && piece.returnedAt) return false;
+  if (
+    isClosedStatus(piece.status) &&
+    piece.status !== "rechazada" &&
+    piece.returnedAt
+  )
+    return false;
   const t = findTransition(previous, piece.status);
   return t ? t.roles.includes(role) : role === "admin";
 }
