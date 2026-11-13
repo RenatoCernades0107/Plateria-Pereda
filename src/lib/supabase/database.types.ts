@@ -1014,13 +1014,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "quote_payments_created_by_fkey";
-            columns: ["created_by"];
-            isOneToOne: false;
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "quote_payments_payment_method_id_fkey";
             columns: ["payment_method_id"];
             isOneToOne: false;
