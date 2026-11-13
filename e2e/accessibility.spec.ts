@@ -84,6 +84,8 @@ test.describe("Accesibilidad y responsive", () => {
     page,
     makeAxeBuilder,
   }) => {
+    // Sin la animación de entrada: axe mediría los colores a medio aparecer.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 360, height: 800 });
     await page.goto("/login");
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
