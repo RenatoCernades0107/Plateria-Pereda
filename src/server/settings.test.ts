@@ -37,6 +37,7 @@ const row = {
   deposit_percent: "50.00",
   whatsapp_template: null,
   whatsapp_quote_template: null,
+  quote_share_template: null,
   terms: "",
 };
 

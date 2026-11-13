@@ -1427,6 +1427,7 @@ export type Database = {
           legal_name: string;
           logo_path: string | null;
           phones: string;
+          quote_share_template: string | null;
           quote_validity_days: number;
           ruc: string | null;
           terms: string;
@@ -1443,6 +1444,7 @@ export type Database = {
           legal_name?: string;
           logo_path?: string | null;
           phones?: string;
+          quote_share_template?: string | null;
           quote_validity_days?: number;
           ruc?: string | null;
           terms?: string;
@@ -1459,6 +1461,7 @@ export type Database = {
           legal_name?: string;
           logo_path?: string | null;
           phones?: string;
+          quote_share_template?: string | null;
           quote_validity_days?: number;
           ruc?: string | null;
           terms?: string;

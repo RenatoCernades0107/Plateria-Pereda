@@ -17,6 +17,7 @@ const valid = {
   depositPercent: "50",
   whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE,
   whatsappQuoteTemplate: DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+  quoteShareTemplate: "Hola {cliente}",
   terms: "",
 };
 

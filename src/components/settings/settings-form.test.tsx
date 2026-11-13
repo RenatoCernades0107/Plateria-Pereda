@@ -25,6 +25,7 @@ const defaults = {
   depositPercent: 50,
   whatsappTemplate: "Hola {cliente}",
   whatsappQuoteTemplate: "Cotización {piezas}",
+  quoteShareTemplate: "Hola {cliente}",
   terms: "",
 };
 

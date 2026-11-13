@@ -122,12 +122,15 @@ export function QuotePdfButton({
   canEditClient = false,
   workshop = null,
   workshopOnly = false,
+  shareTemplate,
 }: {
   data: QuotePdfData;
   /** La cotización para la orden para taller. */
   workshop?: WorkshopQuote | null;
   /** Solo la versión para taller. */
   workshopOnly?: boolean;
+  /** Plantilla del mensaje al compartir (Configuración); sin ella, la de la aplicación. */
+  shareTemplate?: string;
   /** Teléfono del cliente o del contacto, para el enlace de WhatsApp. */
   phone?: string | null;
   /** Cliente (y contacto) de la cotización, para agregarle el teléfono que falta. */
@@ -242,7 +245,12 @@ export function QuotePdfButton({
     try {
       const { pdf, fileName } = await buildPdf(data);
       const blob = pdf.output("blob") as Blob;
-      const message = quoteShareMessage(data.code, data.clientName);
+      const message = quoteShareMessage(
+        data.code,
+        data.clientName,
+        phone,
+        shareTemplate,
+      );
       const file = new File([blob], fileName, { type: "application/pdf" });
       if (canShareFiles(file)) {
         await navigator.share({ files: [file], text: message });

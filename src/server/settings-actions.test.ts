@@ -42,6 +42,7 @@ const input = {
   depositPercent: "40",
   whatsappTemplate: "Hola {cliente}",
   whatsappQuoteTemplate: "Cotización {piezas}",
+  quoteShareTemplate: "Hola {cliente}",
   terms: "",
 };
 

@@ -34,6 +34,8 @@ test.describe("Inicio de sesión", () => {
     page,
     makeAxeBuilder,
   }) => {
+    // Sin la animación de entrada: axe mediría los colores a medio aparecer.
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/login");
     const { violations } = await makeAxeBuilder().analyze();
     expect(

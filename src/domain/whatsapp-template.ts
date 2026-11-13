@@ -44,6 +44,25 @@ Estaremos encantados de recibir las piezas para evaluarlas y confirmar la cotiza
 
 Cualquier consulta, estaré encantada de atenderte. ☺️`;
 
+/** Variables del mensaje al compartir el PDF de una cotización de producto. */
+export const QUOTE_SHARE_PLACEHOLDERS = {
+  telefono: "Teléfono del contacto o del cliente",
+  cliente: "Nombre del cliente",
+  codigo: "Código de la cotización (COT-000001)",
+} as const;
+
+export type QuoteSharePlaceholder = keyof typeof QUOTE_SHARE_PLACEHOLDERS;
+
+/** Mensaje por defecto al compartir por WhatsApp una cotización de producto. */
+export const DEFAULT_QUOTE_SHARE_TEMPLATE = `{telefono}
+
+Hola {cliente}, te comparto la cotización {codigo}. Cualquier consulta, con gusto te ayudamos.`;
+
+/** Variables desconocidas en la plantilla del mensaje de cotización de producto. */
+export function unknownQuoteSharePlaceholders(template: string): string[] {
+  return unknownTemplatePlaceholders(template, QUOTE_SHARE_PLACEHOLDERS);
+}
+
 /** Variables escritas en la plantilla que no existen (p. ej., "{clienet}"). */
 export function unknownPlaceholders(template: string): string[] {
   return unknownTemplatePlaceholders(template, WHATSAPP_PLACEHOLDERS);
