@@ -12,6 +12,7 @@ describe("drawProviderReport", () => {
           id: "p1",
           code: "RES-00004-1",
           quantity: 6,
+          urgent: false,
           status: "aprobada",
           location: "en_taller",
           description: "Cucharitas",
@@ -36,7 +37,9 @@ describe("drawProviderReport", () => {
       "4x12 cm",
       "85 g",
       "COSTO SERV.",
-      "ENTREGA TALLER",
+      // El título no cabe en una línea de su columna: va partido en dos.
+      "ENTREGA",
+      "TALLER",
       "30 oct",
     ])
       expect(raw).toContain(`(${text})`);
@@ -49,6 +52,7 @@ describe("drawProviderReport", () => {
         id: "p1",
         code: "RES-00004-1",
         quantity: 1,
+        urgent: false,
         status: "aprobada",
         location: "en_taller",
         description: "Fuente",
@@ -63,5 +67,56 @@ describe("drawProviderReport", () => {
     ]);
     const raw = (await drawProviderReport(model)).output();
     expect(raw).not.toContain("(COSTO SERV.)");
+  });
+
+  it("marca las piezas urgentes con el rayo y la etiqueta URGENTE", async () => {
+    const base = {
+      id: "p1",
+      code: "RES-00088-1",
+      quantity: 1,
+      status: "en_consulta" as const,
+      location: "sin_enviar" as const,
+      description: "Plato ondeado",
+      notes: "",
+      serviceName: "Pulido",
+      materialName: "",
+      measure: "",
+      weightGrams: null,
+      serviceCostCents: null,
+      workshopDeliveryDate: null,
+    };
+    const urgent = (
+      await drawProviderReport(providerReportModel([{ ...base, urgent: true }]))
+    ).output();
+    const normal = (
+      await drawProviderReport(
+        providerReportModel([{ ...base, urgent: false }]),
+      )
+    ).output();
+    expect(urgent).toContain("(URGENTE)");
+    expect(normal).not.toContain("(URGENTE)");
+  });
+
+  it("una palabra más ancha que su columna se corta en vez de salirse", async () => {
+    const model = providerReportModel([
+      {
+        id: "p1",
+        code: "RES-00004-1",
+        quantity: 1,
+        urgent: false,
+        status: "aprobada",
+        location: "en_taller",
+        description: "Fuente",
+        notes: "",
+        serviceName: "Electrodepositadoextraordinario",
+        materialName: "",
+        measure: "",
+        weightGrams: null,
+        serviceCostCents: null,
+        workshopDeliveryDate: null,
+      },
+    ]);
+    const raw = (await drawProviderReport(model)).output();
+    expect(raw).not.toContain("(Electrodepositadoextraordinario)");
   });
 });

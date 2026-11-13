@@ -55,6 +55,7 @@ export function ProviderReportButton({
           id: p.id,
           code: p.code,
           quantity: p.quantity,
+          urgent: p.urgent,
           status: p.status,
           location: p.location,
           description: p.description,

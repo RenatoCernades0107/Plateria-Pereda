@@ -8,6 +8,10 @@ const GRID = 200;
 const MARGIN = 12;
 /** Filas mínimas de la tabla (las que faltan se dibujan vacías, como en la guía). */
 const MIN_ROWS = 8;
+/** Urgente: ámbar de la marca (relleno de la fila, rayo y etiqueta). */
+const URGENT_FILL: [number, number, number] = [255, 247, 224];
+const URGENT_BOLT: [number, number, number] = [251, 191, 36];
+const URGENT_TEXT: [number, number, number] = [180, 83, 9];
 
 type Column = {
   key:
@@ -85,7 +89,7 @@ export async function drawProviderReport(
   const columns: Column[] = [
     { key: "number", title: "N°", width: 8, align: "center" },
     { key: "photo", title: "FOTO", width: 18 },
-    { key: "code", title: "CÓDIGO", width: 26 },
+    { key: "code", title: "CÓDIGO", width: 28 },
     { key: "quantity", title: "CANT.", width: 11, align: "center" },
     { key: "description", title: "DESCRIPCIÓN", width: 0 },
     { key: "measure", title: "MEDIDAS", width: 24 },
@@ -96,7 +100,7 @@ export async function drawProviderReport(
           {
             key: "serviceCost",
             title: "COSTO SERV.",
-            width: 22,
+            width: 24,
             align: "right",
           } as const,
         ]
@@ -106,7 +110,7 @@ export async function drawProviderReport(
     {
       key: "workshopDeliveryDate",
       title: "ENTREGA TALLER",
-      width: 22,
+      width: 24,
       align: "center",
     },
   ];
@@ -114,15 +118,46 @@ export async function drawProviderReport(
   description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
   const pad = 1.8;
   const lineH = 3.8;
-  const headerH = 6.5;
   const xs: number[] = [];
   columns.reduce((x, c) => (xs.push(x), x + c.width), MARGIN);
+
+  /**
+   * Parte el texto en líneas que quepan en `width`; una palabra más ancha que la
+   * columna se corta por letras en vez de salirse de ella.
+   */
+  const wrap = (text: string, width: number): string[] =>
+    (pdf.splitTextToSize(text, width) as string[]).flatMap((line) => {
+      if (pdf.getTextWidth(line) <= width) return [line];
+      const parts: string[] = [];
+      let current = "";
+      for (const char of line) {
+        if (current && pdf.getTextWidth(current + char) > width) {
+          parts.push(current);
+          current = "";
+        }
+        current += char;
+      }
+      return current ? [...parts, current] : parts;
+    });
+
+  // Los títulos que no caben en su columna (p. ej. "ENTREGA TALLER") pasan a dos líneas.
+  font("bold", 8);
+  const headerLines = columns.map((c) => wrap(c.title, c.width - 2.4));
+  const headerLineH = 3.4;
+  const headerH =
+    Math.max(...headerLines.map((l) => l.length)) * headerLineH + 3.1;
 
   const drawTableHeader = () => {
     pdf.setFillColor(...BRAND).rect(MARGIN, y, contentW, headerH, "F");
     font("bold", 8).setTextColor(255);
     columns.forEach((c, i) => {
-      pdf.text(c.title, xs[i]! + c.width / 2, y + 4.4, { align: "center" });
+      const lines = headerLines[i]!;
+      const top = y + (headerH - lines.length * headerLineH) / 2 + 2.5;
+      lines.forEach((line, n) => {
+        pdf.text(line, xs[i]! + c.width / 2, top + n * headerLineH, {
+          align: "center",
+        });
+      });
     });
     y += headerH;
   };
@@ -137,28 +172,26 @@ export async function drawProviderReport(
 
   for (const row of model.rows) {
     font("normal", 8.5);
-    const desc = pdf.splitTextToSize(row.description, textW("description"));
+    const desc = wrap(row.description, textW("description"));
     font("normal", 7.5);
-    const detail = row.detail
-      ? pdf.splitTextToSize(row.detail, textW("description"))
-      : [];
+    const detail = row.detail ? wrap(row.detail, textW("description")) : [];
     const task = row.task
-      ? pdf.splitTextToSize(
-          `Servicio a realizar: ${row.task}`,
-          textW("description"),
-        )
+      ? wrap(`Servicio a realizar: ${row.task}`, textW("description"))
       : [];
-    const service = pdf.splitTextToSize(row.service, textW("service"));
-    const status = pdf.splitTextToSize(row.status, textW("status"));
-    const location = pdf.splitTextToSize(row.location, textW("location"));
-    const code = pdf.splitTextToSize(row.code, textW("code"));
-    const measure = pdf.splitTextToSize(row.measure, textW("measure"));
+    font("normal", 8);
+    const service = wrap(row.service, textW("service"));
+    const status = wrap(row.status, textW("status"));
+    const location = wrap(row.location, textW("location"));
+    const measure = wrap(row.measure, textW("measure"));
+    font("bold", 8.5);
+    const code = wrap(row.code, textW("code"));
     const lines = Math.max(
       desc.length + detail.length + task.length,
       service.length,
       status.length,
       location.length,
-      code.length,
+      // Urgente: el código lleva debajo la etiqueta "URGENTE".
+      code.length + (row.urgent ? 1 : 0),
       measure.length,
     );
     const rowH = Math.max(lines * lineH + pad * 2, 20);
@@ -166,6 +199,9 @@ export async function drawProviderReport(
       pdf.addPage();
       y = MARGIN;
       drawTableHeader();
+    }
+    if (row.urgent) {
+      pdf.setFillColor(...URGENT_FILL).rect(MARGIN, y, contentW, rowH, "F");
     }
     drawRowFrame(rowH);
     const textTop = y + pad + 2.6;
@@ -203,6 +239,33 @@ export async function drawProviderReport(
         case "code":
           font("bold", 8.5);
           pdf.text(code, x + pad, textTop);
+          if (row.urgent) {
+            // Rayo junto al código y la etiqueta debajo, para que se vea de un vistazo.
+            const boltX =
+              x + pad + Math.max(...code.map((l) => pdf.getTextWidth(l))) + 1.4;
+            const boltY = textTop - 2.9;
+            pdf
+              .setFillColor(...URGENT_BOLT)
+              .setDrawColor(...URGENT_TEXT)
+              .setLineWidth(0.15)
+              .lines(
+                [
+                  [-1.9, 1.9],
+                  [1, 0],
+                  [-0.5, 1.6],
+                  [2.1, -2.2],
+                  [-1.1, 0],
+                  [0.4, -1.3],
+                ],
+                boltX + 1.9,
+                boltY,
+                [1, 1],
+                "FD",
+                true,
+              );
+            font("bold", 7).setTextColor(...URGENT_TEXT);
+            pdf.text("URGENTE", x + pad, textTop + code.length * lineH);
+          }
           break;
         case "description": {
           let ty = textTop;

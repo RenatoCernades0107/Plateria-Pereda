@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import {
   PieceQuantity,
   PieceStatusBadge,
+  UrgentIcon,
 } from "@/components/restorations/status-badges";
 import {
   Table,
@@ -70,6 +71,7 @@ export function WorkshopPiecesTable({
             </TableCell>
             <TableCell className="text-heading font-medium whitespace-nowrap">
               {p.code} <PieceQuantity quantity={p.quantity} />
+              {p.urgent ? <UrgentIcon className="ml-1 align-middle" /> : null}
             </TableCell>
             <TableCell className="max-w-64 break-words whitespace-normal">
               {p.description}
