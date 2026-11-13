@@ -284,6 +284,23 @@ describe("quotePdfModel", () => {
 });
 
 describe("quoteShareMessage", () => {
+  it("pone arriba el teléfono del contacto", () => {
+    expect(quoteShareMessage("COT-000001", "Ana", "+51999888777")).toBe(
+      "+51 999 888 777\n\nHola Ana, te comparto la cotización COT-000001. Cualquier consulta, con gusto te ayudamos.",
+    );
+  });
+
+  it("usa la plantilla de Configuración", () => {
+    expect(
+      quoteShareMessage(
+        "COT-000001",
+        "Ana",
+        "999888777",
+        "{telefono} - {codigo}",
+      ),
+    ).toBe("+51 999 888 777 - COT-000001");
+  });
+
   it("saluda por el nombre del cliente", () => {
     expect(quoteShareMessage("COT-000001", "Ana")).toBe(
       "Hola Ana, te comparto la cotización COT-000001. Cualquier consulta, con gusto te ayudamos.",

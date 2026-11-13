@@ -27,8 +27,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DEFAULT_QUOTE_SHARE_TEMPLATE,
   DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   DEFAULT_WHATSAPP_TEMPLATE,
+  QUOTE_SHARE_PLACEHOLDERS,
   WHATSAPP_PLACEHOLDERS,
 } from "@/domain/whatsapp-template";
 import {
@@ -86,12 +88,14 @@ function TemplateField({
   label,
   defaultTemplate,
   description,
+  placeholders = WHATSAPP_PLACEHOLDERS,
 }: {
   form: ReturnType<typeof useForm<SettingsFormInput, unknown, SettingsInput>>;
-  name: "whatsappTemplate" | "whatsappQuoteTemplate";
+  name: "whatsappTemplate" | "whatsappQuoteTemplate" | "quoteShareTemplate";
   label: string;
   defaultTemplate: string;
   description: string;
+  placeholders?: Readonly<Record<string, string>>;
 }) {
   return (
     <FormField
@@ -125,14 +129,12 @@ function TemplateField({
           </FormControl>
           <FormDescription>{description}</FormDescription>
           <ul className="text-muted-foreground grid gap-x-4 text-sm sm:grid-cols-2">
-            {Object.entries(WHATSAPP_PLACEHOLDERS).map(
-              ([placeholder, help]) => (
-                <li key={placeholder}>
-                  <code className="text-foreground">{`{${placeholder}}`}</code>{" "}
-                  {help}
-                </li>
-              ),
-            )}
+            {Object.entries(placeholders).map(([placeholder, help]) => (
+              <li key={placeholder}>
+                <code className="text-foreground">{`{${placeholder}}`}</code>{" "}
+                {help}
+              </li>
+            ))}
           </ul>
           <FormMessage />
         </FormItem>
@@ -248,6 +250,26 @@ export function SettingsForm({
               label="Mensaje de cotización de WhatsApp"
               defaultTemplate={DEFAULT_WHATSAPP_QUOTE_TEMPLATE}
               description="Escribe las variables entre llaves; se reemplazan al armar el mensaje de cada cotización de WhatsApp. En {piezas} cada pieza va con su cantidad y su precio aproximado."
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cotizaciones de productos por WhatsApp</CardTitle>
+            <CardDescription>
+              Mensaje que acompaña el PDF al usar «Compartir por WhatsApp» en
+              una cotización de producto personalizado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TemplateField
+              form={form}
+              name="quoteShareTemplate"
+              label="Mensaje al compartir una cotización"
+              defaultTemplate={DEFAULT_QUOTE_SHARE_TEMPLATE}
+              placeholders={QUOTE_SHARE_PLACEHOLDERS}
+              description="Escribe las variables entre llaves; se reemplazan al compartir cada cotización. {telefono} es el del contacto (o el del cliente)."
             />
           </CardContent>
         </Card>

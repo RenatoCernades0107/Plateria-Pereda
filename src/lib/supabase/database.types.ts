@@ -1431,6 +1431,7 @@ export type Database = {
           ruc: string | null;
           terms: string;
           updated_at: string;
+          quote_share_template: string | null;
           whatsapp_quote_template: string | null;
           whatsapp_template: string | null;
         };
@@ -1447,6 +1448,7 @@ export type Database = {
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
+          quote_share_template?: string | null;
           whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };
@@ -1463,6 +1465,7 @@ export type Database = {
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
+          quote_share_template?: string | null;
           whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };

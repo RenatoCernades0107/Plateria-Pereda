@@ -1,15 +1,20 @@
 import { z } from "zod";
 
 import { isValidRuc } from "@/domain/ruc";
-import { unknownPlaceholders } from "@/domain/whatsapp-template";
+import {
+  unknownPlaceholders,
+  unknownQuoteSharePlaceholders,
+} from "@/domain/whatsapp-template";
 
 const text = (max: number) =>
   z.string().trim().max(max, `Máximo ${max} caracteres`);
 
 /** Plantilla de WhatsApp: solo con variables conocidas. */
-const template = () =>
+const template = (
+  unknownOf: (value: string) => string[] = unknownPlaceholders,
+) =>
   text(4000).superRefine((value, ctx) => {
-    const unknown = unknownPlaceholders(value);
+    const unknown = unknownOf(value);
     if (unknown.length > 0) {
       ctx.addIssue({
         code: "custom",
@@ -49,6 +54,7 @@ export const settingsSchema = z.object({
     ),
   whatsappTemplate: template(),
   whatsappQuoteTemplate: template(),
+  quoteShareTemplate: template(unknownQuoteSharePlaceholders),
   terms: text(5000),
 });
 

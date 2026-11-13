@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 
 import {
+  DEFAULT_QUOTE_SHARE_TEMPLATE,
   DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   DEFAULT_WHATSAPP_TEMPLATE,
 } from "@/domain/whatsapp-template";
@@ -28,6 +29,10 @@ export type Settings = {
   customWhatsappQuoteTemplate: string | null;
   /** Plantilla de las cotizaciones de WhatsApp que se aplica. */
   whatsappQuoteTemplate: string;
+  /** Mensaje al compartir una cotización de producto guardado; null si se usa el de la aplicación. */
+  customQuoteShareTemplate: string | null;
+  /** Mensaje al compartir una cotización de producto que se aplica. */
+  quoteShareTemplate: string;
   terms: string;
 };
 
@@ -55,6 +60,9 @@ export const getSettings = cache(async (): Promise<Settings> => {
     customWhatsappQuoteTemplate: data.whatsapp_quote_template,
     whatsappQuoteTemplate:
       data.whatsapp_quote_template ?? DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+    customQuoteShareTemplate: data.quote_share_template,
+    quoteShareTemplate:
+      data.quote_share_template ?? DEFAULT_QUOTE_SHARE_TEMPLATE,
     terms: data.terms,
   };
 });

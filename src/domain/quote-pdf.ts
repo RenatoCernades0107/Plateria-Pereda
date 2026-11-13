@@ -1,7 +1,12 @@
 import { amountInWords } from "./amount-in-words";
 import type { DocumentType } from "./documents";
 import { formatCents } from "./money";
-import { formatPhone } from "./phone";
+import { formatPhone, normalizePhone } from "./phone";
+import { renderTemplate } from "./template";
+import {
+  DEFAULT_QUOTE_SHARE_TEMPLATE,
+  QUOTE_SHARE_PLACEHOLDERS,
+} from "./whatsapp-template";
 import {
   formatQuoteDateLong,
   lineTotal,
@@ -215,7 +220,20 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
 }
 
 /** Mensaje breve para compartir la cotización por WhatsApp (Paso 14.6). */
-export function quoteShareMessage(code: string, clientName: string): string {
-  const greeting = clientName.trim() ? `Hola ${clientName.trim()}` : "Hola";
-  return `${greeting}, te comparto la cotización ${code}. Cualquier consulta, con gusto te ayudamos.`;
+export function quoteShareMessage(
+  code: string,
+  clientName: string,
+  phone: string | null = null,
+  template: string = DEFAULT_QUOTE_SHARE_TEMPLATE,
+): string {
+  const e164 = phone ? normalizePhone(phone) : null;
+  const text = renderTemplate(template, QUOTE_SHARE_PLACEHOLDERS, {
+    codigo: code,
+    cliente: clientName.trim(),
+    telefono: e164 ? formatPhone(e164) : (phone?.trim() ?? ""),
+  })
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  // Sin nombre, "Hola {cliente}, …" queda "Hola, …".
+  return text.replace(/(^|\n)(Hola)\s+,/g, "$1$2,");
 }

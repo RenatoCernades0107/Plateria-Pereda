@@ -40,6 +40,7 @@ export default async function ConfiguracionPage() {
           depositPercent: settings.depositPercent,
           whatsappTemplate: settings.whatsappTemplate,
           whatsappQuoteTemplate: settings.whatsappQuoteTemplate,
+          quoteShareTemplate: settings.quoteShareTemplate,
           terms: settings.terms,
         }}
       />

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  DEFAULT_QUOTE_SHARE_TEMPLATE,
   DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
   DEFAULT_WHATSAPP_TEMPLATE,
 } from "@/domain/whatsapp-template";
@@ -49,6 +50,10 @@ export async function updateSettings(
       whatsapp_quote_template: storedTemplate(
         v.whatsappQuoteTemplate,
         DEFAULT_WHATSAPP_QUOTE_TEMPLATE,
+      ),
+      quote_share_template: storedTemplate(
+        v.quoteShareTemplate,
+        DEFAULT_QUOTE_SHARE_TEMPLATE,
       ),
       terms: v.terms,
     })

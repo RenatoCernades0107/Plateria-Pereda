@@ -187,6 +187,7 @@ export default async function CotizacionPage({
               canEditClient={can(user.role, "clientes.editar")}
               workshop={workshop}
               workshopOnly={voided}
+              shareTemplate={company.quoteShareTemplate}
             />
           ) : null}
           <QuoteActions
