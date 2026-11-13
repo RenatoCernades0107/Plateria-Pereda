@@ -632,6 +632,20 @@
       "readyForOrder": false
     },
     {
+      "name": "guía observada: nace con las piezas observadas y aprobadas",
+      "pieces": [
+        {
+          "status": "observada",
+          "approvedAt": "2026-11-11T15:00:00Z",
+          "price": null,
+          "firstSentAt": null,
+          "readyForDelivery": false
+        }
+      ],
+      "expected": "aprobada",
+      "readyForOrder": false
+    },
+    {
       "name": "guía observada: una pieza de vuelta del taller",
       "pieces": [
         {

@@ -303,7 +303,9 @@ export function StatusChangeDialog({
           <DialogDescription>
             Pasa a «{PIECE_STATUS_LABELS[change.to]}».
             {isClosedStatus(change.to)
-              ? " Es un estado final: la pieza no se puede reactivar ni se cobra."
+              ? change.to === "rechazada"
+                ? " La pieza no se cobra; si el cliente cambia de opinión, se reactiva con «Retroceder estado»."
+                : " Es un estado final: la pieza no se puede reactivar ni se cobra."
               : ""}
           </DialogDescription>
         </DialogHeader>
