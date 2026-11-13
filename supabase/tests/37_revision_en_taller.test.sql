@@ -1,10 +1,11 @@
 begin;
 
-select plan(33);
+select plan(30);
 
 -- Revisión en taller (2026-10-15): una pieza en Consulta o esperando la respuesta del
 -- cliente va al taller a revisar sin cambiar de estado; vuelve con "Volvió de revisión"
--- o, si el cliente aprueba, pasa a En restauración en el mismo taller.
+-- o, si el cliente aprueba, pasa a En restauración en el mismo taller. Cerrar la pieza con
+-- la revisión abierta (rechazar, anular, sin arreglo) se prueba en 74_cerrar_en_revision.
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000037a1', 'ventas@revision.test', '{"role":"ventas"}', '{"full_name":"Vera Ventas"}'),
   ('00000000-0000-0000-0000-0000000037a2', 'logistica@revision.test', '{"role":"logistica"}', '{"full_name":"Lalo Logística"}'),
@@ -102,18 +103,6 @@ select results_eq(
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000037a3","role":"authenticated"}', true);
-select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-0000000037e1']::uuid[],
-       'sin_arreglo', 'No tiene arreglo') $$,
-  '23514', 'La pieza ' || (select code from public.pieces_operational where id = '00000000-0000-0000-0000-0000000037e1')
-    || ' está en el taller por revisión; marca primero que volvió.',
-  'en revisión no se marca No tiene arreglo'
-);
-select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-0000000037e1']::uuid[],
-       'anulada', 'Ya no va') $$,
-  '23514', null, 'en revisión no se anula'
-);
 select results_eq(
   $$ select status::text from public.change_piece_status(
        array['00000000-0000-0000-0000-0000000037e1']::uuid[], 'en_espera') $$,
@@ -123,11 +112,6 @@ select results_eq(
 select is(
   (select location::text from public.pieces_operational where id = '00000000-0000-0000-0000-0000000037e1'),
   'en_taller', 'esperando respuesta sigue En taller'
-);
-select throws_ok(
-  $$ select * from public.change_piece_status(array['00000000-0000-0000-0000-0000000037e1']::uuid[],
-       'rechazada', 'No acepta') $$,
-  '23514', null, 'en revisión el cliente no rechaza hasta que vuelve'
 );
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000037a1","role":"authenticated"}', true);

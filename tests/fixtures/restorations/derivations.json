@@ -1086,6 +1086,54 @@
       "reviewReturnedAt": null,
       "observedAt": null,
       "expected": "en_tienda"
+    },
+    {
+      "status": "rechazada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": null,
+      "observedAt": null,
+      "expected": "en_taller"
+    },
+    {
+      "status": "sin_arreglo",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": null,
+      "observedAt": null,
+      "expected": "en_taller"
+    },
+    {
+      "status": "rechazada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": null,
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-04T15:00:00Z",
+      "observedAt": null,
+      "expected": "en_tienda"
+    },
+    {
+      "status": "rechazada",
+      "arrivedAt": "2026-10-01T15:00:00Z",
+      "firstSentAt": null,
+      "lastSentAt": null,
+      "lastReturnedAt": null,
+      "returnedAt": "2026-10-05T15:00:00Z",
+      "reviewSentAt": "2026-10-02T15:00:00Z",
+      "reviewReturnedAt": "2026-10-04T15:00:00Z",
+      "observedAt": null,
+      "expected": "entregada"
     }
   ],
   "daysInWorkshop": [

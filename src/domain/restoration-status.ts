@@ -138,12 +138,15 @@ export function deriveLocation(piece: PieceForLocation): PieceLocation {
   )
     return "entregada";
   if (!piece.arrivedAt) return "por_whatsapp";
-  // Revisión en taller: en Consulta, Espera o Aprobada, en el taller hasta que vuelve.
+  // Revisión en taller: en Consulta, Espera, Aprobada, o ya cerrada por el cliente o el
+  // taller (rechazada, sin arreglo), en el taller hasta que vuelve.
   if (
     isInReview(piece) &&
     (piece.status === "en_consulta" ||
       piece.status === "en_espera" ||
-      piece.status === "aprobada")
+      piece.status === "aprobada" ||
+      piece.status === "rechazada" ||
+      piece.status === "sin_arreglo")
   )
     return "en_taller";
   if (isInWorkshop(piece)) return "en_taller";

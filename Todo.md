@@ -1293,7 +1293,7 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - [x] **Pagos de la cotización** (`quote_payments`, sin Shopify): solo en aceptadas o facturadas; hasta el saldo; varios métodos; **N.º de factura por pago** (opcional al registrar, se asigna o cambia después). Admin y ventas registran y asignan la factura; el admin elimina un pago registrado por error (no hay reembolsos). Con pagos la cotización no vuelve a emitida ni se anula.
 - **Unit:** dominio (`quote-payments`, `quote-tracking-filters`, permisos), acciones (`setQuoteTracking`, pagos) y componentes (`QuotePaymentsSection`, `QuoteTrackingControls`).
 - **BD:** `73_ubicacion_taller_y_pagos_cotizacion`; `70` ya no pasa a reembolsada; la matriz `61` incluye `quote_payments`.
-- Hecho (2026-11-11): migración `20261111120000_ubicacion_taller_y_pagos_cotizacion.sql`.
+- Hecho (2026-11-11): migración `20261111120100_ubicacion_taller_y_pagos_cotizacion.sql`.
 
 ### Fase 15 — Calidad transversal
 
