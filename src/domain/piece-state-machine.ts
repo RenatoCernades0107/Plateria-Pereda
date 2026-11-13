@@ -243,7 +243,11 @@ export type BlockSnapshot = Pick<
  *   * Aprobada → Sin arreglo: solo lo que ya fue al taller.
  *   * Observada → Entregada: no mientras se reenvió al taller.
  *   * Anular lo que está en el taller: solo el administrador (sin rol no se revisa).
- *   * En revisión en taller no se cierra la pieza hasta marcar que volvió.
+ *
+ * Rechazar, anular o marcar "No tiene arreglo" son decisiones sobre la pieza, no sobre
+ * dónde está: se pueden tomar con la pieza aún en el taller por revisión (el cliente
+ * responde o el taller avisa). Lo que sí depende de la ubicación es devolverla al
+ * cliente (`canReturnToClient`).
  */
 export function blockedBy(
   piece: BlockSnapshot,
@@ -266,7 +270,6 @@ export function blockedBy(
     return "sigue_en_taller";
   if (to === "anulada" && inWorkshop && role && role !== "admin")
     return "en_taller_solo_admin";
-  if (isClosedStatus(to) && review) return "en_revision";
   return null;
 }
 
@@ -349,7 +352,7 @@ export const TRANSITION_ERROR_MESSAGES: Record<TransitionError, string> = {
     "La pieza está en el taller: solo el administrador la anula.",
   ya_en_taller: "La pieza ya está en el taller.",
   en_revision:
-    "La pieza está en el taller por revisión; marca primero que volvió.",
+    "La pieza sigue en el taller por revisión; marca primero que volvió para devolverla.",
   revision_otro_taller:
     "La pieza está en revisión en otro taller; marca primero que volvió.",
 };
@@ -571,15 +574,21 @@ export function receiveFromWorkshop(
   );
 }
 
-/** "Devolver al cliente": pieza rechazada o sin arreglo que sigue en la tienda (P47). */
+/**
+ * "Devolver al cliente": pieza rechazada o sin arreglo que sigue en la tienda (P47). Si
+ * se cerró con la revisión en taller abierta, la pieza aún está allá: se devuelve
+ * cuando se marca "Volvió de revisión".
+ */
 export function canReturnToClient(
-  piece: Pick<PieceSnapshot, "status" | "arrivedAt" | "returnedAt">,
+  piece: Pick<PieceSnapshot, "status" | "arrivedAt" | "returnedAt"> &
+    ReviewDates,
   role: AppRole,
 ): boolean {
   return (
     (piece.status === "rechazada" || piece.status === "sin_arreglo") &&
     !!piece.arrivedAt &&
     !piece.returnedAt &&
+    !isInReview(piece) &&
     DEVOLVER.includes(role)
   );
 }
@@ -589,6 +598,14 @@ export function returnToClient(
   role: AppRole,
   now: Date,
 ): TransitionResult {
+  if (
+    DEVOLVER.includes(role) &&
+    (piece.status === "rechazada" || piece.status === "sin_arreglo") &&
+    !!piece.arrivedAt &&
+    !piece.returnedAt &&
+    isInReview(piece)
+  )
+    return { ok: false, error: "en_revision" };
   return action(
     piece,
     (piece.status === "rechazada" || piece.status === "sin_arreglo") &&

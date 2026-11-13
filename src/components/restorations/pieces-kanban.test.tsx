@@ -149,8 +149,13 @@ describe("PiecesKanban: revisión en taller", () => {
       screen.getByRole("button", { name: "Mover RES-00001-2 a…" }),
     );
     const items = screen.getAllByRole("menuitem").map((i) => i.textContent);
-    // En revisión no se rechaza ni se anula hasta que vuelve.
-    expect(items).toEqual(["Aprobada", "Volvió de revisión"]);
+    // En revisión sí se rechaza o se anula: no depende de dónde esté la pieza.
+    expect(items).toEqual([
+      "Aprobada",
+      "Rechazado (cliente)",
+      "Anulado",
+      "Volvió de revisión",
+    ]);
   });
 });
 

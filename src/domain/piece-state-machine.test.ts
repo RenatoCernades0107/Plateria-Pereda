@@ -818,7 +818,8 @@ describe("revisión en taller", () => {
     });
   });
 
-  it("en revisión no se cierra la pieza hasta marcar que volvió", () => {
+  it("en revisión se puede cerrar la pieza: rechazar, anular y sin arreglo no dependen de la ubicación", () => {
+    // El taller avisa que no tiene arreglo aunque la pieza siga allá.
     expect(
       applyTransition(enRevision(), {
         to: "sin_arreglo",
@@ -826,7 +827,8 @@ describe("revisión en taller", () => {
         note: "x",
         now: NOW,
       }),
-    ).toEqual({ ok: false, error: "en_revision" });
+    ).toMatchObject({ ok: true, changes: { status: "sin_arreglo" } });
+    // El cliente rechaza la cotización con la pieza aún en el taller.
     expect(
       applyTransition(enRevision("en_espera"), {
         to: "rechazada",
@@ -834,22 +836,46 @@ describe("revisión en taller", () => {
         note: "x",
         now: NOW,
       }),
-    ).toEqual({ ok: false, error: "en_revision" });
+    ).toMatchObject({ ok: true, changes: { status: "rechazada" } });
     expect(
-      availableTransitions(enRevision("en_espera"), "admin").map((t) => t.to),
-    ).toEqual(["aprobada"]);
-    expect(TRANSITION_ERROR_MESSAGES.en_revision).toMatch(
-      /marca primero que volvió/,
-    );
-    // De vuelta, sí.
-    expect(
-      applyTransition(enRevision("en_consulta", { reviewReturnedAt: NOW }), {
-        to: "sin_arreglo",
-        role: "admin",
+      applyTransition(enRevision("en_espera"), {
+        to: "anulada",
+        role: "ventas",
         note: "x",
         now: NOW,
       }).ok,
     ).toBe(true);
+    expect(
+      availableTransitions(enRevision("en_espera"), "admin").map((t) => t.to),
+    ).toEqual(["aprobada", "rechazada", "anulada"]);
+    expect(
+      availableTransitions(enRevision("en_consulta"), "admin").map((t) => t.to),
+    ).toEqual(["en_espera", "sin_arreglo", "anulada"]);
+  });
+
+  it("cerrada en revisión sigue en el taller: no se devuelve al cliente hasta que vuelve", () => {
+    for (const status of ["rechazada", "sin_arreglo"] as const) {
+      const abierta = piece(status, {
+        arrivedAt: BEFORE,
+        workshopId: "w1",
+        reviewSentAt: SENT,
+      });
+      for (const role of ROLES)
+        expect(canReturnToClient(abierta, role)).toBe(false);
+      expect(returnToClient(abierta, "logistica", NOW)).toEqual({
+        ok: false,
+        error: "en_revision",
+      });
+      expect(TRANSITION_ERROR_MESSAGES.en_revision).toMatch(
+        /marca primero que volvió/,
+      );
+      // «Volvió de revisión» sigue disponible para quien recibe del taller...
+      expect(canReceiveFromReview(abierta, "logistica")).toBe(true);
+      // ...y de vuelta, sí se devuelve.
+      const devuelta = { ...abierta, reviewReturnedAt: NOW };
+      expect(canReturnToClient(devuelta, "logistica")).toBe(true);
+      expect(returnToClient(devuelta, "logistica", NOW).ok).toBe(true);
+    }
   });
 });
 

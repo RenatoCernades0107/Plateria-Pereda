@@ -412,7 +412,7 @@ describe("revisión en taller", () => {
     expect(buttons()).not.toContain("Llevar al taller a revisar");
   });
 
-  it("en revisión: En taller, «Volvió de revisión» y sin cierres", async () => {
+  it("en revisión: En taller, «Volvió de revisión» y los cierres siguen disponibles", async () => {
     const user = userEvent.setup();
     renderPanel("en_espera", "admin", {
       arrivedAt: ARRIVED,
@@ -421,8 +421,16 @@ describe("revisión en taller", () => {
     });
     expect(screen.getByText("En taller")).toBeInTheDocument();
     expect(screen.getByText("Espera respuesta cliente")).toBeInTheDocument();
-    // Aprobar sigue disponible; Rechazar y Anular, no (primero vuelve).
-    expect(buttons()).toEqual(["Volvió de revisión", "Aprobar"]);
+    // Rechazar y Anular no dependen de dónde está la pieza: van en «Más acciones».
+    expect(buttons()).toEqual([
+      "Volvió de revisión",
+      "Aprobar",
+      "Más acciones",
+    ]);
+    expect(await moreActions(user)).toEqual(
+      expect.arrayContaining(["Rechazar", "Anular"]),
+    );
+    await user.keyboard("{Escape}");
     await user.click(
       screen.getByRole("button", { name: "Volvió de revisión" }),
     );
