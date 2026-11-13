@@ -1286,6 +1286,15 @@ Lo que llega por WhatsApp es una **cotización** (`CWA-00001`), separada de las 
 - Hecho (2026-11-03): migración `20261103130000_igv_cotizador.sql` (`quotes.apply_igv` e `quotes.igv`; trigger `quotes_set_totals` calcula IGV y total desde subtotal, descuentos y la casilla; `recalculate_quote_totals` solo suma las líneas; `private.quote_total` eliminada; `save_quote` lee `p_quote.apply_igv`, `duplicate_quote` la copia; `quote_guard_update` la bloquea fuera de borrador; `igv` fuera de la auditoría como `total`).
 - Commit: `feat(cotizador): suma el IGV (18 %) en las cotizaciones personalizadas`
 
+#### Paso 14.8 — Ubicación, taller y pagos de las cotizaciones aprobadas (pedido del 2026-11-11)
+- [x] **Sin «Reembolsada»:** ya no se puede pasar a ese estado (ni botón, ni filtro). El valor del enum y las cotizaciones que ya estaban así se dejan como están (estado final, solo lectura).
+- [x] **Ubicación del trabajo** (`quotes.work_location`: En taller, En tienda, Entregado) y **taller** (`quotes.workshop_id`): solo en aceptadas y facturadas, sin valor por defecto; al volver a emitida o anularla se borran. Se escriben por `update_quote_tracking` (el taller lo asignan logística y el admin, la ubicación también ventas). Selectores en el detalle y texto en el listado.
+- [x] **Logística** ve las cotizaciones aceptadas y facturadas (`/cotizaciones`, menú «Cotizaciones») para asignar el taller y seguir la ubicación, **sin dinero ni datos de contacto**: no lee `quotes` (RLS sigue sin dejarle), usa los RPC `list_logistics_quotes` y `get_logistics_quote`. Puede exportar el «PDF para taller». Permisos `cotizaciones.seguimiento` (admin, ventas, logística) y `cotizaciones.asignar-taller` (admin, logística). _(Revierte lo del 2026-10-30, que le había quitado las cotizaciones.)_
+- [x] **Pagos de la cotización** (`quote_payments`, sin Shopify): solo en aceptadas o facturadas; hasta el saldo; varios métodos; **N.º de factura por pago** (opcional al registrar, se asigna o cambia después). Admin y ventas registran y asignan la factura; el admin elimina un pago registrado por error (no hay reembolsos). Con pagos la cotización no vuelve a emitida ni se anula.
+- **Unit:** dominio (`quote-payments`, `quote-tracking-filters`, permisos), acciones (`setQuoteTracking`, pagos) y componentes (`QuotePaymentsSection`, `QuoteTrackingControls`).
+- **BD:** `73_ubicacion_taller_y_pagos_cotizacion`; `70` ya no pasa a reembolsada; la matriz `61` incluye `quote_payments`.
+- Hecho (2026-11-11): migración `20261111120000_ubicacion_taller_y_pagos_cotizacion.sql`.
+
 ### Fase 15 — Calidad transversal
 
 #### Paso 15.1 — Seguridad

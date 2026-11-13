@@ -35,6 +35,9 @@ export const QUOTE_STATUS_LABELS: Record<QuoteDisplayStatus, string> = {
 };
 
 /**
+ * «Reembolsada» ya no se elige (pedido del 2026-11-11): queda solo para mostrar las
+ * cotizaciones que ya estaban así.
+ *
  * Cambios de estado permitidos (los mismos que valida el trigger de la BD). «Anulada»
  * es para una cotización emitida por error: es definitiva (para corregirla, se duplica).
  */
@@ -42,7 +45,7 @@ const TRANSITIONS: Record<QuoteStatus, readonly QuoteStatus[]> = {
   borrador: ["emitida"],
   emitida: ["aceptada", "rechazada", "anulada"],
   aceptada: ["emitida", "facturada", "anulada"],
-  facturada: ["reembolsada"],
+  facturada: [],
   reembolsada: [],
   rechazada: ["emitida", "anulada"],
   anulada: [],

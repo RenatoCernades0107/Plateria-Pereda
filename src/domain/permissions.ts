@@ -63,6 +63,14 @@ const PERMISSIONS = {
   /** Convertir una persona en empresa (Company en Shopify), con o sin quedar de contacto. */
   "clientes.convertir": ["admin"],
   "cotizador.usar": ["admin", "ventas"],
+  /**
+   * Seguimiento de las cotizaciones aprobadas (2026-11-11): ver las aceptadas y
+   * facturadas (sin dinero ni teléfonos) y cambiar la ubicación del trabajo. Logística
+   * las ve por RPC; el resto del cotizador sigue siendo de admin y ventas.
+   */
+  "cotizaciones.seguimiento": ["admin", "ventas", "logistica"],
+  /** Taller de la cotización aprobada: lo asignan logística y el admin (como en piezas, D60). */
+  "cotizaciones.asignar-taller": ["admin", "logistica"],
   /** Cotizaciones de restauración por WhatsApp (P46): logística no las ve. */
   "cotizaciones-whatsapp.usar": ["admin", "ventas"],
   "dashboard.ver": ["admin", "ventas"],

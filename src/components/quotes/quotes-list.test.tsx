@@ -28,6 +28,8 @@ const quote = (id: string, code: string): QuoteListItem => ({
   createdAt: "2026-11-01T15:00:00Z",
   deliveryDate: null,
   supplierDeliveryDate: null,
+  workLocation: null,
+  workshopName: null,
 });
 const quotes = [
   quote("11111111-1111-4111-8111-111111111111", "COT-000001"),

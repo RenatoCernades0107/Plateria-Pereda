@@ -1,6 +1,14 @@
 import "server-only";
 
 import type { ClientOption } from "@/domain/client-search";
+import { quoteBalance, quotePaymentStatus } from "@/domain/quote-payments";
+import {
+  NO_WORKSHOP,
+  TRACKING_PAGE_SIZE,
+  type TrackingFilters,
+} from "@/domain/quote-tracking-filters";
+import type { QuoteWorkLocation } from "@/domain/quote-tracking";
+import type { PaymentStatus } from "@/domain/money";
 import { toCents, toDecimalString, type Cents } from "@/domain/money";
 import {
   QUOTES_PAGE_SIZE,
@@ -39,6 +47,9 @@ export type QuoteListItem = {
   /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
   deliveryDate: string | null;
   supplierDeliveryDate: string | null;
+  /** Ubicación del trabajo y taller (solo en las aceptadas y facturadas). */
+  workLocation: QuoteWorkLocation | null;
+  workshopName: string | null;
 };
 
 export type QuotesPage = {
@@ -60,7 +71,7 @@ export async function listQuotes(
   let query = supabase
     .from("quotes")
     .select(
-      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at, delivery_date, supplier_delivery_date",
+      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at, delivery_date, supplier_delivery_date, work_location, workshops(name)",
       { count: "exact" },
     );
 
@@ -109,6 +120,8 @@ export async function listQuotes(
       createdAt: q.created_at,
       deliveryDate: q.delivery_date,
       supplierDeliveryDate: q.supplier_delivery_date,
+      workLocation: q.work_location,
+      workshopName: q.workshops?.name ?? null,
     })),
   };
 }
@@ -129,6 +142,9 @@ export type QuoteDetail = {
   /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
   deliveryDate: string | null;
   supplierDeliveryDate: string | null;
+  /** Ubicación del trabajo y taller (solo en las aceptadas y facturadas). */
+  workLocation: QuoteWorkLocation | null;
+  workshop: { id: string; name: string } | null;
   applyIgv: boolean;
   issueDate: string | null;
   validUntil: string | null;
@@ -159,7 +175,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
   const { data: q, error } = await supabase
     .from("quotes")
     .select(
-      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code), quote_issuers(*)",
+      "*, quote_items(*), clients(id, kind, display_name, document_type, document_number, phone, contact_phone, email, shopify_customer_id), contacts(id, display_name, phone, email, shopify_customer_id), source:duplicated_from(id, code), quote_issuers(*), workshops(id, name)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -224,6 +240,10 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
     deliveryDays: q.delivery_days,
     deliveryDate: q.delivery_date,
     supplierDeliveryDate: q.supplier_delivery_date,
+    workLocation: q.work_location,
+    workshop: q.workshops
+      ? { id: q.workshops.id, name: q.workshops.name }
+      : null,
     applyIgv: q.apply_igv,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
@@ -374,4 +394,231 @@ export async function listQuoteIssuers({ onlyActive = false } = {}): Promise<
   const { data, error } = await query;
   if (error) throw error;
   return data.map(toQuoteIssuer);
+}
+
+export type QuotePaymentRecord = {
+  id: string;
+  amountCents: Cents;
+  methodName: string;
+  paidOn: string;
+  invoiceNumber: string | null;
+  createdByName: string | null;
+  createdAt: string;
+};
+
+export type QuotePayments = {
+  payments: QuotePaymentRecord[];
+  paidCents: Cents;
+  balanceCents: Cents;
+  status: PaymentStatus;
+};
+
+/** Pagos de la cotización (solo admin y ventas: la BD no devuelve nada a los demás). */
+export async function listQuotePayments(
+  quoteId: string,
+  totalCents: Cents,
+): Promise<QuotePayments> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quote_payments")
+    .select(
+      "id, amount, method_name, paid_on, invoice_number, created_by_name, created_at",
+    )
+    .eq("quote_id", quoteId)
+    .order("paid_on")
+    .order("created_at");
+  if (error) throw error;
+  const payments = data.map((p) => ({
+    id: p.id,
+    amountCents: toCents(Number(p.amount)),
+    methodName: p.method_name,
+    paidOn: p.paid_on,
+    invoiceNumber: p.invoice_number,
+    createdByName: p.created_by_name,
+    createdAt: p.created_at,
+  }));
+  const paidCents = payments.reduce((sum, p) => sum + p.amountCents, 0);
+  return {
+    payments,
+    paidCents,
+    balanceCents: quoteBalance(totalCents, paidCents),
+    status: quotePaymentStatus(totalCents, paidCents),
+  };
+}
+
+/** Talleres activos (para asignar el de una cotización); el actual se ofrece aunque esté inactivo. */
+export async function listWorkshopOptions(
+  currentId: string | null = null,
+): Promise<{ id: string; name: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workshops")
+    .select("id, name, active")
+    .order("name");
+  if (error) throw error;
+  return data
+    .filter((w) => w.active || w.id === currentId)
+    .map((w) => ({ id: w.id, name: w.name }));
+}
+
+// --- Seguimiento (logística): cotizaciones aprobadas sin dinero ni teléfonos ---
+
+export type TrackingQuoteItem = {
+  id: string;
+  code: string;
+  status: QuoteStatus;
+  clientName: string;
+  deliveryDate: string | null;
+  supplierDeliveryDate: string | null;
+  workLocation: QuoteWorkLocation | null;
+  workshopId: string | null;
+  workshopName: string | null;
+  itemsCount: number;
+};
+
+export type TrackingQuotesPage = {
+  quotes: TrackingQuoteItem[];
+  total: number;
+  pages: number;
+};
+
+/** Cotizaciones aceptadas y facturadas (RPC `list_logistics_quotes`). */
+export async function listTrackingQuotes(
+  filters: TrackingFilters,
+  { limit = TRACKING_PAGE_SIZE }: { limit?: number } = {},
+): Promise<TrackingQuotesPage> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_logistics_quotes", {
+    p_query: filters.q || undefined,
+    p_status: filters.status ?? undefined,
+    p_workshop_id:
+      filters.workshop && filters.workshop !== NO_WORKSHOP
+        ? filters.workshop
+        : undefined,
+    p_without_workshop: filters.workshop === NO_WORKSHOP,
+    p_location: filters.location ?? undefined,
+    p_limit: limit,
+    p_offset: (filters.page - 1) * limit,
+  });
+  if (error) throw error;
+  const total = Number(data[0]?.total_count ?? 0);
+  return {
+    total,
+    pages: Math.max(1, Math.ceil(total / limit)),
+    quotes: data.map((q) => ({
+      id: q.id,
+      code: q.code ?? "",
+      status: q.status,
+      clientName: q.client_name,
+      deliveryDate: q.delivery_date,
+      supplierDeliveryDate: q.supplier_delivery_date,
+      workLocation: q.work_location,
+      workshopId: q.workshop_id,
+      workshopName: q.workshop_name,
+      itemsCount: q.items_count,
+    })),
+  };
+}
+
+type TrackingQuoteRow = {
+  id: string;
+  code: string | null;
+  status: QuoteStatus;
+  client_name: string;
+  issue_date: string | null;
+  delivery_date: string | null;
+  supplier_delivery_date: string | null;
+  workshop_notes: string;
+  work_location: QuoteWorkLocation | null;
+  workshop_id: string | null;
+  workshop_name: string | null;
+  lines: {
+    id: string;
+    title: string;
+    variant_title: string;
+    sku: string | null;
+    customization: string;
+    quantity: number;
+    image_url: string | null;
+    reference_image_path: string | null;
+  }[];
+};
+
+export type TrackingQuoteDetail = {
+  id: string;
+  code: string;
+  status: QuoteStatus;
+  clientName: string;
+  issueDate: string | null;
+  deliveryDate: string | null;
+  supplierDeliveryDate: string | null;
+  workshopNotes: string;
+  workLocation: QuoteWorkLocation | null;
+  workshopId: string | null;
+  workshopName: string | null;
+  lines: WorkshopQuote["lines"];
+};
+
+/** Una cotización aprobada con sus productos y sin precios (RPC `get_logistics_quote`). */
+export async function getTrackingQuote(
+  id: string,
+): Promise<TrackingQuoteDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_logistics_quote", {
+    p_id: id,
+  });
+  if (error) throw error;
+  if (!data) return null;
+  const q = data as unknown as TrackingQuoteRow;
+  const imageUrls = await signedQuoteImageUrls(
+    supabase,
+    q.lines.map((l) => l.reference_image_path),
+  );
+  return {
+    id: q.id,
+    code: q.code ?? "",
+    status: q.status,
+    clientName: q.client_name,
+    issueDate: q.issue_date,
+    deliveryDate: q.delivery_date,
+    supplierDeliveryDate: q.supplier_delivery_date,
+    workshopNotes: q.workshop_notes,
+    workLocation: q.work_location,
+    workshopId: q.workshop_id,
+    workshopName: q.workshop_name,
+    lines: q.lines.map((l) => ({
+      id: l.id,
+      title: l.title,
+      variantTitle: l.variant_title,
+      sku: l.sku,
+      customization: l.customization,
+      quantity: l.quantity,
+      image:
+        (l.reference_image_path
+          ? imageUrls.get(l.reference_image_path)
+          : null) ??
+        l.image_url ??
+        null,
+    })),
+  };
+}
+
+/** La orden para taller de cotizaciones aprobadas, por el RPC de logística. */
+export async function listTrackingWorkshopQuotes(
+  ids: readonly string[],
+): Promise<WorkshopQuote[]> {
+  const found = await Promise.all(ids.map((id) => getTrackingQuote(id)));
+  return found
+    .filter((q): q is TrackingQuoteDetail => q !== null)
+    .map((q) => ({
+      id: q.id,
+      code: q.code,
+      status: q.status,
+      clientName: q.clientName,
+      issueDate: q.issueDate,
+      deliveryDate: q.deliveryDate,
+      supplierDeliveryDate: q.supplierDeliveryDate,
+      notes: q.workshopNotes,
+      lines: q.lines,
+    }));
 }

@@ -53,6 +53,11 @@ insert into public.quotes (id, client_id) values
   ('00000000-0000-0000-0000-00000000e670', '00000000-0000-0000-0000-00000000e620');
 insert into public.quote_items (quote_id, title, quantity, unit_price)
   values ('00000000-0000-0000-0000-00000000e670', 'Anillo', 1, 10);
+-- Un pago de cotización: el trigger exige una aceptada, así que aquí se salta.
+alter table public.quote_payments disable trigger quote_payments_prepare;
+insert into public.quote_payments (quote_id, amount, method_name)
+  values ('00000000-0000-0000-0000-00000000e670', 5, 'Efectivo');
+alter table public.quote_payments enable trigger quote_payments_prepare;
 insert into public.whatsapp_quotes (id, payment_type)
   values ('00000000-0000-0000-0000-00000000e680', 'contado');
 insert into public.whatsapp_quote_items (quote_id, number, description)
@@ -239,6 +244,10 @@ insert into matriz values
   ('quote_items',                  'insert',  'no', 'si',    'si',    'no'),
   ('quote_items',                  'update',  'no', 'si',    'si',    'no'),
   ('quote_items',                  'delete',  'no', 'si',    'si',    'no'),
+  ('quote_payments',               'select',  'no', 'si',    'si',    'no'),
+  ('quote_payments',               'insert',  'no', 'si',    'si',    'no'),
+  ('quote_payments',               'update',  'no', 'si',    'si',    'no'),
+  ('quote_payments',               'delete',  'no', 'si',    'no',    'no'),
   ('quotes',                       'select',  'no', 'si',    'si',    'no'),
   ('quotes',                       'insert',  'no', 'si',    'si',    'no'),
   ('quotes',                       'update',  'no', 'si',    'si',    'no'),

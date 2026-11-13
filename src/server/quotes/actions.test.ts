@@ -4,6 +4,7 @@ import { freeLine } from "@/domain/quote-line";
 
 const mocks = vi.hoisted(() => ({
   forbidden: false,
+  role: "ventas",
   permission: "",
   rpc: vi.fn(),
   update: vi.fn(),
@@ -24,7 +25,7 @@ vi.mock("@/server/auth", () => ({
   requirePermission: async (permission: string) => {
     mocks.permission = permission;
     if (mocks.forbidden) throw new Error("FORBIDDEN");
-    return { id: "00000000-0000-4000-8000-000000000007", role: "ventas" };
+    return { id: "00000000-0000-4000-8000-000000000007", role: mocks.role };
   },
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -67,6 +68,7 @@ const {
   saveQuote,
   setQuoteDeliveryDates,
   setQuoteIssuer,
+  setQuoteTracking,
 } = await import("./actions");
 const { todayInLima } = await import("@/domain/delivery-date");
 const { addDays } = await import("@/domain/quote");
@@ -94,6 +96,7 @@ const input = {
 
 beforeEach(() => {
   mocks.forbidden = false;
+  mocks.role = "ventas";
   mocks.rpc.mockReset();
   mocks.update.mockReset();
   mocks.revalidate.mockReset();
@@ -369,6 +372,78 @@ describe("setQuoteIssuer", () => {
     mocks.updateResult = { data: null, error: { code: "23503" } };
     expect(await setQuoteIssuer(ID, ISSUER)).toEqual({
       error: "La sucursal no existe.",
+    });
+  });
+});
+
+describe("setQuoteTracking", () => {
+  const WORKSHOP = "66666666-6666-4666-8666-666666666666";
+
+  it("ventas cambia la ubicación con el RPC", async () => {
+    mocks.rpcResult = { data: null, error: null };
+    expect(await setQuoteTracking(ID, { workLocation: "en_tienda" })).toEqual({
+      ok: true,
+    });
+    expect(mocks.permission).toBe("cotizaciones.seguimiento");
+    expect(mocks.rpc).toHaveBeenCalledWith("update_quote_tracking", {
+      p_id: ID,
+      p_set_workshop: false,
+      p_workshop_id: undefined,
+      p_set_location: true,
+      p_work_location: "en_tienda",
+    });
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/cotizaciones/${ID}`);
+  });
+
+  it("ventas no asigna el taller", async () => {
+    expect(await setQuoteTracking(ID, { workshopId: WORKSHOP })).toEqual({
+      error: "Solo logística y el administrador asignan el taller.",
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("logística asigna el taller y quita la ubicación", async () => {
+    mocks.role = "logistica";
+    mocks.rpcResult = { data: null, error: null };
+    expect(
+      await setQuoteTracking(ID, { workshopId: WORKSHOP, workLocation: null }),
+    ).toEqual({ ok: true });
+    expect(mocks.rpc).toHaveBeenCalledWith("update_quote_tracking", {
+      p_id: ID,
+      p_set_workshop: true,
+      p_workshop_id: WORKSHOP,
+      p_set_location: true,
+      p_work_location: undefined,
+    });
+  });
+
+  it("sin cambios no llama a la BD", async () => {
+    expect(await setQuoteTracking(ID, {})).toEqual({ ok: true });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("rechaza argumentos inválidos", async () => {
+    expect(await setQuoteTracking("x", { workLocation: "en_tienda" })).toEqual({
+      error: expect.any(String),
+    });
+    expect(await setQuoteTracking(ID, { workLocation: "luna" })).toHaveProperty(
+      "error",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
+  it("muestra el mensaje de la regla de la BD", async () => {
+    mocks.rpcResult = {
+      data: null,
+      error: {
+        code: "23514",
+        message:
+          "Solo una cotización aceptada o facturada tiene taller y ubicación",
+      },
+    };
+    expect(await setQuoteTracking(ID, { workLocation: "entregado" })).toEqual({
+      error:
+        "Solo una cotización aceptada o facturada tiene taller y ubicación.",
     });
   });
 });
