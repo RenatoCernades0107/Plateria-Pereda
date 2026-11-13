@@ -86,8 +86,9 @@ select is(
   'anulada', 'la anulada queda Anulada'
 );
 
--- Aún en el taller: no se devuelve al cliente.
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000074a2","role":"authenticated"}', true);
+-- Aún en el taller: no se devuelve al cliente. Con las tres piezas cerradas la guía ya es
+-- "pasada" y logística no la toca (is_past_restoration), así que lo hace el admin.
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000074a3","role":"authenticated"}', true);
 select throws_ok(
   $$ select * from public.return_pieces_to_client(array['00000000-0000-0000-0000-0000000074e1']::uuid[]) $$,
   '23514', 'La pieza ' || (select code from public.pieces_operational where id = '00000000-0000-0000-0000-0000000074e1')
@@ -104,7 +105,7 @@ select results_eq(
   $$ select count(*)::int from public.receive_pieces_from_review(
        array['00000000-0000-0000-0000-0000000074e1', '00000000-0000-0000-0000-0000000074e2']::uuid[]) $$,
   $$ values (2) $$,
-  'logística marca que volvieron de revisión'
+  'el admin marca que volvieron de revisión'
 );
 select is(
   (select location::text from public.pieces_operational where id = '00000000-0000-0000-0000-0000000074e1'),
