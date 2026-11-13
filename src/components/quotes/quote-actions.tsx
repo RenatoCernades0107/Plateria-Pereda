@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  Ban,
-  Check,
-  Copy,
-  Loader2,
-  Receipt,
-  RotateCcw,
-  Undo2,
-  X,
-} from "lucide-react";
+import { Ban, Check, Copy, Loader2, Receipt, RotateCcw, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -38,11 +29,6 @@ const STATUS_ACTIONS = {
     label: "Marcar facturada",
     done: "Cotización facturada.",
     Icon: Receipt,
-  },
-  reembolsada: {
-    label: "Marcar reembolsada",
-    done: "Cotización reembolsada.",
-    Icon: Undo2,
   },
   rechazada: {
     label: "Marcar rechazada",
@@ -82,7 +68,6 @@ export function QuoteActions({
   const [pending, startTransition] = useTransition();
   const [accepting, setAccepting] = useState(false);
   const [voiding, setVoiding] = useState(false);
-  const [refunding, setRefunding] = useState(false);
   const targets =
     status === "borrador"
       ? []
@@ -128,9 +113,7 @@ export function QuoteActions({
                 ? setAccepting(true)
                 : to === "anulada"
                   ? setVoiding(true)
-                  : to === "reembolsada"
-                    ? setRefunding(true)
-                    : change(to)
+                  : change(to)
             }
           >
             <Icon aria-hidden />
@@ -180,46 +163,6 @@ export function QuoteActions({
                 <Ban aria-hidden />
               )}
               Anular cotización
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={refunding}
-        onOpenChange={(value) => {
-          if (!pending) setRefunding(value);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Marcar cotización como reembolsada</DialogTitle>
-            <DialogDescription>
-              Es el último estado: no se puede deshacer. Para volver a cotizar,
-              duplícala.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={pending}
-              onClick={() => setRefunding(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={pending}
-              onClick={() => {
-                setRefunding(false);
-                change("reembolsada");
-              }}
-            >
-              {pending ? (
-                <Loader2 className="animate-spin" aria-hidden />
-              ) : (
-                <Undo2 aria-hidden />
-              )}
-              Marcar reembolsada
             </Button>
           </DialogFooter>
         </DialogContent>

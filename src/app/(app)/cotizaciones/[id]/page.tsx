@@ -8,17 +8,30 @@ import { PageHeader } from "@/components/page-header";
 import { QuoteActions } from "@/components/quotes/quote-actions";
 import { QuoteDeliveryButton } from "@/components/quotes/quote-delivery-dialog";
 import { QuoteForm } from "@/components/quotes/quote-form";
+import { QuotePaymentsSection } from "@/components/quotes/quote-payments";
+import { QuoteTrackingControls } from "@/components/quotes/quote-tracking";
+import { TrackingQuoteLines } from "@/components/quotes/tracking-quote-view";
+import { QuoteDeliveryDates } from "@/components/quotes/quote-delivery-dates";
 import { QuotePdfButton } from "@/components/quotes/quote-pdf-button";
 import { QuoteStatusBadge } from "@/components/quotes/quote-status-badge";
 import { QuoteWorkshopNotes } from "@/components/quotes/quote-workshop-notes";
 import { Button } from "@/components/ui/button";
 import { can } from "@/domain/permissions";
+import type { AppRole } from "@/lib/roles";
 import { DEFAULT_QUOTE_CREDIT_DAYS, limaDateOf } from "@/domain/quote";
+import { isQuoteTracked } from "@/domain/quote-tracking";
 import { quotePdfLineFromDraft, type QuotePdfData } from "@/domain/quote-pdf";
 import type { WorkshopQuote } from "@/domain/quote-workshop-pdf";
 import { requirePermission } from "@/server/auth";
 import { recordMetadata } from "@/server/page-titles";
-import { getQuote, listQuoteIssuers } from "@/server/quotes/queries";
+import { listCatalog } from "@/server/catalogs";
+import {
+  getQuote,
+  getTrackingQuote,
+  listQuoteIssuers,
+  listQuotePayments,
+  listWorkshopOptions,
+} from "@/server/quotes/queries";
 import { getSettings } from "@/server/settings";
 
 export async function generateMetadata({
@@ -32,11 +45,25 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function CotizacionPage({
   params,
 }: PageProps<"/cotizaciones/[id]">) {
-  const user = await requirePermission("cotizador.usar");
+  const user = await requirePermission("cotizaciones.seguimiento");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
+  // Logística no lee el cotizador (tiene precios): ve la cotización aprobada sin dinero.
+  if (!can(user.role, "cotizador.usar")) {
+    return <TrackingQuotePage id={id} role={user.role} />;
+  }
   const quote = await getQuote(id);
   if (!quote) notFound();
+  const tracked = isQuoteTracked(quote.status);
+  const [workshops, paymentMethods, quotePayments] = await Promise.all([
+    tracked ? listWorkshopOptions(quote.workshop?.id ?? null) : [],
+    tracked || quote.status === "reembolsada"
+      ? listCatalog("payment_methods", { onlyActive: true })
+      : [],
+    tracked || quote.status === "reembolsada"
+      ? listQuotePayments(quote.id, quote.total)
+      : null,
+  ]);
 
   const draft = quote.status === "borrador";
   // Una anulada (emitida por error) no se exporta ni se comparte; para el taller, sí.
@@ -169,6 +196,26 @@ export default async function CotizacionPage({
           />
         </div>
       </div>
+      {tracked ? (
+        <QuoteTrackingControls
+          quoteId={quote.id}
+          workLocation={quote.workLocation}
+          workshopId={quote.workshop?.id ?? null}
+          workshopName={quote.workshop?.name ?? null}
+          workshops={workshops}
+          canAssignWorkshop={can(user.role, "cotizaciones.asignar-taller")}
+        />
+      ) : null}
+      {quotePayments && (tracked || quotePayments.payments.length > 0) ? (
+        <QuotePaymentsSection
+          quoteId={quote.id}
+          totalCents={quote.total}
+          data={quotePayments}
+          methods={paymentMethods.map((m) => ({ id: m.id, name: m.name }))}
+          canRegister={tracked}
+          canDelete={can(user.role, "pagos.corregir")}
+        />
+      ) : null}
       <QuoteWorkshopNotes
         key={`${quote.id}:${quote.workshopNotes}`}
         quoteId={quote.id}
@@ -195,6 +242,65 @@ export default async function CotizacionPage({
           lines: quote.lines,
         }}
       />
+    </div>
+  );
+}
+
+/** Cotización aprobada sin dinero ni datos de contacto, para logística. */
+async function TrackingQuotePage({ id, role }: { id: string; role: AppRole }) {
+  const quote = await getTrackingQuote(id);
+  if (!quote) notFound();
+  const workshops = await listWorkshopOptions(quote.workshopId);
+  const workshop: WorkshopQuote = {
+    id: quote.id,
+    code: quote.code,
+    status: quote.status,
+    clientName: quote.clientName,
+    issueDate: quote.issueDate,
+    deliveryDate: quote.deliveryDate,
+    supplierDeliveryDate: quote.supplierDeliveryDate,
+    notes: quote.workshopNotes,
+    lines: quote.lines,
+  };
+  return (
+    <div className="max-w-3xl space-y-4">
+      {quote.code ? <PageBreadcrumb label={quote.code} /> : null}
+      <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
+        <Link href="/cotizaciones">
+          <ArrowLeft aria-hidden />
+          Cotizaciones
+        </Link>
+      </Button>
+      <div className="space-y-2">
+        <PageHeader
+          title={`Cotización ${quote.code}`}
+          description={`Cliente: ${quote.clientName}`}
+        />
+        <div className="-mt-4 flex flex-wrap items-center gap-2 text-sm">
+          <QuoteStatusBadge status={quote.status} />
+          <QuoteDeliveryDates
+            deliveryDate={quote.deliveryDate}
+            supplierDeliveryDate={quote.supplierDeliveryDate}
+          />
+        </div>
+      </div>
+      <QuoteTrackingControls
+        quoteId={quote.id}
+        workLocation={quote.workLocation}
+        workshopId={quote.workshopId}
+        workshopName={quote.workshopName}
+        workshops={workshops}
+        canAssignWorkshop={can(role, "cotizaciones.asignar-taller")}
+      />
+      {quote.workshopNotes ? (
+        <section className="space-y-1 rounded-lg border p-4">
+          <h2 className="text-heading text-sm font-semibold">
+            Instrucciones para el taller
+          </h2>
+          <p className="text-sm whitespace-pre-wrap">{quote.workshopNotes}</p>
+        </section>
+      ) : null}
+      <TrackingQuoteLines workshop={workshop} />
     </div>
   );
 }

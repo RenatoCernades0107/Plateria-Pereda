@@ -975,6 +975,67 @@ export type Database = {
           },
         ];
       };
+      quote_payments: {
+        Row: {
+          amount: number;
+          created_at: string;
+          created_by: string | null;
+          created_by_name: string | null;
+          id: string;
+          invoice_number: string | null;
+          method_name: string;
+          paid_on: string;
+          payment_method_id: string | null;
+          quote_id: string;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          invoice_number?: string | null;
+          method_name: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          quote_id: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          created_by?: string | null;
+          created_by_name?: string | null;
+          id?: string;
+          invoice_number?: string | null;
+          method_name?: string;
+          paid_on?: string;
+          payment_method_id?: string | null;
+          quote_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_payments_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quote_payments_payment_method_id_fkey";
+            columns: ["payment_method_id"];
+            isOneToOne: false;
+            referencedRelation: "payment_methods";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quote_payments_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       quotes: {
         Row: {
           apply_igv: boolean;
@@ -1014,6 +1075,9 @@ export type Database = {
           updated_at: string;
           valid_until: string | null;
           validity_days: number;
+          work_location:
+            Database["public"]["Enums"]["quote_work_location"] | null;
+          workshop_id: string | null;
           workshop_notes: string;
           effective_status: string | null;
         };
@@ -1055,6 +1119,9 @@ export type Database = {
           updated_at?: string;
           valid_until?: never;
           validity_days?: number;
+          work_location?:
+            Database["public"]["Enums"]["quote_work_location"] | null;
+          workshop_id?: string | null;
           workshop_notes?: string;
         };
         Update: {
@@ -1095,6 +1162,9 @@ export type Database = {
           updated_at?: string;
           valid_until?: never;
           validity_days?: number;
+          work_location?:
+            Database["public"]["Enums"]["quote_work_location"] | null;
+          workshop_id?: string | null;
           workshop_notes?: string;
         };
         Relationships: [
@@ -1131,6 +1201,13 @@ export type Database = {
             columns: ["issuer_id"];
             isOneToOne: false;
             referencedRelation: "quote_issuers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_workshop_id_fkey";
+            columns: ["workshop_id"];
+            isOneToOne: false;
+            referencedRelation: "workshops";
             referencedColumns: ["id"];
           },
         ];
@@ -2258,6 +2335,7 @@ export type Database = {
           ongoing: boolean;
         }[];
       };
+      get_logistics_quote: { Args: { p_id: string }; Returns: Json };
       get_piece_service_cost: { Args: { p_piece_id: string }; Returns: number };
       import_shopify_customer: {
         Args: {
@@ -2301,6 +2379,30 @@ export type Database = {
           phone: string;
           sync_status: string;
           total_count: number;
+        }[];
+      };
+      list_logistics_quotes: {
+        Args: {
+          p_limit?: number;
+          p_location?: Database["public"]["Enums"]["quote_work_location"];
+          p_offset?: number;
+          p_query?: string;
+          p_status?: Database["public"]["Enums"]["quote_status"];
+          p_without_workshop?: boolean;
+          p_workshop_id?: string;
+        };
+        Returns: {
+          client_name: string;
+          code: string;
+          delivery_date: string;
+          id: string;
+          items_count: number;
+          status: Database["public"]["Enums"]["quote_status"];
+          supplier_delivery_date: string;
+          total_count: number;
+          work_location: Database["public"]["Enums"]["quote_work_location"];
+          workshop_id: string;
+          workshop_name: string;
         }[];
       };
       list_payments: {
@@ -2781,6 +2883,16 @@ export type Database = {
         };
         Returns: string;
       };
+      update_quote_tracking: {
+        Args: {
+          p_id: string;
+          p_set_location?: boolean;
+          p_set_workshop?: boolean;
+          p_work_location?: Database["public"]["Enums"]["quote_work_location"];
+          p_workshop_id?: string;
+        };
+        Returns: undefined;
+      };
       update_whatsapp_quote: {
         Args: {
           p_client_id: string;
@@ -2864,6 +2976,7 @@ export type Database = {
         | "anulada"
         | "facturada"
         | "reembolsada";
+      quote_work_location: "en_taller" | "en_tienda" | "entregado";
       restoration_kind: "normal" | "interno" | "observado";
       restoration_origin: "oficina" | "whatsapp";
       restoration_status:
@@ -3061,6 +3174,7 @@ export const Constants = {
         "facturada",
         "reembolsada",
       ],
+      quote_work_location: ["en_taller", "en_tienda", "entregado"],
       restoration_kind: ["normal", "interno", "observado"],
       restoration_origin: ["oficina", "whatsapp"],
       restoration_status: [

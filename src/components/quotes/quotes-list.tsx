@@ -25,6 +25,7 @@ import type { QuoteListItem } from "@/server/quotes/queries";
 
 import { QuoteDeliveryDates } from "./quote-delivery-dates";
 import { QuoteStatusBadge } from "./quote-status-badge";
+import { QuoteTrackingText } from "./quote-tracking";
 import { exportWorkshopPdf } from "./quote-workshop-export";
 
 function Client({ quote }: { quote: QuoteListItem }) {
@@ -61,7 +62,7 @@ const dates = (quote: QuoteListItem) =>
  * Barra de las cotizaciones elegidas: el contador, "Quitar selección" y "PDF para
  * taller" (la orden para taller de todas ellas, sin precios).
  */
-function WorkshopBar({
+export function WorkshopBar({
   chosen,
   total,
   onClear,
@@ -224,6 +225,10 @@ export function QuotesList({
                     deliveryDate={q.deliveryDate}
                     supplierDeliveryDate={q.supplierDeliveryDate}
                   />
+                  <QuoteTrackingText
+                    workLocation={q.workLocation}
+                    workshopName={q.workshopName}
+                  />
                 </span>
               </TableCell>
               <TableCell>
@@ -255,6 +260,11 @@ export function QuotesList({
             <QuoteDeliveryDates
               deliveryDate={q.deliveryDate}
               supplierDeliveryDate={q.supplierDeliveryDate}
+            />
+            <QuoteTrackingText
+              workLocation={q.workLocation}
+              workshopName={q.workshopName}
+              className="block"
             />
             <div className="text-muted-foreground flex justify-between gap-2 text-sm">
               <span>{dates(q)}</span>

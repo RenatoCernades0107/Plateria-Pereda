@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { todayInLima } from "@/domain/delivery-date";
+import { can } from "@/domain/permissions";
 import { QUOTE_STATUSES, type QuoteStatus } from "@/domain/quote";
+import { QUOTE_WORK_LOCATIONS } from "@/domain/quote-tracking";
 import { quoteDeliveryDatesError } from "@/domain/quote-delivery";
 import {
   MAX_WORKSHOP_NOTES,
@@ -26,7 +28,10 @@ import {
   type QuoteFormInput,
 } from "@/lib/validation/quotes";
 import { requirePermission } from "@/server/auth";
-import { listWorkshopQuotes } from "@/server/quotes/queries";
+import {
+  listTrackingWorkshopQuotes,
+  listWorkshopQuotes,
+} from "@/server/quotes/queries";
 
 export type SaveQuoteResult = { ok: true; id: string } | { error: string };
 export type QuoteActionResult = { ok: true } | { error: string };
@@ -243,15 +248,72 @@ export async function setQuoteWorkshopNotes(
   return { ok: true };
 }
 
+/**
+ * Taller y ubicación del trabajo de una cotización aprobada (aceptada o facturada).
+ * Solo se cambian los campos que se envían (`null` borra el valor). El taller lo
+ * asignan logística y el admin; la ubicación también ventas.
+ */
+export async function setQuoteTracking(
+  id: string,
+  changes: { workshopId?: string | null; workLocation?: string | null },
+): Promise<QuoteActionResult> {
+  const user = await requirePermission("cotizaciones.seguimiento");
+  if (
+    !validArgs(
+      [
+        idArg,
+        z.object({
+          workshopId: optionalIdArg.optional(),
+          workLocation: z.enum(QUOTE_WORK_LOCATIONS).nullable().optional(),
+        }),
+      ],
+      [id, changes],
+    )
+  )
+    return { error: INVALID_ARGS };
+  const setWorkshop = changes.workshopId !== undefined;
+  const setLocation = changes.workLocation !== undefined;
+  if (!setWorkshop && !setLocation) return { ok: true };
+  if (setWorkshop && !can(user.role, "cotizaciones.asignar-taller")) {
+    return { error: "Solo logística y el administrador asignan el taller." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_quote_tracking", {
+    p_id: id,
+    p_set_workshop: setWorkshop,
+    p_workshop_id: changes.workshopId ?? undefined,
+    p_set_location: setLocation,
+    p_work_location:
+      (changes.workLocation as (typeof QUOTE_WORK_LOCATIONS)[number] | null) ??
+      undefined,
+  });
+  if (error) {
+    return {
+      error:
+        error.code === "23514" ||
+        error.code === "23503" ||
+        error.code === "42501"
+          ? `${error.message.replace(/\.$/, "")}.`
+          : dbMessage(error, "No se pudo guardar el seguimiento."),
+    };
+  }
+  revalidateQuote(id);
+  return { ok: true };
+}
+
 /** Datos de la orden para taller de las cotizaciones elegidas en el listado. */
 export async function getWorkshopQuotes(
   ids: string[],
 ): Promise<{ ok: true; quotes: WorkshopQuote[] } | { error: string }> {
-  await requirePermission("cotizador.usar");
+  const user = await requirePermission("cotizaciones.seguimiento");
   if (!validArgs([idsArg], [ids]) || ids.length > MAX_WORKSHOP_QUOTES)
     return { error: INVALID_ARGS };
   try {
-    return { ok: true, quotes: await listWorkshopQuotes(ids) };
+    // Logística no lee `quotes` (tiene precios): la orden sale del RPC sin dinero.
+    const quotes = can(user.role, "cotizador.usar")
+      ? await listWorkshopQuotes(ids)
+      : await listTrackingWorkshopQuotes(ids);
+    return { ok: true, quotes };
   } catch {
     return { error: "No se pudieron leer las cotizaciones." };
   }

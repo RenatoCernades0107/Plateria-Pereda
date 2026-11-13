@@ -15,15 +15,31 @@ test.describe("Permisos por rol", () => {
     await expect(nav(page).getByRole("link")).toHaveText([
       "Restauraciones",
       "Piezas",
+      "Cotizaciones",
       "Talleres",
     ]);
+  });
+
+  test("logística entra a las cotizaciones aprobadas, sin botón de nueva cotización ni montos", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("logistica");
+    const response = await page.goto("/cotizaciones");
+    expect(response?.status()).toBe(200);
+    await expect(
+      page.getByRole("heading", { name: "Cotizaciones aprobadas" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Nueva cotización" }),
+    ).toHaveCount(0);
+    expect((await page.goto("/cotizaciones/nueva"))?.status()).toBe(403);
   });
 
   for (const ruta of [
     "/dashboard",
     "/usuarios",
     "/configuracion",
-    "/cotizaciones",
     "/cotizaciones-whatsapp",
     "/auditoria",
   ]) {

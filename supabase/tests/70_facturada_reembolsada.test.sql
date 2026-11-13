@@ -2,8 +2,8 @@ begin;
 
 select plan(7);
 
--- Cotizaciones: Aceptada → Facturada → Reembolsada (final). Las fechas de entrega se
--- conservan; en la reembolsada ya no cambian.
+-- Cotizaciones: Aceptada → Facturada (final; «Reembolsada» ya no se elige, 2026-11-11).
+-- Las fechas de entrega se conservan.
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000070a2', 'ventas@facturada.test', '{"role":"ventas"}', '{}');
@@ -55,11 +55,9 @@ select throws_ok(
   $$ update public.quotes set status = 'anulada' where id = (select id from ids where name = 'q') $$,
   '23514', null, 'una facturada no se anula'
 );
-
-update public.quotes set status = 'reembolsada' where id = (select id from ids where name = 'q');
 select throws_ok(
-  $$ update public.quotes set status = 'emitida' where id = (select id from ids where name = 'q') $$,
-  '23514', null, 'la reembolsada es final'
+  $$ update public.quotes set status = 'reembolsada' where id = (select id from ids where name = 'q') $$,
+  '23514', null, 'una facturada ya no pasa a reembolsada'
 );
 
 select * from finish();

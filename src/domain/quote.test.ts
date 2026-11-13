@@ -190,7 +190,6 @@ describe("cambios de estado", () => {
       "aceptada→emitida",
       "aceptada→facturada",
       "aceptada→anulada",
-      "facturada→reembolsada",
       "rechazada→emitida",
       "rechazada→anulada",
     ]);
