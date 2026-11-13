@@ -1427,11 +1427,11 @@ export type Database = {
           legal_name: string;
           logo_path: string | null;
           phones: string;
+          quote_share_template: string | null;
           quote_validity_days: number;
           ruc: string | null;
           terms: string;
           updated_at: string;
-          quote_share_template: string | null;
           whatsapp_quote_template: string | null;
           whatsapp_template: string | null;
         };
@@ -1444,11 +1444,11 @@ export type Database = {
           legal_name?: string;
           logo_path?: string | null;
           phones?: string;
+          quote_share_template?: string | null;
           quote_validity_days?: number;
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
-          quote_share_template?: string | null;
           whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };
@@ -1461,11 +1461,11 @@ export type Database = {
           legal_name?: string;
           logo_path?: string | null;
           phones?: string;
+          quote_share_template?: string | null;
           quote_validity_days?: number;
           ruc?: string | null;
           terms?: string;
           updated_at?: string;
-          quote_share_template?: string | null;
           whatsapp_quote_template?: string | null;
           whatsapp_template?: string | null;
         };
