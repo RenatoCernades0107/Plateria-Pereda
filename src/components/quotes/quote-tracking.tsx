@@ -172,3 +172,41 @@ export function QuoteTrackingText({
     </span>
   );
 }
+
+/** Taller asignado, para la columna "Taller" de los listados. */
+export function QuoteWorkshopCell({
+  workshopName,
+  emptyText = "—",
+}: {
+  workshopName: string | null;
+  emptyText?: string;
+}) {
+  if (!workshopName) {
+    return <span className="text-muted-foreground text-xs">{emptyText}</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-sm">
+      <Wrench aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+      {workshopName}
+    </span>
+  );
+}
+
+/** Ubicación del trabajo, para la columna "Ubicación" de los listados. */
+export function QuoteLocationCell({
+  workLocation,
+  emptyText = "—",
+}: {
+  workLocation: QuoteWorkLocation | null;
+  emptyText?: string;
+}) {
+  if (!workLocation) {
+    return <span className="text-muted-foreground text-xs">{emptyText}</span>;
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-sm">
+      <MapPin aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
+      {QUOTE_WORK_LOCATION_LABELS[workLocation]}
+    </span>
+  );
+}

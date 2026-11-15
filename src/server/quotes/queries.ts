@@ -7,7 +7,10 @@ import {
   TRACKING_PAGE_SIZE,
   type TrackingFilters,
 } from "@/domain/quote-tracking-filters";
-import type { QuoteWorkLocation } from "@/domain/quote-tracking";
+import {
+  isQuoteTracked,
+  type QuoteWorkLocation,
+} from "@/domain/quote-tracking";
 import type { PaymentStatus } from "@/domain/money";
 import { toCents, toDecimalString, type Cents } from "@/domain/money";
 import {
@@ -43,6 +46,10 @@ export type QuoteListItem = {
   issueDate: string | null;
   validUntil: string | null;
   total: Cents;
+  /** Suma de los pagos registrados (solo existen en las aceptadas y facturadas). */
+  paidCents: Cents;
+  /** Saldo pendiente (total − pagado); null si la cotización no admite pagos. */
+  balanceCents: Cents | null;
   createdAt: string;
   /** Fechas de entrega al cliente y del proveedor (solo en las aceptadas). */
   deliveryDate: string | null;
@@ -71,7 +78,7 @@ export async function listQuotes(
   let query = supabase
     .from("quotes")
     .select(
-      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at, delivery_date, supplier_delivery_date, work_location, workshops(name)",
+      "id, code, status, client_name, contact_name, issue_date, valid_until, total, created_at, delivery_date, supplier_delivery_date, work_location, workshops(name), quote_payments(amount)",
       { count: "exact" },
     );
 
@@ -108,21 +115,32 @@ export async function listQuotes(
   return {
     total,
     pages: Math.max(1, Math.ceil(total / limit)),
-    quotes: data.map((q) => ({
-      id: q.id,
-      code: q.code ?? "",
-      status: quoteDisplayStatus(q.status, q.valid_until),
-      clientName: q.client_name,
-      contactName: q.contact_name,
-      issueDate: q.issue_date,
-      validUntil: q.valid_until,
-      total: toCents(Number(q.total)),
-      createdAt: q.created_at,
-      deliveryDate: q.delivery_date,
-      supplierDeliveryDate: q.supplier_delivery_date,
-      workLocation: q.work_location,
-      workshopName: q.workshops?.name ?? null,
-    })),
+    quotes: data.map((q) => {
+      const totalCents = toCents(Number(q.total));
+      const paidCents = q.quote_payments.reduce(
+        (sum, p) => sum + toCents(Number(p.amount)),
+        0,
+      );
+      return {
+        id: q.id,
+        code: q.code ?? "",
+        status: quoteDisplayStatus(q.status, q.valid_until),
+        clientName: q.client_name,
+        contactName: q.contact_name,
+        issueDate: q.issue_date,
+        validUntil: q.valid_until,
+        total: totalCents,
+        paidCents,
+        balanceCents: isQuoteTracked(q.status)
+          ? quoteBalance(totalCents, paidCents)
+          : null,
+        createdAt: q.created_at,
+        deliveryDate: q.delivery_date,
+        supplierDeliveryDate: q.supplier_delivery_date,
+        workLocation: q.work_location,
+        workshopName: q.workshops?.name ?? null,
+      };
+    }),
   };
 }
 

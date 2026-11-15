@@ -25,7 +25,11 @@ import type { QuoteListItem } from "@/server/quotes/queries";
 
 import { QuoteDeliveryDates } from "./quote-delivery-dates";
 import { QuoteStatusBadge } from "./quote-status-badge";
-import { QuoteTrackingText } from "./quote-tracking";
+import {
+  QuoteLocationCell,
+  QuoteTrackingText,
+  QuoteWorkshopCell,
+} from "./quote-tracking";
 import { exportWorkshopPdf } from "./quote-workshop-export";
 
 function Client({ quote }: { quote: QuoteListItem }) {
@@ -51,6 +55,17 @@ function Code({ quote }: { quote: QuoteListItem }) {
       {quote.code}
     </Link>
   );
+}
+
+/** Saldo pendiente: "—" si la cotización no admite pagos; "Pagado" si ya no debe nada. */
+function Balance({ quote }: { quote: QuoteListItem }) {
+  if (quote.balanceCents === null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  if (quote.balanceCents === 0) {
+    return <span className="text-muted-foreground">Pagado</span>;
+  }
+  return <span>{formatCents(quote.balanceCents)}</span>;
 }
 
 const dates = (quote: QuoteListItem) =>
@@ -202,7 +217,10 @@ export function QuotesList({
             <TableHead>Estado</TableHead>
             <TableHead>Fecha</TableHead>
             <TableHead>Vigente hasta</TableHead>
+            <TableHead>Taller</TableHead>
+            <TableHead>Ubicación</TableHead>
             <TableHead className="text-right">Total</TableHead>
+            <TableHead className="text-right">Saldo pendiente</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -225,17 +243,22 @@ export function QuotesList({
                     deliveryDate={q.deliveryDate}
                     supplierDeliveryDate={q.supplierDeliveryDate}
                   />
-                  <QuoteTrackingText
-                    workLocation={q.workLocation}
-                    workshopName={q.workshopName}
-                  />
                 </span>
               </TableCell>
               <TableCell>
                 {q.validUntil ? formatQuoteDate(q.validUntil) : "—"}
               </TableCell>
+              <TableCell>
+                <QuoteWorkshopCell workshopName={q.workshopName} />
+              </TableCell>
+              <TableCell>
+                <QuoteLocationCell workLocation={q.workLocation} />
+              </TableCell>
               <TableCell className="text-right tabular-nums">
                 {formatCents(q.total)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">
+                <Balance quote={q} />
               </TableCell>
             </ClickableRow>
           ))}
@@ -272,6 +295,14 @@ export function QuotesList({
                 {formatCents(q.total)}
               </span>
             </div>
+            {q.balanceCents !== null ? (
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Saldo pendiente</span>
+                <span className="tabular-nums">
+                  <Balance quote={q} />
+                </span>
+              </div>
+            ) : null}
           </ClickableItem>
         ))}
       </ul>
