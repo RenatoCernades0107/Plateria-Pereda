@@ -25,6 +25,8 @@ const quote = (id: string, code: string): QuoteListItem => ({
   issueDate: "2026-11-01",
   validUntil: "2026-11-16",
   total: 100_00,
+  paidCents: 40_00,
+  balanceCents: 60_00,
   createdAt: "2026-11-01T15:00:00Z",
   deliveryDate: null,
   supplierDeliveryDate: null,
@@ -39,6 +41,47 @@ const quotes = [
 afterEach(() => vi.clearAllMocks());
 
 describe("QuotesList", () => {
+  it("muestra taller, ubicación y saldo pendiente en la tabla", () => {
+    render(
+      <QuotesList
+        emptyMessage="Nada"
+        quotes={[
+          {
+            ...quote("33333333-3333-4333-8333-333333333333", "COT-000003"),
+            workLocation: "en_taller",
+            workshopName: "Taller Norte",
+          },
+          {
+            ...quote("44444444-4444-4444-8444-444444444444", "COT-000004"),
+            balanceCents: 0,
+          },
+          {
+            ...quote("55555555-5555-4555-8555-555555555555", "COT-000005"),
+            status: "emitida",
+            paidCents: 0,
+            balanceCents: null,
+          },
+        ]}
+      />,
+    );
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent);
+    expect(headers).toEqual(
+      expect.arrayContaining(["Taller", "Ubicación", "Saldo pendiente"]),
+    );
+    const first = screen.getByTestId("cotizacion-COT-000003");
+    expect(first).toHaveTextContent("Taller Norte");
+    expect(first).toHaveTextContent("En taller");
+    expect(first).toHaveTextContent(/60[.,]00/);
+    expect(screen.getByTestId("cotizacion-COT-000004")).toHaveTextContent(
+      "Pagado",
+    );
+    expect(
+      within(screen.getByTestId("cotizacion-COT-000005")).queryByText("Pagado"),
+    ).not.toBeInTheDocument();
+  });
+
   it("sin `selectable` no lleva casillas", () => {
     render(<QuotesList quotes={quotes} emptyMessage="Nada" />);
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();

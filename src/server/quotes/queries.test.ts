@@ -103,10 +103,48 @@ describe("listQuotes", () => {
         valid_until: "2026-09-16",
         total: 786,
         created_at: "2026-09-01T15:00:00Z",
+        quote_payments: [],
       },
     ];
     const { quotes } = await listQuotes(parseQuoteFilters({}));
-    expect(quotes[0]).toMatchObject({ status: "vencida", total: 78600 });
+    expect(quotes[0]).toMatchObject({
+      status: "vencida",
+      total: 78600,
+      balanceCents: null,
+    });
+  });
+
+  it("el saldo pendiente es el total menos los pagos, solo en aprobadas", async () => {
+    const base = {
+      code: "COT-000002",
+      client_name: "Ana",
+      contact_name: null,
+      issue_date: "2026-09-01",
+      valid_until: "2026-09-16",
+      total: 500,
+      created_at: "2026-09-01T15:00:00Z",
+    };
+    mocks.rows = [
+      {
+        ...base,
+        id: "q2",
+        status: "aceptada",
+        quote_payments: [{ amount: 100.5 }, { amount: 200 }],
+      },
+      {
+        ...base,
+        id: "q3",
+        status: "facturada",
+        quote_payments: [{ amount: 500 }],
+      },
+      { ...base, id: "q4", status: "emitida", quote_payments: [] },
+    ];
+    const { quotes } = await listQuotes(parseQuoteFilters({}));
+    expect(quotes.map((q) => [q.paidCents, q.balanceCents])).toEqual([
+      [30050, 19950],
+      [50000, 0],
+      [0, null],
+    ]);
   });
 });
 

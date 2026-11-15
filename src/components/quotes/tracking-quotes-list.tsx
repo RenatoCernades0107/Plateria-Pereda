@@ -17,7 +17,11 @@ import type { TrackingQuoteItem } from "@/server/quotes/queries";
 
 import { QuoteDeliveryDates } from "./quote-delivery-dates";
 import { QuoteStatusBadge } from "./quote-status-badge";
-import { QuoteTrackingText } from "./quote-tracking";
+import {
+  QuoteLocationCell,
+  QuoteTrackingText,
+  QuoteWorkshopCell,
+} from "./quote-tracking";
 import { WorkshopBar } from "./quotes-list";
 
 function Code({ quote }: { quote: TrackingQuoteItem }) {
@@ -95,7 +99,8 @@ export function TrackingQuotesList({
             <TableHead>Cliente</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Entrega</TableHead>
-            <TableHead>Taller y ubicación</TableHead>
+            <TableHead>Taller</TableHead>
+            <TableHead>Ubicación</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,16 +123,16 @@ export function TrackingQuotesList({
                 />
               </TableCell>
               <TableCell>
-                {q.workLocation || q.workshopName ? (
-                  <QuoteTrackingText
-                    workLocation={q.workLocation}
-                    workshopName={q.workshopName}
-                  />
-                ) : (
-                  <span className="text-muted-foreground text-xs">
-                    Sin taller ni ubicación
-                  </span>
-                )}
+                <QuoteWorkshopCell
+                  workshopName={q.workshopName}
+                  emptyText="Sin taller"
+                />
+              </TableCell>
+              <TableCell>
+                <QuoteLocationCell
+                  workLocation={q.workLocation}
+                  emptyText="Sin definir"
+                />
               </TableCell>
             </ClickableRow>
           ))}
