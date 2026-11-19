@@ -13,9 +13,9 @@ describe("filtros de la vista de piezas", () => {
     expect(parsePieceBoardFilters({})).toEqual({
       q: "",
       guide: "",
-      location: null,
-      status: null,
-      workshopId: null,
+      location: [],
+      status: [],
+      workshopIds: [],
       noWorkshop: false,
       minDays: null,
       urgent: false,
@@ -41,9 +41,9 @@ describe("filtros de la vista de piezas", () => {
     ).toEqual({
       q: "RES-1",
       guide: "RES-00123",
-      location: "en_tienda",
-      status: "rechazada",
-      workshopId: "00000000-0000-0000-0000-0000000000aa",
+      location: ["en_tienda"],
+      status: ["rechazada"],
+      workshopIds: ["00000000-0000-0000-0000-0000000000aa"],
       noWorkshop: false,
       minDays: 10,
       urgent: true,
@@ -59,8 +59,8 @@ describe("filtros de la vista de piezas", () => {
       dias: "-3",
     });
     expect([closed.location, closed.status, closed.minDays]).toEqual([
-      null,
-      null,
+      [],
+      [],
       null,
     ]);
     // Las entregadas hoy siguen en la vista: se pueden filtrar.
@@ -68,7 +68,10 @@ describe("filtros de la vista de piezas", () => {
       ubicacion: "entregada",
       estado: "entregada",
     });
-    expect([today.location, today.status]).toEqual(["entregada", "entregada"]);
+    expect([today.location, today.status]).toEqual([
+      ["entregada"],
+      ["entregada"],
+    ]);
     expect(parsePieceBoardFilters({ dias: "9999" }).minDays).toBe(365);
   });
 
@@ -82,14 +85,14 @@ describe("filtros de la vista de piezas", () => {
       "/piezas?ubicacion=en_taller&dias=7&pagina=3",
     );
     expect(
-      pieceBoardHref(filters, { location: null, minDays: null, page: 1 }),
+      pieceBoardHref(filters, { location: [], minDays: null, page: 1 }),
     ).toBe("/piezas");
     expect(listPiecesBoardArgs(filters)).toEqual({
       p_query: undefined,
       p_restoration_code: undefined,
-      p_location: "en_taller",
+      p_location: ["en_taller"],
       p_status: undefined,
-      p_workshop_id: undefined,
+      p_workshop_ids: undefined,
       p_min_workshop_days: 7,
       p_sort: "guia",
       p_dir: "desc",
@@ -128,16 +131,50 @@ describe("filtros de la vista de piezas", () => {
     expect(pieceSortChange(asc, "fecha")).toMatchObject({ dir: "desc" });
   });
 
+  it("admite varios valores por filtro, combinados entre sí", () => {
+    const A = "00000000-0000-0000-0000-0000000000aa";
+    const B = "00000000-0000-0000-0000-0000000000bb";
+    const filters = parsePieceBoardFilters({
+      estado: ["aprobada", "observada", "aprobada", "recibida"],
+      ubicacion: ["en_taller", "en_tienda"],
+      taller: [A, "sin", B.toUpperCase()],
+    });
+    expect(filters).toMatchObject({
+      status: ["aprobada", "observada"],
+      location: ["en_taller", "en_tienda"],
+      workshopIds: [A, B],
+      noWorkshop: true,
+    });
+    const url = pieceBoardHref(filters);
+    expect(url).toBe(
+      `/piezas?ubicacion=en_taller&ubicacion=en_tienda&estado=aprobada&estado=observada&taller=${A}&taller=${B}&taller=sin`,
+    );
+    // Se puede volver a leer lo que se escribió.
+    const query = new URLSearchParams(url.split("?")[1]);
+    const again = parsePieceBoardFilters({
+      estado: query.getAll("estado"),
+      ubicacion: query.getAll("ubicacion"),
+      taller: query.getAll("taller"),
+    });
+    expect(again).toEqual(filters);
+    expect(listPiecesBoardArgs(filters)).toMatchObject({
+      p_status: ["aprobada", "observada"],
+      p_location: ["en_taller", "en_tienda"],
+      p_workshop_ids: [A, B],
+      p_no_workshop: true,
+    });
+  });
+
   it("filtra las piezas sin taller (taller=sin)", () => {
     const filters = parsePieceBoardFilters({ taller: "sin" });
-    expect([filters.noWorkshop, filters.workshopId]).toEqual([true, null]);
+    expect([filters.noWorkshop, filters.workshopIds]).toEqual([true, []]);
     expect(pieceBoardHref(filters)).toBe("/piezas?taller=sin");
     expect(listPiecesBoardArgs(filters)).toMatchObject({
       p_no_workshop: true,
-      p_workshop_id: undefined,
+      p_workshop_ids: undefined,
     });
     expect(
-      pieceBoardHref(filters, { noWorkshop: false, workshopId: null }),
+      pieceBoardHref(filters, { noWorkshop: false, workshopIds: [] }),
     ).toBe("/piezas");
   });
 

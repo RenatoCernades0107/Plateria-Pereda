@@ -6,11 +6,14 @@ export const AUDIT_PAGE_SIZE = 25;
 
 export const SYSTEM_ACTOR_FILTER = "sistema";
 
-/** Filtros de /auditoria. En la URL: usuario, entidad, accion, desde, hasta y pagina. */
+/**
+ * Filtros de /auditoria. En la URL: usuario, entidad, accion, desde, hasta y pagina;
+ * usuario, entidad y accion admiten varios valores (se repiten en la URL).
+ */
 export type AuditFilters = {
-  actor?: string;
-  entity?: string;
-  action?: AuditAction;
+  actor?: string[];
+  entity?: string[];
+  action?: AuditAction[];
   from?: string;
   to?: string;
   page: number;
@@ -42,10 +45,22 @@ export function parseAuditFilters(searchParams: SearchParams): AuditFilters {
     return parsed.success ? parsed.data : undefined;
   };
 
+  // Todos los valores válidos de un parámetro repetido, sin duplicados.
+  const many = <T>(key: keyof typeof schema.shape): T[] | undefined => {
+    const raw = searchParams[key];
+    const values = (Array.isArray(raw) ? raw : [raw]).flatMap((v) => {
+      const parsed = schema.shape[key].safeParse(v || undefined);
+      return parsed.success && parsed.data !== undefined
+        ? [parsed.data as T]
+        : [];
+    });
+    return values.length ? [...new Set(values)] : undefined;
+  };
+
   const filters: AuditFilters = {
-    actor: value("usuario") as string | undefined,
-    entity: value("entidad") as string | undefined,
-    action: value("accion") as AuditAction | undefined,
+    actor: many<string>("usuario"),
+    entity: many<string>("entidad"),
+    action: many<AuditAction>("accion"),
     from: value("desde") as string | undefined,
     to: value("hasta") as string | undefined,
     page: (value("pagina") as number | undefined) ?? 1,
@@ -58,10 +73,14 @@ export function parseAuditFilters(searchParams: SearchParams): AuditFilters {
 /** Arma la query string de los filtros, sin los vacíos ni la página 1. */
 export function serializeAuditFilters(filters: Partial<AuditFilters>): string {
   const params = new URLSearchParams();
-  const entries: [string, string | number | undefined][] = [
+  for (const [key, values] of [
     ["usuario", filters.actor],
     ["entidad", filters.entity],
     ["accion", filters.action],
+  ] as const) {
+    for (const v of values ?? []) params.append(key, v);
+  }
+  const entries: [string, string | number | undefined][] = [
     ["desde", filters.from],
     ["hasta", filters.to],
     ["pagina", filters.page && filters.page > 1 ? filters.page : undefined],

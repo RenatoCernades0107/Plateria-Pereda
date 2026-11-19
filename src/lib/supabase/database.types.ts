@@ -2356,11 +2356,11 @@ export type Database = {
       list_clients: {
         Args: {
           p_active?: boolean;
-          p_kind?: Database["public"]["Enums"]["client_kind"];
+          p_kind?: Database["public"]["Enums"]["client_kind"][];
           p_limit?: number;
           p_offset?: number;
           p_query?: string;
-          p_sync?: string;
+          p_sync?: string[];
         };
         Returns: {
           active: boolean;
@@ -2380,12 +2380,12 @@ export type Database = {
       list_logistics_quotes: {
         Args: {
           p_limit?: number;
-          p_location?: Database["public"]["Enums"]["quote_work_location"];
+          p_location?: Database["public"]["Enums"]["quote_work_location"][];
           p_offset?: number;
           p_query?: string;
-          p_status?: Database["public"]["Enums"]["quote_status"];
+          p_status?: Database["public"]["Enums"]["quote_status"][];
           p_without_workshop?: boolean;
-          p_workshop_id?: string;
+          p_workshop_ids?: string[];
         };
         Returns: {
           client_name: string;
@@ -2443,7 +2443,7 @@ export type Database = {
         Args: {
           p_dir?: string;
           p_limit?: number;
-          p_location?: Database["public"]["Enums"]["piece_location"];
+          p_location?: Database["public"]["Enums"]["piece_location"][];
           p_min_workshop_days?: number;
           p_no_workshop?: boolean;
           p_offset?: number;
@@ -2451,10 +2451,10 @@ export type Database = {
           p_ready?: boolean;
           p_restoration_code?: string;
           p_sort?: string;
-          p_status?: Database["public"]["Enums"]["piece_status"];
+          p_status?: Database["public"]["Enums"]["piece_status"][];
           p_to_return?: boolean;
           p_urgent?: boolean;
-          p_workshop_id?: string;
+          p_workshop_ids?: string[];
         };
         Returns: {
           arrived_at: string;
@@ -2502,9 +2502,9 @@ export type Database = {
           p_offset?: number;
           p_query?: string;
           p_restoration_code?: string;
-          p_status?: Database["public"]["Enums"]["piece_status"];
+          p_status?: Database["public"]["Enums"]["piece_status"][];
           p_to?: string;
-          p_workshop_id?: string;
+          p_workshop_ids?: string[];
         };
         Returns: {
           client_name: string;
@@ -2593,7 +2593,7 @@ export type Database = {
           p_offset?: number;
           p_query?: string;
           p_sort?: string;
-          p_status?: Database["public"]["Enums"]["whatsapp_quote_status"];
+          p_status?: Database["public"]["Enums"]["whatsapp_quote_status"][];
           p_to?: string;
         };
         Returns: {

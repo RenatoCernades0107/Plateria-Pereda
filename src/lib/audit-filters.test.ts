@@ -22,9 +22,9 @@ describe("filtros de auditoría", () => {
         pagina: "2",
       }),
     ).toEqual({
-      actor: ID,
-      entity: "profiles",
-      action: "update",
+      actor: [ID],
+      entity: ["profiles"],
+      action: ["update"],
       from: "2026-10-01",
       to: "2026-10-03",
       page: 2,
@@ -51,35 +51,50 @@ describe("filtros de auditoría", () => {
   it("acepta ids de usuario sin los bits de versión de UUID", () => {
     const seed = "10000000-0000-0000-0000-000000000001";
     expect(parseAuditFilters({ usuario: seed })).toEqual({
-      actor: seed,
+      actor: [seed],
       page: 1,
     });
   });
 
-  it("acepta el actor sistema y toma el primer valor repetido", () => {
+  it("acepta el actor sistema y varios valores repetidos sin duplicar", () => {
     expect(
-      parseAuditFilters({ usuario: ["sistema", ID], pagina: ["3"] }),
-    ).toEqual({ actor: "sistema", page: 3 });
+      parseAuditFilters({
+        usuario: ["sistema", ID, "sistema", "no-valido"],
+        accion: ["insert", "delete"],
+        pagina: ["3"],
+      }),
+    ).toEqual({
+      actor: ["sistema", ID],
+      action: ["insert", "delete"],
+      page: 3,
+    });
   });
 
   it("serializa sin vacíos ni la página 1, y se puede volver a leer", () => {
     const filters = {
-      actor: ID,
-      action: "delete" as const,
+      actor: [ID, "sistema"],
+      action: ["delete" as const],
       from: "2026-10-01",
       page: 4,
     };
     const query = serializeAuditFilters(filters);
-    expect(query).toBe(`usuario=${ID}&accion=delete&desde=2026-10-01&pagina=4`);
+    expect(query).toBe(
+      `usuario=${ID}&usuario=sistema&accion=delete&desde=2026-10-01&pagina=4`,
+    );
     expect(
-      parseAuditFilters(Object.fromEntries(new URLSearchParams(query))),
+      parseAuditFilters({
+        usuario: new URLSearchParams(query).getAll("usuario"),
+        accion: "delete",
+        desde: "2026-10-01",
+        pagina: "4",
+      }),
     ).toEqual(filters);
-    expect(serializeAuditFilters({ page: 1, entity: "" })).toBe("");
+    expect(serializeAuditFilters({ page: 1, entity: [] })).toBe("");
   });
 
   it("arma el enlace a /auditoria", () => {
     expect(auditHref({ page: 1 })).toBe("/auditoria");
-    expect(auditHref({ entity: "profiles", page: 2 })).toBe(
+    expect(auditHref({ entity: ["profiles"], page: 2 })).toBe(
       "/auditoria?entidad=profiles&pagina=2",
     );
   });

@@ -37,10 +37,16 @@ export async function listAuditLog(filters: AuditFilters) {
     .order("id", { ascending: false })
     .range(offset, offset + AUDIT_PAGE_SIZE - 1);
 
-  if (filters.actor === SYSTEM_ACTOR_FILTER) query = query.is("actor_id", null);
-  else if (filters.actor) query = query.eq("actor_id", filters.actor);
-  if (filters.entity) query = query.eq("table_name", filters.entity);
-  if (filters.action) query = query.eq("action", filters.action);
+  if (filters.actor?.length) {
+    // Usuarios elegidos y/o "sistema" (sin usuario): basta con cumplir uno.
+    const ids = filters.actor.filter((a) => a !== SYSTEM_ACTOR_FILTER);
+    const system = ids.length < filters.actor.length;
+    if (!ids.length) query = query.is("actor_id", null);
+    else if (!system) query = query.in("actor_id", ids);
+    else query = query.or(`actor_id.in.(${ids.join(",")}),actor_id.is.null`);
+  }
+  if (filters.entity?.length) query = query.in("table_name", filters.entity);
+  if (filters.action?.length) query = query.in("action", filters.action);
   if (filters.from)
     query = query.gte("occurred_at", limaDayStart(filters.from));
   if (filters.to) query = query.lt("occurred_at", limaDayEnd(filters.to));

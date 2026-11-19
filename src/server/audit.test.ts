@@ -18,6 +18,8 @@ function builder() {
     "range",
     "is",
     "eq",
+    "in",
+    "or",
     "gte",
     "lt",
     "limit",
@@ -56,9 +58,9 @@ describe("consultas de auditoría", () => {
 
   it("aplica los filtros, la página y calcula el total de páginas", async () => {
     const result = await listAuditLog({
-      actor: "u1",
-      entity: "profiles",
-      action: "update",
+      actor: ["u1"],
+      entity: ["profiles"],
+      action: ["update"],
       from: "2026-10-01",
       to: "2026-10-03",
       page: 2,
@@ -66,9 +68,9 @@ describe("consultas de auditoría", () => {
     expect(mocks.calls).toEqual(
       expect.arrayContaining([
         ["range", 25, 49],
-        ["eq", "actor_id", "u1"],
-        ["eq", "table_name", "profiles"],
-        ["eq", "action", "update"],
+        ["in", "actor_id", ["u1"]],
+        ["in", "table_name", ["profiles"]],
+        ["in", "action", ["update"]],
         ["gte", "occurred_at", "2026-10-01T05:00:00.000Z"],
         ["lt", "occurred_at", "2026-10-04T05:00:00.000Z"],
       ]),
@@ -87,8 +89,16 @@ describe("consultas de auditoría", () => {
   });
 
   it("el filtro sistema busca cambios sin usuario", async () => {
-    await listAuditLog({ actor: "sistema", page: 1 });
+    await listAuditLog({ actor: ["sistema"], page: 1 });
     expect(mocks.calls).toContainEqual(["is", "actor_id", null]);
+  });
+
+  it("varios usuarios y sistema a la vez: basta con cumplir uno", async () => {
+    await listAuditLog({ actor: ["u1", "u2", "sistema"], page: 1 });
+    expect(mocks.calls).toContainEqual([
+      "or",
+      "actor_id.in.(u1,u2),actor_id.is.null",
+    ]);
   });
 
   it("muestra el actor sin nombre como usuario eliminado y sin actor como sistema", async () => {

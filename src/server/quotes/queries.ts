@@ -3,7 +3,6 @@ import "server-only";
 import type { ClientOption } from "@/domain/client-search";
 import { quoteBalance, quotePaymentStatus } from "@/domain/quote-payments";
 import {
-  NO_WORKSHOP,
   TRACKING_PAGE_SIZE,
   type TrackingFilters,
 } from "@/domain/quote-tracking-filters";
@@ -69,6 +68,23 @@ export type QuotesPage = {
 const limaStart = (date: string) => `${date}T00:00:00-05:00`;
 
 /** Listado con búsqueda (código o cliente), filtros y paginación. */
+/**
+ * Condición `or` de PostgREST para varios estados a la vez. "Emitida" y "vencida" son
+ * la misma fila de la BD (`emitida`) según su fecha de validez.
+ */
+function statusCondition(
+  statuses: readonly QuoteDisplayStatus[],
+  today: string,
+): string {
+  const plain = statuses.filter((s) => s !== "emitida" && s !== "vencida");
+  const parts = plain.length ? [`status.in.(${plain.join(",")})`] : [];
+  if (statuses.includes("emitida"))
+    parts.push(`and(status.eq.emitida,valid_until.gte.${today})`);
+  if (statuses.includes("vencida"))
+    parts.push(`and(status.eq.emitida,valid_until.lt.${today})`);
+  return parts.join(",");
+}
+
 export async function listQuotes(
   filters: QuoteFilters,
   { limit = QUOTES_PAGE_SIZE }: { limit?: number } = {},
@@ -86,17 +102,15 @@ export async function listQuotes(
   if (term) {
     query = query.or(`code.ilike.*${term}*,client_name.ilike.*${term}*`);
   }
-  switch (filters.status) {
-    case null:
-      break;
-    case "emitida":
+  const [status] = filters.status;
+  if (filters.status.length === 1 && status) {
+    if (status === "emitida")
       query = query.eq("status", "emitida").gte("valid_until", today);
-      break;
-    case "vencida":
+    else if (status === "vencida")
       query = query.eq("status", "emitida").lt("valid_until", today);
-      break;
-    default:
-      query = query.eq("status", filters.status);
+    else query = query.eq("status", status);
+  } else if (filters.status.length > 1) {
+    query = query.or(statusCondition(filters.status, today));
   }
   if (filters.clientId) query = query.eq("client_id", filters.clientId);
   if (filters.from) query = query.gte("created_at", limaStart(filters.from));
@@ -508,13 +522,12 @@ export async function listTrackingQuotes(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_logistics_quotes", {
     p_query: filters.q || undefined,
-    p_status: filters.status ?? undefined,
-    p_workshop_id:
-      filters.workshop && filters.workshop !== NO_WORKSHOP
-        ? filters.workshop
-        : undefined,
-    p_without_workshop: filters.workshop === NO_WORKSHOP,
-    p_location: filters.location ?? undefined,
+    p_status: filters.status.length ? filters.status : undefined,
+    p_workshop_ids: filters.workshopIds.length
+      ? filters.workshopIds
+      : undefined,
+    p_without_workshop: filters.noWorkshop,
+    p_location: filters.location.length ? filters.location : undefined,
     p_limit: limit,
     p_offset: (filters.page - 1) * limit,
   });

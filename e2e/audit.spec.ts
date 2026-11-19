@@ -30,10 +30,13 @@ test.describe("Auditoría", () => {
       await page
         .getByRole("option", { name: SEED_USERS.admin.fullName })
         .click();
+      await page.keyboard.press("Escape");
       await page.getByLabel("Entidad").click();
       await page.getByRole("option", { name: "Usuario" }).click();
+      await page.keyboard.press("Escape");
       await page.getByLabel("Acción").click();
       await page.getByRole("option", { name: "Edición" }).click();
+      await page.keyboard.press("Escape");
       await expect(page).toHaveURL(
         /\/auditoria\?usuario=[\w-]+&entidad=profiles&accion=update$/,
       );

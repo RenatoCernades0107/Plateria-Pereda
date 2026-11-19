@@ -35,9 +35,12 @@ export default async function CotizacionesWhatsappPage({
   const [{ items, total, pages }, ...statusTotals] = await Promise.all([
     listWhatsappQuotes(filters),
     ...WHATSAPP_QUOTE_STATUSES.map((status) =>
-      filters.status === status
+      filters.status.length === 1 && filters.status[0] === status
         ? null
-        : listWhatsappQuotes({ ...filters, status, page: 1 }, { limit: 1 }),
+        : listWhatsappQuotes(
+            { ...filters, status: [status], page: 1 },
+            { limit: 1 },
+          ),
     ),
   ]);
   const counts = Object.fromEntries(

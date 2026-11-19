@@ -330,13 +330,17 @@ describe("ClientsFiltersForm", () => {
     );
     await user.click(screen.getByLabelText("Tipo"));
     await user.click(await screen.findByRole("option", { name: "Empresas" }));
+    // Varios valores a la vez en el mismo filtro.
+    await user.click(screen.getByRole("option", { name: "Personas" }));
     await user.click(screen.getByLabelText("Shopify"));
     await user.click(await screen.findByRole("option", { name: "Con error" }));
+    await user.click(screen.getByRole("option", { name: "Pendiente" }));
+    // Quitar «Activos» (el valor por defecto) deja activos e inactivos.
     await user.click(screen.getByLabelText("Estado"));
-    await user.click(await screen.findByRole("option", { name: "Todos" }));
+    await user.click(await screen.findByRole("option", { name: "Activos" }));
     expect(screen.queryByRole("button", { name: "Filtrar" })).toBeNull();
     expect(mocks.replace).toHaveBeenLastCalledWith(
-      "/clientes?q=andina&tipo=empresa&sync=error&estado=todos",
+      "/clientes?q=andina&tipo=empresa&tipo=persona&sync=error&sync=pending&estado=todos",
       { scroll: false },
     );
 

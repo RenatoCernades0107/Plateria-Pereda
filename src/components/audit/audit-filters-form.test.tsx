@@ -20,7 +20,12 @@ describe("AuditFiltersForm", () => {
     render(
       <AuditFiltersForm
         {...props}
-        filters={{ actor: ID, action: "update", from: "2026-10-01", page: 3 }}
+        filters={{
+          actor: [ID],
+          action: ["update"],
+          from: "2026-10-01",
+          page: 3,
+        }}
       />,
     );
     expect(screen.getByLabelText("Usuario")).toHaveTextContent("Ana Admin");
@@ -32,7 +37,7 @@ describe("AuditFiltersForm", () => {
   it("aplica los filtros solos, en la URL y desde la página 1", async () => {
     const user = userEvent.setup();
     render(
-      <AuditFiltersForm {...props} filters={{ action: "update", page: 3 }} />,
+      <AuditFiltersForm {...props} filters={{ action: ["update"], page: 3 }} />,
     );
 
     await user.click(screen.getByLabelText("Entidad"));
@@ -50,12 +55,12 @@ describe("AuditFiltersForm", () => {
     expect(screen.queryByRole("button", { name: "Filtrar" })).toBeNull();
   });
 
-  it("elegir Todos quita el filtro y Limpiar los quita todos", async () => {
+  it("quitar la última opción quita el filtro y Limpiar los quita todos", async () => {
     const user = userEvent.setup();
-    render(<AuditFiltersForm {...props} filters={{ actor: ID, page: 1 }} />);
+    render(<AuditFiltersForm {...props} filters={{ actor: [ID], page: 1 }} />);
 
     await user.click(screen.getByLabelText("Usuario"));
-    await user.click(await screen.findByRole("option", { name: "Todos" }));
+    await user.click(await screen.findByRole("option", { name: "Ana Admin" }));
     expect(replace).toHaveBeenLastCalledWith("/auditoria", { scroll: false });
 
     await user.click(screen.getByLabelText("Entidad"));

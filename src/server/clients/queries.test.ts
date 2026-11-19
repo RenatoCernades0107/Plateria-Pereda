@@ -61,8 +61,8 @@ describe("listClients", () => {
     );
     expect(mocks.rpc).toHaveBeenCalledWith("list_clients", {
       p_query: "ana",
-      p_kind: "persona",
-      p_sync: "error",
+      p_kind: ["persona"],
+      p_sync: ["error"],
       p_active: true,
       p_limit: 25,
       p_offset: 25,

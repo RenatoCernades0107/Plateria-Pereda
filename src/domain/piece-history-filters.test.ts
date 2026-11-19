@@ -11,8 +11,8 @@ describe("filtros del historial de piezas", () => {
     expect(parsePieceHistoryFilters({})).toEqual({
       q: "",
       guide: "",
-      status: null,
-      workshopId: null,
+      status: [],
+      workshopIds: [],
       from: null,
       to: null,
       page: 1,
@@ -30,8 +30,8 @@ describe("filtros del historial de piezas", () => {
     ).toEqual({
       q: "Fuente",
       guide: "123",
-      status: "entregada",
-      workshopId: "00000000-0000-0000-0000-0000000000aa",
+      status: ["entregada"],
+      workshopIds: ["00000000-0000-0000-0000-0000000000aa"],
       from: "2026-10-01",
       to: "2026-10-14",
       page: 2,
@@ -47,8 +47,8 @@ describe("filtros del historial de piezas", () => {
       invalid.status,
       invalid.from,
       invalid.to,
-      invalid.workshopId,
-    ]).toEqual([null, null, null, null]);
+      invalid.workshopIds,
+    ]).toEqual([[], null, null, []]);
   });
 
   it("arma la URL y los argumentos de la consulta", () => {
@@ -61,7 +61,7 @@ describe("filtros del historial de piezas", () => {
     expect(pieceHistoryHref(filters)).toBe(
       "/piezas/historial?guia=RES-00123&estado=anulada&desde=2026-10-01&pagina=3",
     );
-    expect(pieceHistoryHref(filters, { page: 1, status: null })).toBe(
+    expect(pieceHistoryHref(filters, { page: 1, status: [] })).toBe(
       "/piezas/historial?guia=RES-00123&desde=2026-10-01",
     );
     expect(pieceHistoryHref(parsePieceHistoryFilters({}))).toBe(
@@ -70,8 +70,8 @@ describe("filtros del historial de piezas", () => {
     expect(listPiecesHistoryArgs(filters)).toEqual({
       p_query: undefined,
       p_restoration_code: "RES-00123",
-      p_status: "anulada",
-      p_workshop_id: undefined,
+      p_status: ["anulada"],
+      p_workshop_ids: undefined,
       p_from: "2026-10-01",
       p_to: undefined,
       p_limit: 50,

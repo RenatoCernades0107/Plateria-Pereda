@@ -76,7 +76,7 @@ describe("filtros del listado", () => {
   it("lee la URL e ignora valores inválidos", () => {
     expect(parseWhatsappQuoteFilters({})).toEqual({
       q: "",
-      status: null,
+      status: [],
       clientId: null,
       from: null,
       to: null,
@@ -95,7 +95,7 @@ describe("filtros del listado", () => {
       }),
     ).toEqual({
       q: "fuente",
-      status: "pedida_parcial",
+      status: ["pedida_parcial"],
       clientId: "00000000-0000-0000-0000-0000000000ab",
       from: "2026-10-01",
       to: null,
@@ -103,7 +103,7 @@ describe("filtros del listado", () => {
       dir: "desc",
       page: 2,
     });
-    expect(parseWhatsappQuoteFilters({ estado: "x" }).status).toBeNull();
+    expect(parseWhatsappQuoteFilters({ estado: "x" }).status).toEqual([]);
   });
 
   it("arma la URL y los argumentos de la consulta", () => {
@@ -120,7 +120,7 @@ describe("filtros del listado", () => {
     );
     expect(listWhatsappQuotesArgs(filters)).toEqual({
       p_query: "jarra",
-      p_status: "cotizada",
+      p_status: ["cotizada"],
       p_client_id: undefined,
       p_from: undefined,
       p_to: undefined,

@@ -47,7 +47,7 @@ select results_eq(
   'filtra por la fecha de entrega (hora de Lima)'
 );
 select is(
-  (select count(*)::int from public.list_pieces_history(p_query => 'historial', p_status => 'anulada')),
+  (select count(*)::int from public.list_pieces_history(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),
   0, 'filtra por estado'
 );
 

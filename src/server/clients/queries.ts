@@ -67,8 +67,8 @@ export async function listClients(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("list_clients", {
     p_query: filters.q || undefined,
-    p_kind: filters.kind ?? undefined,
-    p_sync: filters.sync ?? undefined,
+    p_kind: filters.kind.length ? filters.kind : undefined,
+    p_sync: filters.sync.length ? filters.sync : undefined,
     p_active: activeFilter(filters.status) ?? undefined,
     p_limit: CLIENTS_PAGE_SIZE,
     p_offset: (filters.page - 1) * CLIENTS_PAGE_SIZE,

@@ -20,9 +20,10 @@ describe("filtros del seguimiento de cotizaciones", () => {
       }),
     ).toEqual({
       q: "COT-1",
-      status: "facturada",
-      workshop: WORKSHOP,
-      location: "en_taller",
+      status: ["facturada"],
+      workshopIds: [WORKSHOP],
+      noWorkshop: false,
+      location: ["en_taller"],
       page: 3,
     });
     expect(
@@ -34,17 +35,16 @@ describe("filtros del seguimiento de cotizaciones", () => {
       }),
     ).toEqual({
       q: "",
-      status: null,
-      workshop: null,
-      location: null,
+      status: [],
+      workshopIds: [],
+      noWorkshop: false,
+      location: [],
       page: 1,
     });
   });
 
   it("acepta «sin taller»", () => {
-    expect(parseTrackingFilters({ taller: NO_WORKSHOP }).workshop).toBe(
-      NO_WORKSHOP,
-    );
+    expect(parseTrackingFilters({ taller: NO_WORKSHOP }).noWorkshop).toBe(true);
   });
 
   it("arma la URL omitiendo los filtros vacíos", () => {
@@ -52,9 +52,9 @@ describe("filtros del seguimiento de cotizaciones", () => {
     expect(trackingFiltersHref(filters)).toBe("/cotizaciones");
     expect(
       trackingFiltersHref(filters, {
-        status: "aceptada",
-        workshop: NO_WORKSHOP,
-        location: "entregado",
+        status: ["aceptada"],
+        noWorkshop: true,
+        location: ["entregado"],
         page: 2,
       }),
     ).toBe(

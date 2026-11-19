@@ -1,3 +1,4 @@
+import { appendAll, manyOf, type SearchParams } from "./filter-params";
 import type { QuoteDisplayStatus } from "./quote";
 
 /** Filtros del listado de cotizaciones, leídos de la URL (`/cotizaciones?estado=…`). */
@@ -17,15 +18,14 @@ export const QUOTE_STATUS_FILTERS = [
 export type QuoteFilters = {
   /** Código o nombre del cliente. */
   q: string;
-  status: QuoteDisplayStatus | null;
+  /** Varios estados a la vez (`[]` = todos). */
+  status: QuoteDisplayStatus[];
   clientId: string | null;
   /** Fecha de creación en Lima, "AAAA-MM-DD" (inclusive). */
   from: string | null;
   to: string | null;
   page: number;
 };
-
-type SearchParams = Record<string, string | string[] | undefined>;
 
 const first = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? "";
@@ -44,13 +44,10 @@ function isoDate(value: string): string | null {
 
 export function parseQuoteFilters(params: SearchParams): QuoteFilters {
   const page = Number.parseInt(first(params.pagina), 10);
-  const status = first(params.estado);
   const client = first(params.cliente);
   return {
     q: first(params.q).trim().slice(0, 100),
-    status: (QUOTE_STATUS_FILTERS as readonly string[]).includes(status)
-      ? (status as QuoteDisplayStatus)
-      : null,
+    status: manyOf(QUOTE_STATUS_FILTERS, params.estado),
     clientId: UUID.test(client) ? client.toLowerCase() : null,
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
@@ -66,7 +63,7 @@ export function quoteFiltersHref(
   const next = { ...filters, ...changes };
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
-  if (next.status) params.set("estado", next.status);
+  appendAll(params, "estado", next.status);
   if (next.clientId) params.set("cliente", next.clientId);
   if (next.from) params.set("desde", next.from);
   if (next.to) params.set("hasta", next.to);

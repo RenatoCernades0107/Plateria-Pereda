@@ -21,7 +21,7 @@ describe("filtros de cotizaciones", () => {
       }),
     ).toEqual({
       q: "COT-0001",
-      status: "vencida",
+      status: ["vencida"],
       clientId: CLIENT,
       from: "2026-10-01",
       to: null,
@@ -31,7 +31,7 @@ describe("filtros de cotizaciones", () => {
       parseQuoteFilters({ estado: "otro", cliente: "x", pagina: "-1" }),
     ).toEqual({
       q: "",
-      status: null,
+      status: [],
       clientId: null,
       from: null,
       to: null,
@@ -45,7 +45,7 @@ describe("filtros de cotizaciones", () => {
     expect(
       quoteFiltersHref(filters, {
         q: "ana",
-        status: "emitida",
+        status: ["emitida"],
         clientId: CLIENT,
         from: "2026-10-01",
         to: "2026-10-31",
