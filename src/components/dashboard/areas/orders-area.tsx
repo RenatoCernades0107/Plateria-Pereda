@@ -5,6 +5,7 @@ import { RESTORATION_STATUS_COLORS } from "@/components/dashboard/colors";
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import {
   approvalRate,
   funnelLosses,
@@ -77,6 +78,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-aprobacion"
+          info={METRIC_HELP.aprobacion}
           icon={CheckCircle2}
           label="Piezas aprobadas"
           value={formatPercent(rate, 0)}
@@ -84,6 +86,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cumplimiento"
+          info={METRIC_HELP.cumplimiento}
           icon={Timer}
           label="Cumplimiento promedio"
           value={formatDays(orders.fulfillment.avg)}
@@ -91,6 +94,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-en-curso"
+          info={METRIC_HELP.enCurso}
           icon={Layers}
           label="Piezas en curso hoy"
           value={formatCount(inProgress)}

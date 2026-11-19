@@ -5,6 +5,7 @@ import { BarList, StackedBar } from "@/components/dashboard/bars";
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import { regionName, seriesPoints } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -59,6 +60,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-clientes-con-guias"
+          info={METRIC_HELP.clientesConGuias}
           icon={UsersRound}
           label="Clientes con guías"
           value={formatCount(clients.active_in_range)}
@@ -66,6 +68,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-recompra"
+          info={METRIC_HELP.recompra}
           icon={Repeat}
           label="Recompra"
           value={formatPercent(clients.repeat_rate, 0)}

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { computeDelta } from "@/domain/dashboard-format";
@@ -64,6 +65,27 @@ describe("KpiTile", () => {
       "href",
       "/piezas?ubicacion=en_taller",
     );
+  });
+});
+
+describe("KpiTile con información", () => {
+  it("el botón ⓘ abre la explicación y no queda dentro del enlace", async () => {
+    render(
+      <KpiTile
+        label="En taller"
+        value="3"
+        href="/piezas?ubicacion=en_taller"
+        info="Piezas que están hoy en el taller."
+      />,
+    );
+    const button = screen.getByRole("button", {
+      name: "Cómo se calcula: En taller",
+    });
+    expect(button.closest("a")).toBeNull();
+    await userEvent.click(button);
+    expect(
+      await screen.findByText("Piezas que están hoy en el taller."),
+    ).toBeInTheDocument();
   });
 });
 

@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import {
   formatCount,
   formatPercent,
@@ -36,6 +37,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
           <>
             <KpiTile
               testId="kpi-vendido"
+              info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Vendido por mí"
               value={formatSolesWhole(top?.sold ?? 0)}
@@ -43,6 +45,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-cobrado"
+              info={METRIC_HELP.vendedor}
               icon={Users}
               label="Cobrado de mis guías"
               value={formatSolesWhole(top?.collected ?? 0)}
@@ -83,12 +86,14 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-vendido"
+              info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Vendido por el equipo"
               value={formatSolesWhole(rows.reduce((sum, r) => sum + r.sold, 0))}
             />
             <KpiTile
               testId="kpi-cobrado"
+              info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Cobrado por el equipo"
               value={formatSolesWhole(

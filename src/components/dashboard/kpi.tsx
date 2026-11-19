@@ -2,6 +2,7 @@ import { Minus, TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { MetricInfo } from "@/components/dashboard/metric-info";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import { ToneBadge } from "@/components/tone-badge";
 import { deltaText, deltaTone, type Delta } from "@/domain/dashboard-format";
@@ -49,7 +50,10 @@ export function DeltaBadge({
   );
 }
 
-/** Tarjeta de un indicador: etiqueta, valor, variación y (si hay) su tendencia. */
+/**
+ * Tarjeta de un indicador: etiqueta, valor, variación y (si hay) su tendencia. Con `info`
+ * se muestra un botón ⓘ que explica cómo se calcula.
+ */
 export function KpiTile({
   label,
   value,
@@ -58,6 +62,7 @@ export function KpiTile({
   upIsGood = true,
   spark,
   hint,
+  info,
   href,
   testId,
 }: {
@@ -68,16 +73,45 @@ export function KpiTile({
   upIsGood?: boolean;
   spark?: number[];
   hint?: ReactNode;
+  /** Explicación de cómo se calcula la métrica (botón ⓘ junto a la etiqueta). */
+  info?: ReactNode;
   /** Si se da, toda la tarjeta lleva al listado relacionado. */
   href?: string;
   testId?: string;
 }) {
-  const body = (
+  const labelContent = (
     <>
+      {Icon ? <Icon aria-hidden className="text-primary size-4" /> : null}
+      {label}
+    </>
+  );
+  const labelClass =
+    "text-muted-foreground flex items-center gap-1.5 text-sm font-medium";
+  return (
+    <div
+      className={cn(
+        "bg-card relative block rounded-xl border p-4 shadow-xs transition-colors",
+        href && "has-[a:hover]:border-primary/50",
+      )}
+      data-testid={testId}
+    >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-muted-foreground flex items-center gap-1.5 text-sm font-medium">
-          {Icon ? <Icon aria-hidden className="text-primary size-4" /> : null}
-          {label}
+        <span className="flex min-w-0 items-center gap-1">
+          {href ? (
+            // El enlace se estira sobre toda la tarjeta; el botón ⓘ queda por encima.
+            <Link
+              href={href}
+              className={cn(
+                labelClass,
+                "after:absolute after:inset-0 after:rounded-xl",
+              )}
+            >
+              {labelContent}
+            </Link>
+          ) : (
+            <span className={labelClass}>{labelContent}</span>
+          )}
+          {info ? <MetricInfo label={label}>{info}</MetricInfo> : null}
         </span>
         {delta ? <DeltaBadge delta={delta} upIsGood={upIsGood} /> : null}
       </div>
@@ -93,21 +127,6 @@ export function KpiTile({
       {hint ? (
         <p className="text-muted-foreground mt-1.5 text-xs">{hint}</p>
       ) : null}
-    </>
-  );
-  const className =
-    "bg-card block rounded-xl border p-4 shadow-xs transition-colors";
-  return href ? (
-    <Link
-      href={href}
-      className={cn(className, "hover:border-primary/50")}
-      data-testid={testId}
-    >
-      {body}
-    </Link>
-  ) : (
-    <div className={className} data-testid={testId}>
-      {body}
     </div>
   );
 }
@@ -122,6 +141,7 @@ export function HeroStat({
   delta,
   previousLabel,
   spark,
+  info,
   children,
   testId,
 }: {
@@ -130,6 +150,8 @@ export function HeroStat({
   delta?: Delta;
   previousLabel?: string;
   spark?: number[];
+  /** Explicación de cómo se calcula la cifra (botón ⓘ junto a la etiqueta). */
+  info?: ReactNode;
   children?: ReactNode;
   testId?: string;
 }) {
@@ -141,7 +163,10 @@ export function HeroStat({
     >
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
-          <p className="text-muted-foreground text-sm font-medium">{label}</p>
+          <div className="flex items-center gap-1">
+            <p className="text-muted-foreground text-sm font-medium">{label}</p>
+            {info ? <MetricInfo label={label}>{info}</MetricInfo> : null}
+          </div>
           <p
             className="text-heading mt-1 text-5xl font-semibold tracking-tight sm:text-6xl"
             data-testid={testId ? `${testId}-valor` : undefined}
