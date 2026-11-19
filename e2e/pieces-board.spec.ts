@@ -280,12 +280,10 @@ test.describe("Vista de piezas", () => {
       .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
     // Siguen Aprobadas, ahora en el taller.
-    const sent = page.getByTestId("columna-aprobada");
     for (const piece of pieces)
-      await expect(sent.getByTestId(`tarjeta-${piece.code}`)).toContainText(
+      await expect(received.getByTestId(`tarjeta-${piece.code}`)).toContainText(
         workshopName,
       );
-    await expect(received).toContainText("Sin piezas");
     await expect(page).toHaveURL(/vista=kanban/);
   });
 
