@@ -277,11 +277,7 @@ export function usePieceMoves<P extends StatusPiece>({
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          notifyDone(
-            piece,
-            `${piece.code}: llevada al taller a revisar.`,
-            result,
-          );
+          notifyDone(piece, `${piece.code}: enviada al taller.`, result);
           resolve(null);
         }
       });
@@ -296,7 +292,7 @@ export function usePieceMoves<P extends StatusPiece>({
       });
       const result = await receivePiecesFromReview(restorationId, [piece.id]);
       if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
-      else notifyDone(piece, `${piece.code}: volvió de revisión.`, result);
+      else notifyDone(piece, `${piece.code}: volvió del taller.`, result);
     });
 
   /** "Enviar al taller" (con el taller elegido) y "Recibir del taller". */

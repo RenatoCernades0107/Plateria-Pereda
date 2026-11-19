@@ -88,13 +88,7 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import {
-  isPieceInReview,
-  LocationBadge,
-  PieceStatusBadge,
-  ReviewBadge,
-  UrgentBadge,
-} from "./status-badges";
+import { LocationBadge, PieceStatusBadge, UrgentBadge } from "./status-badges";
 import { canToggleUrgent, DeliveryDate, UrgentToggle } from "./urgent-toggle";
 
 /** Texto del botón de cada cambio de estado (por estado de destino). */
@@ -346,10 +340,10 @@ export function StatusChangeDialog({
   );
 }
 
-/** Textos de la revisión en taller (sin cambiar el estado de la pieza). */
+/** Textos del taller para piezas en Consulta o esperando respuesta (sin cambiar el estado). */
 export const REVIEW_LABELS = {
-  send: "Llevar al taller a revisar",
-  back: "Volvió de revisión",
+  send: "Enviar al taller",
+  back: "Recibir del taller",
 } as const;
 
 /** Textos de la ida y vuelta al taller por trabajo (sin cambiar el estado). */
@@ -455,10 +449,10 @@ export function ReviewDialog({
           </DialogTitle>
           <DialogDescription>
             {stay
-              ? `La revisión termina y ${pieces.length === 1 ? "la pieza se queda" : "las piezas se quedan"} en ${stayWorkshop} para el trabajo. El estado no cambia; sigue «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
+              ? `${pieces.length === 1 ? "La pieza se queda" : "Las piezas se quedan"} en ${stayWorkshop} para el trabajo. El estado no cambia; sigue «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
               : kind === "envio"
                 ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
-                : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que marques que volvió. Si el cliente aprueba, se envía a restaurar al mismo taller.`}
+                : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que la recibas de vuelta.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -481,7 +475,7 @@ export function ReviewDialog({
                 ? "Confirmar: dejar en taller"
                 : kind === "envio"
                   ? "Confirmar: enviar al taller"
-                  : "Confirmar: llevar al taller"}
+                  : "Confirmar: enviar al taller"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -692,7 +686,7 @@ export function usePieceActions({
           toast.error(result.error);
           resolve(result.error);
         } else {
-          toast.success(`${piece.code}: llevada al taller a revisar.`);
+          toast.success(`${piece.code}: enviada al taller.`);
           resolve(null);
         }
       });
@@ -796,7 +790,7 @@ export function usePieceActions({
             reviewReturnedAt: new Date().toISOString(),
           },
           () => receivePiecesFromReview(restorationId, [piece.id]),
-          "volvió de revisión.",
+          "volvió del taller.",
         ),
     });
   }
@@ -1109,9 +1103,6 @@ function PieceStatusBadges({
           location={piece.location}
           className={LARGE_BADGE_CLASS}
         />
-        {isPieceInReview(piece) ? (
-          <ReviewBadge className={LARGE_BADGE_CLASS} />
-        ) : null}
         {role && canToggleUrgent(piece, role) ? (
           <UrgentToggle
             variant="label"

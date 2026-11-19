@@ -122,7 +122,7 @@ describe("PiecesKanban: cantidad", () => {
 });
 
 describe("PiecesKanban: revisión en taller", () => {
-  it("el menú de la tarjeta ofrece llevar a revisar y, en revisión, «Volvió de revisión»", async () => {
+  it("el menú de la tarjeta ofrece enviar al taller y, ya allá, «Recibir del taller»", async () => {
     const user = userEvent.setup();
     renderKanban([
       piece(1, {
@@ -142,7 +142,7 @@ describe("PiecesKanban: revisión en taller", () => {
       screen.getByRole("button", { name: "Mover RES-00001-1 a…" }),
     );
     expect(
-      screen.getByRole("menuitem", { name: "Llevar al taller a revisar" }),
+      screen.getByRole("menuitem", { name: "Enviar al taller" }),
     ).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await user.click(
@@ -154,7 +154,7 @@ describe("PiecesKanban: revisión en taller", () => {
       "Aprobada",
       "Rechazado (cliente)",
       "Anulado",
-      "Volvió de revisión",
+      "Recibir del taller",
     ]);
   });
 });

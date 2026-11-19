@@ -149,7 +149,7 @@ describe("RestorationPiecesKanban", () => {
     );
   });
 
-  it("la Aprobada en revisión sigue en «Aprobada» con «En taller» y «En revisión»", () => {
+  it("la Aprobada en revisión sigue en «Aprobada» con «En taller»", () => {
     render(
       <RestorationPiecesKanban
         restorationId="r1"
@@ -171,7 +171,7 @@ describe("RestorationPiecesKanban", () => {
       "tarjeta-RES-00012-1",
     );
     expect(card).toHaveTextContent("En taller");
-    expect(card).toHaveTextContent("En revisión");
+    expect(card).not.toHaveTextContent("En revisión");
   });
 
   it("una pieza en el taller para el trabajo no lleva «En revisión»", () => {

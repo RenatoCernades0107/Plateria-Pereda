@@ -20,11 +20,9 @@ import {
 } from "./piece-moves";
 import { isSelectable, PiecesBulkBar } from "./pieces-bulk-bar";
 import {
-  isPieceInReview,
   LocationBadge,
   PieceQuantity,
   StatusAge,
-  ReviewBadge,
   UrgentBadge,
 } from "./status-badges";
 import { DeliveryDate } from "./urgent-toggle";
@@ -126,7 +124,6 @@ export function PiecesKanban({
                 {piece.urgent ? <UrgentBadge /> : null}
                 {piece.urgent ? <DeliveryDate piece={piece} /> : null}
                 <LocationBadge location={piece.location} />
-                {isPieceInReview(piece) ? <ReviewBadge /> : null}
                 <span className="text-muted-foreground">
                   {piece.workshopName ?? "Sin taller"}
                 </span>

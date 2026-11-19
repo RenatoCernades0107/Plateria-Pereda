@@ -350,23 +350,18 @@ describe("PieceStatusPanel", () => {
 describe("revisión en taller", () => {
   const SENT = "2026-10-05T10:00:00Z";
 
-  it("logística lleva al taller a revisar una pieza en Consulta: elige el taller", async () => {
+  it("logística envía al taller (Consulta) una pieza en Consulta: elige el taller", async () => {
     const user = userEvent.setup();
     const { unmount } = renderPanel("en_consulta", "logistica", {
       arrivedAt: ARRIVED,
     });
     // Desde el 2026-10-19 logística también pasa la pieza a Espera respuesta cliente.
-    expect(buttons()).toEqual([
-      "Esperar respuesta",
-      "Llevar al taller a revisar",
-    ]);
-    await user.click(
-      screen.getByRole("button", { name: "Llevar al taller a revisar" }),
-    );
+    expect(buttons()).toEqual(["Esperar respuesta", "Enviar al taller"]);
+    await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
     let dialog = screen.getByRole("dialog");
     await user.click(
       within(dialog).getByRole("button", {
-        name: "Confirmar: llevar al taller",
+        name: "Confirmar: enviar al taller",
       }),
     );
     expect(
@@ -379,16 +374,14 @@ describe("revisión en taller", () => {
       arrivedAt: ARRIVED,
       workshopId: workshops[0]!.id,
     });
-    await user.click(
-      screen.getByRole("button", { name: "Llevar al taller a revisar" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Enviar al taller" }));
     dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Taller")).toHaveTextContent(
       "Taller Central",
     );
     await user.click(
       within(dialog).getByRole("button", {
-        name: "Confirmar: llevar al taller",
+        name: "Confirmar: enviar al taller",
       }),
     );
     expect(mocks.sendReview).toHaveBeenCalledWith(
@@ -398,7 +391,7 @@ describe("revisión en taller", () => {
     );
     expect(mocks.change).not.toHaveBeenCalled();
     expect(mocks.success).toHaveBeenCalledWith(
-      "RES-00001-1: llevada al taller a revisar.",
+      "RES-00001-1: enviada al taller.",
     );
   });
 
@@ -406,13 +399,13 @@ describe("revisión en taller", () => {
     const { unmount } = renderPanel("en_consulta", "ventas", {
       arrivedAt: ARRIVED,
     });
-    expect(buttons()).not.toContain("Llevar al taller a revisar");
+    expect(buttons()).not.toContain("Enviar al taller");
     unmount();
     renderPanel("en_consulta", "admin");
-    expect(buttons()).not.toContain("Llevar al taller a revisar");
+    expect(buttons()).not.toContain("Enviar al taller");
   });
 
-  it("en revisión: En taller, «Volvió de revisión» y los cierres siguen disponibles", async () => {
+  it("en revisión: En taller, «Recibir del taller» y los cierres siguen disponibles", async () => {
     const user = userEvent.setup();
     renderPanel("en_espera", "admin", {
       arrivedAt: ARRIVED,
@@ -423,7 +416,7 @@ describe("revisión en taller", () => {
     expect(screen.getByText("Espera respuesta cliente")).toBeInTheDocument();
     // Rechazar y Anular no dependen de dónde está la pieza: van en «Más acciones».
     expect(buttons()).toEqual([
-      "Volvió de revisión",
+      "Recibir del taller",
       "Aprobar",
       "Más acciones",
     ]);
@@ -432,11 +425,11 @@ describe("revisión en taller", () => {
     );
     await user.keyboard("{Escape}");
     await user.click(
-      screen.getByRole("button", { name: "Volvió de revisión" }),
+      screen.getByRole("button", { name: "Recibir del taller" }),
     );
     expect(mocks.backFromReview).toHaveBeenCalledWith("r1", ["p1"]);
     expect(mocks.success).toHaveBeenCalledWith(
-      "RES-00001-1: volvió de revisión.",
+      "RES-00001-1: volvió del taller.",
     );
   });
 
@@ -449,7 +442,7 @@ describe("revisión en taller", () => {
     });
     // Ya está en el taller: no se «envía», se queda ahí por trabajo.
     expect(buttons()).toEqual([
-      "Volvió de revisión",
+      "Recibir del taller",
       "Dejar en taller para trabajo",
     ]);
     await user.click(

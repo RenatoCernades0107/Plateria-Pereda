@@ -167,7 +167,7 @@ test.describe("Estados de las piezas", () => {
     await expect(restorationStatus(page)).toHaveText("Completada");
   });
 
-  test("revisión en taller: en Consulta va al taller a revisar (En taller) y vuelve (En tienda)", async ({
+  test("taller desde Consulta: va al taller (En taller) y vuelve (En tienda)", async ({
     page,
     loginAs,
   }) => {
@@ -184,33 +184,32 @@ test.describe("Estados de las piezas", () => {
     await loginAs("logistica");
     await page.goto(`/restauraciones/${r.id}`);
     await expect(card(page, code)).toContainText("Consulta");
-    await pieceAction(page, code, "Llevar al taller a revisar");
+    await pieceAction(page, code, "Enviar al taller");
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Taller").click();
     await page.getByRole("option", { name: workshopName }).click();
     await dialog
-      .getByRole("button", { name: "Confirmar: llevar al taller" })
+      .getByRole("button", { name: "Confirmar: enviar al taller" })
       .click();
     await expect(dialog).toBeHidden();
     // El estado no cambia: sigue en Consulta, ahora En taller.
     await expect(card(page, code)).toContainText("En taller");
     await expect(card(page, code)).toContainText("Consulta");
     await expect(card(page, code)).toContainText(workshopName);
-    expect(await pieceActionNames(page, code)).toContain("Volvió de revisión");
+    await expect(card(page, code)).not.toContainText("En revisión");
+    expect(await pieceActionNames(page, code)).toContain("Recibir del taller");
 
     // Al recargar, lo guardado en la BD dice lo mismo.
     await page.reload();
     await expect(card(page, code)).toContainText("En taller");
 
-    await pieceAction(page, code, "Volvió de revisión");
+    await pieceAction(page, code, "Recibir del taller");
     await expect(card(page, code)).toContainText("En tienda");
     await expect(card(page, code)).toContainText("Consulta");
     await waitForPieceSaved(page, code);
     await page.reload();
     await expect(card(page, code)).toContainText("En tienda");
-    expect(await pieceActionNames(page, code)).toContain(
-      "Llevar al taller a revisar",
-    );
+    expect(await pieceActionNames(page, code)).toContain("Enviar al taller");
   });
 
   test("consulta: consulta → espera respuesta → aprobada, y espera respuesta → rechazado", async ({
