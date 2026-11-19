@@ -1,6 +1,5 @@
 import { expect, test } from "./fixtures";
 import { ensureCatalogItem } from "./support/catalog";
-import { dragWithMouse } from "./support/drag";
 import { adminClient } from "./support/supabase";
 
 // Comparten las piezas y el taller sembrados: en serie.
@@ -280,8 +279,8 @@ test.describe("Vista de piezas", () => {
     await dialog
       .getByRole("button", { name: /Confirmar: enviar al taller/i })
       .click();
-    // Siguen Aprobadas: la columna «En restauración» agrupa las que están en el taller.
-    const sent = page.getByTestId("columna-en_restauracion");
+    // Siguen Aprobadas, ahora en el taller.
+    const sent = page.getByTestId("columna-aprobada");
     for (const piece of pieces)
       await expect(sent.getByTestId(`tarjeta-${piece.code}`)).toContainText(
         workshopName,
@@ -290,53 +289,6 @@ test.describe("Vista de piezas", () => {
     await expect(page).toHaveURL(/vista=kanban/);
   });
 
-  test("en kanban arrastra una pieza de Aprobada a En restauración eligiendo el taller", async ({
-    page,
-    loginAs,
-  }) => {
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    const { pieces } = await seedReceived(1, "Arrastre");
-    const code = pieces[0]!.code;
-    await loginAs("logistica");
-    await page.goto(`/piezas?q=${clientName}&vista=kanban`);
-    const approved = page.getByTestId("columna-aprobada");
-    const card = approved.getByTestId(`tarjeta-${code}`);
-    await expect(card).toBeVisible();
-
-    // «En restauración» no es un estado: soltar ahí envía la pieza al taller.
-    await dragWithMouse(
-      page,
-      card.getByText("Arrastre 1"),
-      page.getByTestId("columna-en_restauracion"),
-      async () => {
-        // Logística no aprueba ni anula: esas columnas se atenúan.
-        await expect(page.getByTestId("columna-registrada")).toHaveAttribute(
-          "data-drop",
-          "bloqueada",
-        );
-        await expect(page.getByTestId("columna-anulada")).toHaveCount(0);
-      },
-    );
-    const dialog = page.getByRole("dialog", {
-      name: `Enviar al taller: ${code}`,
-    });
-    await dialog.getByLabel("Taller").click();
-    await page.getByRole("option", { name: workshopName }).click();
-    await dialog
-      .getByRole("button", { name: /Confirmar: enviar al taller/i })
-      .click();
-    await expect(
-      page
-        .getByTestId("columna-en_restauracion")
-        .getByTestId(`tarjeta-${code}`),
-    ).toContainText(workshopName);
-    await page.reload();
-    await expect(
-      page
-        .getByTestId("columna-en_restauracion")
-        .getByTestId(`tarjeta-${code}`),
-    ).toBeVisible();
-  });
   test("tabla tipo hoja: logística pone el costo, el admin el precio; filtra por guía y abre la pieza (P55)", async ({
     page,
     loginAs,

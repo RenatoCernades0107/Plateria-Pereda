@@ -108,8 +108,8 @@ describe("pieceColumnOf", () => {
     readyForDelivery: false,
   };
 
-  it("una Aprobada en el taller por trabajo va a «En restauración»", () => {
-    expect(pieceColumnOf(base)).toBe("en_restauracion");
+  it("una Aprobada en el taller sigue en «Aprobada»", () => {
+    expect(pieceColumnOf(base)).toBe("aprobada");
   });
 
   it("una Aprobada en el taller solo a revisar sigue en «Aprobada»", () => {
@@ -118,14 +118,14 @@ describe("pieceColumnOf", () => {
     ).toBe("aprobada");
   });
 
-  it("al dejarla para el trabajo (revisión cerrada) pasa a «En restauración»", () => {
+  it("al dejarla para el trabajo (revisión cerrada) sigue en «Aprobada»", () => {
     expect(
       pieceColumnOf({
         ...base,
         reviewSentAt: "2026-10-03T15:00:00Z",
         reviewReturnedAt: "2026-10-04T15:00:00Z",
       }),
-    ).toBe("en_restauracion");
+    ).toBe("aprobada");
   });
 });
 

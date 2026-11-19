@@ -207,11 +207,11 @@ test.describe("Kanban de piezas en el detalle de la restauración", () => {
       await dragWithMouse(
         page,
         card.getByText("Copa consulta"),
-        page.getByTestId("columna-en_restauracion"),
+        page.getByTestId("columna-lista_entregar"),
       );
       await expect(
         page.getByText(
-          `${consultCode}: solo se envía al taller una pieza Aprobada u Observada que está en la tienda.`,
+          `${consultCode}: solo pasa a «Lista para entregar» al recibirla del taller.`,
           { exact: true },
         ),
       ).toBeVisible();

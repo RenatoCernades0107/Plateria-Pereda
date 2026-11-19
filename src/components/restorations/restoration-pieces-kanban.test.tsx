@@ -111,7 +111,6 @@ describe("RestorationPiecesKanban", () => {
       "Consulta",
       "Espera respuesta cliente",
       "Aprobada",
-      "En restauración",
       "Lista para entregar",
       "Observación",
       "Anulado",
@@ -139,10 +138,10 @@ describe("RestorationPiecesKanban", () => {
     // Acento de pieza, como en la lista: es hija de la guía.
     expect(card).toHaveClass("border-l-4");
 
-    // "En restauración" no es un estado: Aprobada que está en el taller.
-    const sent = within(
-      screen.getByTestId("columna-en_restauracion"),
-    ).getByTestId("tarjeta-RES-00012-2");
+    // Aprobada que está en el taller: sigue en «Aprobada».
+    const sent = within(screen.getByTestId("columna-aprobada")).getByTestId(
+      "tarjeta-RES-00012-2",
+    );
     expect(sent).toHaveTextContent("Taller Norte");
     expect(sent).not.toHaveTextContent("Urgente");
     expect(screen.getByTestId("columna-anulada")).toContainElement(
@@ -173,12 +172,9 @@ describe("RestorationPiecesKanban", () => {
     );
     expect(card).toHaveTextContent("En taller");
     expect(card).toHaveTextContent("En revisión");
-    expect(screen.getByTestId("columna-en_restauracion")).toHaveTextContent(
-      "Sin piezas",
-    );
   });
 
-  it("una pieza en restauración no lleva «En revisión»", () => {
+  it("una pieza en el taller para el trabajo no lleva «En revisión»", () => {
     renderKanban("ventas");
     expect(screen.getByTestId("tarjeta-RES-00012-2")).not.toHaveTextContent(
       "En revisión",
@@ -314,10 +310,6 @@ describe("RestorationPiecesKanban: mover de estado", () => {
       screen.queryByRole("button", { name: "Mover RES-00012-4 a…" }),
     ).toBeNull();
     const menu = await openMenu(user, "RES-00012-1");
-    // Ya no es un estado al que mover: va en «Ubicación».
-    expect(
-      within(menu).queryByRole("menuitem", { name: "En restauración" }),
-    ).toBeNull();
     await user.click(
       within(menu).getByRole("menuitem", { name: "Enviar al taller" }),
     );

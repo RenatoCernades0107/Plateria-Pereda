@@ -457,7 +457,7 @@ export function ReviewDialog({
             {stay
               ? `La revisión termina y ${pieces.length === 1 ? "la pieza se queda" : "las piezas se quedan"} en ${stayWorkshop} para el trabajo. El estado no cambia; sigue «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
               : kind === "envio"
-                ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» (en restauración) hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
+                ? `El estado no cambia; ${pieces.length === 1 ? "la pieza queda" : "las piezas quedan"} «En taller» hasta que ${pieces.length === 1 ? "la recibas" : "las recibas"} de vuelta.`
                 : `Sigue en «${PIECE_STATUS_LABELS[pieces[0]!.status]}»; queda «En taller» hasta que marques que volvió. Si el cliente aprueba, se envía a restaurar al mismo taller.`}
           </DialogDescription>
         </DialogHeader>

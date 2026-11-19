@@ -160,7 +160,7 @@ describe("PiecesKanban: revisión en taller", () => {
 });
 
 describe("PiecesKanban: columnas por ubicación", () => {
-  it("«En restauración» y «Lista para entregar» agrupan las Aprobadas por ubicación", () => {
+  it("«Lista para entregar» agrupa las Aprobadas que volvieron del taller; las del taller siguen en «Aprobada»", () => {
     renderKanban([
       piece(1),
       piece(2, {
@@ -174,7 +174,7 @@ describe("PiecesKanban: columnas por ubicación", () => {
         lastSentAt: null,
       }),
     ]);
-    expect(screen.getByTestId("columna-en_restauracion")).toContainElement(
+    expect(screen.getByTestId("columna-aprobada")).toContainElement(
       screen.getByTestId("tarjeta-RES-00001-1"),
     );
     expect(screen.getByTestId("columna-lista_entregar")).toContainElement(
