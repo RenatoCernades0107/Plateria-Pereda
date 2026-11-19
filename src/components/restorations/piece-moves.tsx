@@ -144,8 +144,7 @@ export function pieceBoardColumns(
   return COLUMN_ORDER.map((key) => ({
     key,
     label: PIECE_COLUMN_LABELS[key],
-    dropOnly:
-      key === READY_COLUMN ? !withWorkshop : !visible.includes(key),
+    dropOnly: key === READY_COLUMN ? !withWorkshop : !visible.includes(key),
   }));
 }
 
