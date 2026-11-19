@@ -14,6 +14,8 @@ export const ALERT_KINDS = [
   "pieza_en_espera",
   "guia_en_espera",
   "guia_lista",
+  "cotizacion_aceptada",
+  "cotizacion_facturada",
 ] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
@@ -24,6 +26,8 @@ export const ALERT_ROLES: Record<AlertKind, readonly AppRole[]> = {
   pieza_en_espera: ["admin", "ventas"],
   guia_en_espera: ["admin", "ventas"],
   guia_lista: ["admin", "ventas"],
+  cotizacion_aceptada: ["logistica"],
+  cotizacion_facturada: ["admin"],
 };
 
 export const ALERT_LABELS: Record<AlertKind, string> = {
@@ -32,6 +36,8 @@ export const ALERT_LABELS: Record<AlertKind, string> = {
   pieza_en_espera: "Pieza en espera del cliente",
   guia_en_espera: "Guía en espera del cliente",
   guia_lista: "Guía lista para entregar",
+  cotizacion_aceptada: "Cotización aceptada",
+  cotizacion_facturada: "Cotización facturada",
 };
 
 export const ALERT_DESCRIPTIONS: Record<AlertKind, string> = {
@@ -43,6 +49,10 @@ export const ALERT_DESCRIPTIONS: Record<AlertKind, string> = {
     "Todas las piezas de la guía quedan esperando la respuesta del cliente. Quien la recibe no recibe además la de pieza en espera.",
   guia_lista:
     "Todas las piezas de la guía ya volvieron del taller (o se entregaron): es hora de avisarle al cliente.",
+  cotizacion_aceptada:
+    "Una cotización pasa a Aceptada: logística asigna el taller y la ubicación del trabajo.",
+  cotizacion_facturada:
+    "Una cotización pasa a Facturada: administración la tiene al día.",
 };
 
 /** Grupos de la pantalla de configuración. */
@@ -66,11 +76,18 @@ export const ALERT_GROUPS: readonly {
     description: "Para avisarle al cliente que ya puede recoger su pedido.",
     kinds: ["guia_lista"],
   },
+  {
+    title: "Cotizaciones",
+    description:
+      "Para que logística prepare el trabajo aceptado y administración sepa qué se facturó.",
+    kinds: ["cotizacion_aceptada", "cotizacion_facturada"],
+  },
 ];
 
 /** Variables que se pueden usar en el mensaje de las alertas. */
 export const ALERT_PLACEHOLDERS = {
   guia: "Código de la guía (RES-00001)",
+  cotizacion: "Código de la cotización (COT-000001)",
   cliente: "Nombre del cliente («el cliente» para logística, que no lo ve)",
   piezas: "Piezas del cambio, con su código y descripción",
   cantidad: "Cuántas piezas cambiaron",
@@ -93,6 +110,10 @@ export const DEFAULT_ALERT_TEMPLATES: Record<AlertKind, string> = {
     "Todas las piezas de la guía ({total}) esperan la respuesta de {cliente}. Es buen momento para hacerle seguimiento.",
   guia_lista:
     "La guía quedó lista: las {total} piezas ya volvieron y se pueden entregar a {cliente} (últimas en volver: {piezas}). Avísale para que las recoja.",
+  cotizacion_aceptada:
+    "{usuario} aceptó la cotización {cotizacion}. Asigna el taller y la ubicación del trabajo.",
+  cotizacion_facturada:
+    "{usuario} facturó la cotización {cotizacion} de {cliente}.",
 };
 
 export const ALERT_TEMPLATE_MAX = 1000;
@@ -144,7 +165,10 @@ export function toAlertCounts(data: unknown): AlertCounts {
 
 export type AlertInput = {
   kind: AlertKind;
-  restorationCode: string;
+  /** Código de la guía; null en las alertas de cotizaciones. */
+  restorationCode: string | null;
+  /** Código de la cotización; null o ausente en las alertas de guías. */
+  quoteCode?: string | null;
   /** null si quien la lee no ve al cliente (logística). */
   clientName: string | null;
   actorName: string | null;
@@ -158,7 +182,8 @@ export function alertValues(
 ): Record<AlertPlaceholder, string> {
   const { counts } = input;
   return {
-    guia: input.restorationCode,
+    guia: input.restorationCode ?? "",
+    cotizacion: input.quoteCode ?? "",
     cliente: input.clientName?.trim() || "el cliente",
     piezas: formatAlertPieces(input.pieces) || "piezas",
     cantidad: String(input.pieces.length),
@@ -183,7 +208,7 @@ export function renderAlert(
     .replace(/[ \t]{2,}/g, " ")
     .trim();
   return {
-    title: `${input.restorationCode} · ${ALERT_LABELS[input.kind]}`,
+    title: `${input.quoteCode ?? input.restorationCode ?? ""} · ${ALERT_LABELS[input.kind]}`,
     body,
   };
 }
@@ -227,5 +252,21 @@ export const ALERT_PREVIEW: Record<AlertKind, Omit<AlertInput, "kind">> = {
     actorName: "Lalo (logística)",
     counts: { live: 3, approved: 3, waiting: 0 },
     pieces: [{ code: "RES-00125-3", description: "Bandeja" }],
+  },
+  cotizacion_aceptada: {
+    restorationCode: null,
+    quoteCode: "COT-000042",
+    clientName: null,
+    actorName: "Vera (ventas)",
+    counts: { live: 0, approved: 0, waiting: 0 },
+    pieces: [],
+  },
+  cotizacion_facturada: {
+    restorationCode: null,
+    quoteCode: "COT-000042",
+    clientName: "Lucía Torres",
+    actorName: "Vera (ventas)",
+    counts: { live: 0, approved: 0, waiting: 0 },
+    pieces: [],
   },
 };

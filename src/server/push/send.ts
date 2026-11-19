@@ -70,6 +70,7 @@ export async function dispatchPendingPushes(): Promise<PushSummary> {
         {
           kind: alert.kind as AlertKind,
           restorationCode: alert.restoration_code,
+          quoteCode: alert.quote_code,
           clientName: alert.client_name,
           actorName: alert.actor_name,
           counts: toAlertCounts(alert.data),
@@ -81,6 +82,7 @@ export async function dispatchPendingPushes(): Promise<PushSummary> {
         pushPayload({
           kind: alert.kind,
           restorationId: alert.restoration_id,
+          quoteId: alert.quote_id,
           ...message,
         }),
       );

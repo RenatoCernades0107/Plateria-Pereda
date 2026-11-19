@@ -292,9 +292,10 @@ export type Database = {
           id: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pushed_at: string | null;
+          quote_id: string | null;
           read_at: string | null;
           recipient_id: string;
-          restoration_id: string;
+          restoration_id: string | null;
           txid: number;
         };
         Insert: {
@@ -306,9 +307,10 @@ export type Database = {
           id?: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pushed_at?: string | null;
+          quote_id?: string | null;
           read_at?: string | null;
           recipient_id: string;
-          restoration_id: string;
+          restoration_id?: string | null;
           txid: number;
         };
         Update: {
@@ -320,12 +322,20 @@ export type Database = {
           id?: string;
           kind?: Database["public"]["Enums"]["alert_kind"];
           pushed_at?: string | null;
+          quote_id?: string | null;
           read_at?: string | null;
           recipient_id?: string;
-          restoration_id?: string;
+          restoration_id?: string | null;
           txid?: number;
         };
         Relationships: [
+          {
+            foreignKeyName: "notifications_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "notifications_recipient_id_fkey";
             columns: ["recipient_id"];
@@ -2153,6 +2163,8 @@ export type Database = {
           id: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pieces: Json;
+          quote_code: string;
+          quote_id: string;
           recipient_id: string;
           restoration_code: string;
           restoration_id: string;
@@ -2653,6 +2665,8 @@ export type Database = {
           id: string;
           kind: Database["public"]["Enums"]["alert_kind"];
           pieces: Json;
+          quote_code: string;
+          quote_id: string;
           read_at: string;
           restoration_code: string;
           restoration_id: string;
@@ -2927,7 +2941,9 @@ export type Database = {
         | "aprobacion_total"
         | "pieza_en_espera"
         | "guia_en_espera"
-        | "guia_lista";
+        | "guia_lista"
+        | "cotizacion_aceptada"
+        | "cotizacion_facturada";
       app_role: "admin" | "ventas" | "logistica";
       client_kind: "persona" | "empresa";
       document_type: "dni" | "ce" | "pasaporte" | "ruc";
@@ -3121,6 +3137,8 @@ export const Constants = {
         "pieza_en_espera",
         "guia_en_espera",
         "guia_lista",
+        "cotizacion_aceptada",
+        "cotizacion_facturada",
       ],
       app_role: ["admin", "ventas", "logistica"],
       client_kind: ["persona", "empresa"],

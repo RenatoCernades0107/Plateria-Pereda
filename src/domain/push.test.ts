@@ -23,6 +23,22 @@ describe("pushPayload", () => {
     });
   });
 
+  it("abre la cotización y agrupa por cotización y tipo de alerta", () => {
+    expect(
+      pushPayload({
+        kind: "cotizacion_aceptada",
+        quoteId: "00000000-0000-4000-8000-000000000002",
+        title: "COT-000042 · Cotización aceptada",
+        body: "Vera aceptó la cotización COT-000042.",
+      }),
+    ).toEqual({
+      title: "COT-000042 · Cotización aceptada",
+      body: "Vera aceptó la cotización COT-000042.",
+      url: "/cotizaciones/00000000-0000-4000-8000-000000000002",
+      tag: "cotizacion_aceptada:00000000-0000-4000-8000-000000000002",
+    });
+  });
+
   it("recorta los mensajes largos", () => {
     const { body } = pushPayload({ ...alert, body: "a".repeat(800) });
     expect(body).toHaveLength(500);

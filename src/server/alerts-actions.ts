@@ -54,6 +54,7 @@ export async function getMyAlerts(): Promise<MyAlerts> {
         {
           kind: n.kind,
           restorationCode: n.restoration_code,
+          quoteCode: n.quote_code,
           clientName: n.client_name,
           actorName: n.actor_name,
           counts: toAlertCounts(n.data),
@@ -61,7 +62,9 @@ export async function getMyAlerts(): Promise<MyAlerts> {
         },
         templates.get(n.kind),
       ),
-      href: `/restauraciones/${n.restoration_id}`,
+      href: n.quote_id
+        ? `/cotizaciones/${n.quote_id}`
+        : `/restauraciones/${n.restoration_id}`,
       createdAt: n.created_at,
       read: n.read_at !== null,
     })),
