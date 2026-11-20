@@ -217,6 +217,17 @@ describe("CSV de cada pestaña", () => {
         avg: 5,
         median: 5,
         p90: 5,
+      },
+      approval_time: {
+        count: 2,
+        avg: 1,
+        median: 1,
+        buckets: [{ label: "0–1 días", value: 2 }],
+      },
+      delivery_time: {
+        count: 1,
+        avg: 4,
+        median: 4,
         buckets: [{ label: "4–7 días", value: 1 }],
       },
       series: [{ d: "2026-10-01", guias: 2, entregadas: 1 }],

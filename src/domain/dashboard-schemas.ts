@@ -63,6 +63,14 @@ export const salesSchema = z.object({
 });
 export type DashboardSales = z.infer<typeof salesSchema>;
 
+/** Distribución de días de un tramo del cumplimiento. */
+const stageTime = z.object({
+  count: num,
+  avg: nullableNum,
+  median: nullableNum,
+  buckets: z.array(labelValue),
+});
+
 export const ordersSchema = z.object({
   from: day,
   to: day,
@@ -87,8 +95,9 @@ export const ordersSchema = z.object({
     avg: nullableNum,
     median: nullableNum,
     p90: nullableNum,
-    buckets: z.array(labelValue),
   }),
+  approval_time: stageTime,
+  delivery_time: stageTime,
   series: z.array(z.object({ d: day, guias: num, entregadas: num })),
 });
 export type DashboardOrders = z.infer<typeof ordersSchema>;

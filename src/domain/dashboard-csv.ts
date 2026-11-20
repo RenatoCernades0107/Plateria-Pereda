@@ -181,6 +181,10 @@ export function ordersCsv(data: DashboardOrders, period: string): string {
         ["Cumplimiento promedio (días)", data.fulfillment.avg],
         ["Cumplimiento mediana (días)", data.fulfillment.median],
         ["Cumplimiento 90 % (días)", data.fulfillment.p90],
+        ["Registro a aprobación promedio (días)", data.approval_time.avg],
+        ["Registro a aprobación mediana (días)", data.approval_time.median],
+        ["Aprobación a entrega promedio (días)", data.delivery_time.avg],
+        ["Aprobación a entrega mediana (días)", data.delivery_time.median],
       ],
     },
     {
@@ -227,9 +231,14 @@ export function ordersCsv(data: DashboardOrders, period: string): string {
       ]),
     },
     {
-      title: "Tiempo de cumplimiento",
-      header: ["Tramo", "Piezas"],
-      rows: data.fulfillment.buckets.map((b) => [b.label, b.value]),
+      title: "Tiempo de registro a aprobación",
+      header: ["Días", "Piezas"],
+      rows: data.approval_time.buckets.map((b) => [b.label, b.value]),
+    },
+    {
+      title: "Tiempo de aprobación a entrega",
+      header: ["Días", "Piezas"],
+      rows: data.delivery_time.buckets.map((b) => [b.label, b.value]),
     },
   ]);
 }

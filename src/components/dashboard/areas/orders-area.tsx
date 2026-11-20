@@ -29,6 +29,7 @@ import {
   RESTORATION_STATUSES,
   RESTORATION_STATUS_LABELS,
 } from "@/domain/restoration-status";
+import type { DashboardOrders } from "@/domain/dashboard-schemas";
 import { dashboardOrders } from "@/server/dashboard-metrics";
 
 const LOCATION_ORDER = ["por_whatsapp", "sin_enviar", "en_taller", "en_tienda"];
@@ -197,17 +198,59 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         </Panel>
         <Panel
           title="Tiempo de cumplimiento"
-          description="Días desde que se registra la pieza hasta que se entrega"
+          description="Días de cada tramo: del registro a la aprobación y de la aprobación a la entrega"
           icon={Gauge}
+          info={METRIC_HELP.tramosCumplimiento}
           testId="panel-cumplimiento"
         >
-          {orders.fulfillment.delivered === 0 ? (
-            <PanelEmpty>No hubo entregas en el periodo.</PanelEmpty>
-          ) : (
-            <BarList items={orders.fulfillment.buckets} format={formatCount} />
-          )}
+          <div className="space-y-6">
+            <StageTime
+              title="Registro → aprobación"
+              stage={orders.approval_time}
+              empty="No hubo aprobaciones en el periodo."
+              testId="tramo-aprobacion"
+            />
+            <StageTime
+              title="Aprobación → entrega"
+              stage={orders.delivery_time}
+              empty="No hubo entregas en el periodo."
+              testId="tramo-entrega"
+            />
+          </div>
         </Panel>
       </div>
     </>
+  );
+}
+
+/** Un tramo del cumplimiento: subtítulo, promedio y mediana, y sus barras por días. */
+function StageTime({
+  title,
+  stage,
+  empty,
+  testId,
+}: {
+  title: string;
+  stage: DashboardOrders["approval_time"];
+  empty: string;
+  testId: string;
+}) {
+  return (
+    <div className="space-y-3" data-testid={testId}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h4 className="text-foreground text-sm font-medium">{title}</h4>
+        {stage.count > 0 ? (
+          <p className="text-muted-foreground text-xs">
+            Promedio {formatDays(stage.avg)} · Mediana{" "}
+            {formatDays(stage.median)} · {formatCount(stage.count)} piezas
+          </p>
+        ) : null}
+      </div>
+      {stage.count === 0 ? (
+        <PanelEmpty>{empty}</PanelEmpty>
+      ) : (
+        <BarList items={stage.buckets} format={formatCount} />
+      )}
+    </div>
   );
 }

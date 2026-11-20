@@ -14,6 +14,8 @@ export const METRIC_HELP = {
     "Vendido dividido entre el número de guías que tuvieron al menos una pieza aprobada en el periodo.",
   cumplimiento:
     "Días entre el registro de la pieza y su entrega, solo de las piezas entregadas en el periodo. La mediana es el valor del medio: la mitad tardó menos y la otra mitad más, y no se ve afectada por casos extremos.",
+  tramosCumplimiento:
+    "Registro → aprobación: días entre el registro y la aprobación de las piezas aprobadas en el periodo. Aprobación → entrega: días entre la aprobación y la entrega de las piezas entregadas en el periodo.",
   conversionWhatsapp:
     "Cotizaciones de WhatsApp creadas en el periodo que terminaron en pedido (total o parcial), divididas entre todas las creadas en el periodo.",
   margen:
