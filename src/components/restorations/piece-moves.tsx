@@ -41,7 +41,6 @@ import {
 } from "@/server/restorations/status-actions";
 
 import type { WorkshopOption } from "./piece-fields";
-import { isPieceInReview } from "./status-badges";
 import {
   inReviewAtWorkshop,
   locationAfter,
@@ -91,15 +90,12 @@ const previousOf = (piece: StatusPiece): Optimistic => ({
 });
 
 /**
- * Columnas de los kanban de piezas. "En restauración" y "Lista para entregar" ya no
- * son estados (2026-10-17): agrupan las Aprobadas u Observadas por su ubicación (en
- * el taller, o ya de vuelta en la tienda). Soltar una pieza en ellas la envía al
- * taller o la recibe de vuelta.
+ * Columnas de los kanban de piezas. "Lista para entregar" no es un estado: agrupa las
+ * Aprobadas u Observadas que ya volvieron del taller. Soltar una pieza ahí la recibe
+ * de vuelta. Una pieza en el taller sigue en su estado (Aprobada u Observada).
  */
-export const IN_WORKSHOP_COLUMN = "en_restauracion";
 export const READY_COLUMN = "lista_entregar";
-export type PieceColumnKey =
-  PieceStatus | typeof IN_WORKSHOP_COLUMN | typeof READY_COLUMN;
+export type PieceColumnKey = PieceStatus | typeof READY_COLUMN;
 
 const WORKSHOP_STATUSES: readonly PieceStatus[] = ["aprobada", "observada"];
 
@@ -108,7 +104,6 @@ const COLUMN_ORDER: readonly PieceColumnKey[] = [
   "en_consulta",
   "en_espera",
   "aprobada",
-  IN_WORKSHOP_COLUMN,
   READY_COLUMN,
   "observada",
   "entregada",
@@ -119,14 +114,12 @@ const COLUMN_ORDER: readonly PieceColumnKey[] = [
 
 export const PIECE_COLUMN_LABELS: Record<PieceColumnKey, string> = {
   ...PIECE_STATUS_LABELS,
-  [IN_WORKSHOP_COLUMN]: "En restauración",
   [READY_COLUMN]: "Lista para entregar",
 };
 
 /**
- * Columna de una pieza: su estado, o su ubicación si es Aprobada u Observada. Una
- * Aprobada en el taller solo a revisar no está en restauración: sigue en su estado
- * hasta que se deja ahí para el trabajo.
+ * Columna de una pieza: su estado, o «Lista para entregar» si es Aprobada u Observada
+ * y ya volvió del taller.
  */
 export function pieceColumnOf(piece: {
   status: PieceStatus;
@@ -136,8 +129,6 @@ export function pieceColumnOf(piece: {
   reviewReturnedAt?: string | null;
 }): PieceColumnKey {
   if (!WORKSHOP_STATUSES.includes(piece.status)) return piece.status;
-  if (piece.location === "en_taller" && !isPieceInReview(piece))
-    return IN_WORKSHOP_COLUMN;
   if (piece.readyForDelivery) return READY_COLUMN;
   return piece.status;
 }
@@ -153,10 +144,7 @@ export function pieceBoardColumns(
   return COLUMN_ORDER.map((key) => ({
     key,
     label: PIECE_COLUMN_LABELS[key],
-    dropOnly:
-      key === IN_WORKSHOP_COLUMN || key === READY_COLUMN
-        ? !withWorkshop
-        : !visible.includes(key),
+    dropOnly: key === READY_COLUMN ? !withWorkshop : !visible.includes(key),
   }));
 }
 
@@ -289,11 +277,7 @@ export function usePieceMoves<P extends StatusPiece>({
           toast.error(`${piece.code}: ${result.error}`);
           resolve(result.error);
         } else {
-          notifyDone(
-            piece,
-            `${piece.code}: llevada al taller a revisar.`,
-            result,
-          );
+          notifyDone(piece, `${piece.code}: enviada al taller.`, result);
           resolve(null);
         }
       });
@@ -308,7 +292,7 @@ export function usePieceMoves<P extends StatusPiece>({
       });
       const result = await receivePiecesFromReview(restorationId, [piece.id]);
       if ("error" in result) toast.error(`${piece.code}: ${result.error}`);
-      else notifyDone(piece, `${piece.code}: volvió de revisión.`, result);
+      else notifyDone(piece, `${piece.code}: volvió del taller.`, result);
     });
 
   /** "Enviar al taller" (con el taller elegido) y "Recibir del taller". */
@@ -416,15 +400,9 @@ export function usePieceMoves<P extends StatusPiece>({
     void run(piece, change);
   };
 
-  /** Soltar en una columna: de ubicación (enviar o recibir) o de estado. */
+  /** Soltar en una columna: «Lista para entregar» (recibir) o de estado. */
   const drop = (piece: P, column: string) => {
     const snapshot = snapshotOf(piece);
-    if (column === IN_WORKSHOP_COLUMN) {
-      if (canSendToWorkshop(snapshot, role)) return setSending(piece);
-      return void toast.error(
-        `${piece.code}: solo se envía al taller una pieza Aprobada u Observada que está en la tienda.`,
-      );
-    }
     if (column === READY_COLUMN) {
       if (canReceiveFromWorkshop(snapshot, role))
         return backFromWorkshop(piece);
@@ -440,8 +418,6 @@ export function usePieceMoves<P extends StatusPiece>({
     getLabel: (piece) => piece.code,
     canDrop: (piece, column) => {
       const snapshot = snapshotOf(piece);
-      if (column === IN_WORKSHOP_COLUMN)
-        return canSendToWorkshop(snapshot, role);
       if (column === READY_COLUMN)
         return canReceiveFromWorkshop(snapshot, role);
       return targets(piece).includes(column as PieceStatus);

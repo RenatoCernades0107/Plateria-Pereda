@@ -32,8 +32,8 @@ const EVENT_LABELS: Record<Exclude<PieceEvent, "estado">, string> = {
   devolucion_cliente: "Devuelta al cliente",
   cambio_precio: "Cambio de precio",
   // Revisión en taller: la pieza va y vuelve sin cambiar de estado.
-  envio_revision: "Al taller (revisión)",
-  vuelta_revision: "Volvió de revisión",
+  envio_revision: "Enviada al taller",
+  vuelta_revision: "Volvió del taller",
   retroceso: "Retroceso",
 };
 
