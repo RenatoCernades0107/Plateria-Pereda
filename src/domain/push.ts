@@ -19,10 +19,13 @@ const BODY_MAX = 500;
 
 export function pushPayload(alert: {
   kind: string;
-  restorationId: string;
+  /** Guía o cotización a la que se refiere la alerta (una de las dos). */
+  restorationId?: string | null;
+  quoteId?: string | null;
   title: string;
   body: string;
 }): PushPayload {
+  const subjectId = alert.quoteId ?? alert.restorationId ?? "";
   const body =
     alert.body.length > BODY_MAX
       ? `${alert.body.slice(0, BODY_MAX - 1).trimEnd()}…`
@@ -30,8 +33,10 @@ export function pushPayload(alert: {
   return {
     title: alert.title,
     body,
-    url: `/restauraciones/${alert.restorationId}`,
-    tag: `${alert.kind}:${alert.restorationId}`,
+    url: alert.quoteId
+      ? `/cotizaciones/${alert.quoteId}`
+      : `/restauraciones/${alert.restorationId}`,
+    tag: `${alert.kind}:${subjectId}`,
   };
 }
 

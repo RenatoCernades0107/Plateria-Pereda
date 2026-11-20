@@ -97,6 +97,37 @@ describe("getMyAlerts", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("my_notifications", { p_limit: 20 });
   });
 
+  it("las alertas de cotizaciones abren la cotización", async () => {
+    mocks.rpc.mockResolvedValue({
+      error: null,
+      data: [
+        {
+          id: "00000000-0000-4000-8000-000000000026",
+          kind: "cotizacion_aceptada",
+          restoration_id: null,
+          restoration_code: null,
+          quote_id: "00000000-0000-4000-8000-000000000027",
+          quote_code: "COT-000042",
+          client_name: null,
+          actor_name: "Vera",
+          data: {},
+          pieces: [],
+          created_at: "2026-11-19T10:00:00Z",
+          read_at: null,
+          unread_count: 1,
+        },
+      ],
+    });
+    mocks.settings.mockResolvedValue({ data: [] });
+
+    const { alerts } = await getMyAlerts();
+    expect(alerts[0]).toMatchObject({
+      title: "COT-000042 · Cotización aceptada",
+      body: "Vera aceptó la cotización COT-000042. Asigna el taller y la ubicación del trabajo.",
+      href: "/cotizaciones/00000000-0000-4000-8000-000000000027",
+    });
+  });
+
   it("sin alertas: cero sin leer", async () => {
     mocks.rpc.mockResolvedValue({ error: null, data: [] });
     mocks.settings.mockResolvedValue({ data: [] });

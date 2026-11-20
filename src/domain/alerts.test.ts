@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ALERT_KINDS,
   ALERT_PREVIEW,
+  ALERT_ROLES,
   DEFAULT_ALERT_TEMPLATES,
   formatAlertPieces,
   renderAlert,
@@ -85,6 +86,36 @@ describe("alertas", () => {
     expect(alert.body).toBe(
       "La guía quedó lista: las 3 piezas ya volvieron y se pueden entregar a Ana Díaz (últimas en volver: RES-00012-3 (Bandeja)). Avísale para que las recoja.",
     );
+  });
+
+  it("arma las alertas de cotizaciones, sin dinero ni cliente para logística", () => {
+    const quote: AlertInput = {
+      kind: "cotizacion_aceptada",
+      restorationCode: null,
+      quoteCode: "COT-000042",
+      clientName: null,
+      actorName: "Vera Ventas",
+      counts: { live: 0, approved: 0, waiting: 0 },
+      pieces: [],
+    };
+    expect(renderAlert(quote, null)).toEqual({
+      title: "COT-000042 · Cotización aceptada",
+      body: "Vera Ventas aceptó la cotización COT-000042. Asigna el taller y la ubicación del trabajo.",
+    });
+    expect(
+      renderAlert(
+        { ...quote, kind: "cotizacion_facturada", clientName: "Ana Díaz" },
+        null,
+      ),
+    ).toEqual({
+      title: "COT-000042 · Cotización facturada",
+      body: "Vera Ventas facturó la cotización COT-000042 de Ana Díaz.",
+    });
+  });
+
+  it("las alertas de cotizaciones llegan a logística (aceptada) y a admin (facturada)", () => {
+    expect(ALERT_ROLES.cotizacion_aceptada).toEqual(["logistica"]);
+    expect(ALERT_ROLES.cotizacion_facturada).toEqual(["admin"]);
   });
 
   it("usa el mensaje propio y rellena lo que falta", () => {

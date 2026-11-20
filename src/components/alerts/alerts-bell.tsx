@@ -55,6 +55,11 @@ export const ALERT_TABS: readonly {
     kinds: ["pieza_en_espera", "guia_en_espera"],
   },
   { id: "lista", label: "Para entregar", kinds: ["guia_lista"] },
+  {
+    id: "cotizaciones",
+    label: "Cotizaciones",
+    kinds: ["cotizacion_aceptada", "cotizacion_facturada"],
+  },
 ];
 
 function inTab(tabId: string, alert: MyAlert): boolean {

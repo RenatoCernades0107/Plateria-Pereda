@@ -124,6 +124,8 @@ describe("AlertsBell", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: /Espera cliente/ }));
     expect(screen.getByRole("link", { name: /RES-00003/ })).toBeVisible();
+
+    expect(screen.getByRole("tab", { name: /Cotizaciones/ })).toBeVisible();
   });
 
   it("oculta una alerta para que no aparezca más", async () => {
