@@ -4,17 +4,11 @@ import { X } from "lucide-react";
 import { useState } from "react";
 
 import { ClientPicker } from "@/components/clients/client-picker";
+import { FilterMulti } from "@/components/filter-multi";
 import { FilterFormActions } from "@/components/filter-form-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useLiveFilters } from "@/components/use-live-filters";
 import type { ClientOption } from "@/domain/client-search";
 import { QUOTE_STATUS_LABELS } from "@/domain/quote";
@@ -24,8 +18,6 @@ import {
   quoteFiltersHref,
   type QuoteFilters,
 } from "@/domain/quote-filters";
-
-const ALL = "todos";
 
 /** Búsqueda y filtros del listado de cotizaciones (en la URL; se aplican solos). */
 export function QuotesFiltersForm({
@@ -81,27 +73,16 @@ export function QuotesFiltersForm({
           onChange={(e) => update({ q: e.target.value }, { debounce: true })}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-estado">Estado</Label>
-        <Select
-          value={state.status ?? ALL}
-          onValueChange={(v) =>
-            set({ status: v === ALL ? null : (v as QuoteFilters["status"]) })
-          }
-        >
-          <SelectTrigger id="filtro-estado" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos</SelectItem>
-            {QUOTE_STATUS_FILTERS.map((status) => (
-              <SelectItem key={status} value={status}>
-                {QUOTE_STATUS_LABELS[status]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterMulti
+        id="filtro-estado"
+        label="Estado"
+        value={state.status}
+        options={QUOTE_STATUS_FILTERS.map((status) => ({
+          value: status,
+          label: QUOTE_STATUS_LABELS[status],
+        }))}
+        onChange={(status) => set({ status })}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="filtro-cliente">Cliente</Label>
         {client ? (

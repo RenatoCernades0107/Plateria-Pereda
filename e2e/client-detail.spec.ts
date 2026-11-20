@@ -206,12 +206,19 @@ test.describe("Detalle de clientes", () => {
       .fill(`Detalle ${run}`);
     await page.getByLabel("Tipo").click();
     await page.getByRole("option", { name: "Empresas" }).click();
+    await page.keyboard.press("Escape");
     await expect(page).toHaveURL(/tipo=empresa/);
     await expect(page.getByTestId(`cliente-${legalName}`)).toBeVisible();
     await expect(page.getByText("1 cliente · Página 1 de 1")).toBeVisible();
 
+    // Con varios tipos a la vez, la empresa sigue en el listado.
     await page.getByLabel("Tipo").click();
     await page.getByRole("option", { name: "Personas" }).click();
+    await expect(page).toHaveURL(/tipo=empresa&tipo=persona/);
+    await expect(page.getByTestId(`cliente-${legalName}`)).toBeVisible();
+    // Quitando «Empresas» solo quedan las personas: ninguna coincide.
+    await page.getByRole("option", { name: "Empresas" }).click();
+    await page.keyboard.press("Escape");
     await expect(
       page.getByText("No encontramos resultados para tu búsqueda."),
     ).toBeVisible();

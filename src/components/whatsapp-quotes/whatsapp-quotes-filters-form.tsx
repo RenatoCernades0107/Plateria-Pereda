@@ -1,16 +1,10 @@
 "use client";
 
+import { FilterMulti } from "@/components/filter-multi";
 import { FilterFormActions } from "@/components/filter-form-actions";
 import { useLiveFilters } from "@/components/use-live-filters";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   parseWhatsappQuoteFilters,
   WHATSAPP_QUOTE_STATUS_LABELS,
@@ -18,8 +12,6 @@ import {
   whatsappQuoteFiltersHref,
   type WhatsappQuoteFilters,
 } from "@/domain/whatsapp-quotes";
-
-const ALL = "todos";
 
 /** Búsqueda y filtros de las cotizaciones de WhatsApp (en la URL; se aplican solos). */
 export function WhatsappQuotesFiltersForm({
@@ -52,29 +44,16 @@ export function WhatsappQuotesFiltersForm({
           onChange={(e) => update({ q: e.target.value }, { debounce: true })}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-estado">Estado</Label>
-        <Select
-          value={state.status ?? ALL}
-          onValueChange={(v) =>
-            set({
-              status: v === ALL ? null : (v as WhatsappQuoteFilters["status"]),
-            })
-          }
-        >
-          <SelectTrigger id="filtro-estado" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos</SelectItem>
-            {WHATSAPP_QUOTE_STATUSES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {WHATSAPP_QUOTE_STATUS_LABELS[status]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterMulti
+        id="filtro-estado"
+        label="Estado"
+        value={state.status}
+        options={WHATSAPP_QUOTE_STATUSES.map((status) => ({
+          value: status,
+          label: WHATSAPP_QUOTE_STATUS_LABELS[status],
+        }))}
+        onChange={(status) => set({ status })}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="filtro-desde">Desde</Label>
         <Input

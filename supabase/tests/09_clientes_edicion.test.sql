@@ -116,12 +116,12 @@ select results_eq(
   'logística también lista y busca por documento'
 );
 select results_eq(
-  $$ select display_name from public.list_clients(p_query => '999 000 444', p_kind => 'persona') $$,
+  $$ select display_name from public.list_clients(p_query => '999 000 444', p_kind => array['persona']::public.client_kind[]) $$,
   $$ values ('Ana María Edición') $$,
   'busca por dígitos del teléfono y filtra por tipo'
 );
 select results_eq(
-  $$ select display_name, sync_status from public.list_clients(p_query => 'Nueva', p_sync => 'pending') $$,
+  $$ select display_name, sync_status from public.list_clients(p_query => 'Nueva', p_sync => array['pending']) $$,
   $$ values ('Nueva', 'pending') $$,
   'filtra por estado de sincronización'
 );

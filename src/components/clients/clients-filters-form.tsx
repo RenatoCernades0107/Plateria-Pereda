@@ -1,64 +1,16 @@
 "use client";
 
-import type { ReactNode } from "react";
-
+import { FilterMulti } from "@/components/filter-multi";
 import { FilterFormActions } from "@/components/filter-form-actions";
 import { ShopifyIcon } from "@/components/icons/shopify-icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useLiveFilters } from "@/components/use-live-filters";
 import {
   clientFiltersHref,
   parseClientFilters,
   type ClientFilters,
 } from "@/domain/client-filters";
-
-const ALL = "todos";
-
-function FilterSelect({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-  allLabel = "Todos",
-}: {
-  id: string;
-  label: ReactNode;
-  value: string | null;
-  options: { value: string; label: string }[];
-  onChange: (value: string | null) => void;
-  allLabel?: string | null;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Select
-        value={value ?? ALL}
-        onValueChange={(v) => onChange(v === ALL ? null : v)}
-      >
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {allLabel ? <SelectItem value={ALL}>{allLabel}</SelectItem> : null}
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
 
 /** Búsqueda y filtros del listado de clientes (en la URL; se aplican solos). */
 export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
@@ -87,7 +39,7 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
           onChange={(e) => update({ q: e.target.value }, { debounce: true })}
         />
       </div>
-      <FilterSelect
+      <FilterMulti
         id="filtro-tipo"
         label="Tipo"
         value={state.kind}
@@ -95,9 +47,9 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
           { value: "persona", label: "Personas" },
           { value: "empresa", label: "Empresas" },
         ]}
-        onChange={(kind) => set({ kind: kind as ClientFilters["kind"] })}
+        onChange={(kind) => set({ kind })}
       />
-      <FilterSelect
+      <FilterMulti
         id="filtro-sync"
         label={
           <>
@@ -111,20 +63,17 @@ export function ClientsFiltersForm({ filters }: { filters: ClientFilters }) {
           { value: "pending", label: "Pendiente" },
           { value: "error", label: "Con error" },
         ]}
-        onChange={(sync) => set({ sync: sync as ClientFilters["sync"] })}
+        onChange={(sync) => set({ sync })}
       />
-      <FilterSelect
+      <FilterMulti
         id="filtro-estado"
         label="Estado"
-        value={state.status === "todos" ? null : state.status}
-        allLabel="Todos"
+        value={state.status}
         options={[
           { value: "activos", label: "Activos" },
           { value: "inactivos", label: "Inactivos" },
         ]}
-        onChange={(status) =>
-          set({ status: (status ?? "todos") as ClientFilters["status"] })
-        }
+        onChange={(status) => set({ status })}
       />
       <FilterFormActions
         pending={pending}

@@ -8,7 +8,7 @@ import { FilterFormActions } from "@/components/filter-form-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { FilterMulti } from "@/components/filter-multi";
 import { useLiveFilters } from "@/components/use-live-filters";
 import type { ClientOption } from "@/domain/client-search";
 import {
@@ -28,32 +28,6 @@ import {
   RESTORATION_ORIGIN_LABELS,
   RESTORATION_ORIGINS,
 } from "@/domain/restoration-status";
-
-function FilterMulti<T extends string>({
-  id,
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: T[];
-  options: { value: T; label: string }[];
-  onChange: (value: T[]) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <MultiSelect
-        id={id}
-        options={options}
-        value={value}
-        onChange={onChange}
-      />
-    </div>
-  );
-}
 
 /**
  * Búsqueda y filtros del listado de restauraciones (en la URL): se aplican solos, el

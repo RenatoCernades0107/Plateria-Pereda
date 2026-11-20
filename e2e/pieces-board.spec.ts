@@ -94,8 +94,10 @@ test.describe("Vista de piezas", () => {
     await page.getByLabel("Código o descripción").fill(clientName);
     await page.getByLabel("Ubicación").click();
     await page.getByRole("option", { name: "Sin enviar" }).click();
+    await page.keyboard.press("Escape");
     await page.getByLabel("Estado", { exact: true }).click();
     await page.getByRole("option", { name: "Aprobada" }).click();
+    await page.keyboard.press("Escape");
     await expect(page).toHaveURL(/ubicacion=sin_enviar&estado=aprobada/);
     await expect(page.getByText("3 piezas · Página 1 de 1")).toBeVisible();
 

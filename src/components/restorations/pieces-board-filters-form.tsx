@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp } from "lucide-react";
 
+import { FilterMulti } from "@/components/filter-multi";
 import { FilterFormActions } from "@/components/filter-form-actions";
 import { useLiveFilters } from "@/components/use-live-filters";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,6 @@ import {
 } from "@/domain/piece-board-filters";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { PIECE_LOCATION_LABELS } from "@/domain/restoration-status";
-
-const ALL = "todos";
 
 /**
  * Filtros de la vista de piezas (se guardan en la URL). Urgentes, listas para
@@ -94,77 +93,46 @@ export function PiecesBoardFiltersForm({
           onChange={(e) => type({ guide: e.target.value })}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-ubicacion">Ubicación</Label>
-        <Select
-          value={state.location ?? ALL}
-          onValueChange={(v) =>
-            set({
-              location: v === ALL ? null : (v as PieceBoardFilters["location"]),
-            })
-          }
-        >
-          <SelectTrigger id="filtro-ubicacion" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todas</SelectItem>
-            {BOARD_LOCATIONS.map((l) => (
-              <SelectItem key={l} value={l}>
-                {PIECE_LOCATION_LABELS[l]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-estado">Estado</Label>
-        <Select
-          value={state.status ?? ALL}
-          onValueChange={(v) =>
-            set({
-              status: v === ALL ? null : (v as PieceBoardFilters["status"]),
-            })
-          }
-        >
-          <SelectTrigger id="filtro-estado" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos</SelectItem>
-            {BOARD_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {PIECE_STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="filtro-taller">Taller</Label>
-        <Select
-          value={state.noWorkshop ? NO_WORKSHOP : (state.workshopId ?? ALL)}
-          onValueChange={(v) =>
-            set({
-              noWorkshop: v === NO_WORKSHOP,
-              workshopId: v === ALL || v === NO_WORKSHOP ? null : v,
-            })
-          }
-        >
-          <SelectTrigger id="filtro-taller" className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos</SelectItem>
-            <SelectItem value={NO_WORKSHOP}>Sin taller</SelectItem>
-            {workshops.map((w) => (
-              <SelectItem key={w.id} value={w.id}>
-                {w.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterMulti
+        id="filtro-ubicacion"
+        label="Ubicación"
+        allLabel="Todas"
+        value={state.location}
+        options={BOARD_LOCATIONS.map((l) => ({
+          value: l,
+          label: PIECE_LOCATION_LABELS[l],
+        }))}
+        onChange={(location) => set({ location })}
+      />
+      <FilterMulti
+        id="filtro-estado"
+        label="Estado"
+        value={state.status}
+        options={BOARD_STATUSES.map((s) => ({
+          value: s,
+          label: PIECE_STATUS_LABELS[s],
+        }))}
+        onChange={(status) => set({ status })}
+      />
+      <FilterMulti
+        id="filtro-taller"
+        label="Taller"
+        value={
+          state.noWorkshop
+            ? [...state.workshopIds, NO_WORKSHOP]
+            : state.workshopIds
+        }
+        options={[
+          { value: NO_WORKSHOP, label: "Sin taller" },
+          ...workshops.map((w) => ({ value: w.id, label: w.name })),
+        ]}
+        onChange={(ids) =>
+          set({
+            noWorkshop: ids.includes(NO_WORKSHOP),
+            workshopIds: ids.filter((id) => id !== NO_WORKSHOP),
+          })
+        }
+      />
       <div className="space-y-1.5">
         <Label htmlFor="filtro-orden">Ordenar por</Label>
         <div className="flex gap-1">

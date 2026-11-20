@@ -82,7 +82,7 @@ export async function WorkshopsArea({
           icon={Hammer}
           label="En taller ahora"
           value={formatCount(data.total.in_workshop)}
-          href={pieceBoardHref(boardBase, { location: "en_taller" })}
+          href={pieceBoardHref(boardBase, { location: ["en_taller"] })}
           hint="Ver las piezas"
         />
         <KpiTile
@@ -91,7 +91,7 @@ export async function WorkshopsArea({
           label={`Con ${data.alert_days}+ días`}
           value={formatCount(data.total.over_alert)}
           href={pieceBoardHref(boardBase, {
-            location: "en_taller",
+            location: ["en_taller"],
             minDays: data.alert_days,
           })}
           hint="Piezas que llevan demasiado en el taller"
@@ -209,7 +209,7 @@ export async function WorkshopsArea({
                       <TableCell className="font-medium">
                         <Link
                           href={pieceBoardHref(boardBase, {
-                            workshopId: row.id,
+                            workshopIds: [row.id],
                           })}
                           className="hover:text-primary underline-offset-2 hover:underline"
                         >
@@ -259,7 +259,9 @@ export async function WorkshopsArea({
                 <li key={row.id} className="bg-muted/30 rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-2">
                     <Link
-                      href={pieceBoardHref(boardBase, { workshopId: row.id })}
+                      href={pieceBoardHref(boardBase, {
+                        workshopIds: [row.id],
+                      })}
                       className="text-heading font-medium underline-offset-2 hover:underline"
                     >
                       {row.name}

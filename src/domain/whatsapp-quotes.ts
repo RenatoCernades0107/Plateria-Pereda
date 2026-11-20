@@ -1,3 +1,4 @@
+import { appendAll, manyOf } from "./filter-params";
 import type { ChipTone, FilterChip } from "./filter-presets";
 import { calendarDaysBetween } from "./piece-days";
 
@@ -79,7 +80,8 @@ export type WhatsappQuoteSort = (typeof WHATSAPP_QUOTE_SORTS)[number];
 export type WhatsappQuoteFilters = {
   /** Código, cliente, nombre o teléfono anotados, o descripción de una pieza. */
   q: string;
-  status: WhatsappQuoteStatus | null;
+  /** Varios estados a la vez (`[]` = todos). */
+  status: WhatsappQuoteStatus[];
   clientId: string | null;
   /** Fecha de registro en Lima, "AAAA-MM-DD" (inclusive). */
   from: string | null;
@@ -110,14 +112,11 @@ export function parseWhatsappQuoteFilters(
   params: SearchParams,
 ): WhatsappQuoteFilters {
   const page = Number.parseInt(first(params.pagina), 10);
-  const status = first(params.estado);
   const client = first(params.cliente);
   const sort = first(params.orden);
   return {
     q: first(params.q).trim().slice(0, 100),
-    status: (WHATSAPP_QUOTE_STATUSES as readonly string[]).includes(status)
-      ? (status as WhatsappQuoteStatus)
-      : null,
+    status: manyOf(WHATSAPP_QUOTE_STATUSES, params.estado),
     clientId: UUID.test(client) ? client.toLowerCase() : null,
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
@@ -136,7 +135,7 @@ export function whatsappQuoteFiltersHref(
   const next = { ...filters, ...changes };
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
-  if (next.status) params.set("estado", next.status);
+  appendAll(params, "estado", next.status);
   if (next.clientId) params.set("cliente", next.clientId);
   if (next.from) params.set("desde", next.from);
   if (next.to) params.set("hasta", next.to);
@@ -154,7 +153,7 @@ export function listWhatsappQuotesArgs(
 ) {
   return {
     p_query: filters.q || undefined,
-    p_status: filters.status ?? undefined,
+    p_status: filters.status.length ? filters.status : undefined,
     p_client_id: filters.clientId ?? undefined,
     p_from: filters.from ?? undefined,
     p_to: filters.to ?? undefined,
@@ -197,13 +196,13 @@ export function whatsappQuoteStatusChips(
   counts: Partial<Record<WhatsappQuoteStatus, number>> = {},
 ): FilterChip[] {
   return WHATSAPP_QUOTE_STATUSES.map((status) => {
-    const active = filters.status === status;
+    const active = filters.status.length === 1 && filters.status[0] === status;
     return {
       key: status,
       label: WHATSAPP_QUOTE_STATUS_LABELS[status],
       active,
       href: whatsappQuoteFiltersHref(filters, {
-        status: active ? null : status,
+        status: active ? [] : [status],
         page: 1,
       }),
       tone: STATUS_CHIP_TONES[status],

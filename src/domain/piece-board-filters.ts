@@ -1,3 +1,10 @@
+import {
+  appendAll,
+  list,
+  manyOf,
+  manyUuids,
+  type SearchParams,
+} from "./filter-params";
 import type { PieceStatus } from "./piece-state-machine";
 import type { PieceLocation } from "./restoration-status";
 
@@ -59,10 +66,13 @@ export type PieceBoardFilters = {
   q: string;
   /** Número de guía (RES-00123, "123"…): solo las piezas de esa restauración. */
   guide: string;
-  location: (typeof BOARD_LOCATIONS)[number] | null;
-  status: (typeof BOARD_STATUSES)[number] | null;
-  workshopId: string | null;
-  /** Solo piezas sin taller asignado (`taller=sin`); excluye `workshopId`. */
+  /** Varias ubicaciones a la vez (`[]` = todas). */
+  location: (typeof BOARD_LOCATIONS)[number][];
+  /** Varios estados a la vez (`[]` = todos). */
+  status: (typeof BOARD_STATUSES)[number][];
+  /** Varios talleres a la vez (`[]` = todos). */
+  workshopIds: string[];
+  /** Además de los talleres elegidos, las piezas sin taller (`taller=sin`). */
   noWorkshop: boolean;
   /** Solo piezas con al menos estos días en el taller. */
   minDays: number | null;
@@ -84,12 +94,8 @@ export type PieceBoardFilters = {
 /** Valor de `taller` en la URL para "Sin taller". */
 export const NO_WORKSHOP = "sin";
 
-type SearchParams = Record<string, string | string[] | undefined>;
-
 const first = (value: string | string[] | undefined) =>
   (Array.isArray(value) ? value[0] : value) ?? "";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const oneOf = <T extends string>(options: readonly T[], value: string) =>
   (options as readonly string[]).includes(value) ? (value as T) : null;
@@ -99,14 +105,14 @@ export function parsePieceBoardFilters(
 ): PieceBoardFilters {
   const page = Number.parseInt(first(params.pagina), 10);
   const days = Number.parseInt(first(params.dias), 10);
-  const workshop = first(params.taller);
+  const workshops = list(params.taller);
   return {
     q: first(params.q).trim().slice(0, 100),
     guide: first(params.guia).trim().slice(0, 20),
-    location: oneOf(BOARD_LOCATIONS, first(params.ubicacion)),
-    status: oneOf(BOARD_STATUSES, first(params.estado)),
-    workshopId: UUID.test(workshop) ? workshop.toLowerCase() : null,
-    noWorkshop: workshop === NO_WORKSHOP,
+    location: manyOf(BOARD_LOCATIONS, params.ubicacion),
+    status: manyOf(BOARD_STATUSES, params.estado),
+    workshopIds: manyUuids(workshops),
+    noWorkshop: workshops.includes(NO_WORKSHOP),
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
     urgent: first(params.urgentes) === "1",
     ready: first(params.listas) === "1",
@@ -125,10 +131,10 @@ export function pieceBoardHref(
   const params = new URLSearchParams();
   if (next.q) params.set("q", next.q);
   if (next.guide) params.set("guia", next.guide);
-  if (next.location) params.set("ubicacion", next.location);
-  if (next.status) params.set("estado", next.status);
-  if (next.noWorkshop) params.set("taller", NO_WORKSHOP);
-  else if (next.workshopId) params.set("taller", next.workshopId);
+  appendAll(params, "ubicacion", next.location);
+  appendAll(params, "estado", next.status);
+  appendAll(params, "taller", next.workshopIds);
+  if (next.noWorkshop) params.append("taller", NO_WORKSHOP);
   if (next.minDays) params.set("dias", String(next.minDays));
   if (next.urgent) params.set("urgentes", "1");
   if (next.ready) params.set("listas", "1");
@@ -145,11 +151,11 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
   return {
     p_query: filters.q || undefined,
     p_restoration_code: filters.guide || undefined,
-    p_location: filters.location ?? undefined,
-    p_status: filters.status ?? undefined,
-    p_workshop_id: filters.noWorkshop
-      ? undefined
-      : (filters.workshopId ?? undefined),
+    p_location: filters.location.length ? filters.location : undefined,
+    p_status: filters.status.length ? filters.status : undefined,
+    p_workshop_ids: filters.workshopIds.length
+      ? filters.workshopIds
+      : undefined,
     p_no_workshop: filters.noWorkshop || undefined,
     p_min_workshop_days: filters.minDays ?? undefined,
     p_urgent: filters.urgent || undefined,

@@ -10,9 +10,9 @@ describe("filtros del listado de clientes", () => {
   it("lee los filtros de la URL con valores por defecto", () => {
     expect(parseClientFilters({})).toEqual({
       q: "",
-      kind: null,
-      sync: null,
-      status: "activos",
+      kind: [],
+      sync: [],
+      status: ["activos"],
       page: 1,
     });
     expect(
@@ -25,9 +25,9 @@ describe("filtros del listado de clientes", () => {
       }),
     ).toEqual({
       q: "Ana",
-      kind: "empresa",
-      sync: "error",
-      status: "todos",
+      kind: ["empresa"],
+      sync: ["error"],
+      status: [],
       page: 3,
     });
   });
@@ -43,9 +43,9 @@ describe("filtros del listado de clientes", () => {
       }),
     ).toEqual({
       q: "Rosa",
-      kind: null,
-      sync: null,
-      status: "activos",
+      kind: [],
+      sync: [],
+      status: ["activos"],
       page: 1,
     });
     expect(parseClientFilters({ pagina: "abc" }).page).toBe(1);
@@ -57,9 +57,9 @@ describe("filtros del listado de clientes", () => {
     expect(
       clientFiltersHref(base, {
         q: "Ana",
-        kind: "persona",
-        sync: "pending",
-        status: "inactivos",
+        kind: ["persona"],
+        sync: ["pending"],
+        status: ["inactivos"],
         page: 2,
       }),
     ).toBe(
@@ -68,8 +68,9 @@ describe("filtros del listado de clientes", () => {
   });
 
   it("traduce el estado a la condición de activo", () => {
-    expect(activeFilter("activos")).toBe(true);
-    expect(activeFilter("inactivos")).toBe(false);
-    expect(activeFilter("todos")).toBeNull();
+    expect(activeFilter(["activos"])).toBe(true);
+    expect(activeFilter(["inactivos"])).toBe(false);
+    expect(activeFilter([])).toBeNull();
+    expect(activeFilter(["activos", "inactivos"])).toBeNull();
   });
 });
