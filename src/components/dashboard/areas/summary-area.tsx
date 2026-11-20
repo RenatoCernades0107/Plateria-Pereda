@@ -15,6 +15,7 @@ import { HeroStat, KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel } from "@/components/dashboard/panel";
 import { PendingCounts } from "@/components/dashboard/pending-counts";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import { seriesPoints, sparkValues } from "@/domain/dashboard-charts";
 import {
   computeDelta,
@@ -50,6 +51,7 @@ export async function SummaryArea({
     <>
       <HeroStat
         testId="kpi-vendido"
+        info={METRIC_HELP.vendido}
         label="Vendido en el periodo"
         value={formatSolesWhole(current.sold)}
         delta={computeDelta(current.sold, previous.sold)}
@@ -96,6 +98,7 @@ export async function SummaryArea({
       <KpiGrid>
         <KpiTile
           testId="kpi-cobrado"
+          info={METRIC_HELP.cobrado}
           icon={Wallet}
           label="Cobrado"
           value={formatSolesWhole(current.collected)}
@@ -109,6 +112,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-saldo"
+          info={METRIC_HELP.saldo}
           icon={Clock}
           label="Saldo por cobrar hoy"
           value={formatSolesWhole(current.balance_due)}
@@ -116,6 +120,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-ticket"
+          info={METRIC_HELP.ticket}
           icon={Receipt}
           label="Ticket promedio"
           value={formatSolesWhole(current.ticket)}
@@ -139,6 +144,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-cumplimiento"
+          info={METRIC_HELP.cumplimiento}
           icon={Gem}
           label="Cumplimiento promedio"
           value={formatDays(current.fulfillment_avg)}
@@ -162,6 +168,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-conversion"
+          info={METRIC_HELP.conversionWhatsapp}
           icon={MessageCircle}
           label="Conversión de WhatsApp"
           value={formatPercent(current.cwa_conversion, 0)}

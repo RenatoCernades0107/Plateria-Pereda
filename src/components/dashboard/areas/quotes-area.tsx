@@ -8,6 +8,7 @@ import {
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import { seriesPoints } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -86,6 +87,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cwa-conversion"
+          info={METRIC_HELP.conversionWhatsapp}
           icon={Percent}
           label="Cotizaciones que se piden"
           value={formatPercent(cwa.conversion, 0)}
@@ -93,6 +95,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cwa-monto-pedido"
+          info={METRIC_HELP.montoPedido}
           icon={PackageCheck}
           label="Monto pedido"
           value={formatSolesWhole(cwa.ordered_amount)}
@@ -104,6 +107,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cot"
+          info={METRIC_HELP.cot}
           icon={FileText}
           label="Cotizador (COT)"
           value={formatCount(cot.created)}
@@ -131,6 +135,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
           title="Piezas cotizadas y pedidas"
           description="Cuántas de las piezas cotizadas el cliente terminó pidiendo"
           testId="panel-cwa-piezas"
+          info={METRIC_HELP.piezasPedidas}
         >
           {cwa.items_quoted === 0 ? (
             <PanelEmpty />

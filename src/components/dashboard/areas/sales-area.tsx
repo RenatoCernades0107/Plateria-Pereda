@@ -4,6 +4,7 @@ import { StackedBar, BarList, Meter } from "@/components/dashboard/bars";
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import {
   seriesPoints,
   sparkValues,
@@ -75,6 +76,7 @@ export async function SalesArea({
       <KpiGrid>
         <KpiTile
           testId="kpi-vendido"
+          info={METRIC_HELP.vendido}
           icon={CircleDollarSign}
           label="Vendido"
           value={formatSolesWhole(sales.sold)}
@@ -84,6 +86,7 @@ export async function SalesArea({
         />
         <KpiTile
           testId="kpi-cobrado"
+          info={METRIC_HELP.cobrado}
           icon={Wallet}
           label="Cobrado"
           value={formatSolesWhole(sales.collected)}
@@ -93,6 +96,7 @@ export async function SalesArea({
         />
         <KpiTile
           testId="kpi-ticket"
+          info={METRIC_HELP.ticket}
           icon={Receipt}
           label="Ticket promedio"
           value={formatSolesWhole(current.ticket)}
@@ -102,6 +106,7 @@ export async function SalesArea({
         {canMargins && sales.margin ? (
           <KpiTile
             testId="kpi-margen"
+            info={METRIC_HELP.margen}
             icon={Banknote}
             label="Margen estimado"
             value={formatSolesWhole(sales.margin.margin)}
@@ -114,6 +119,7 @@ export async function SalesArea({
         ) : (
           <KpiTile
             testId="kpi-saldo"
+            info={METRIC_HELP.saldo}
             icon={Banknote}
             label="Saldo por cobrar hoy"
             value={formatSolesWhole(current.balance_due)}
@@ -154,6 +160,7 @@ export async function SalesArea({
           title="Cobranza"
           description="Cuánto de lo vendido ya se cobró"
           testId="panel-cobranza"
+          info={METRIC_HELP.cobranza}
         >
           <Meter
             testId="medidor-cobranza"
@@ -229,6 +236,7 @@ export async function SalesArea({
           title="Servicios más vendidos"
           description="Si una pieza lleva varios, se reparte en partes iguales"
           testId="panel-servicios"
+          info={METRIC_HELP.serviciosMasVendidos}
         >
           {sales.by_service.length === 0 ? (
             <PanelEmpty />
@@ -239,7 +247,11 @@ export async function SalesArea({
             />
           )}
         </Panel>
-        <Panel title="Materiales más vendidos" testId="panel-materiales">
+        <Panel
+          title="Materiales más vendidos"
+          testId="panel-materiales"
+          info={METRIC_HELP.materialesMasVendidos}
+        >
           {sales.by_material.length === 0 ? (
             <PanelEmpty />
           ) : (
@@ -256,6 +268,7 @@ export async function SalesArea({
           title="Margen de lo vendido"
           description="Precio de venta menos el costo de servicio, solo de las piezas con costo registrado"
           testId="panel-margen"
+          info={METRIC_HELP.margen}
         >
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { MetricInfo } from "@/components/dashboard/metric-info";
 import { cn } from "@/lib/utils";
 
 /** Tarjeta de un gráfico o tabla: título, subtítulo y (a la derecha) una acción. */
@@ -8,6 +9,7 @@ export function Panel({
   title,
   description,
   icon: Icon,
+  info,
   action,
   children,
   className,
@@ -16,6 +18,8 @@ export function Panel({
   title: string;
   description?: ReactNode;
   icon?: LucideIcon;
+  /** Explicación de cómo se calcula lo que muestra el panel (botón ⓘ junto al título). */
+  info?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -35,6 +39,7 @@ export function Panel({
           <h3 className="text-heading flex items-center gap-2 font-semibold">
             {Icon ? <Icon aria-hidden className="text-primary size-4" /> : null}
             {title}
+            {info ? <MetricInfo label={title}>{info}</MetricInfo> : null}
           </h3>
           {description ? (
             <p className="text-muted-foreground text-xs">{description}</p>

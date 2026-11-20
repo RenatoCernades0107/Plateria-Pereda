@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { METRIC_HELP } from "@/domain/dashboard-help";
 import { barWidth, workshopTone } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -72,6 +73,7 @@ export async function WorkshopsArea({
         />
         <KpiTile
           testId="kpi-dias-promedio"
+          info={METRIC_HELP.diasTaller}
           icon={Hourglass}
           label="Días en taller (promedio)"
           value={formatDays(data.total.avg_days)}
@@ -87,6 +89,7 @@ export async function WorkshopsArea({
         />
         <KpiTile
           testId="kpi-con-retraso"
+          info={METRIC_HELP.alertaTaller}
           icon={AlarmClock}
           label={`Con ${data.alert_days}+ días`}
           value={formatCount(data.total.over_alert)}
