@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ChangeNameDialog } from "@/components/users/change-name-dialog";
 import { ChangePasswordDialog } from "@/components/users/change-password-dialog";
 import { ROLE_LABELS, type AppRole } from "@/lib/roles";
 import { ROLES } from "@/lib/validation/users";
@@ -78,6 +79,7 @@ function UserActions({ user, isSelf }: { user: UserRow; isSelf: boolean }) {
           ))}
         </SelectContent>
       </Select>
+      <ChangeNameDialog user={user} disabled={pending} />
       <ChangePasswordDialog user={user} disabled={pending} />
       <Button
         variant={user.active ? "outline" : "default"}

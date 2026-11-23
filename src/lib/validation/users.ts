@@ -9,12 +9,14 @@ export const userPasswordSchema = z
   .min(8, "Debe tener al menos 8 caracteres")
   .max(72, "Máximo 72 caracteres");
 
+export const fullNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Ingresa el nombre completo")
+  .max(100, "Máximo 100 caracteres");
+
 export const newUserSchema = z.object({
-  fullName: z
-    .string()
-    .trim()
-    .min(2, "Ingresa el nombre completo")
-    .max(100, "Máximo 100 caracteres"),
+  fullName: fullNameSchema,
   email: z
     .string()
     .trim()
@@ -27,3 +29,6 @@ export type NewUserInput = z.infer<typeof newUserSchema>;
 
 export const setPasswordSchema = z.object({ password: userPasswordSchema });
 export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+
+export const setFullNameSchema = z.object({ fullName: fullNameSchema });
+export type SetFullNameInput = z.infer<typeof setFullNameSchema>;

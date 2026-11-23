@@ -11,8 +11,10 @@ import { INVALID_ARGS, idArg, validArgs } from "@/lib/validation/action-args";
 import {
   newUserSchema,
   roleSchema,
+  setFullNameSchema,
   setPasswordSchema,
   type NewUserInput,
+  type SetFullNameInput,
   type SetPasswordInput,
 } from "@/lib/validation/users";
 import { requirePermission } from "@/server/auth";
@@ -61,6 +63,27 @@ export async function createUser(
     });
     return { error: createErrorMessage(error.code) };
   }
+
+  revalidatePath("/usuarios");
+  return { ok: true };
+}
+
+/** El administrador corrige el nombre de un usuario (también el suyo). */
+export async function updateUserName(
+  userId: string,
+  input: SetFullNameInput,
+): Promise<UserActionResult> {
+  await requirePermission("usuarios.gestionar");
+  if (!validArgs([idArg], [userId])) return { error: INVALID_ARGS };
+  const parsed = setFullNameSchema.safeParse(input);
+  if (!parsed.success) return { error: "Revisa el nombre ingresado." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: parsed.data.fullName })
+    .eq("id", userId);
+  if (error) return { error: "No se pudo cambiar el nombre." };
 
   revalidatePath("/usuarios");
   return { ok: true };
