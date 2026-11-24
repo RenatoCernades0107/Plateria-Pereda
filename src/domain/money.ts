@@ -71,6 +71,16 @@ export function percentOf(cents: Cents, percent: number): Cents {
 }
 
 /**
+ * Monto sin un impuesto que ya está incluido: `cents ÷ (1 + percent/100)`, redondeado a
+ * céntimos (S/ 118.00 con 18 % incluido → S/ 100.00). Con 18 % no hay empates posibles
+ * (cents × 100 nunca es múltiplo impar de 59), así que coincide con `round(x * 100 / 118, 2)`
+ * de la BD.
+ */
+export function withoutPercent(cents: Cents, percent: number): Cents {
+  return roundHalfAwayFromZero((cents * 100) / (100 + percent));
+}
+
+/**
  * Lee un monto escrito por el usuario: "1234.5", "1234,50", "1,234.50" o "S/ 12".
  * Devuelve null si no es un monto válido (negativo, más de 2 decimales, texto).
  */

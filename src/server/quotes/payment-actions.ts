@@ -43,8 +43,8 @@ const paymentSchema = z.object({
 export type QuotePaymentInput = z.input<typeof paymentSchema>;
 
 function refresh(quoteId: string) {
-  revalidatePath(`/cotizaciones/${quoteId}`);
-  revalidatePath("/cotizaciones");
+  revalidatePath(`/corporativo/${quoteId}`);
+  revalidatePath("/corporativo");
 }
 
 /**

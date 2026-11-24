@@ -9,7 +9,7 @@ import { QUOTE_WORK_LOCATIONS, type QuoteWorkLocation } from "./quote-tracking";
 
 /**
  * Filtros del listado de seguimiento de cotizaciones aprobadas (la vista de logística),
- * leídos de la URL (`/cotizaciones?estado=…&taller=…&ubicacion=…`).
+ * leídos de la URL (`/corporativo?estado=…&taller=…&ubicacion=…`).
  */
 
 export const TRACKING_PAGE_SIZE = 25;
@@ -62,5 +62,5 @@ export function trackingFiltersHref(
   appendAll(params, "ubicacion", next.location);
   if (next.page > 1) params.set("pagina", String(next.page));
   const query = params.toString();
-  return query ? `/cotizaciones?${query}` : "/cotizaciones";
+  return query ? `/corporativo?${query}` : "/corporativo";
 }

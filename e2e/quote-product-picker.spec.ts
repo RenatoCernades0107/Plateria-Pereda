@@ -8,7 +8,7 @@ test.describe("Selector de productos del cotizador", () => {
   test("busca en el catálogo, elige la variante y crea la línea con el precio del catálogo", async ({
     page,
   }) => {
-    await page.goto("/cotizaciones/nueva");
+    await page.goto("/corporativo/nueva");
     await page.getByRole("button", { name: "Agregar producto" }).click();
     await page.getByPlaceholder("Título o SKU").fill("anillo");
     const product = page.getByRole("option", {

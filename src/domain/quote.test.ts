@@ -79,46 +79,137 @@ describe("quoteTotals", () => {
     },
   ] as const;
 
-  it("sin IGV: total = subtotal − descuentos", () => {
-    expect(quoteTotals(lines, false)).toEqual({
-      subtotal: 340_19,
-      discount: 10_00,
-      base: 330_19,
-      igv: 0,
-      total: 330_19,
+  describe("precios sin IGV (cotizaciones anteriores: no cambian)", () => {
+    it("sin IGV: total = subtotal − descuentos", () => {
+      expect(quoteTotals(lines, false, false)).toEqual({
+        subtotal: 340_19,
+        discount: 10_00,
+        base: 330_19,
+        igv: 0,
+        total: 330_19,
+      });
+    });
+
+    it("con IGV: 18 % de subtotal − descuentos, redondeado una sola vez", () => {
+      // 330.19 × 18 % = 59.4342 → 59.43.
+      expect(quoteTotals(lines, true, false)).toEqual({
+        subtotal: 340_19,
+        discount: 10_00,
+        base: 330_19,
+        igv: 59_43,
+        total: 389_62,
+      });
+    });
+
+    it("el IGV va sobre el total con descuentos, no línea por línea", () => {
+      // Por línea: 0.03 × 18 % = 0.0054 → 0.01 cada una (0.03 en total); sobre el
+      // total: 0.09 × 18 % = 0.0162 → 0.02.
+      const small = [1, 2, 3].map(() => ({ quantity: 1, unitPrice: 3 }));
+      expect(quoteTotals(small, true, false)).toMatchObject({
+        igv: 2,
+        total: 11,
+      });
+    });
+
+    it("redondea el medio céntimo lejos del cero, como la BD", () => {
+      // 0.25 × 18 % = 0.045 → 0.05.
+      expect(
+        quoteTotals([{ quantity: 1, unitPrice: 25 }], true, false),
+      ).toMatchObject({ igv: 5, total: 30 });
+    });
+
+    it("sin líneas todo es 0", () => {
+      const zero = { subtotal: 0, discount: 0, base: 0, igv: 0, total: 0 };
+      expect(quoteTotals([], true, false)).toEqual(zero);
+      expect(quoteTotals([], false, false)).toEqual(zero);
     });
   });
 
-  it("con IGV: 18 % de subtotal − descuentos, redondeado una sola vez", () => {
-    // 330.19 × 18 % = 59.4342 → 59.43.
-    expect(quoteTotals(lines, true)).toEqual({
-      subtotal: 340_19,
-      discount: 10_00,
-      base: 330_19,
-      igv: 59_43,
-      total: 389_62,
+  describe("precios con IGV incluido (cotizaciones nuevas)", () => {
+    it("el total es lo que suman los precios menos descuentos; el IGV es un desglose", () => {
+      // Total 330.19 (240.20 + 99.99 − 10.00). Base = 330.19 ÷ 1.18 = 279.82 (279.8220…),
+      // IGV = 330.19 − 279.82 = 50.37. Subtotal sin IGV = 340.19 ÷ 1.18 = 288.30.
+      expect(quoteTotals(lines, true, true)).toEqual({
+        subtotal: 288_30,
+        discount: 8_48,
+        base: 279_82,
+        igv: 50_37,
+        total: 330_19,
+      });
     });
-  });
 
-  it("el IGV va sobre el total con descuentos, no línea por línea", () => {
-    // Por línea: 0.03 × 18 % = 0.0054 → 0.01 cada una (0.03 en total); sobre el
-    // total: 0.09 × 18 % = 0.0162 → 0.02.
-    const small = [1, 2, 3].map(() => ({ quantity: 1, unitPrice: 3 }));
-    expect(quoteTotals(small, true)).toMatchObject({ igv: 2, total: 11 });
-  });
-
-  it("redondea el medio céntimo lejos del cero, como la BD", () => {
-    // 0.25 × 18 % = 0.045 → 0.05.
-    expect(quoteTotals([{ quantity: 1, unitPrice: 25 }], true)).toMatchObject({
-      igv: 5,
-      total: 30,
+    it("siempre cuadra: subtotal − descuentos = base y base + IGV = total", () => {
+      for (const unitPrice of [1, 3, 25, 99, 118, 1_00, 33_33, 120_10, 9_999]) {
+        for (const quantity of [1, 2, 7]) {
+          const t = quoteTotals(
+            [
+              {
+                quantity,
+                unitPrice,
+                discount: { type: "porcentaje", percent: 12.5 },
+              },
+            ],
+            true,
+            true,
+          );
+          expect(t.subtotal - t.discount).toBe(t.base);
+          expect(t.base + t.igv).toBe(t.total);
+          expect(t.total).toBe(
+            quantity * unitPrice -
+              Math.min(
+                quantity * unitPrice,
+                Math.round((quantity * unitPrice * 12.5) / 100),
+              ),
+          );
+        }
+      }
     });
-  });
 
-  it("sin líneas todo es 0", () => {
-    const zero = { subtotal: 0, discount: 0, base: 0, igv: 0, total: 0 };
-    expect(quoteTotals([], true)).toEqual(zero);
-    expect(quoteTotals([], false)).toEqual(zero);
+    it("S/ 118.00 incluye S/ 18.00 de IGV", () => {
+      expect(
+        quoteTotals([{ quantity: 1, unitPrice: 118_00 }], true, true),
+      ).toEqual({
+        subtotal: 100_00,
+        discount: 0,
+        base: 100_00,
+        igv: 18_00,
+        total: 118_00,
+      });
+    });
+
+    it("un solo redondeo: base = total ÷ 1.18 (medios céntimos hacia arriba)", () => {
+      // 3 céntimos ÷ 1.18 = 2.54 céntimos → 3; IGV 0.
+      expect(
+        quoteTotals([{ quantity: 1, unitPrice: 3 }], true, true),
+      ).toMatchObject({ base: 3, igv: 0, total: 3 });
+      // 0.09 en tres líneas de 0.03: la base sale del total (9 ÷ 1.18 = 7.63 → 8), no línea por línea.
+      const small = [1, 2, 3].map(() => ({ quantity: 1, unitPrice: 3 }));
+      expect(quoteTotals(small, true, true)).toMatchObject({
+        base: 8,
+        igv: 1,
+        total: 9,
+      });
+    });
+
+    it("sin IGV (casilla desmarcada) no hay desglose aunque el flag diga incluido", () => {
+      expect(quoteTotals(lines, false, true)).toEqual({
+        subtotal: 340_19,
+        discount: 10_00,
+        base: 330_19,
+        igv: 0,
+        total: 330_19,
+      });
+    });
+
+    it("sin líneas todo es 0", () => {
+      expect(quoteTotals([], true, true)).toEqual({
+        subtotal: 0,
+        discount: 0,
+        base: 0,
+        igv: 0,
+        total: 0,
+      });
+    });
   });
 });
 

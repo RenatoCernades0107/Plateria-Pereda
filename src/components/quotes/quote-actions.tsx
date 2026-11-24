@@ -95,7 +95,7 @@ export function QuoteActions({
         return;
       }
       toast.success("Se creó una copia en borrador.");
-      router.push(`/cotizaciones/${result.id}`);
+      router.push(`/corporativo/${result.id}`);
     });
 
   return (

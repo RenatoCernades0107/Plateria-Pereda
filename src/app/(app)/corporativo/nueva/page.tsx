@@ -26,9 +26,9 @@ export default async function NuevaCotizacionPage() {
   return (
     <div className="max-w-3xl space-y-4">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/cotizaciones">
+        <Link href="/corporativo">
           <ArrowLeft aria-hidden />
-          Cotizaciones
+          Corporativo
         </Link>
       </Button>
       <PageHeader
@@ -45,8 +45,9 @@ export default async function NuevaCotizacionPage() {
           creditDays: String(DEFAULT_QUOTE_CREDIT_DAYS),
           issuerId: null,
           deliveryDays: String(DEFAULT_QUOTE_DELIVERY_DAYS),
-          // Por defecto se suma el IGV a los precios.
+          // Los precios incluyen IGV; el formulario muestra el desglose.
           applyIgv: true,
+          pricesIncludeIgv: true,
           notes: "",
           terms: settings.terms,
           lines: [],

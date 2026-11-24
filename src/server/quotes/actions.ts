@@ -51,8 +51,8 @@ function dbMessage(
 }
 
 function revalidateQuote(id: string) {
-  revalidatePath("/cotizaciones");
-  revalidatePath(`/cotizaciones/${id}`);
+  revalidatePath("/corporativo");
+  revalidatePath(`/corporativo/${id}`);
 }
 
 /** Guarda el borrador (nuevo si `id` es null) con sus líneas, en una transacción. */
@@ -329,6 +329,6 @@ export async function duplicateQuote(id: string): Promise<SaveQuoteResult> {
   if (error) {
     return { error: dbMessage(error, "No se pudo duplicar la cotización.") };
   }
-  revalidatePath("/cotizaciones");
+  revalidatePath("/corporativo");
   return { ok: true, id: data };
 }

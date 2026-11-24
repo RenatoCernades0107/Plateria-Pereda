@@ -1,7 +1,7 @@
 import { appendAll, manyOf, type SearchParams } from "./filter-params";
 import type { QuoteDisplayStatus } from "./quote";
 
-/** Filtros del listado de cotizaciones, leídos de la URL (`/cotizaciones?estado=…`). */
+/** Filtros del listado de cotizaciones, leídos de la URL (`/corporativo?estado=…`). */
 
 export const QUOTES_PAGE_SIZE = 25;
 
@@ -69,7 +69,7 @@ export function quoteFiltersHref(
   if (next.to) params.set("hasta", next.to);
   if (next.page > 1) params.set("pagina", String(next.page));
   const query = params.toString();
-  return query ? `/cotizaciones?${query}` : "/cotizaciones";
+  return query ? `/corporativo?${query}` : "/corporativo";
 }
 
 /** Texto seguro para un filtro `or` de PostgREST (sin comas, paréntesis ni comodines). */

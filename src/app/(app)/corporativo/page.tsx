@@ -24,11 +24,11 @@ import {
   listWorkshopOptions,
 } from "@/server/quotes/queries";
 
-export const metadata: Metadata = { title: "Cotizaciones" };
+export const metadata: Metadata = { title: "Cotizaciones Corporativas" };
 
-export default async function CotizacionesPage({
+export default async function CorporativoPage({
   searchParams,
-}: PageProps<"/cotizaciones">) {
+}: PageProps<"/corporativo">) {
   const user = await requirePermission("cotizaciones.seguimiento");
   const params = await searchParams;
 
@@ -41,7 +41,7 @@ export default async function CotizacionesPage({
       listWorkshopOptions(),
     ]);
     const filtered =
-      trackingFiltersHref(filters, { page: 1 }) !== "/cotizaciones";
+      trackingFiltersHref(filters, { page: 1 }) !== "/corporativo";
     return (
       <div className="space-y-4">
         <PageHeader
@@ -53,7 +53,7 @@ export default async function CotizacionesPage({
           quotes={quotes}
           empty={
             filtered ? (
-              <FilteredEmptyState resetHref="/cotizaciones" />
+              <FilteredEmptyState resetHref="/corporativo" />
             ) : (
               <EmptyState title="Aún no hay cotizaciones aprobadas." />
             )
@@ -75,17 +75,17 @@ export default async function CotizacionesPage({
     listQuotes(filters),
     filters.clientId ? getClientName(filters.clientId) : null,
   ]);
-  const filtered = quoteFiltersHref(filters, { page: 1 }) !== "/cotizaciones";
+  const filtered = quoteFiltersHref(filters, { page: 1 }) !== "/corporativo";
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
-          title="Cotizaciones"
+          title="Cotizaciones Corporativas"
           description="Cotizaciones de productos personalizados del catálogo de Shopify."
         />
         <Button asChild>
-          <Link href="/cotizaciones/nueva">
+          <Link href="/corporativo/nueva">
             <Plus aria-hidden />
             Nueva cotización
           </Link>
@@ -98,7 +98,7 @@ export default async function CotizacionesPage({
         emptyMessage="Aún no hay cotizaciones."
         empty={
           filtered ? (
-            <FilteredEmptyState resetHref="/cotizaciones" />
+            <FilteredEmptyState resetHref="/corporativo" />
           ) : (
             <EmptyState title="Aún no hay cotizaciones." />
           )

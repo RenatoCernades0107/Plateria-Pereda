@@ -36,7 +36,7 @@ import { getSettings } from "@/server/settings";
 
 export async function generateMetadata({
   params,
-}: PageProps<"/cotizaciones/[id]">): Promise<Metadata> {
+}: PageProps<"/corporativo/[id]">): Promise<Metadata> {
   return recordMetadata("quote", (await params).id, "Cotización");
 }
 
@@ -44,7 +44,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function CotizacionPage({
   params,
-}: PageProps<"/cotizaciones/[id]">) {
+}: PageProps<"/corporativo/[id]">) {
   const user = await requirePermission("cotizaciones.seguimiento");
   const { id } = await params;
   if (!UUID.test(id)) notFound();
@@ -104,6 +104,7 @@ export default async function CotizacionPage({
     phone: quote.pdfClient.phone,
     lines: quote.lines.map(quotePdfLineFromDraft),
     applyIgv: quote.applyIgv,
+    pricesIncludeIgv: quote.pricesIncludeIgv,
     notes: quote.notes,
     terms: quote.terms,
   };
@@ -133,9 +134,9 @@ export default async function CotizacionPage({
       {quote.code ? <PageBreadcrumb label={quote.code} /> : null}
       {/* En pantallas grandes la ruta de navegación del encabezado ya lleva atrás. */}
       <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
-        <Link href="/cotizaciones">
+        <Link href="/corporativo">
           <ArrowLeft aria-hidden />
-          Cotizaciones
+          Corporativo
         </Link>
       </Button>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -164,7 +165,7 @@ export default async function CotizacionPage({
               <span className="text-muted-foreground">
                 Copia de{" "}
                 <Link
-                  href={`/cotizaciones/${quote.duplicatedFrom.id}`}
+                  href={`/corporativo/${quote.duplicatedFrom.id}`}
                   className="underline-offset-4 hover:underline"
                 >
                   {quote.duplicatedFrom.code}
@@ -238,6 +239,7 @@ export default async function CotizacionPage({
           issuerId: quote.issuer?.id ?? null,
           deliveryDays: String(quote.deliveryDays),
           applyIgv: quote.applyIgv,
+          pricesIncludeIgv: quote.pricesIncludeIgv,
           notes: quote.notes,
           terms: quote.terms,
           lines: quote.lines,
@@ -267,9 +269,9 @@ async function TrackingQuotePage({ id, role }: { id: string; role: AppRole }) {
     <div className="max-w-3xl space-y-4">
       {quote.code ? <PageBreadcrumb label={quote.code} /> : null}
       <Button asChild variant="ghost" size="sm" className="-ml-2 md:hidden">
-        <Link href="/cotizaciones">
+        <Link href="/corporativo">
           <ArrowLeft aria-hidden />
-          Cotizaciones
+          Corporativo
         </Link>
       </Button>
       <div className="space-y-2">

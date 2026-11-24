@@ -137,8 +137,13 @@ export async function drawQuotePdf(
     { key: "sku", title: "SKU", width: 24 },
     { key: "description", title: "Descripción", width: 0 },
     { key: "quantity", title: "Cant.", width: 16, align: "center" },
-    { key: "unitPrice", title: "Precio sin IGV", width: 34, align: "right" },
-    { key: "total", title: "total (sin IGV)", width: 34, align: "right" },
+    {
+      key: "unitPrice",
+      title: model.unitPriceHeader,
+      width: 34,
+      align: "right",
+    },
+    { key: "total", title: model.lineTotalHeader, width: 34, align: "right" },
   ];
   const description = columns.find((c) => c.key === "description")!;
   description.width = contentW - columns.reduce((sum, c) => sum + c.width, 0);
@@ -228,7 +233,7 @@ export async function drawQuotePdf(
     pdf.text(value, right, y, { align: "right" });
     y += strong ? 7 : 5;
   };
-  totalRow("Sub Total:", model.subtotal, false);
+  totalRow(model.subtotalLabel, model.subtotal, false);
   // Guion ASCII: el signo menos (U+2212) no existe en Helvetica/WinAnsi de jsPDF.
   if (model.discount) totalRow("Descuento:", `- ${model.discount}`, false);
   if (model.igv) totalRow("IGV (18 %):", model.igv, false);

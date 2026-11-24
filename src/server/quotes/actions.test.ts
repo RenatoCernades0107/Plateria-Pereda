@@ -83,6 +83,7 @@ const input = {
   deliveryDays: "45",
   issuerId: "55555555-5555-4555-8555-555555555555",
   applyIgv: true,
+  pricesIncludeIgv: true,
   notes: "Nota",
   terms: "",
   lines: [
@@ -129,6 +130,7 @@ describe("saveQuote", () => {
           delivery_days: 45,
           issuer_id: "55555555-5555-4555-8555-555555555555",
           apply_igv: true,
+          prices_include_igv: true,
           notes: "Nota",
         }),
         p_items: [
@@ -136,7 +138,7 @@ describe("saveQuote", () => {
         ],
       }),
     );
-    expect(mocks.revalidate).toHaveBeenCalledWith("/cotizaciones");
+    expect(mocks.revalidate).toHaveBeenCalledWith("/corporativo");
   });
 
   it("no guarda datos inválidos", async () => {
@@ -359,7 +361,7 @@ describe("setQuoteIssuer", () => {
     expect(await setQuoteIssuer(ID, ISSUER)).toEqual({ ok: true });
     expect(mocks.permission).toBe("cotizador.usar");
     expect(mocks.update).toHaveBeenCalledWith({ issuer_id: ISSUER });
-    expect(mocks.revalidate).toHaveBeenCalledWith(`/cotizaciones/${ID}`);
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/corporativo/${ID}`);
   });
 
   it("rechaza argumentos inválidos sin tocar la BD", async () => {
@@ -392,7 +394,7 @@ describe("setQuoteTracking", () => {
       p_set_location: true,
       p_work_location: "en_tienda",
     });
-    expect(mocks.revalidate).toHaveBeenCalledWith(`/cotizaciones/${ID}`);
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/corporativo/${ID}`);
   });
 
   it("ventas no asigna el taller", async () => {

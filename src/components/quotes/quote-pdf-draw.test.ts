@@ -41,6 +41,7 @@ const data: QuotePdfData = {
     },
   ],
   applyIgv: false,
+  pricesIncludeIgv: false,
   notes: "",
   terms: "",
 };
@@ -132,6 +133,28 @@ describe("drawQuotePdf", () => {
     expect(raw).toContain("(S/ 343.22)");
     expect(raw).toContain("(S/ 2,250.00)");
     expect(raw).toContain("(DOS MIL DOSCIENTOS CINCUENTA Y 00/100 SOLES)");
+  });
+
+  it("precios con IGV incluido: encabezados con IGV, subtotal sin IGV, IGV y total", async () => {
+    const raw = (
+      await drawQuotePdf(
+        quotePdfModel({ ...data, applyIgv: true, pricesIncludeIgv: true }),
+      )
+    ).output();
+    expect(raw).toContain("(Precio inc. IGV)");
+    expect(raw).toContain("(Total inc. IGV)");
+    expect(raw).not.toContain("(Precio sin IGV)");
+    expect(raw).toContain("(Sub Total sin IGV:)");
+    expect(raw).toContain("(S/ 1,615.92)");
+    expect(raw).toContain("(IGV \\(18 %\\):)");
+    expect(raw).toContain("(S/ 290.86)");
+    expect(raw).toContain("(S/ 1,906.78)");
+  });
+
+  it("precios sin IGV (anteriores): conservan sus encabezados", async () => {
+    const raw = (await drawQuotePdf(quotePdfModel(data))).output();
+    expect(raw).toContain("(Precio sin IGV)");
+    expect(raw).toContain("(Sub Total:)");
   });
 
   it("sin notas ni condiciones, no dibuja esas etiquetas", async () => {

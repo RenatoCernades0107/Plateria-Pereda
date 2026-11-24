@@ -14,7 +14,7 @@ insert into public.clients (id, kind, first_name, shopify_customer_id)
 -- 1. Ya no hay respuesta ni función del IGV.
 select hasnt_column('public', 'restorations', 'prices_include_igv', 'restorations ya no guarda si el precio incluye IGV');
 select hasnt_column('public', 'whatsapp_quotes', 'prices_include_igv', 'las cotizaciones de WhatsApp tampoco');
-select hasnt_column('public', 'quotes', 'prices_include_igv', 'ni el cotizador (usa apply_igv)');
+select has_column('public', 'quotes', 'prices_include_igv', 'el cotizador sí lo guarda (igv_incluido_cotizaciones): sus precios incluyen IGV');
 select hasnt_function('public', 'price_with_igv', 'ya no existe el precio con IGV');
 
 set local role authenticated;

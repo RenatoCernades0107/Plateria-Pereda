@@ -63,7 +63,7 @@ export async function getMyAlerts(): Promise<MyAlerts> {
         templates.get(n.kind),
       ),
       href: n.quote_id
-        ? `/cotizaciones/${n.quote_id}`
+        ? `/corporativo/${n.quote_id}`
         : `/restauraciones/${n.restoration_id}`,
       createdAt: n.created_at,
       read: n.read_at !== null,

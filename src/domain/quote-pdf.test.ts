@@ -48,6 +48,8 @@ const baseData: QuotePdfData = {
     },
   ],
   applyIgv: false,
+  // Precios sin IGV: así eran todas las cotizaciones anteriores a 2026-11-24.
+  pricesIncludeIgv: false,
   notes: "",
   terms: "",
 };
@@ -129,7 +131,7 @@ describe("quotePdfModel", () => {
     expect(model.amountInWords).toBe(
       "DOS MIL DOSCIENTOS CINCUENTA Y 00/100 SOLES",
     );
-    // Los precios de la tabla siguen sin IGV.
+    // Cotización anterior (precios sin IGV): los precios de la tabla siguen sin IGV.
     expect(model.rows[0]!.unitPrice).toBe("S/ 1,906.78");
     expect(model.rows[0]!.total).toBe("S/ 1,906.78");
   });
@@ -151,6 +153,60 @@ describe("quotePdfModel", () => {
     expect(model.total).toBe("S/ 2,025.00");
   });
 
+  describe("precios con IGV incluido (cotizaciones nuevas)", () => {
+    const included = { ...baseData, applyIgv: true, pricesIncludeIgv: true };
+
+    it("el total es la suma de los precios; el subtotal va sin IGV y el IGV se desglosa", () => {
+      const model = quotePdfModel(included);
+      // 1,906.78 ÷ 1.18 = 1,615.92 (1,615.9152…); IGV = 1,906.78 − 1,615.92 = 290.86.
+      expect(model.subtotal).toBe("S/ 1,615.92");
+      expect(model.discount).toBeNull();
+      expect(model.igv).toBe("S/ 290.86");
+      expect(model.total).toBe("S/ 1,906.78");
+      expect(model.amountInWords).toBe("MIL NOVECIENTOS SEIS Y 78/100 SOLES");
+      expect(model.subtotalLabel).toBe("Sub Total sin IGV:");
+      // Los precios de la tabla son los que incluyen IGV.
+      expect(model.rows[0]!.unitPrice).toBe("S/ 1,906.78");
+      expect(model.rows[0]!.total).toBe("S/ 1,906.78");
+      expect(model.unitPriceHeader).toBe("Precio inc. IGV");
+      expect(model.lineTotalHeader).toBe("Total inc. IGV");
+    });
+
+    it("con descuento: subtotal sin IGV − descuento = base, y base + IGV = total", () => {
+      const model = quotePdfModel({
+        ...included,
+        lines: [
+          {
+            ...baseData.lines[0]!,
+            discount: { type: "porcentaje", percent: 10 },
+          },
+        ],
+      });
+      // Total 1,716.10; base 1,454.32; subtotal sin IGV 1,615.92; descuento 161.60.
+      expect(model.subtotal).toBe("S/ 1,615.92");
+      expect(model.discount).toBe("S/ 161.60");
+      expect(model.igv).toBe("S/ 261.78");
+      expect(model.total).toBe("S/ 1,716.10");
+    });
+
+    it("sin IGV (casilla desmarcada): sin fila de IGV, mismo total", () => {
+      const model = quotePdfModel({ ...included, applyIgv: false });
+      expect(model.igv).toBeNull();
+      expect(model.subtotal).toBe("S/ 1,906.78");
+      expect(model.subtotalLabel).toBe("Sub Total:");
+      expect(model.unitPriceHeader).toBe("Precio");
+      expect(model.lineTotalHeader).toBe("Total");
+      expect(model.total).toBe("S/ 1,906.78");
+    });
+
+    it("las cotizaciones anteriores conservan sus encabezados sin IGV", () => {
+      const model = quotePdfModel({ ...baseData, applyIgv: true });
+      expect(model.unitPriceHeader).toBe("Precio sin IGV");
+      expect(model.lineTotalHeader).toBe("total (sin IGV)");
+      expect(model.subtotalLabel).toBe("Sub Total:");
+    });
+  });
+
   it("condición de pago con su etiqueta; crédito con sus días", () => {
     expect(
       quotePdfModel({
@@ -166,7 +222,7 @@ describe("quotePdfModel", () => {
     expect(
       quotePdfModel({ ...baseData, paymentCondition: "a_cuenta" })
         .paymentConditionText,
-    ).toBe("A cuenta");
+    ).toBe("50% adelanto, saldo contraentrega");
   });
 
   it("RUC de la empresa y teléfono del contacto; sin ellos no se muestran", () => {

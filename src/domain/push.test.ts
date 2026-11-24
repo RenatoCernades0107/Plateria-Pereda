@@ -34,7 +34,7 @@ describe("pushPayload", () => {
     ).toEqual({
       title: "COT-000042 · Cotización aceptada",
       body: "Vera aceptó la cotización COT-000042.",
-      url: "/cotizaciones/00000000-0000-4000-8000-000000000002",
+      url: "/corporativo/00000000-0000-4000-8000-000000000002",
       tag: "cotizacion_aceptada:00000000-0000-4000-8000-000000000002",
     });
   });

@@ -15,6 +15,7 @@ import {
   PAYMENT_TYPE_LABELS,
   PAYMENT_TYPES,
   percentOf,
+  withoutPercent,
   sumCents,
   toCents,
   toDecimalString,
@@ -56,6 +57,19 @@ describe("conversión", () => {
   it("formatea en soles", () => {
     expect(formatCents(123_450)).toBe("S/ 1,234.50");
     expect(formatCents(0)).toBe("S/ 0.00");
+  });
+});
+
+describe("withoutPercent", () => {
+  it("quita el impuesto incluido", () => {
+    expect(withoutPercent(118_00, 18)).toBe(100_00);
+    expect(withoutPercent(330_19, 18)).toBe(279_82);
+  });
+
+  it("redondea a céntimos", () => {
+    expect(withoutPercent(3, 18)).toBe(3);
+    expect(withoutPercent(9, 18)).toBe(8);
+    expect(withoutPercent(0, 18)).toBe(0);
   });
 });
 
