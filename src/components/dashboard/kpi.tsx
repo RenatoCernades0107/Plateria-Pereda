@@ -3,9 +3,11 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { MetricInfo } from "@/components/dashboard/metric-info";
+import { ScopeBadges } from "@/components/dashboard/scope-badge";
 import { Sparkline } from "@/components/dashboard/sparkline";
 import { ToneBadge } from "@/components/tone-badge";
 import { deltaText, deltaTone, type Delta } from "@/domain/dashboard-format";
+import type { DashboardScope } from "@/domain/dashboard-scope";
 import type { BadgeTone } from "@/domain/status-progress";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +65,7 @@ export function KpiTile({
   spark,
   hint,
   info,
+  scope,
   href,
   testId,
 }: {
@@ -75,6 +78,8 @@ export function KpiTile({
   hint?: ReactNode;
   /** Explicación de cómo se calcula la métrica (botón ⓘ junto a la etiqueta). */
   info?: ReactNode;
+  /** Qué tiempo toma la cifra (periodo, hoy o estado actual): etiqueta al pie. */
+  scope?: DashboardScope | readonly DashboardScope[];
   /** Si se da, toda la tarjeta lleva al listado relacionado. */
   href?: string;
   testId?: string;
@@ -127,6 +132,7 @@ export function KpiTile({
       {hint ? (
         <p className="text-muted-foreground mt-1.5 text-xs">{hint}</p>
       ) : null}
+      {scope ? <ScopeBadges scope={scope} compact className="mt-2.5" /> : null}
     </div>
   );
 }
@@ -142,6 +148,7 @@ export function HeroStat({
   previousLabel,
   spark,
   info,
+  scope,
   children,
   testId,
 }: {
@@ -152,6 +159,8 @@ export function HeroStat({
   spark?: number[];
   /** Explicación de cómo se calcula la cifra (botón ⓘ junto a la etiqueta). */
   info?: ReactNode;
+  /** Qué tiempo toma la cifra (periodo, hoy o estado actual). */
+  scope?: DashboardScope | readonly DashboardScope[];
   children?: ReactNode;
   testId?: string;
 }) {
@@ -163,9 +172,14 @@ export function HeroStat({
     >
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">
-          <div className="flex items-center gap-1">
-            <p className="text-muted-foreground text-sm font-medium">{label}</p>
-            {info ? <MetricInfo label={label}>{info}</MetricInfo> : null}
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <div className="flex items-center gap-1">
+              <p className="text-muted-foreground text-sm font-medium">
+                {label}
+              </p>
+              {info ? <MetricInfo label={label}>{info}</MetricInfo> : null}
+            </div>
+            {scope ? <ScopeBadges scope={scope} /> : null}
           </div>
           <p
             className="text-heading mt-1 text-5xl font-semibold tracking-tight sm:text-6xl"

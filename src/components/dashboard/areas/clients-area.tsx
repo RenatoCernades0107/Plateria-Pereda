@@ -6,6 +6,7 @@ import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import { regionName, seriesPoints } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -28,7 +29,15 @@ const KIND_COLORS: Record<string, string> = {
   empresa: "bg-viz-2",
 };
 
-export async function ClientsArea({ range }: { range: DashboardRange }) {
+export async function ClientsArea({
+  range,
+  today,
+}: {
+  range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
+}) {
+  const scope = dashboardScopes(range, today);
   const clients = await dashboardClients(range);
   const bucket = bucketFor(range);
   const points = seriesPoints(clients.series, bucket);
@@ -46,6 +55,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
       <KpiGrid>
         <KpiTile
           testId="kpi-clientes-activos"
+          scope={scope.hoy}
           icon={Users}
           label="Clientes registrados"
           value={formatCount(clients.total_active)}
@@ -53,6 +63,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-clientes-nuevos"
+          scope={scope.periodo}
           icon={UserPlus}
           label="Clientes nuevos"
           value={formatCount(clients.new_clients)}
@@ -60,6 +71,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-clientes-con-guias"
+          scope={scope.periodo}
           info={METRIC_HELP.clientesConGuias}
           icon={UsersRound}
           label="Clientes con guías"
@@ -68,6 +80,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-recompra"
+          scope={scope.periodo}
           info={METRIC_HELP.recompra}
           icon={Repeat}
           label="Recompra"
@@ -82,6 +95,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
           description={`Altas ${BUCKET_LABELS[bucket]}`}
           className="lg:col-span-2"
           testId="grafico-clientes-nuevos"
+          scope={scope.periodo}
         >
           <TimeSeriesChart
             data={points}
@@ -101,6 +115,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
           title="Quiénes son los nuevos"
           description="Personas y empresas"
           testId="panel-tipo-cliente"
+          scope={scope.periodo}
         >
           {kindSegments.length === 0 ? (
             <PanelEmpty />
@@ -115,6 +130,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
           title="Mejores clientes"
           description="Por monto aprobado en el periodo"
           testId="panel-mejores-clientes"
+          scope={scope.periodo}
         >
           {clients.top_clients.length === 0 ? (
             <PanelEmpty />
@@ -135,6 +151,7 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
           title="Ventas por región"
           description="Según la región del cliente"
           testId="panel-regiones"
+          scope={scope.periodo}
         >
           {clients.regions.length === 0 ? (
             <PanelEmpty />
@@ -154,8 +171,9 @@ export async function ClientsArea({ range }: { range: DashboardRange }) {
 
       <Panel
         title="Clientes con saldo por cobrar"
-        description="Foto de hoy: lo aprobado menos lo pagado"
+        description="Lo aprobado menos lo pagado"
         testId="panel-deudores"
+        scope={scope.hoy}
       >
         {clients.top_debtors.length === 0 ? (
           <PanelEmpty>Nadie tiene saldo pendiente.</PanelEmpty>

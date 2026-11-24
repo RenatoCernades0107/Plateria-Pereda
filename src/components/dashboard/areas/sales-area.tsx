@@ -1,17 +1,27 @@
-import { Banknote, CircleDollarSign, Receipt, Wallet } from "lucide-react";
+import {
+  Banknote,
+  CircleDollarSign,
+  PackageCheck,
+  Receipt,
+  ScrollText,
+  Wallet,
+} from "lucide-react";
 
 import { StackedBar, BarList, Meter } from "@/components/dashboard/bars";
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import {
   seriesPoints,
   sparkValues,
   topWithOthers,
+  withCountHint,
 } from "@/domain/dashboard-charts";
 import {
   computeDelta,
+  formatCount,
   formatPercent,
   formatSolesWhole,
 } from "@/domain/dashboard-format";
@@ -20,7 +30,14 @@ import {
   bucketFor,
   type DashboardRange,
 } from "@/domain/dashboard-range";
-import { PAYMENT_TYPE_LABELS, type PaymentType } from "@/domain/money";
+import {
+  parsePieceBoardFilters,
+  pieceBoardHref,
+} from "@/domain/piece-board-filters";
+import {
+  parseRestorationFilters,
+  restorationFiltersHref,
+} from "@/domain/restoration-filters";
 import {
   RESTORATION_ORIGIN_LABELS,
   type RestorationOrigin,
@@ -37,11 +54,15 @@ const ORIGIN_COLORS: Record<string, string> = {
 
 export async function SalesArea({
   range,
+  today,
   canMargins,
 }: {
   range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
   canMargins: boolean;
 }) {
+  const scope = dashboardScopes(range, today);
   const [sales, { current, previous }] = await Promise.all([
     dashboardSales(range),
     dashboardSummaryWithPrevious(range),
@@ -56,26 +77,22 @@ export async function SalesArea({
       value: o.sold,
       color: ORIGIN_COLORS[o.key] ?? "bg-viz-4",
     }));
-  const paymentSegments = sales.by_payment_type
-    .filter((p) => p.value > 0)
-    .map((p, index) => ({
-      key: p.key,
-      label: PAYMENT_TYPE_LABELS[p.key as PaymentType] ?? p.key,
-      value: p.value,
-      color:
-        [
-          "bg-viz-seq-700",
-          "bg-viz-seq-500",
-          "bg-viz-seq-300",
-          "bg-viz-seq-200",
-        ][index] ?? "bg-viz-seq-200",
-    }));
+  const ready = sales.ready_to_collect;
+  // Las listas por cobrar llevan al listado ya filtrado (el de piezas no filtra por pago).
+  const readyPiecesHref = pieceBoardHref(parsePieceBoardFilters({}), {
+    ready: true,
+  });
+  const readyGuidesHref = restorationFiltersHref(parseRestorationFilters({}), {
+    status: ["parcialmente_lista", "lista"],
+    paymentStatus: ["pendiente", "parcial"],
+  });
 
   return (
     <>
       <KpiGrid>
         <KpiTile
           testId="kpi-vendido"
+          scope={scope.periodo}
           info={METRIC_HELP.vendido}
           icon={CircleDollarSign}
           label="Vendido"
@@ -86,6 +103,7 @@ export async function SalesArea({
         />
         <KpiTile
           testId="kpi-cobrado"
+          scope={scope.periodo}
           info={METRIC_HELP.cobrado}
           icon={Wallet}
           label="Cobrado"
@@ -96,6 +114,7 @@ export async function SalesArea({
         />
         <KpiTile
           testId="kpi-ticket"
+          scope={scope.periodo}
           info={METRIC_HELP.ticket}
           icon={Receipt}
           label="Ticket promedio"
@@ -103,35 +122,42 @@ export async function SalesArea({
           delta={computeDelta(current.ticket, previous.ticket)}
           hint={`${current.sold_orders} guías · ${current.sold_pieces} piezas`}
         />
-        {canMargins && sales.margin ? (
-          <KpiTile
-            testId="kpi-margen"
-            info={METRIC_HELP.margen}
-            icon={Banknote}
-            label="Margen estimado"
-            value={formatSolesWhole(sales.margin.margin)}
-            hint={
-              sales.margin.pieces_without_cost > 0
-                ? `${sales.margin.pieces_without_cost} piezas sin costo no cuentan`
-                : `Sobre ${formatSolesWhole(sales.margin.base)} vendidos`
-            }
-          />
-        ) : (
-          <KpiTile
-            testId="kpi-saldo"
-            info={METRIC_HELP.saldo}
-            icon={Banknote}
-            label="Saldo por cobrar hoy"
-            value={formatSolesWhole(current.balance_due)}
-            hint="Lo aprobado que aún no se cobra"
-          />
-        )}
+        <KpiTile
+          testId="kpi-saldo"
+          scope={scope.hoy}
+          info={METRIC_HELP.saldo}
+          icon={Banknote}
+          label="Saldo por cobrar hoy"
+          value={formatSolesWhole(current.balance_due)}
+          hint="Lo aprobado que aún no se cobra"
+        />
+        <KpiTile
+          testId="kpi-listas-piezas"
+          scope={scope.hoy}
+          info={METRIC_HELP.listasPiezasPorCobrar}
+          icon={PackageCheck}
+          label="Piezas listas por cobrar"
+          value={formatCount(ready.pieces)}
+          hint="Listas para entregar en guías con saldo"
+          href={readyPiecesHref}
+        />
+        <KpiTile
+          testId="kpi-listas-guias"
+          scope={scope.hoy}
+          info={METRIC_HELP.listasGuiasPorCobrar}
+          icon={ScrollText}
+          label="Guías listas por cobrar"
+          value={formatCount(ready.guides)}
+          hint={`${formatSolesWhole(ready.guides_balance)} por cobrar`}
+          href={readyGuidesHref}
+        />
       </KpiGrid>
 
       <Panel
         title="Vendido y cobrado"
         description={`Vendido por fecha de aprobación, cobrado por fecha de pago · ${BUCKET_LABELS[bucket]}`}
         testId="grafico-ventas"
+        scope={scope.periodo}
       >
         <TimeSeriesChart
           testId="grafico-vendido-cobrado"
@@ -160,6 +186,7 @@ export async function SalesArea({
           title="Cobranza"
           description="Cuánto de lo vendido ya se cobró"
           testId="panel-cobranza"
+          scope={scope.periodo}
           info={METRIC_HELP.cobranza}
         >
           <Meter
@@ -168,23 +195,13 @@ export async function SalesArea({
             label="Cobrado sobre vendido"
             caption={`${formatSolesWhole(sales.collected)} cobrados de ${formatSolesWhole(sales.sold)} vendidos`}
           />
-          {paymentSegments.length > 0 ? (
-            <div className="mt-6">
-              <p className="text-muted-foreground mb-3 text-xs font-medium">
-                Vendido según tipo de pago
-              </p>
-              <StackedBar
-                segments={paymentSegments}
-                format={formatSolesWhole}
-              />
-            </div>
-          ) : null}
         </Panel>
 
         <Panel
           title="Origen de lo vendido"
           description="Oficina frente a WhatsApp"
           testId="panel-origen"
+          scope={scope.periodo}
         >
           {originSegments.length === 0 ? (
             <PanelEmpty />
@@ -223,26 +240,36 @@ export async function SalesArea({
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel
           title="Cobrado por método"
-          description="Neto de reembolsos"
+          description="Neto de reembolsos, con la cantidad de pagos"
           testId="panel-metodos"
+          scope={scope.periodo}
+          info={METRIC_HELP.cobradoPorMetodo}
         >
           {sales.by_method.length === 0 ? (
             <PanelEmpty />
           ) : (
-            <BarList items={sales.by_method} format={formatSolesWhole} />
+            <BarList
+              items={withCountHint(sales.by_method, "pago", "pagos")}
+              format={formatSolesWhole}
+            />
           )}
         </Panel>
         <Panel
           title="Servicios más vendidos"
-          description="Si una pieza lleva varios, se reparte en partes iguales"
+          description="Si una pieza lleva varios, el monto se reparte en partes iguales"
           testId="panel-servicios"
+          scope={scope.periodo}
           info={METRIC_HELP.serviciosMasVendidos}
         >
           {sales.by_service.length === 0 ? (
             <PanelEmpty />
           ) : (
             <BarList
-              items={topWithOthers(sales.by_service, 8)}
+              items={withCountHint(
+                topWithOthers(sales.by_service, 8),
+                "pieza",
+                "piezas",
+              )}
               format={formatSolesWhole}
             />
           )}
@@ -250,13 +277,18 @@ export async function SalesArea({
         <Panel
           title="Materiales más vendidos"
           testId="panel-materiales"
+          scope={scope.periodo}
           info={METRIC_HELP.materialesMasVendidos}
         >
           {sales.by_material.length === 0 ? (
             <PanelEmpty />
           ) : (
             <BarList
-              items={topWithOthers(sales.by_material, 8)}
+              items={withCountHint(
+                topWithOthers(sales.by_material, 8),
+                "pieza",
+                "piezas",
+              )}
               format={formatSolesWhole}
             />
           )}
@@ -268,6 +300,7 @@ export async function SalesArea({
           title="Margen de lo vendido"
           description="Precio de venta menos el costo de servicio, solo de las piezas con costo registrado"
           testId="panel-margen"
+          scope={scope.periodo}
           info={METRIC_HELP.margen}
         >
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">

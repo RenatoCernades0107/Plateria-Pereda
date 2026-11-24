@@ -1,8 +1,10 @@
 import {
   Banknote,
+  BadgeCheck,
   CheckCircle2,
   Clock,
   Gem,
+  Hourglass,
   MessageCircle,
   Receipt,
   ScrollText,
@@ -16,6 +18,7 @@ import { KpiGrid, Panel } from "@/components/dashboard/panel";
 import { PendingCounts } from "@/components/dashboard/pending-counts";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import { seriesPoints, sparkValues } from "@/domain/dashboard-charts";
 import {
   computeDelta,
@@ -32,26 +35,41 @@ import {
   previousRange,
   type DashboardRange,
 } from "@/domain/dashboard-range";
+import {
+  parsePieceBoardFilters,
+  pieceBoardHref,
+} from "@/domain/piece-board-filters";
+import {
+  parseRestorationFilters,
+  restorationFiltersHref,
+} from "@/domain/restoration-filters";
 import { dashboardSummaryWithPrevious } from "@/server/dashboard-metrics";
 
 export async function SummaryArea({
   range,
+  today,
   canMargins,
 }: {
   range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
   canMargins: boolean;
 }) {
+  const scope = dashboardScopes(range, today);
   const { current, previous } = await dashboardSummaryWithPrevious(range);
   const bucket = bucketFor(range);
   const points = seriesPoints(current.series, bucket);
   const insights = summaryInsights(current, previous, bucket);
   const previousText = `vs ${formatRange(previousRange(range))}`;
+  const pieceBase = parsePieceBoardFilters({});
+  const restorationBase = parseRestorationFilters({});
 
   return (
     <>
       <HeroStat
         testId="kpi-vendido"
         info={METRIC_HELP.vendido}
+        scope={scope.periodo}
         label="Vendido en el periodo"
         value={formatSolesWhole(current.sold)}
         delta={computeDelta(current.sold, previous.sold)}
@@ -98,6 +116,7 @@ export async function SummaryArea({
       <KpiGrid>
         <KpiTile
           testId="kpi-cobrado"
+          scope={scope.periodo}
           info={METRIC_HELP.cobrado}
           icon={Wallet}
           label="Cobrado"
@@ -112,6 +131,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-saldo"
+          scope={scope.hoy}
           info={METRIC_HELP.saldo}
           icon={Clock}
           label="Saldo por cobrar hoy"
@@ -120,6 +140,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-ticket"
+          scope={scope.periodo}
           info={METRIC_HELP.ticket}
           icon={Receipt}
           label="Ticket promedio"
@@ -129,6 +150,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-guias"
+          scope={scope.periodo}
           icon={ScrollText}
           label="Guías registradas"
           value={formatCount(current.orders)}
@@ -137,6 +159,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-entregadas"
+          scope={scope.periodo}
           icon={CheckCircle2}
           label="Piezas entregadas"
           value={formatCount(current.delivered)}
@@ -144,6 +167,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-cumplimiento"
+          scope={scope.periodo}
           info={METRIC_HELP.cumplimiento}
           icon={Gem}
           label="Cumplimiento promedio"
@@ -161,6 +185,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-clientes-nuevos"
+          scope={scope.periodo}
           icon={Users}
           label="Clientes nuevos"
           value={formatCount(current.new_clients)}
@@ -168,6 +193,7 @@ export async function SummaryArea({
         />
         <KpiTile
           testId="kpi-conversion"
+          scope={scope.cohorte}
           info={METRIC_HELP.conversionWhatsapp}
           icon={MessageCircle}
           label="Conversión de WhatsApp"
@@ -180,9 +206,83 @@ export async function SummaryArea({
         />
       </KpiGrid>
 
+      <section
+        aria-labelledby="antes-y-despues-de-aprobar"
+        className="space-y-3"
+        data-testid="antes-y-despues-de-aprobar"
+      >
+        <div>
+          <h2
+            id="antes-y-despues-de-aprobar"
+            className="text-heading text-lg font-semibold tracking-tight"
+          >
+            Antes y después de aprobar
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            Las guías y piezas en curso. Toca una tarjeta para ver la lista.
+          </p>
+        </div>
+        <KpiGrid>
+          <KpiTile
+            testId="kpi-guias-antes"
+            scope={scope.hoy}
+            info={METRIC_HELP.guiasAntesAprobar}
+            icon={Hourglass}
+            label="Guías antes de aprobar"
+            value={formatCount(current.guides_before_approval)}
+            hint="Registradas, sin ninguna pieza aprobada"
+            href={restorationFiltersHref(restorationBase, {
+              status: ["registrada"],
+            })}
+          />
+          <KpiTile
+            testId="kpi-guias-aprobadas"
+            scope={scope.hoy}
+            info={METRIC_HELP.guiasAprobadas}
+            icon={BadgeCheck}
+            label="Guías aprobadas"
+            value={formatCount(current.guides_approved)}
+            hint="Con piezas aprobadas, aún en curso"
+            href={restorationFiltersHref(restorationBase, {
+              status: [
+                "parcialmente_aprobada",
+                "aprobada",
+                "parcialmente_lista",
+                "lista",
+              ],
+            })}
+          />
+          <KpiTile
+            testId="kpi-piezas-antes"
+            scope={scope.hoy}
+            info={METRIC_HELP.piezasAntesAprobar}
+            icon={Hourglass}
+            label="Piezas antes de aprobar"
+            value={formatCount(current.pieces_before_approval)}
+            hint="Registradas, en consulta o en espera del cliente"
+            href={pieceBoardHref(pieceBase, {
+              status: ["registrada", "en_consulta", "en_espera"],
+            })}
+          />
+          <KpiTile
+            testId="kpi-piezas-aprobadas"
+            scope={scope.hoy}
+            info={METRIC_HELP.piezasAprobadas}
+            icon={BadgeCheck}
+            label="Piezas aprobadas"
+            value={formatCount(current.pieces_approved)}
+            hint="Aprobadas u observadas, aún en curso"
+            href={pieceBoardHref(pieceBase, {
+              status: ["aprobada", "observada"],
+            })}
+          />
+        </KpiGrid>
+      </section>
+
       <Panel
         title="Vendido y cobrado"
         description={`Por fecha de aprobación y de pago, ${BUCKET_LABELS[bucket]}`}
+        scope={scope.periodo}
         testId="grafico-ventas"
       >
         <TimeSeriesChart
@@ -207,7 +307,7 @@ export async function SummaryArea({
         />
       </Panel>
 
-      <PendingCounts showMoney />
+      <PendingCounts showMoney scope={scope.hoy} />
     </>
   );
 }

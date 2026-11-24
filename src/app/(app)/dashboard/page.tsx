@@ -4,11 +4,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ClientsArea } from "@/components/dashboard/areas/clients-area";
+import { CorporativoArea } from "@/components/dashboard/areas/corporativo-area";
 import { OrdersArea } from "@/components/dashboard/areas/orders-area";
-import { QuotesArea } from "@/components/dashboard/areas/quotes-area";
 import { SalesArea } from "@/components/dashboard/areas/sales-area";
 import { SellersArea } from "@/components/dashboard/areas/sellers-area";
 import { SummaryArea } from "@/components/dashboard/areas/summary-area";
+import { WhatsappArea } from "@/components/dashboard/areas/whatsapp-area";
 import { WorkshopsArea } from "@/components/dashboard/areas/workshops-area";
 import { AreaSkeleton } from "@/components/dashboard/area-skeleton";
 import {
@@ -58,7 +59,7 @@ export default async function DashboardPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageHeader
           title="Dashboard"
-          description="Cómo va el negocio: ventas, pedidos, clientes, talleres y cotizaciones."
+          description="Cómo va el negocio: ventas, pedidos, clientes, talleres, WhatsApp y corporativo."
         />
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
@@ -91,18 +92,33 @@ export default async function DashboardPage({
       >
         <Suspense fallback={<AreaSkeleton />}>
           {area === "resumen" ? (
-            <SummaryArea range={range} canMargins={canMargins} />
+            <SummaryArea range={range} today={today} canMargins={canMargins} />
           ) : null}
           {area === "ventas" ? (
-            <SalesArea range={range} canMargins={canMargins} />
+            <SalesArea range={range} today={today} canMargins={canMargins} />
           ) : null}
-          {area === "pedidos" ? <OrdersArea range={range} /> : null}
-          {area === "clientes" ? <ClientsArea range={range} /> : null}
+          {area === "pedidos" ? (
+            <OrdersArea range={range} today={today} />
+          ) : null}
+          {area === "clientes" ? (
+            <ClientsArea range={range} today={today} />
+          ) : null}
           {area === "talleres" ? (
-            <WorkshopsArea range={range} canMargins={canMargins} />
+            <WorkshopsArea
+              range={range}
+              today={today}
+              canMargins={canMargins}
+            />
           ) : null}
-          {area === "vendedores" ? <SellersArea range={range} /> : null}
-          {area === "cotizaciones" ? <QuotesArea range={range} /> : null}
+          {area === "vendedores" ? (
+            <SellersArea range={range} today={today} />
+          ) : null}
+          {area === "whatsapp" ? (
+            <WhatsappArea range={range} today={today} />
+          ) : null}
+          {area === "corporativo" ? (
+            <CorporativoArea range={range} today={today} />
+          ) : null}
         </Suspense>
       </DashboardShell>
     </div>

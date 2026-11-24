@@ -10,6 +10,11 @@ const nullableNum = z.number().nullable();
 const day = z.string();
 const labelValue = z.object({ label: z.string(), value: num });
 const keyValue = z.object({ key: z.string(), value: num });
+/**
+ * Monto con la cantidad que lo explica (pagos, piezas). Antes de la migración de
+ * «listas por cobrar» la BD no enviaba `count`.
+ */
+const labelValueCount = labelValue.extend({ count: num.default(0) });
 
 export const summarySchema = z.object({
   from: day,
@@ -22,6 +27,12 @@ export const summarySchema = z.object({
   collected: num,
   refunds: num,
   balance_due: num,
+  // Fotos de hoy (no dependen del periodo). Antes de la migración de «listas por cobrar» la
+  // BD no las enviaba.
+  guides_before_approval: num.default(0),
+  guides_approved: num.default(0),
+  pieces_before_approval: num.default(0),
+  pieces_approved: num.default(0),
   orders: num,
   delivered: num,
   fulfillment_avg: nullableNum,
@@ -44,13 +55,16 @@ export const salesSchema = z.object({
   collected: num,
   collection_rate: nullableNum,
   series: z.array(z.object({ d: day, vendido: num, cobrado: num })),
-  by_method: z.array(labelValue),
+  by_method: z.array(labelValueCount),
   by_origin: z.array(
     z.object({ key: z.string(), sold: num, orders: num, ticket: num }),
   ),
-  by_payment_type: z.array(keyValue),
-  by_service: z.array(labelValue),
-  by_material: z.array(labelValue),
+  by_service: z.array(labelValueCount),
+  by_material: z.array(labelValueCount),
+  // Foto de hoy: lo listo para entregar que aún se debe.
+  ready_to_collect: z
+    .object({ pieces: num, guides: num, guides_balance: num })
+    .default({ pieces: 0, guides: 0, guides_balance: 0 }),
   margin: z
     .object({
       margin: num,
@@ -77,6 +91,8 @@ export const ordersSchema = z.object({
     approved: num,
     delivered: num,
     in_consultation: num,
+    // Antes de la migración de «listas por cobrar» la BD sumaba la espera en `in_consultation`.
+    waiting_client: num.default(0),
     rejected: num,
     no_fix: num,
     cancelled: num,

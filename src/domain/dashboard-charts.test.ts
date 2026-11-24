@@ -11,6 +11,7 @@ import {
   seriesPoints,
   sparkValues,
   topWithOthers,
+  withCountHint,
   withShare,
   workshopTone,
 } from "./dashboard-charts";
@@ -65,6 +66,35 @@ describe("topWithOthers", () => {
     expect(top).toHaveLength(3);
     expect(top[2]).toEqual({ label: "Otros", value: 15 });
   });
+  it("«Otros» también suma la cantidad cuando los elementos la traen", () => {
+    const counted = items.map((item, index) => ({ ...item, count: index + 1 }));
+    // Ordenados: b(2) c(3) d(4) a(1); la cola de 3 son d y a.
+    expect(topWithOthers(counted, 3)[2]).toEqual({
+      label: "Otros",
+      value: 15,
+      count: 5,
+    });
+    expect(topWithOthers(counted, 8)[0]).toMatchObject({
+      label: "b",
+      count: 2,
+    });
+  });
+});
+
+describe("withCountHint", () => {
+  it("pone la cantidad bajo la etiqueta, en singular o plural, y omite el cero", () => {
+    expect(
+      withCountHint(
+        [
+          { label: "Yape", value: 50, count: 1 },
+          { label: "Efectivo", value: 80, count: 3 },
+          { label: "Plin", value: 5, count: 0 },
+        ],
+        "pago",
+        "pagos",
+      ).map((i) => i.hint),
+    ).toEqual(["1 pago", "3 pagos", undefined]);
+  });
 });
 
 describe("withShare", () => {
@@ -104,16 +134,28 @@ describe("embudo", () => {
     approved: 6,
     delivered: 2,
     in_consultation: 1,
+    waiting_client: 2,
     rejected: 1,
     no_fix: 0,
     cancelled: 1,
     urgent: 3,
   };
   it("pasos con porcentaje sobre lo registrado", () => {
-    expect(funnelSteps(funnel).map((s) => [s.key, s.value, s.pct])).toEqual([
+    expect(
+      funnelSteps(funnel)
+        .filter((s) => s.kind !== "pending")
+        .map((s) => [s.key, s.value, s.pct]),
+    ).toEqual([
       ["registered", 8, 100],
       ["approved", 6, 75],
       ["delivered", 2, 25],
+    ]);
+  });
+  it("En consulta y En espera de respuesta del cliente son barras separadas, no etapas", () => {
+    const pending = funnelSteps(funnel).filter((s) => s.kind === "pending");
+    expect(pending.map((s) => [s.key, s.label, s.value, s.pct])).toEqual([
+      ["in_consultation", "En consulta", 1, 12.5],
+      ["waiting_client", "En espera de respuesta del cliente", 2, 25],
     ]);
   });
   it("sin piezas no hay porcentajes", () => {
@@ -125,7 +167,11 @@ describe("embudo", () => {
   });
   it("tasa de aprobación y pérdidas", () => {
     expect(approvalRate(funnel)).toBe(75);
-    expect(funnelLosses(funnel).map((l) => l.value)).toEqual([1, 1, 0, 1]);
+    expect(funnelLosses(funnel).map((l) => [l.key, l.value])).toEqual([
+      ["rejected", 1],
+      ["no_fix", 0],
+      ["cancelled", 1],
+    ]);
   });
 });
 

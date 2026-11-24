@@ -6,6 +6,7 @@ import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import {
   approvalRate,
   funnelLosses,
@@ -34,7 +35,15 @@ import { dashboardOrders } from "@/server/dashboard-metrics";
 const LOCATION_ORDER = ["por_whatsapp", "sin_enviar", "en_taller", "en_tienda"];
 const KIND_ORDER = ["normal", "interno", "observado"];
 
-export async function OrdersArea({ range }: { range: DashboardRange }) {
+export async function OrdersArea({
+  range,
+  today,
+}: {
+  range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
+}) {
+  const scope = dashboardScopes(range, today);
   const orders = await dashboardOrders(range);
   const bucket = bucketFor(range);
   const points = seriesPoints(orders.series, bucket);
@@ -67,6 +76,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
       <KpiGrid>
         <KpiTile
           testId="kpi-guias"
+          scope={scope.periodo}
           icon={ScrollText}
           label="Guías registradas"
           value={formatCount(orders.orders)}
@@ -78,6 +88,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-aprobacion"
+          scope={scope.cohorte}
           info={METRIC_HELP.aprobacion}
           icon={CheckCircle2}
           label="Piezas aprobadas"
@@ -86,6 +97,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cumplimiento"
+          scope={scope.periodo}
           info={METRIC_HELP.cumplimiento}
           icon={Timer}
           label="Cumplimiento promedio"
@@ -94,6 +106,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-en-curso"
+          scope={scope.hoy}
           info={METRIC_HELP.enCurso}
           icon={Layers}
           label="Piezas en curso hoy"
@@ -106,6 +119,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
         title="Guías y entregas"
         description={`Guías registradas y piezas entregadas · ${BUCKET_LABELS[bucket]}`}
         testId="grafico-actividad"
+        scope={scope.periodo}
       >
         <TimeSeriesChart
           testId="grafico-guias-entregas"
@@ -132,8 +146,9 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel
           title="Estado de las guías"
-          description="Guías registradas en el periodo, según su estado de hoy"
+          description="De las guías registradas en el periodo"
           testId="panel-estados"
+          scope={scope.cohorte}
         >
           {statusSegments.length === 0 ? (
             <PanelEmpty />
@@ -157,13 +172,16 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
 
         <Panel
           title="Camino de las piezas"
-          description="Piezas registradas en el periodo: cuántas se aprueban y se entregan"
+          description="De las piezas registradas en el periodo: cuántas se aprueban y se entregan"
           testId="panel-embudo"
+          scope={scope.cohorte}
+          info={METRIC_HELP.caminoPiezas}
         >
           {orders.funnel.registered === 0 ? (
             <PanelEmpty />
           ) : (
             <Funnel
+              testId="embudo"
               steps={funnelSteps(orders.funnel)}
               losses={funnelLosses(orders.funnel)}
             />
@@ -179,8 +197,9 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel
           title="Piezas en curso por ubicación"
-          description="Foto de hoy, sin importar el periodo"
+          description="Dónde está cada pieza sin entregar ni anular"
           testId="panel-ubicacion"
+          scope={scope.hoy}
         >
           {locations.length === 0 ? (
             <PanelEmpty>No hay piezas en curso.</PanelEmpty>
@@ -200,6 +219,7 @@ export async function OrdersArea({ range }: { range: DashboardRange }) {
           description="Días desde que se registra la pieza hasta que se entrega"
           icon={Gauge}
           testId="panel-cumplimiento"
+          scope={scope.periodo}
         >
           {orders.fulfillment.delivered === 0 ? (
             <PanelEmpty>No hubo entregas en el periodo.</PanelEmpty>

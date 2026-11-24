@@ -125,6 +125,85 @@ test.describe("Dashboard", () => {
     await expect(page.getByTestId("pendiente-urgentes")).toBeVisible();
   });
 
+  test("el resumen separa lo aprobado de lo que aún está por aprobar (foto de hoy)", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    await page.goto(`/dashboard?${RANGE}`);
+    const group = page.getByTestId("antes-y-despues-de-aprobar");
+    await expect(group).toBeVisible();
+    // La guía R2 (admin) sigue Registrada con su pieza sin aprobar; R1 ya está aprobada.
+    for (const key of [
+      "kpi-guias-antes",
+      "kpi-guias-aprobadas",
+      "kpi-piezas-antes",
+      "kpi-piezas-aprobadas",
+    ]) {
+      await expect(page.getByTestId(`${key}-valor`)).toHaveText(/\d/);
+    }
+    await expect(
+      page.getByTestId("kpi-guias-antes").getByRole("link"),
+    ).toHaveAttribute("href", /\/restauraciones\?estado=registrada/);
+    await expect(
+      page.getByTestId("kpi-piezas-antes").getByRole("link"),
+    ).toHaveAttribute("href", /estado=en_consulta/);
+  });
+
+  test("cada cifra y gráfico dice qué tiempo toma: periodo, hoy o estado actual", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    await page.goto(`/dashboard?${RANGE}`);
+    await expect(page.getByTestId("rango-leyenda")).toBeVisible();
+    const scopeOf = (testId: string) =>
+      page.getByTestId(testId).getByTestId("scope");
+
+    // Por fecha de evento dentro del rango (cerrado: no dice «hasta hoy»).
+    for (const id of ["kpi-cobrado", "kpi-vendido", "grafico-ventas"]) {
+      await expect(scopeOf(id)).toHaveAttribute("data-scope", "periodo");
+      await expect(scopeOf(id)).toContainText("1 mar – 31 mar 2024");
+      await expect(scopeOf(id)).not.toContainText("hasta hoy");
+    }
+    // Foto de hoy: no depende del rango elegido.
+    for (const id of ["kpi-saldo", "kpi-guias-antes", "requiere-atencion"]) {
+      await expect(scopeOf(id).first()).toHaveAttribute("data-scope", "hoy");
+      await expect(scopeOf(id).first()).toContainText("Al día de hoy");
+      await expect(scopeOf(id).first()).not.toContainText("2024");
+    }
+    // Registrado en el rango, con el estado de hoy.
+    await expect(scopeOf("kpi-conversion")).toHaveAttribute(
+      "data-scope",
+      "cohorte",
+    );
+    await expect(scopeOf("kpi-conversion")).toContainText("estado actual");
+
+    await page.goto(`/dashboard?area=pedidos&${RANGE}`);
+    await expect(scopeOf("panel-estados")).toHaveAttribute(
+      "data-scope",
+      "cohorte",
+    );
+    await expect(scopeOf("panel-embudo")).toHaveAttribute(
+      "data-scope",
+      "cohorte",
+    );
+    await expect(scopeOf("panel-ubicacion")).toHaveAttribute(
+      "data-scope",
+      "hoy",
+    );
+    await expect(scopeOf("kpi-en-curso")).toHaveAttribute("data-scope", "hoy");
+    await expect(scopeOf("panel-cumplimiento")).toHaveAttribute(
+      "data-scope",
+      "periodo",
+    );
+
+    // Un atajo que termina hoy lo dice.
+    await page.goto("/dashboard?area=ventas&rango=7d");
+    await expect(scopeOf("kpi-cobrado")).toContainText("hasta hoy");
+    await expect(scopeOf("kpi-saldo")).not.toContainText("hasta hoy");
+  });
+
   test("cambiar el rango actualiza las métricas y la URL", async ({
     page,
     loginAs,
@@ -140,6 +219,10 @@ test.describe("Dashboard", () => {
     );
     await expect(page.getByTestId("kpi-vendido-valor")).toHaveText("S/ 150");
     await expect(page.getByTestId("medidor-cobranza")).toContainText("67 %");
+    // «Vendido según tipo de pago» ya no está.
+    await expect(page.getByTestId("panel-cobranza")).not.toContainText(
+      "tipo de pago",
+    );
 
     await page.getByTestId("rango-hoy").click();
     await expect(page).toHaveURL(/rango=hoy/);
@@ -158,6 +241,10 @@ test.describe("Dashboard", () => {
     await page.goto(`/dashboard?area=ventas&${RANGE}`);
     await expect(page.getByTestId("panel-metodos")).toContainText("Efectivo");
     await expect(page.getByTestId("panel-metodos")).toContainText("S/ 100");
+    // Junto al monto, cuántos pagos fueron.
+    await expect(page.getByTestId("panel-metodos")).toContainText("1 pago");
+    await expect(page.getByTestId("panel-servicios")).toBeVisible();
+    await expect(page.getByTestId("panel-materiales")).toBeVisible();
     await expect(page.getByTestId("panel-margen")).toContainText("S/ 60");
     await page
       .getByTestId("grafico-vendido-cobrado")
@@ -166,6 +253,32 @@ test.describe("Dashboard", () => {
     const table = page.getByTestId("grafico-tabla");
     await expect(table).toContainText("S/ 100");
     await expect(table).toContainText("S/ 50");
+  });
+
+  test("ventas: las listas por cobrar reemplazan al margen y llevan a la lista filtrada", async ({
+    page,
+    loginAs,
+  }) => {
+    for (const role of ["admin", "ventas"] as const) {
+      await loginAs(role);
+      await page.goto(`/dashboard?area=ventas&${RANGE}`);
+      await expect(page.getByTestId("kpi-margen")).toHaveCount(0);
+      await expect(page.getByTestId("kpi-listas-piezas-valor")).toHaveText(
+        /\d/,
+      );
+      await expect(page.getByTestId("kpi-listas-guias-valor")).toHaveText(/\d/);
+      // Piezas: solo cantidad (sin monto); guías: cantidad y su saldo.
+      await expect(page.getByTestId("kpi-listas-piezas")).not.toContainText(
+        "S/",
+      );
+      await expect(page.getByTestId("kpi-listas-guias")).toContainText("S/");
+      await expect(
+        page.getByTestId("kpi-listas-piezas").getByRole("link"),
+      ).toHaveAttribute("href", /\/piezas\?.*listas=1/);
+      await expect(
+        page.getByTestId("kpi-listas-guias").getByRole("link"),
+      ).toHaveAttribute("href", /estado=lista.*pago=pendiente.*pago=parcial/);
+    }
   });
 
   test("clientes y pedidos muestran lo registrado", async ({
@@ -182,6 +295,11 @@ test.describe("Dashboard", () => {
     await expect(page.getByTestId("kpi-guias-valor")).toHaveText("2");
     await expect(page.getByTestId("panel-estados")).toBeVisible();
     await expect(page.getByTestId("panel-embudo")).toContainText("Registradas");
+    // En consulta y En espera del cliente son barras separadas.
+    await expect(page.getByTestId("panel-embudo")).toContainText("En consulta");
+    await expect(page.getByTestId("panel-embudo")).toContainText(
+      "En espera de respuesta del cliente",
+    );
   });
 
   test("el admin ve a todos los vendedores; ventas solo su desempeño y sin márgenes", async ({
@@ -235,7 +353,43 @@ test.describe("Dashboard", () => {
     );
     const csv = await response.text();
     expect(csv).toContain("Vendido (S/),150");
-    expect(csv).toContain("Efectivo,100");
+    expect(csv).toContain("Efectivo,100,1");
+    expect(csv).toContain("Método,Cobrado (S/),Pagos");
+    expect(csv).not.toContain("tipo de pago");
+  });
+
+  test("la pestaña vieja «cotizaciones» abre Whatsapp y Corporativo tiene su CSV", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs("admin");
+    await page.goto(`/dashboard?area=cotizaciones&${RANGE}`);
+    await expect(page.getByTestId("pestana-whatsapp")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(page.getByTestId("pestana-cotizaciones")).toHaveCount(0);
+    await expect(page.getByTestId("panel-cwa")).toBeVisible();
+    await expect(page.getByTestId("panel-origen")).toBeVisible();
+    await expect(page.getByTestId("panel-cot")).toHaveCount(0);
+
+    await page.goto(`/dashboard?area=corporativo&${RANGE}`);
+    await expect(page.getByTestId("pestana-corporativo")).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(page.getByTestId("kpi-cot")).toBeVisible();
+    await expect(page.getByTestId("panel-cot")).toBeVisible();
+    await expect(page.getByTestId("panel-cwa")).toHaveCount(0);
+
+    const response = await page.request.get(
+      "/api/dashboard/exportar?area=corporativo&desde=2024-03-01&hasta=2024-03-31",
+    );
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-disposition"]).toContain(
+      "dashboard-corporativo-2024-03-01_2024-03-31.csv",
+    );
+    expect(await response.text()).toContain("Dashboard · Corporativo");
   });
 
   test("sin sesión no se obtiene el CSV", async ({ request }) => {
@@ -267,7 +421,8 @@ test.describe("Dashboard", () => {
       "clientes",
       "talleres",
       "vendedores",
-      "cotizaciones",
+      "whatsapp",
+      "corporativo",
     ]) {
       await page.goto(`/dashboard?area=${area}&${RANGE}`);
       await expect(

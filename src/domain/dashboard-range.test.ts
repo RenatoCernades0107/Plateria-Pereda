@@ -77,6 +77,18 @@ describe("parseDashboardParams", () => {
     expect(range.preset).toBe("30d");
   });
 
+  it("la pestaña vieja «cotizaciones» cae en «whatsapp»; nombres heredados del objeto no valen", () => {
+    expect(parseDashboardParams({ area: "cotizaciones" }, TODAY).area).toBe(
+      "whatsapp",
+    );
+    expect(parseDashboardParams({ area: "corporativo" }, TODAY).area).toBe(
+      "corporativo",
+    );
+    expect(parseDashboardParams({ area: "constructor" }, TODAY).area).toBe(
+      "resumen",
+    );
+  });
+
   it("acepta un rango personalizado y lo ordena si viene invertido", () => {
     expect(
       parseDashboardParams(
