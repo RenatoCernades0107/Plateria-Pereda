@@ -143,7 +143,8 @@ select throws_ok(
   '42501', null, 'cómo se escribieron los precios no se cambia después de crear la cotización'
 );
 
--- 8. Duplicar conserva la casilla y cómo se escribieron los precios.
+-- 8. Duplicar conserva la casilla del IGV; la copia siempre usa precios con IGV incluido
+-- (también si la original es anterior: se copian los precios y el total sale de la regla nueva).
 insert into ids select 'sin', public.save_quote(
   null,
   '{"client_id":"00000000-0000-0000-0000-0000000066c1","apply_igv":false}',
@@ -155,10 +156,10 @@ insert into ids select 'antigua_dup', public.duplicate_quote((select id from ids
 select results_eq(
   $$ select n.name, q.apply_igv, q.prices_include_igv, q.total from public.quotes q join ids n on n.id = q.id
      where n.name in ('sin_dup', 'con_dup', 'antigua_dup') order by n.name $$,
-  $$ values ('antigua_dup', true, false, 283.20::numeric),
+  $$ values ('antigua_dup', true, true, 240.00::numeric),
             ('con_dup', true, true, 240.00::numeric),
             ('sin_dup', false, true, 300.00::numeric) $$,
-  'duplicar conserva la casilla del IGV, cómo se escribieron los precios y el total'
+  'duplicar conserva la casilla del IGV y la copia usa precios con IGV incluido'
 );
 
 -- 9. Emitida: ya no cambia, y emitir no cambia el total.

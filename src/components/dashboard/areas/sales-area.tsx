@@ -78,9 +78,9 @@ export async function SalesArea({
       color: ORIGIN_COLORS[o.key] ?? "bg-viz-4",
     }));
   const ready = sales.ready_to_collect;
-  // Las listas por cobrar llevan al listado ya filtrado (el de piezas no filtra por pago).
+  // Las listas por cobrar llevan al listado ya filtrado, con la misma cuenta de la tarjeta.
   const readyPiecesHref = pieceBoardHref(parsePieceBoardFilters({}), {
-    ready: true,
+    toCollect: true,
   });
   const readyGuidesHref = restorationFiltersHref(parseRestorationFilters({}), {
     status: ["parcialmente_lista", "lista"],

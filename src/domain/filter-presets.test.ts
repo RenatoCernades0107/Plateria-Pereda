@@ -88,6 +88,29 @@ describe("filtros de un clic (K12)", () => {
     ]);
   });
 
+  it("piezas: 'Listas por cobrar' solo se ofrece a quien ve los montos", () => {
+    const base = parsePieceBoardFilters({ q: "fuente" });
+    expect(pieceFilterChips(base).map((c) => c.key)).not.toContain(
+      "pago-listas",
+    );
+    expect(pieceChipCountFilters(base).map((c) => c.key)).not.toContain(
+      "pago-listas",
+    );
+    const chips = pieceFilterChips(base, undefined, { showMoney: true });
+    const chip = chips.find((c) => c.key === "pago-listas")!;
+    expect(chip).toMatchObject({
+      label: "Listas por cobrar",
+      active: false,
+      href: "/piezas?q=fuente&porcobrar=1",
+    });
+    const active = pieceFilterChips(
+      parsePieceBoardFilters({ porcobrar: "1" }),
+      undefined,
+      { showMoney: true },
+    ).find((c) => c.key === "pago-listas")!;
+    expect(active).toMatchObject({ active: true, href: "/piezas" });
+  });
+
   it("cada chip se cuenta con los filtros actuales y el chip encendido", () => {
     const filters = parsePieceBoardFilters({ q: "fuente", pagina: "2" });
     const sets = pieceChipCountFilters({ ...filters, urgent: true });

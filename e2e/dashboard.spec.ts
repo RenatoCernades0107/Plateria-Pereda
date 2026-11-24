@@ -274,7 +274,7 @@ test.describe("Dashboard", () => {
       await expect(page.getByTestId("kpi-listas-guias")).toContainText("S/");
       await expect(
         page.getByTestId("kpi-listas-piezas").getByRole("link"),
-      ).toHaveAttribute("href", /\/piezas\?.*listas=1/);
+      ).toHaveAttribute("href", /\/piezas\?.*porcobrar=1/);
       await expect(
         page.getByTestId("kpi-listas-guias").getByRole("link"),
       ).toHaveAttribute("href", /estado=lista.*pago=pendiente.*pago=parcial/);

@@ -94,6 +94,11 @@ export type PieceBoardFilters = {
    * arreglo que siguen en la tienda (por devolver).
    */
   ready: boolean;
+  /**
+   * "Listas por cobrar": listas para entregar cuya guía aún debe dinero (pago pendiente o
+   * parcial). Solo la ven y la aplican quienes ven los montos.
+   */
+  toCollect: boolean;
   /** Falta asignar (`[]` = sin filtro): sin precio y/o sin costo de servicio. */
   missing: PieceMissing[];
   /** Por guía: la más reciente primero y sus piezas en orden. */
@@ -129,6 +134,7 @@ export function parsePieceBoardFilters(
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
     urgent: first(params.urgentes) === "1",
     ready: first(params.listas) === "1",
+    toCollect: first(params.porcobrar) === "1",
     missing: manyOf(PIECE_MISSING, params.falta),
     sort: oneOf(PIECE_BOARD_SORTS, first(params.orden)) ?? "guia",
     dir: first(params.dir) === "asc" ? "asc" : "desc",
@@ -152,6 +158,7 @@ export function pieceBoardHref(
   if (next.minDays) params.set("dias", String(next.minDays));
   if (next.urgent) params.set("urgentes", "1");
   if (next.ready) params.set("listas", "1");
+  if (next.toCollect) params.set("porcobrar", "1");
   appendAll(params, "falta", next.missing);
   if (next.sort !== "guia") params.set("orden", next.sort);
   if (next.dir !== "desc") params.set("dir", next.dir);
@@ -175,6 +182,7 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
     p_min_workshop_days: filters.minDays ?? undefined,
     p_urgent: filters.urgent || undefined,
     p_ready: filters.ready || undefined,
+    p_to_collect: filters.toCollect || undefined,
     p_missing: filters.missing.length ? filters.missing : undefined,
     p_sort: filters.sort,
     p_dir: filters.dir,
