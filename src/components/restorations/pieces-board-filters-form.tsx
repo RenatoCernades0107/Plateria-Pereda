@@ -20,12 +20,15 @@ import {
   BOARD_STATUSES,
   NO_WORKSHOP,
   parsePieceBoardFilters,
+  PIECE_MISSING,
+  PIECE_MISSING_LABELS,
   pieceBoardHref,
   PIECE_BOARD_SORT_LABELS,
   PIECE_BOARD_SORTS,
   type PieceBoardFilters,
   type PieceBoardSort,
 } from "@/domain/piece-board-filters";
+import { cn } from "@/lib/utils";
 import { PIECE_STATUS_LABELS } from "@/domain/piece-state-machine";
 import { PIECE_LOCATION_LABELS } from "@/domain/restoration-status";
 
@@ -42,6 +45,7 @@ export function PiecesBoardFiltersForm({
   workshops,
   showClient = true,
   showPrice = true,
+  showCost = true,
 }: {
   filters: PieceBoardFilters;
   workshops: { id: string; name: string }[];
@@ -49,6 +53,8 @@ export function PiecesBoardFiltersForm({
   showClient?: boolean;
   /** Sin ver el precio de venta, no se ordena por él. */
   showPrice?: boolean;
+  /** Sin ver el costo de servicio (solo admin y logística), no se filtra por él. */
+  showCost?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -59,11 +65,20 @@ export function PiecesBoardFiltersForm({
     update(patch, { debounce: true });
   const sorts = PIECE_BOARD_SORTS.filter((s) => showPrice || s !== "precio");
   const ascending = state.dir === "asc";
+  // "Falta asignar": cada opción solo para quien ve ese dato.
+  const missingOptions = PIECE_MISSING.filter((m) =>
+    m === "precio" ? showPrice : showCost,
+  ).map((m) => ({ value: m, label: PIECE_MISSING_LABELS[m] }));
 
   return (
     <form
       aria-label="Filtros de piezas"
-      className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(4,minmax(0,1fr))_auto]"
+      className={cn(
+        "grid gap-3 sm:grid-cols-2",
+        missingOptions.length
+          ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(5,minmax(0,1fr))_auto]"
+          : "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.8fr)_repeat(4,minmax(0,1fr))_auto]",
+      )}
       onSubmit={submit}
     >
       <div className="space-y-1.5">
@@ -133,6 +148,16 @@ export function PiecesBoardFiltersForm({
           })
         }
       />
+      {missingOptions.length ? (
+        <FilterMulti
+          id="filtro-falta"
+          label="Falta asignar"
+          allLabel="Cualquiera"
+          value={state.missing}
+          options={missingOptions}
+          onChange={(missing) => set({ missing })}
+        />
+      ) : null}
       <div className="space-y-1.5">
         <Label htmlFor="filtro-orden">Ordenar por</Label>
         <div className="flex gap-1">

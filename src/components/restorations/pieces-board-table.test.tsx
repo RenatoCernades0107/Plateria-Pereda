@@ -250,6 +250,44 @@ describe("PiecesBoardTable", () => {
     expect(setPieceServiceCost).toHaveBeenCalledWith("p2", "45");
   });
 
+  it("costo y precio llevan el mismo formato en todas las vistas: recuadro con etiqueta y botón de definir", () => {
+    render(
+      <PiecesBoardTable
+        role="admin"
+        workshops={[]}
+        pieces={[{ ...base, serviceCostCents: null, priceCents: null }]}
+      />,
+    );
+    const row = screen.getByTestId("pieza-RES-00001-1");
+    // Etiquetas visibles (sin `md:hidden`): "Te cuesta" y "Lo vendes en".
+    const cost = within(row).getByText("Te cuesta");
+    const sale = within(row).getByText("Lo vendes en");
+    expect(cost.className).not.toContain("md:hidden");
+    expect(sale.className).not.toContain("md:hidden");
+    // El recuadro de color es un div interno (el borde de un td no se redondea).
+    expect(cost.parentElement?.className).toContain("border-amber-500/40");
+    expect(cost.parentElement?.className).not.toContain("max-md:");
+    expect(sale.parentElement?.className).toContain("border-emerald-500/40");
+    // El botón "+ Definir …" no es solo del celular.
+    const defineCost = screen.getByRole("button", {
+      name: "Editar costo de servicio de RES-00001-1",
+    });
+    expect(defineCost).toHaveTextContent("Definir costo");
+    expect(defineCost.className).not.toContain("max-md:");
+    expect(
+      screen.getByRole("button", {
+        name: "Editar precio de venta de RES-00001-1",
+      }),
+    ).toHaveTextContent("Definir precio");
+    // Los encabezados que ordenan siguen en la tabla.
+    expect(
+      screen.getByRole("columnheader", { name: "Costo servicio" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Precio venta" }),
+    ).toBeInTheDocument();
+  });
+
   it("no guarda un costo de servicio inválido", async () => {
     const { setPieceServiceCost } =
       await import("@/server/service-cost-actions");

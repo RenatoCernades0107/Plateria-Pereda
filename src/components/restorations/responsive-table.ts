@@ -18,15 +18,18 @@ export const RT = {
   labeled:
     "max-md:before:text-muted-foreground max-md:before:mb-1 max-md:before:block max-md:before:text-xs max-md:before:content-[attr(data-label)]",
   /**
-   * Bloque de dinero en el celular: costo (ámbar, sale) y precio (verde, entra) como
-   * mosaicos de color, lado a lado, para no confundirlos. Desde `md` son celdas normales.
+   * Bloque de dinero (celular y escritorio): costo (ámbar, sale) y precio (verde,
+   * entra) como mosaicos de color para no confundirlos. En el celular la celda es el
+   * mosaico (lado a lado con su par); el recuadro de color (`moneyBox`) va en un `div`
+   * interno, porque con `border-collapse` el borde de un `td` no se dibuja redondeado.
    */
-  moneyTile:
-    "max-md:min-w-[calc(50%-0.625rem)] max-md:flex-1 max-md:rounded-md max-md:border max-md:p-2 max-md:[&>div]:justify-start max-md:[&_span.inline-flex]:items-start",
+  moneyTile: "max-md:min-w-[calc(50%-0.625rem)] max-md:flex-1 md:min-w-40",
+  moneyBox:
+    "rounded-md border p-2 [&>div]:justify-start [&_span.inline-flex]:items-start",
   moneyCost:
-    "max-md:border-amber-500/40 max-md:bg-amber-500/10 max-md:text-amber-950 dark:max-md:text-amber-100",
+    "border-amber-500/40 bg-amber-500/10 text-amber-950 dark:text-amber-100",
   moneySale:
-    "max-md:border-emerald-500/40 max-md:bg-emerald-500/10 max-md:text-emerald-950 dark:max-md:text-emerald-100",
+    "border-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100",
   /** Ocupa todo el ancho de la tarjeta en el celular. */
   full: "max-md:basis-full",
   headTint: HEAD_TINT,
