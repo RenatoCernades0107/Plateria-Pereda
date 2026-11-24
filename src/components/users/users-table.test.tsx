@@ -15,6 +15,7 @@ vi.mock("@/server/users-actions", () => ({
   setUserPassword: vi.fn(),
   setUserActive: vi.fn(),
   updateUserRole: vi.fn(),
+  updateUserName: vi.fn(),
 }));
 vi.mock("sonner", () => ({
   toast: { success: mocks.success, error: mocks.error },

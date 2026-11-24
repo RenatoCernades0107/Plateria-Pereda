@@ -59,6 +59,7 @@ const {
   deleteUser,
   setUserActive,
   setUserPassword,
+  updateUserName,
   updateUserRole,
 } = await import("./users-actions");
 
@@ -216,6 +217,35 @@ describe("acciones de usuarios", () => {
       expect(
         await setUserActive("00000000-0000-4000-8000-000000000020", false),
       ).toEqual(esperado);
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("updateUserName", () => {
+    const id = "00000000-0000-4000-8000-000000000008";
+
+    it("rechaza a quien no es admin", async () => {
+      mocks.forbidden = true;
+      await expect(updateUserName(id, { fullName: "Nora" })).rejects.toThrow(
+        "FORBIDDEN",
+      );
+      expect(mocks.update).not.toHaveBeenCalled();
+    });
+
+    it("guarda el nombre sin espacios sobrantes", async () => {
+      expect(await updateUserName(id, { fullName: "  Nora Pérez " })).toEqual({
+        ok: true,
+      });
+      expect(mocks.update).toHaveBeenCalledWith(
+        { full_name: "Nora Pérez" },
+        id,
+      );
+    });
+
+    it("rechaza un nombre muy corto sin llamar a Supabase", async () => {
+      expect(await updateUserName(id, { fullName: " a " })).toEqual({
+        error: "Revisa el nombre ingresado.",
+      });
       expect(mocks.update).not.toHaveBeenCalled();
     });
   });
