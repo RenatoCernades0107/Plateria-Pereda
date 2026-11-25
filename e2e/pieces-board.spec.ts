@@ -440,6 +440,8 @@ test.describe("Vista de piezas", () => {
     await loginAs("ventas");
     await page.goto(`/piezas?q=${tag}&falta=costo`);
     await expect(page.getByText("4 piezas · Página 1 de 1")).toBeVisible();
+    // El `falta=costo` se descarta, así que "Más filtros" no se abre solo.
+    await page.getByRole("button", { name: "Más filtros" }).click();
     await page.getByLabel("Falta asignar").click();
     await expect(
       page.getByRole("option", { name: "Sin precio" }),
