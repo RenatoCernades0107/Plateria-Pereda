@@ -2,6 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { MetricInfo } from "@/components/dashboard/metric-info";
+import { ScopeBadges } from "@/components/dashboard/scope-badge";
+import type { DashboardScope } from "@/domain/dashboard-scope";
 import { cn } from "@/lib/utils";
 
 /** Tarjeta de un gráfico o tabla: título, subtítulo y (a la derecha) una acción. */
@@ -10,6 +12,7 @@ export function Panel({
   description,
   icon: Icon,
   info,
+  scope,
   action,
   children,
   className,
@@ -20,6 +23,11 @@ export function Panel({
   icon?: LucideIcon;
   /** Explicación de cómo se calcula lo que muestra el panel (botón ⓘ junto al título). */
   info?: ReactNode;
+  /**
+   * Qué tiempo toma el panel: el periodo (con «hasta hoy»), la foto de hoy o lo registrado
+   * en el periodo con su estado actual. Una tabla que mezcla varios pasa una lista.
+   */
+  scope?: DashboardScope | readonly DashboardScope[];
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -35,12 +43,17 @@ export function Panel({
       )}
     >
       <header className="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 space-y-0.5">
-          <h3 className="text-heading flex items-center gap-2 font-semibold">
-            {Icon ? <Icon aria-hidden className="text-primary size-4" /> : null}
-            {title}
-            {info ? <MetricInfo label={title}>{info}</MetricInfo> : null}
-          </h3>
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <h3 className="text-heading flex items-center gap-2 font-semibold">
+              {Icon ? (
+                <Icon aria-hidden className="text-primary size-4" />
+              ) : null}
+              {title}
+              {info ? <MetricInfo label={title}>{info}</MetricInfo> : null}
+            </h3>
+            {scope ? <ScopeBadges scope={scope} /> : null}
+          </div>
           {description ? (
             <p className="text-muted-foreground text-xs">{description}</p>
           ) : null}

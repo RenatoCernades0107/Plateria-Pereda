@@ -44,9 +44,9 @@ type SaveResult = { error: string } | { ok: true } | object;
 export const EMPTY_VALUE_BUTTON_CLASS =
   "text-muted-foreground hover:text-foreground border-dashed font-normal print:hidden";
 
-/** Botón de ancho completo en el celular, con el tono del mosaico que lo contiene. */
-const MOBILE_FILL_BUTTON_CLASS =
-  "max-md:h-9 max-md:w-full max-md:border-dashed max-md:border-current/40 max-md:bg-transparent max-md:text-sm max-md:font-normal max-md:text-current max-md:hover:bg-current/10 max-md:pointer-coarse:size-auto max-md:pointer-coarse:h-9 max-md:pointer-coarse:w-full";
+/** Botón de ancho completo (celular y escritorio), con el tono del mosaico que lo contiene. */
+const FILL_BUTTON_CLASS =
+  "h-9 w-full border-dashed border-current/40 bg-transparent text-sm font-normal text-current hover:bg-current/10 pointer-coarse:size-auto pointer-coarse:h-9 pointer-coarse:w-full";
 
 /**
  * Monto con un botón de lápiz que abre un diálogo para cambiarlo (pedido del
@@ -85,8 +85,8 @@ function MoneyEditCell({
   /** Sin monto, el botón muestra este texto (p. ej. "Definir precio") en vez del lápiz. */
   emptyActionText?: string;
   /**
-   * Sin monto, en el celular el lápiz pasa a ser un botón de ancho completo con este
-   * texto (p. ej. "Definir costo"); desde `md` sigue el "Por definir" y el lápiz.
+   * Sin monto, el lápiz pasa a ser un botón de ancho completo con este texto (p. ej.
+   * "Definir costo"), igual en el celular y en escritorio.
    */
   mobileFill?: string;
   /** Monto que se muestra si no es el que se edita (p. ej. el importe × cantidad). */
@@ -125,16 +125,11 @@ function MoneyEditCell({
       className={cn(
         "flex items-center gap-1 whitespace-nowrap",
         align === "end" ? "justify-end" : "justify-start",
-        fillOnMobile && "max-md:w-full",
+        fillOnMobile && "w-full",
       )}
     >
       {emptyAction ? null : cents === null ? (
-        <span
-          className={cn(
-            "text-muted-foreground",
-            fillOnMobile && "max-md:hidden",
-          )}
-        >
+        <span className={cn("text-muted-foreground", fillOnMobile && "hidden")}>
           {emptyText}
         </span>
       ) : (
@@ -173,16 +168,16 @@ function MoneyEditCell({
               variant="outline"
               className={cn(
                 "size-7 print:hidden pointer-coarse:size-10",
-                fillOnMobile && MOBILE_FILL_BUTTON_CLASS,
+                fillOnMobile && FILL_BUTTON_CLASS,
               )}
               aria-label={buttonLabel}
               title={buttonTitle}
             >
               <Pencil
-                className={cn(EDIT_ICON_CLASS, fillOnMobile && "max-md:hidden")}
+                className={cn(EDIT_ICON_CLASS, fillOnMobile && "hidden")}
               />
               {fillOnMobile ? (
-                <span className="inline-flex items-center gap-1 md:hidden">
+                <span className="inline-flex items-center gap-1">
                   <Plus aria-hidden className="size-3.5" />
                   {mobileFill}
                 </span>
@@ -240,7 +235,7 @@ export function ServiceCostCell({
   piece: MoneyPiece;
   /** Costo de la pieza completa (no se multiplica por la cantidad). */
   cents: Cents | null;
-  /** Texto del botón de ancho completo en el celular cuando falta el costo. */
+  /** Texto del botón de ancho completo cuando falta el costo. */
   mobileFill?: string;
   /** Con más de una unidad, debajo va el costo por unidad (solo referencia). */
   quantity?: number;
@@ -393,7 +388,7 @@ export function SalePriceCell({
   mobileFill,
 }: {
   piece: MoneyPiece;
-  /** Texto del botón de ancho completo en el celular cuando falta el precio. */
+  /** Texto del botón de ancho completo cuando falta el precio. */
   mobileFill?: string;
   /** Precio por unidad (lo que se edita). */
   cents: Cents | null;

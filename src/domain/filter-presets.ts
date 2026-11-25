@@ -65,6 +65,15 @@ export const PIECE_PRESETS: readonly Preset<PieceBoardFilters>[] = [
     isActive: (f) => f.ready,
   },
   {
+    // Las de pago solo para quien ve los montos (como los chips de pago de las guías).
+    key: "pago-listas",
+    tone: "attention",
+    label: "Listas por cobrar",
+    on: { toCollect: true },
+    off: { toCollect: false },
+    isActive: (f) => f.toCollect,
+  },
+  {
     key: "taller",
     label: `En taller ${WORKSHOP_DAYS_ALERT}+ días`,
     tone: "alert",
@@ -170,13 +179,22 @@ function countFilters<F extends { page: number }>(
   }));
 }
 
+/** `showMoney`: el chip de pago solo para quien ve los montos. */
+const piecePresets = (showMoney: boolean) =>
+  showMoney
+    ? PIECE_PRESETS
+    : PIECE_PRESETS.filter((p) => !p.key.startsWith("pago"));
+
 export const pieceFilterChips = (
   filters: PieceBoardFilters,
   counts?: ChipCounts,
-) => chips(PIECE_PRESETS, filters, pieceBoardHref, counts);
+  { showMoney = false }: { showMoney?: boolean } = {},
+) => chips(piecePresets(showMoney), filters, pieceBoardHref, counts);
 
-export const pieceChipCountFilters = (filters: PieceBoardFilters) =>
-  countFilters(PIECE_PRESETS, filters);
+export const pieceChipCountFilters = (
+  filters: PieceBoardFilters,
+  { showMoney = false }: { showMoney?: boolean } = {},
+) => countFilters(piecePresets(showMoney), filters);
 
 /** `showMoney`: los chips de pago solo para quien ve los montos. */
 const restorationPresets = (showMoney: boolean) =>

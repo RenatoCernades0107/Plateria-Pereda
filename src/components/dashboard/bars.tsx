@@ -155,8 +155,48 @@ export function StackedBar({
 }
 
 const FUNNEL_TONES = ["bg-viz-seq-300", "bg-viz-seq-500", "bg-viz-seq-700"];
+/** Lo que aún no se decidió va en gris: no es una etapa del camino. */
+const PENDING_TONE = "bg-muted-foreground/45";
 
-/** Embudo de piezas: cada paso es una barra proporcional a lo registrado. */
+function FunnelBar({
+  step,
+  top,
+  tone,
+  showPct,
+}: {
+  step: FunnelStep;
+  top: number;
+  tone: string;
+  showPct: boolean;
+}) {
+  return (
+    <li>
+      <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
+        <span className="text-foreground">{step.label}</span>
+        <span className="text-heading font-semibold tabular-nums">
+          {step.value}
+          {showPct ? (
+            <span className="text-muted-foreground ml-2 text-xs font-normal">
+              {formatPercent(step.pct, 0)}
+            </span>
+          ) : null}
+        </span>
+      </div>
+      <div className="bg-viz-track h-5 overflow-hidden rounded-md" aria-hidden>
+        <div
+          className={cn("h-full rounded-r-[4px]", tone)}
+          style={{ width: `${barWidth(step.value, top)}%` }}
+        />
+      </div>
+    </li>
+  );
+}
+
+/**
+ * Embudo de piezas: cada paso es una barra proporcional a lo registrado. Los pasos
+ * `pending` (en consulta, en espera del cliente) no son etapas del camino: van aparte,
+ * cada uno en su propia barra y en gris.
+ */
 export function Funnel({
   steps,
   losses,
@@ -167,37 +207,42 @@ export function Funnel({
   testId?: string;
 }) {
   const top = steps[0]?.value ?? 0;
+  const path = steps.filter((step) => step.kind !== "pending");
+  const pending = steps.filter((step) => step.kind === "pending");
   return (
     <div data-testid={testId}>
       <ol className="space-y-3">
-        {steps.map((step, index) => (
-          <li key={step.key}>
-            <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-              <span className="text-foreground">{step.label}</span>
-              <span className="text-heading font-semibold tabular-nums">
-                {step.value}
-                {index > 0 ? (
-                  <span className="text-muted-foreground ml-2 text-xs font-normal">
-                    {formatPercent(step.pct, 0)}
-                  </span>
-                ) : null}
-              </span>
-            </div>
-            <div
-              className="bg-viz-track h-5 overflow-hidden rounded-md"
-              aria-hidden
-            >
-              <div
-                className={cn(
-                  "h-full rounded-r-[4px]",
-                  FUNNEL_TONES[index] ?? FUNNEL_TONES[2],
-                )}
-                style={{ width: `${barWidth(step.value, top)}%` }}
-              />
-            </div>
-          </li>
+        {path.map((step, index) => (
+          <FunnelBar
+            key={step.key}
+            step={step}
+            top={top}
+            tone={FUNNEL_TONES[index] ?? FUNNEL_TONES[2]!}
+            showPct={index > 0}
+          />
         ))}
       </ol>
+      {pending.length > 0 ? (
+        <div
+          className="mt-5"
+          data-testid={testId ? `${testId}-pendientes` : undefined}
+        >
+          <p className="text-muted-foreground mb-3 text-xs font-medium">
+            Sin decidir todavía
+          </p>
+          <ul className="space-y-3">
+            {pending.map((step) => (
+              <FunnelBar
+                key={step.key}
+                step={step}
+                top={top}
+                tone={PENDING_TONE}
+                showPct
+              />
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {losses && losses.some((l) => l.value > 0) ? (
         <ul className="mt-4 flex flex-wrap gap-2">
           {losses

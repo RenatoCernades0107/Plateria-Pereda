@@ -60,7 +60,8 @@ export async function dashboardCounts({
 
   const [pieces, restorations] = await Promise.all([
     Promise.all(
-      PIECE_PRESETS.map(async (p) => ({
+      // El chip de pago de las piezas ya es un KPI en Ventas: aquí no se repite.
+      PIECE_PRESETS.filter((p) => !p.key.startsWith("pago")).map(async (p) => ({
         key: p.key,
         label: p.label,
         count: await countPieces({ ...pieceBase, ...p.on }),

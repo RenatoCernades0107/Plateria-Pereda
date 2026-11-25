@@ -10,7 +10,6 @@ import type {
   DashboardSummary,
   DashboardWorkshops,
 } from "./dashboard-schemas";
-import { PAYMENT_TYPE_LABELS } from "./money";
 import {
   PIECE_LOCATION_LABELS,
   RESTORATION_KIND_LABELS,
@@ -98,6 +97,10 @@ export function summaryCsv(
           ? [kpi("Margen estimado (S/)", current.margin, previous.margin)]
           : []),
         ["Saldo por cobrar hoy (S/)", current.balance_due, "", ""],
+        ["Guías antes de aprobar hoy", current.guides_before_approval, "", ""],
+        ["Guías aprobadas hoy", current.guides_approved, "", ""],
+        ["Piezas antes de aprobar hoy", current.pieces_before_approval, "", ""],
+        ["Piezas aprobadas hoy", current.pieces_approved, "", ""],
       ],
     },
     {
@@ -109,8 +112,9 @@ export function summaryCsv(
 }
 
 export function salesCsv(data: DashboardSales, period: string): string {
-  const pairs = (items: { label: string; value: number }[]): Cell[][] =>
-    items.map((i) => [i.label, i.value]);
+  const pairs = (
+    items: { label: string; value: number; count: number }[],
+  ): Cell[][] => items.map((i) => [i.label, i.value, i.count]);
   return csvDocument("Dashboard · Ventas", period, [
     {
       title: "Resumen",
@@ -119,6 +123,12 @@ export function salesCsv(data: DashboardSales, period: string): string {
         ["Vendido (S/)", data.sold],
         ["Cobrado (S/)", data.collected],
         ["Cobrado sobre vendido (%)", data.collection_rate],
+        ["Piezas listas por cobrar (hoy)", data.ready_to_collect.pieces],
+        ["Guías listas por cobrar (hoy)", data.ready_to_collect.guides],
+        [
+          "Saldo de las guías listas por cobrar (hoy) (S/)",
+          data.ready_to_collect.guides_balance,
+        ],
         ...(data.margin
           ? ([
               ["Margen (S/)", data.margin.margin],
@@ -135,7 +145,7 @@ export function salesCsv(data: DashboardSales, period: string): string {
     },
     {
       title: "Cobrado por método",
-      header: ["Método", "Cobrado (S/)"],
+      header: ["Método", "Cobrado (S/)", "Pagos"],
       rows: pairs(data.by_method),
     },
     {
@@ -149,21 +159,13 @@ export function salesCsv(data: DashboardSales, period: string): string {
       ]),
     },
     {
-      title: "Vendido por tipo de pago",
-      header: ["Tipo de pago", "Vendido (S/)"],
-      rows: data.by_payment_type.map((p) => [
-        label(PAYMENT_TYPE_LABELS, p.key),
-        p.value,
-      ]),
-    },
-    {
       title: "Vendido por servicio",
-      header: ["Servicio", "Vendido (S/)"],
+      header: ["Servicio", "Vendido (S/)", "Piezas"],
       rows: pairs(data.by_service),
     },
     {
       title: "Vendido por material",
-      header: ["Material", "Vendido (S/)"],
+      header: ["Material", "Vendido (S/)", "Piezas"],
       rows: pairs(data.by_material),
     },
   ]);
@@ -211,7 +213,8 @@ export function ordersCsv(data: DashboardOrders, period: string): string {
         ["Registradas", data.funnel.registered],
         ["Aprobadas", data.funnel.approved],
         ["Entregadas", data.funnel.delivered],
-        ["En consulta o espera", data.funnel.in_consultation],
+        ["En consulta", data.funnel.in_consultation],
+        ["En espera de respuesta del cliente", data.funnel.waiting_client],
         ["Rechazadas", data.funnel.rejected],
         ["Sin arreglo", data.funnel.no_fix],
         ["Anuladas", data.funnel.cancelled],
@@ -376,9 +379,9 @@ export function sellersCsv(data: DashboardSellers, period: string): string {
   );
 }
 
-export function quotesCsv(data: DashboardQuotes, period: string): string {
-  const { cwa, cot } = data;
-  return csvDocument("Dashboard · Cotizaciones", period, [
+export function whatsappCsv(data: DashboardQuotes, period: string): string {
+  const { cwa } = data;
+  return csvDocument("Dashboard · Whatsapp", period, [
     {
       title: "Cotizaciones de WhatsApp",
       header: ["Indicador", "Valor"],
@@ -407,6 +410,22 @@ export function quotesCsv(data: DashboardQuotes, period: string): string {
       rows: data.discard_reasons.map((r) => [r.label, r.value]),
     },
     {
+      title: "Oficina frente a WhatsApp",
+      header: ["Origen", "Guías", "Vendido (S/)", "Ticket (S/)"],
+      rows: data.by_origin.map((o) => [
+        label(RESTORATION_ORIGIN_LABELS, o.key),
+        o.orders,
+        o.sold,
+        o.ticket,
+      ]),
+    },
+  ]);
+}
+
+export function corporativoCsv(data: DashboardQuotes, period: string): string {
+  const { cot } = data;
+  return csvDocument("Dashboard · Corporativo", period, [
+    {
       title: "Cotizador (COT)",
       header: ["Indicador", "Valor"],
       rows: [
@@ -423,16 +442,6 @@ export function quotesCsv(data: DashboardQuotes, period: string): string {
         ["Monto emitido (S/)", cot.amount],
         ["Monto aceptado (S/)", cot.accepted_amount],
       ],
-    },
-    {
-      title: "Oficina frente a WhatsApp",
-      header: ["Origen", "Guías", "Vendido (S/)", "Ticket (S/)"],
-      rows: data.by_origin.map((o) => [
-        label(RESTORATION_ORIGIN_LABELS, o.key),
-        o.orders,
-        o.sold,
-        o.ticket,
-      ]),
     },
   ]);
 }

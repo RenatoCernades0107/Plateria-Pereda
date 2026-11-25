@@ -27,7 +27,7 @@ import { WorkshopBar } from "./quotes-list";
 function Code({ quote }: { quote: TrackingQuoteItem }) {
   return (
     <Link
-      href={`/cotizaciones/${quote.id}`}
+      href={`/corporativo/${quote.id}`}
       data-primary-link
       className="text-heading font-medium underline-offset-4 hover:underline"
     >

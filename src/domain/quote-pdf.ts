@@ -80,8 +80,10 @@ export type QuotePdfData = {
   /** Teléfono (E.164) del contacto o del cliente; null si no tiene (no se muestra). */
   phone: string | null;
   lines: QuotePdfLine[];
-  /** Suma el IGV (18 %) a subtotal − descuentos (casilla del formulario). */
+  /** La cotización lleva IGV (18 %): se suma o se desglosa (casilla del formulario). */
   applyIgv: boolean;
+  /** Los precios de las líneas incluyen el IGV (las nuevas); false en las anteriores. */
+  pricesIncludeIgv: boolean;
   /** Detalles para el cliente (campo "Notas"). */
   notes: string;
   /** Forma de pago, cuentas bancarias, etc. (campo "Condiciones"). */
@@ -140,12 +142,17 @@ export type QuotePdfModel = {
   /** "+51 987 654 321"; null si no hay teléfono. */
   phone: string | null;
   rows: QuotePdfRow[];
+  /** Encabezados de las columnas de precio: con IGV incluido ya no dicen "sin IGV". */
+  unitPriceHeader: string;
+  lineTotalHeader: string;
+  /** "Sub Total:" ("Sub Total sin IGV:" cuando el IGV se desglosa del precio). */
+  subtotalLabel: string;
   subtotal: string;
   /** Null sin descuentos (no se muestra la fila). */
   discount: string | null;
-  /** Null si la cotización no suma IGV (no se muestra la fila). */
+  /** Null si la cotización no lleva IGV (no se muestra la fila). */
   igv: string | null;
-  /** Lo que paga el cliente (con IGV si se suma). */
+  /** Lo que paga el cliente (con IGV). */
   total: string;
   /** "Son:", el total en letras. */
   amountInWords: string;
@@ -173,7 +180,8 @@ export class QuotePdfMissingIssuerError extends Error {
 
 export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
   if (!data.issuer) throw new QuotePdfMissingIssuerError();
-  const totals = quoteTotals(data.lines, data.applyIgv);
+  const totals = quoteTotals(data.lines, data.applyIgv, data.pricesIncludeIgv);
+  const igvIncluded = data.applyIgv && data.pricesIncludeIgv;
   const rows: QuotePdfRow[] = data.lines.map((line) => ({
     image: line.image,
     sku: line.sku ?? "",
@@ -198,6 +206,20 @@ export function quotePdfModel(data: QuotePdfData): QuotePdfModel {
     contactName: data.contactName,
     phone: data.phone ? formatPhone(data.phone) : null,
     rows,
+    // Precios con IGV incluido y desglosado: las columnas van con IGV y el subtotal se
+    // muestra sin IGV. Sin desglose (casilla desmarcada) no se nombra el IGV. Las
+    // cotizaciones anteriores conservan "sin IGV" en las columnas.
+    unitPriceHeader: igvIncluded
+      ? "Precio inc. IGV"
+      : data.pricesIncludeIgv
+        ? "Precio"
+        : "Precio sin IGV",
+    lineTotalHeader: igvIncluded
+      ? "Total inc. IGV"
+      : data.pricesIncludeIgv
+        ? "Total"
+        : "total (sin IGV)",
+    subtotalLabel: igvIncluded ? "Sub Total sin IGV:" : "Sub Total:",
     subtotal: formatCents(totals.subtotal),
     discount: totals.discount > 0 ? formatCents(totals.discount) : null,
     igv: data.applyIgv ? formatCents(totals.igv) : null,

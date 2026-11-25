@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   clientsCsv,
+  corporativoCsv,
   csvDocument,
   dashboardCsvFilename,
   ordersCsv,
-  quotesCsv,
   salesCsv,
   sellersCsv,
   summaryCsv,
+  whatsappCsv,
   workshopsCsv,
 } from "./dashboard-csv";
 import type {
@@ -139,6 +140,10 @@ describe("CSV de cada pestaña", () => {
     collected: 100,
     refunds: 10,
     balance_due: 40,
+    guides_before_approval: 2,
+    guides_approved: 5,
+    pieces_before_approval: 3,
+    pieces_approved: 9,
     orders: 3,
     delivered: 1,
     fulfillment_avg: 5,
@@ -157,6 +162,10 @@ describe("CSV de cada pestaña", () => {
     expect(csv).toContain("Vendido (S/),300,200,50");
     expect(csv).toContain("Margen estimado (S/),120,80,50");
     expect(csv).toContain("Saldo por cobrar hoy (S/),40,,");
+    expect(csv).toContain("Guías antes de aprobar hoy,2,,");
+    expect(csv).toContain("Guías aprobadas hoy,5,,");
+    expect(csv).toContain("Piezas antes de aprobar hoy,3,,");
+    expect(csv).toContain("Piezas aprobadas hoy,9,,");
     expect(csv).toContain("2026-10-01,300,100,3");
     expect(summaryCsv(summary(0, null), summary(0, null), "p")).not.toContain(
       "Margen",
@@ -172,11 +181,11 @@ describe("CSV de cada pestaña", () => {
       collected: 100,
       collection_rate: 33.3,
       series: [{ d: "2026-10-01", vendido: 300, cobrado: 100 }],
-      by_method: [{ label: "Yape", value: 100 }],
+      by_method: [{ label: "Yape", value: 100, count: 4 }],
       by_origin: [{ key: "whatsapp", sold: 300, orders: 2, ticket: 150 }],
-      by_payment_type: [{ key: "a_cuenta", value: 300 }],
-      by_service: [{ label: "Pulido", value: 300 }],
-      by_material: [{ label: "Plata", value: 300 }],
+      by_service: [{ label: "Pulido", value: 300, count: 5 }],
+      by_material: [{ label: "Plata", value: 300, count: 2 }],
+      ready_to_collect: { pieces: 3, guides: 2, guides_balance: 120.5 },
       margin: {
         margin: 100,
         base: 200,
@@ -187,7 +196,17 @@ describe("CSV de cada pestaña", () => {
     };
     const csv = salesCsv(data, "p");
     expect(csv).toContain("WhatsApp,300,2,150");
-    expect(csv).toContain("A cuenta,300");
+    expect(csv).toContain("Método,Cobrado (S/),Pagos");
+    expect(csv).toContain("Yape,100,4");
+    expect(csv).toContain("Servicio,Vendido (S/),Piezas");
+    expect(csv).toContain("Pulido,300,5");
+    expect(csv).toContain("Plata,300,2");
+    expect(csv).toContain("Piezas listas por cobrar (hoy),3");
+    expect(csv).toContain("Guías listas por cobrar (hoy),2");
+    expect(csv).toContain(
+      "Saldo de las guías listas por cobrar (hoy) (S/),120.5",
+    );
+    expect(csv).not.toContain("tipo de pago");
     expect(csv).toContain("Margen (S/),100");
     expect(salesCsv({ ...data, margin: null }, "p")).not.toContain("Margen");
   });
@@ -207,6 +226,7 @@ describe("CSV de cada pestaña", () => {
         approved: 2,
         delivered: 1,
         in_consultation: 1,
+        waiting_client: 2,
         rejected: 0,
         no_fix: 0,
         cancelled: 0,
@@ -225,6 +245,9 @@ describe("CSV de cada pestaña", () => {
     expect(csv).toContain("Parcialmente lista,2");
     expect(csv).toContain("Interna,1");
     expect(csv).toContain("En taller,4");
+    expect(csv).toContain("En consulta,1");
+    expect(csv).toContain("En espera de respuesta del cliente,2");
+    expect(csv).not.toContain("En consulta o espera");
     expect(csv).toContain("Urgentes,1");
     expect(csv).toContain("4–7 días,1");
   });
@@ -261,7 +284,7 @@ describe("CSV de cada pestaña", () => {
     expect(csv).toContain("Recompra (%),25");
   });
 
-  it("cotizaciones: WhatsApp, motivos, cotizador y origen", () => {
+  it("whatsapp y corporativo: cada pestaña con lo suyo", () => {
     const data: DashboardQuotes = {
       from: "a",
       to: "b",
@@ -297,10 +320,17 @@ describe("CSV de cada pestaña", () => {
       by_origin: [{ key: "oficina", orders: 2, sold: 100, ticket: 50 }],
       series: [{ d: "2026-10-01", cotizadas: 3, pedidas: 1 }],
     };
-    const csv = quotesCsv(data, "p");
-    expect(csv).toContain("Conversión (%),33.3");
-    expect(csv).toContain("muy caro,1");
-    expect(csv).toContain("Aceptación (%),50");
-    expect(csv).toContain("Oficina,2,100,50");
+    const whatsapp = whatsappCsv(data, "p");
+    expect(whatsapp).toContain("Dashboard · Whatsapp");
+    expect(whatsapp).toContain("Conversión (%),33.3");
+    expect(whatsapp).toContain("muy caro,1");
+    expect(whatsapp).toContain("Oficina,2,100,50");
+    expect(whatsapp).not.toContain("Aceptación");
+    const corporativo = corporativoCsv(data, "p");
+    expect(corporativo).toContain("Dashboard · Corporativo");
+    expect(corporativo).toContain("Aceptación (%),50");
+    expect(corporativo).toContain("Monto emitido (S/),100");
+    expect(corporativo).not.toContain("Conversión");
+    expect(corporativo).not.toContain("Oficina");
   });
 });

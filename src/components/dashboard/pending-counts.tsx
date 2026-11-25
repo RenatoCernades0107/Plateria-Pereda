@@ -2,6 +2,8 @@ import { ArrowRight, ClipboardList, Gem } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ScopeBadge } from "@/components/dashboard/scope-badge";
+import type { DashboardScope } from "@/domain/dashboard-scope";
 import { dashboardCounts, type DashboardCount } from "@/server/dashboard";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +70,14 @@ function CountGroup({
 }
 
 /** «Requiere atención»: pendientes de hoy con enlace al listado filtrado (S13). */
-export async function PendingCounts({ showMoney }: { showMoney: boolean }) {
+export async function PendingCounts({
+  showMoney,
+  scope,
+}: {
+  showMoney: boolean;
+  /** La etiqueta de tiempo del encabezado: son pendientes de hoy, sin importar el periodo. */
+  scope?: DashboardScope;
+}) {
   const { pieces, restorations } = await dashboardCounts({ showMoney });
   return (
     <section
@@ -77,14 +86,17 @@ export async function PendingCounts({ showMoney }: { showMoney: boolean }) {
       data-testid="requiere-atencion"
     >
       <div>
-        <h2
-          id="requiere-atencion"
-          className="text-heading text-lg font-semibold tracking-tight"
-        >
-          Requiere atención
-        </h2>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2
+            id="requiere-atencion"
+            className="text-heading text-lg font-semibold tracking-tight"
+          >
+            Requiere atención
+          </h2>
+          {scope ? <ScopeBadge scope={scope} /> : null}
+        </div>
         <p className="text-muted-foreground text-sm">
-          Lo que hay pendiente hoy. Toca un número para ver la lista.
+          Lo que hay pendiente. Toca un número para ver la lista.
         </p>
       </div>
       <CountGroup

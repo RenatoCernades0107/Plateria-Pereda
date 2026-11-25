@@ -82,6 +82,52 @@ describe("Funnel", () => {
   });
 });
 
+describe("Funnel con piezas sin decidir", () => {
+  it("En consulta y En espera van en barras propias, aparte de las etapas del camino", () => {
+    render(
+      <Funnel
+        testId="embudo"
+        steps={[
+          { key: "r", label: "Registradas", value: 10, pct: 100 },
+          { key: "a", label: "Aprobadas", value: 5, pct: 50 },
+          { key: "e", label: "Entregadas", value: 2, pct: 20 },
+          {
+            key: "c",
+            label: "En consulta",
+            value: 2,
+            pct: 20,
+            kind: "pending",
+          },
+          {
+            key: "w",
+            label: "En espera de respuesta del cliente",
+            value: 1,
+            pct: 10,
+            kind: "pending",
+          },
+        ]}
+      />,
+    );
+    const pending = within(screen.getByTestId("embudo-pendientes"));
+    expect(screen.getByText("Sin decidir todavía")).toBeInTheDocument();
+    const items = pending.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("En consulta");
+    expect(items[0]).toHaveTextContent("20 %");
+    expect(items[1]).toHaveTextContent("En espera de respuesta del cliente");
+    expect(items[1]).toHaveTextContent("10 %");
+    // Las barras son proporcionales a lo registrado, igual que las etapas.
+    const widths = [
+      ...document.querySelectorAll<HTMLElement>("div[style]"),
+    ].map((el) => el.style.width);
+    expect(widths).toEqual(["100%", "50%", "20%", "20%", "10%"]);
+    // Las etapas del camino no incluyen a las pendientes.
+    expect(
+      within(screen.getByTestId("embudo")).getAllByRole("list")[0],
+    ).not.toHaveTextContent("En consulta");
+  });
+});
+
 describe("Meter", () => {
   it("expone el valor como medidor accesible", () => {
     render(

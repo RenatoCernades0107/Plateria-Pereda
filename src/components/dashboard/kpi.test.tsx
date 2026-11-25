@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { computeDelta } from "@/domain/dashboard-format";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 
 import { DeltaBadge, HeroStat, KpiTile } from "./kpi";
 
@@ -68,6 +69,47 @@ describe("KpiTile", () => {
   });
 });
 
+const TODAY = "2026-11-24";
+const scopes = dashboardScopes({ from: "2026-11-01", to: TODAY }, TODAY);
+
+describe("KpiTile con alcance de tiempo", () => {
+  it("periodo: muestra el rango elegido y «hasta hoy»", () => {
+    render(<KpiTile label="Cobrado" value="S/ 1" scope={scopes.periodo} />);
+    const badge = screen.getByTestId("scope");
+    expect(badge).toHaveAttribute("data-scope", "periodo");
+    expect(badge).toHaveTextContent("1 nov – 24 nov 2026");
+    expect(badge).toHaveTextContent("hasta hoy");
+  });
+
+  it("hoy: «Al día de hoy», aunque el periodo sea otro", () => {
+    render(<KpiTile label="Saldo" value="S/ 1" scope={scopes.hoy} />);
+    expect(screen.getByTestId("scope")).toHaveAttribute("data-scope", "hoy");
+    expect(screen.getByTestId("scope")).toHaveTextContent("Al día de hoy");
+  });
+
+  it("cohorte: el rango con «estado actual»", () => {
+    render(<KpiTile label="Aprobación" value="50 %" scope={scopes.cohorte} />);
+    expect(screen.getByTestId("scope")).toHaveTextContent("estado actual");
+  });
+
+  it("con enlace, la etiqueta no se mete dentro del enlace", () => {
+    render(
+      <KpiTile
+        label="En taller"
+        value="3"
+        href="/piezas?ubicacion=en_taller"
+        scope={scopes.hoy}
+      />,
+    );
+    expect(screen.getByTestId("scope").closest("a")).toBeNull();
+  });
+
+  it("sin `scope` no dibuja etiqueta", () => {
+    render(<KpiTile label="Cobrado" value="S/ 1" />);
+    expect(screen.queryByTestId("scope")).toBeNull();
+  });
+});
+
 describe("KpiTile con información", () => {
   it("el botón ⓘ abre la explicación y no queda dentro del enlace", async () => {
     render(
@@ -108,5 +150,18 @@ describe("HeroStat", () => {
     expect(screen.getByTestId("hero-valor")).toHaveTextContent("S/ 17,715");
     expect(screen.getByText("vs 29 ago – 27 sep")).toBeInTheDocument();
     expect(screen.getByText("Una frase")).toBeInTheDocument();
+  });
+
+  it("muestra el periodo que toma la cifra junto a la etiqueta", () => {
+    render(
+      <HeroStat
+        label="Vendido en el periodo"
+        value="S/ 1"
+        scope={scopes.periodo}
+      />,
+    );
+    expect(screen.getByTestId("scope")).toHaveTextContent(
+      "1 nov – 24 nov 2026",
+    );
   });
 });

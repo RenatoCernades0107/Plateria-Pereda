@@ -48,7 +48,7 @@ function Client({ quote }: { quote: QuoteListItem }) {
 function Code({ quote }: { quote: QuoteListItem }) {
   return (
     <Link
-      href={`/cotizaciones/${quote.id}`}
+      href={`/corporativo/${quote.id}`}
       data-primary-link
       className="text-heading font-medium underline-offset-4 hover:underline"
     >

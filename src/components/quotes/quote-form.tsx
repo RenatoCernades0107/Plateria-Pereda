@@ -59,8 +59,16 @@ export type QuoteFormValues = {
   issuerId: string | null;
   /** Tiempo de entrega en días hábiles (texto del input). */
   deliveryDays: string;
-  /** "Sumar IGV (18 %)": los precios de las líneas no lo incluyen. */
+  /**
+   * Con precios con IGV incluido (`pricesIncludeIgv`): "Los precios incluyen IGV (18 %)",
+   * que muestra el desglose. En las cotizaciones anteriores (precios sin IGV): "Sumar IGV".
+   */
   applyIgv: boolean;
+  /**
+   * Cómo se escribieron los precios: con IGV (las nuevas) o sin él (las anteriores a
+   * 2026-11-24, que conservan su cálculo). Lo fija la cotización al crearse.
+   */
+  pricesIncludeIgv: boolean;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -80,6 +88,7 @@ function toInput(values: QuoteFormValues): QuoteFormInput {
     deliveryDays: values.deliveryDays,
     issuerId: values.issuerId,
     applyIgv: values.applyIgv,
+    pricesIncludeIgv: values.pricesIncludeIgv,
     notes: values.notes,
     terms: values.terms,
     lines: values.lines,
@@ -167,7 +176,7 @@ function ClientSummary({ client }: { client: ClientOption }) {
 
 /**
  * Formulario de la cotización: cliente (o contacto de una empresa), líneas con
- * totales en vivo (con la casilla "Sumar IGV", marcada por defecto), vigencia, condición de pago, tiempo de entrega, notas y
+ * totales en vivo (con la casilla del IGV, marcada por defecto), vigencia, condición de pago, tiempo de entrega, notas y
  * condiciones. Guarda el borrador y lo emite.
  * Si la cotización ya se emitió se muestra sin edición.
  */
@@ -196,7 +205,13 @@ export function QuoteForm({
   const [action, setAction] = useState<"save" | "issue" | null>(null);
   const [savingIssuer, startIssuerTransition] = useTransition();
 
-  const totals = quoteTotals(values.lines.map(draftAmounts), values.applyIgv);
+  const totals = quoteTotals(
+    values.lines.map(draftAmounts),
+    values.applyIgv,
+    values.pricesIncludeIgv,
+  );
+  // Con IGV incluido el subtotal se muestra sin IGV (precio ÷ 1.18).
+  const igvBreakdown = values.applyIgv && values.pricesIncludeIgv;
   const days = Number(values.validityDays);
   const validDays = /^\d{1,3}$/.test(values.validityDays) && days >= 1;
 
@@ -227,7 +242,7 @@ export function QuoteForm({
         const issued = await changeQuoteStatus(saved.id, "emitida");
         if ("error" in issued) {
           toast.error(issued.error);
-          router.push(`/cotizaciones/${saved.id}`);
+          router.push(`/corporativo/${saved.id}`);
           return;
         }
         toast.success("Cotización emitida.");
@@ -235,7 +250,7 @@ export function QuoteForm({
         toast.success("Borrador guardado.");
       }
       if (quoteId) router.refresh();
-      else router.push(`/cotizaciones/${saved.id}`);
+      else router.push(`/corporativo/${saved.id}`);
     });
   };
 
@@ -365,11 +380,13 @@ export function QuoteForm({
               disabled={readOnly}
               onChange={(e) => set({ applyIgv: e.target.checked })}
             />
-            Sumar IGV ({QUOTE_IGV_PERCENT} %)
+            {values.pricesIncludeIgv
+              ? `Los precios incluyen IGV (${QUOTE_IGV_PERCENT} %)`
+              : `Sumar IGV (${QUOTE_IGV_PERCENT} %)`}
           </label>
           <dl className="space-y-1">
             <TotalRow
-              label="Subtotal"
+              label={igvBreakdown ? "Subtotal sin IGV" : "Subtotal"}
               value={formatCents(totals.subtotal)}
               testId="subtotal"
             />

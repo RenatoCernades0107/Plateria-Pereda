@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import {
   formatCount,
   formatPercent,
@@ -24,7 +25,15 @@ import { dashboardSellers } from "@/server/dashboard-metrics";
  * Vendedores (el que creó la guía). El admin ve el ranking de todos; ventas solo su propia
  * fila, como «Mi desempeño» (D78): la BD ya devuelve únicamente lo que corresponde.
  */
-export async function SellersArea({ range }: { range: DashboardRange }) {
+export async function SellersArea({
+  range,
+  today,
+}: {
+  range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
+}) {
+  const scope = dashboardScopes(range, today);
   const data = await dashboardSellers(range);
   const own = data.scope === "propio";
   const rows = data.sellers;
@@ -37,6 +46,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
           <>
             <KpiTile
               testId="kpi-vendido"
+              scope={scope.periodo}
               info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Vendido por mí"
@@ -45,6 +55,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-cobrado"
+              scope={scope.periodo}
               info={METRIC_HELP.vendedor}
               icon={Users}
               label="Cobrado de mis guías"
@@ -52,6 +63,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-guias"
+              scope={scope.periodo}
               icon={Users}
               label="Guías registradas"
               value={formatCount(top?.orders ?? 0)}
@@ -59,6 +71,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-aprobacion"
+              scope={scope.cohorte}
               icon={Percent}
               label="Piezas aprobadas"
               value={formatPercent(top?.approval_rate ?? null, 0)}
@@ -69,12 +82,14 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
           <>
             <KpiTile
               testId="kpi-vendedores"
+              scope={scope.periodo}
               icon={Users}
               label="Vendedores con actividad"
               value={formatCount(rows.length)}
             />
             <KpiTile
               testId="kpi-mejor-vendedor"
+              scope={scope.periodo}
               icon={Trophy}
               label="Mejor del periodo"
               value={top && top.sold > 0 ? top.name : "—"}
@@ -86,6 +101,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-vendido"
+              scope={scope.periodo}
               info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Vendido por el equipo"
@@ -93,6 +109,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
             />
             <KpiTile
               testId="kpi-cobrado"
+              scope={scope.periodo}
               info={METRIC_HELP.vendedor}
               icon={CircleDollarSign}
               label="Cobrado por el equipo"
@@ -109,6 +126,7 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
           title="Ranking de ventas"
           description="Monto aprobado de las guías que creó cada vendedor"
           testId="panel-ranking"
+          scope={scope.periodo}
         >
           {rows.length === 0 ? (
             <PanelEmpty />
@@ -128,8 +146,9 @@ export async function SellersArea({ range }: { range: DashboardRange }) {
 
       <Panel
         title={own ? "Mi desempeño" : "Detalle por vendedor"}
-        description="Guías creadas, ventas, cobros y cotizaciones de WhatsApp"
+        description="Guías, ventas y cobros del periodo; «Aprobación» y «WhatsApp» cuentan lo registrado en el periodo con su estado de hoy"
         testId="tabla-vendedores"
+        scope={[scope.periodo, scope.cohorte]}
       >
         {rows.length === 0 ? (
           <PanelEmpty />

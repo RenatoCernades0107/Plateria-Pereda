@@ -178,6 +178,8 @@ export type QuoteDetail = {
   workLocation: QuoteWorkLocation | null;
   workshop: { id: string; name: string } | null;
   applyIgv: boolean;
+  /** Los precios de las líneas incluyen IGV (las cotizaciones nuevas); false en las anteriores. */
+  pricesIncludeIgv: boolean;
   issueDate: string | null;
   validUntil: string | null;
   notes: string;
@@ -277,6 +279,7 @@ export async function getQuote(id: string): Promise<QuoteDetail | null> {
       ? { id: q.workshops.id, name: q.workshops.name }
       : null,
     applyIgv: q.apply_igv,
+    pricesIncludeIgv: q.prices_include_igv,
     issueDate: q.issue_date,
     validUntil: q.valid_until,
     notes: q.notes,

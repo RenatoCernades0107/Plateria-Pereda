@@ -13,7 +13,8 @@ export const DASHBOARD_AREAS = [
   "clientes",
   "talleres",
   "vendedores",
-  "cotizaciones",
+  "whatsapp",
+  "corporativo",
 ] as const;
 export type DashboardArea = (typeof DASHBOARD_AREAS)[number];
 
@@ -24,7 +25,16 @@ export const DASHBOARD_AREA_LABELS: Record<DashboardArea, string> = {
   clientes: "Clientes",
   talleres: "Talleres",
   vendedores: "Vendedores",
-  cotizaciones: "Cotizaciones",
+  whatsapp: "Whatsapp",
+  corporativo: "Corporativo",
+};
+
+/**
+ * Pestañas que cambiaron de nombre: los enlaces y favoritos viejos siguen funcionando.
+ * «Cotizaciones» se partió en «Whatsapp» y «Corporativo» y se manda a la primera.
+ */
+export const LEGACY_AREA_ALIASES: Record<string, DashboardArea> = {
+  cotizaciones: "whatsapp",
 };
 
 export const RANGE_PRESETS = [
@@ -167,7 +177,11 @@ export function parseDashboardParams(
   today: string = limaDateOf(new Date()),
 ): DashboardParams {
   const areaParam = first(searchParams.area);
-  const area = isArea(areaParam) ? areaParam : "resumen";
+  const area = isArea(areaParam)
+    ? areaParam
+    : areaParam && Object.hasOwn(LEGACY_AREA_ALIASES, areaParam)
+      ? LEGACY_AREA_ALIASES[areaParam]!
+      : "resumen";
   const presetParam = first(searchParams.rango);
   const desde = first(searchParams.desde);
   const hasta = first(searchParams.hasta);

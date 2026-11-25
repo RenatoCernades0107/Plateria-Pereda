@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ScopeLegend } from "@/components/dashboard/scope-badge";
 import { Input } from "@/components/ui/input";
 import {
   dashboardHref,
@@ -188,6 +189,7 @@ export function DashboardShell({
             Comparado con {previousText}
           </span>
         </p>
+        <ScopeLegend />
       </div>
 
       <nav

@@ -35,11 +35,24 @@ export default async function PiezasPage({
   searchParams,
 }: PageProps<"/piezas">) {
   const user = await requirePermission("restauraciones.ver");
-  const filters = parsePieceBoardFilters(await searchParams);
   const showClient = can(user.role, "clientes.ver");
+  const showPrice = can(user.role, "piezas.precio-venta.ver");
+  const showCost = can(user.role, "piezas.costo-servicio");
+  const showMoney = can(user.role, "dinero.ver");
+  const parsed = parsePieceBoardFilters(await searchParams);
+  // "Falta asignar" solo con los datos que el rol puede ver (un `falta=costo` en la URL
+  // de ventas se ignora: no debe poder deducir costos).
+  const filters = {
+    ...parsed,
+    missing: parsed.missing.filter((m) =>
+      m === "precio" ? showPrice : showCost,
+    ),
+    // "Listas por cobrar" solo con acceso a los montos (la base de datos también lo exige).
+    toCollect: parsed.toCollect && showMoney,
+  };
   const supabase = await createClient();
   // Contadores de los chips: lo que daría cada uno con los demás filtros.
-  const chipFilters = pieceChipCountFilters(filters);
+  const chipFilters = pieceChipCountFilters(filters, { showMoney });
   const [{ items, total, pages }, workshops, chipTotals] = await Promise.all([
     listPiecesBoard(filters, { withClient: showClient }),
     supabase
@@ -79,13 +92,14 @@ export default async function PiezasPage({
       {/* Atajos de un clic en su propia franja, bajo el título, como en Restauraciones. */}
       <FilterChips
         label="Mostrar solo"
-        chips={pieceFilterChips(filters, counts)}
+        chips={pieceFilterChips(filters, counts, { showMoney })}
       />
       <PiecesBoardFiltersForm
         filters={filters}
         workshops={workshops.data}
         showClient={showClient}
-        showPrice={can(user.role, "piezas.precio-venta.ver")}
+        showPrice={showPrice}
+        showCost={showCost}
       />
       {/* Barra de la lista: cuántas hay y, juntas, las acciones de la vista. */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">

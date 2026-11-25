@@ -22,7 +22,7 @@ export type QuoteIssuerActionResult = { ok: true } | { error: string };
 function revalidate() {
   revalidatePath(QUOTE_ISSUERS_HREF);
   // El selector y el PDF de las cotizaciones muestran estos datos.
-  revalidatePath("/cotizaciones", "layout");
+  revalidatePath("/corporativo", "layout");
 }
 
 function failure(code: string | undefined, fallback: string) {

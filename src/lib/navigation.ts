@@ -15,7 +15,10 @@ import { WhatsAppIcon } from "@/components/icons/whatsapp-icon";
 import type { Permission } from "@/domain/permissions";
 
 export type NavItem = {
+  /** Etiqueta corta del menú y de la ruta de navegación. */
   title: string;
+  /** Título (h1) de la página cuando es distinto de la etiqueta del menú. */
+  pageTitle?: string;
   href: string;
   /** Un ícono de lucide o uno propio (p. ej., el de WhatsApp). */
   icon: ComponentType<{ className?: string }>;
@@ -57,8 +60,9 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "clientes.ver",
   },
   {
-    title: "Cotizaciones",
-    href: "/cotizaciones",
+    title: "Corporativo",
+    pageTitle: "Cotizaciones Corporativas",
+    href: "/corporativo",
     icon: FileText,
     permission: "cotizaciones.seguimiento",
   },

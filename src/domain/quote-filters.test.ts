@@ -41,7 +41,7 @@ describe("filtros de cotizaciones", () => {
 
   it("arma la URL omitiendo los filtros vacíos", () => {
     const filters = parseQuoteFilters({});
-    expect(quoteFiltersHref(filters)).toBe("/cotizaciones");
+    expect(quoteFiltersHref(filters)).toBe("/corporativo");
     expect(
       quoteFiltersHref(filters, {
         q: "ana",
@@ -52,7 +52,7 @@ describe("filtros de cotizaciones", () => {
         page: 3,
       }),
     ).toBe(
-      `/cotizaciones?q=ana&estado=emitida&cliente=${CLIENT}&desde=2026-10-01&hasta=2026-10-31&pagina=3`,
+      `/corporativo?q=ana&estado=emitida&cliente=${CLIENT}&desde=2026-10-01&hasta=2026-10-31&pagina=3`,
     );
   });
 

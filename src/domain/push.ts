@@ -34,7 +34,7 @@ export function pushPayload(alert: {
     title: alert.title,
     body,
     url: alert.quoteId
-      ? `/cotizaciones/${alert.quoteId}`
+      ? `/corporativo/${alert.quoteId}`
       : `/restauraciones/${alert.restorationId}`,
     tag: `${alert.kind}:${subjectId}`,
   };

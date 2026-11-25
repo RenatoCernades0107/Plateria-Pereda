@@ -83,7 +83,7 @@ describe("registerQuotePayment", () => {
         invoice_number: "F001-77",
       },
     ]);
-    expect(mocks.revalidate).toHaveBeenCalledWith(`/cotizaciones/${QUOTE}`);
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/corporativo/${QUOTE}`);
   });
 
   it("sin factura guarda null", async () => {

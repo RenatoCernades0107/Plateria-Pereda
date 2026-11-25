@@ -60,6 +60,7 @@ const data: QuotePdfData = {
   clientDocument: null,
   phone: "+51987654321",
   applyIgv: true,
+  pricesIncludeIgv: false,
   lines: [
     {
       image: null,

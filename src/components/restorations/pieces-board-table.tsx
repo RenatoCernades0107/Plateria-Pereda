@@ -60,8 +60,8 @@ import { DeliveryDate } from "./urgent-toggle";
 import { WorkshopEditButton } from "./workshop-edit-button";
 
 /**
- * Etiqueta de un mosaico de dinero, solo en el celular (desde `md` están los
- * encabezados de la tabla). Color + ícono + texto distinto: costo = lo que le pagas al
+ * Etiqueta de un mosaico de dinero (celular y escritorio; en escritorio además están
+ * los encabezados de la tabla, que ordenan). Color + ícono + texto distinto: costo = lo que le pagas al
  * taller (ámbar, llave); venta = lo que cobras (verde, etiqueta de precio).
  */
 function MoneyLabel({ kind }: { kind: "cost" | "sale" }) {
@@ -69,7 +69,7 @@ function MoneyLabel({ kind }: { kind: "cost" | "sale" }) {
   return (
     <span
       className={cn(
-        "mb-1 flex items-center gap-1 text-xs font-medium md:hidden",
+        "mb-1 flex items-center gap-1 text-xs font-medium",
         kind === "cost"
           ? "text-amber-800 dark:text-amber-300"
           : "text-emerald-800 dark:text-emerald-300",
@@ -394,30 +394,28 @@ function BoardRow({
           />
         </td>
         {showCost ? (
-          <td
-            className={cn(cell, RT.moneyTile, RT.moneyCost, "md:text-right")}
-            data-row-click="ignore"
-          >
-            <MoneyLabel kind="cost" />
-            <BoardServiceCostCell
-              piece={piece}
-              cents={piece.serviceCostCents}
-              quantity={piece.quantity}
-            />
+          <td className={cn(cell, RT.moneyTile)} data-row-click="ignore">
+            <div className={cn(RT.moneyBox, RT.moneyCost)}>
+              <MoneyLabel kind="cost" />
+              <BoardServiceCostCell
+                piece={piece}
+                cents={piece.serviceCostCents}
+                quantity={piece.quantity}
+              />
+            </div>
           </td>
         ) : null}
         {showPrice ? (
-          <td
-            className={cn(cell, RT.moneyTile, RT.moneySale, "md:text-right")}
-            data-row-click="ignore"
-          >
-            <MoneyLabel kind="sale" />
-            <BoardSalePriceCell
-              piece={piece}
-              cents={piece.priceCents}
-              quantity={piece.quantity}
-              editable={editPrice}
-            />
+          <td className={cn(cell, RT.moneyTile)} data-row-click="ignore">
+            <div className={cn(RT.moneyBox, RT.moneySale)}>
+              <MoneyLabel kind="sale" />
+              <BoardSalePriceCell
+                piece={piece}
+                cents={piece.priceCents}
+                quantity={piece.quantity}
+                editable={editPrice}
+              />
+            </div>
           </td>
         ) : null}
       </tr>
@@ -597,14 +595,14 @@ export function PiecesBoardTable({
                 </SortHeader>
               </th>
               {showCost ? (
-                <th scope="col" className={cn(head, "text-right")}>
+                <th scope="col" className={head}>
                   Costo servicio
                 </th>
               ) : null}
               {showPrice ? (
                 <th
                   scope="col"
-                  className={cn(head, "text-right")}
+                  className={head}
                   aria-sort={ariaSort(filters, "precio")}
                 >
                   <SortHeader

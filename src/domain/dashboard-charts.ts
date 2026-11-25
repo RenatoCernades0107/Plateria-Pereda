@@ -69,19 +69,46 @@ export function sparkValues<T extends { d: string }>(
   return series.map((point) => Number(point[key]) || 0);
 }
 
-export type LabelValue = { label: string; value: number };
+export type LabelValue = { label: string; value: number; count?: number };
 
-/** Los `max` mayores y el resto agrupado en "Otros" (nunca se inventan más colores). */
-export function topWithOthers(
-  items: LabelValue[],
+/**
+ * Los `max` mayores y el resto agrupado en "Otros" (nunca se inventan más colores). Si los
+ * elementos traen `count` (pagos, piezas), «Otros» también lo suma.
+ */
+export function topWithOthers<T extends LabelValue>(
+  items: T[],
   max: number,
   othersLabel = "Otros",
 ): LabelValue[] {
   const sorted = [...items].sort((a, b) => b.value - a.value);
   if (sorted.length <= max) return sorted;
   const head = sorted.slice(0, max - 1);
-  const rest = sorted.slice(max - 1).reduce((sum, item) => sum + item.value, 0);
-  return [...head, { label: othersLabel, value: rest }];
+  const tail = sorted.slice(max - 1);
+  const others: LabelValue = {
+    label: othersLabel,
+    value: tail.reduce((sum, item) => sum + item.value, 0),
+  };
+  if (tail.some((item) => item.count !== undefined)) {
+    others.count = tail.reduce((sum, item) => sum + (item.count ?? 0), 0);
+  }
+  return [...head, others];
+}
+
+/**
+ * Pone la cantidad que explica cada monto como texto bajo la etiqueta de la barra
+ * («3 pagos», «1 pieza»). Sin cantidad (0) no se muestra nada.
+ */
+export function withCountHint<T extends LabelValue>(
+  items: T[],
+  singular: string,
+  plural: string,
+): (T & { hint?: string })[] {
+  return items.map((item) => {
+    const count = item.count ?? 0;
+    return count > 0
+      ? { ...item, hint: `${count} ${count === 1 ? singular : plural}` }
+      : item;
+  });
 }
 
 /** Agrega el porcentaje de cada valor sobre el total (0 si el total es 0). */
@@ -124,9 +151,17 @@ export type FunnelStep = {
   value: number;
   /** Porcentaje sobre las piezas registradas (null si no hubo ninguna). */
   pct: number | null;
+  /**
+   * `pending`: piezas que aún no se decidieron (En consulta, En espera de respuesta del
+   * cliente). No son una etapa del camino: van en barras aparte, no una tras otra.
+   */
+  kind?: "pending";
 };
 
-/** El camino de las piezas registradas en el rango: registradas → aprobadas → entregadas. */
+/**
+ * El camino de las piezas registradas en el rango: registradas → aprobadas → entregadas,
+ * y aparte, sin decidir todavía: en consulta y en espera de respuesta del cliente.
+ */
 export function funnelSteps(funnel: DashboardOrders["funnel"]): FunnelStep[] {
   const pct = (value: number) =>
     funnel.registered > 0 ? (value / funnel.registered) * 100 : null;
@@ -149,6 +184,20 @@ export function funnelSteps(funnel: DashboardOrders["funnel"]): FunnelStep[] {
       value: funnel.delivered,
       pct: pct(funnel.delivered),
     },
+    {
+      key: "in_consultation",
+      label: "En consulta",
+      value: funnel.in_consultation,
+      pct: pct(funnel.in_consultation),
+      kind: "pending",
+    },
+    {
+      key: "waiting_client",
+      label: "En espera de respuesta del cliente",
+      value: funnel.waiting_client,
+      pct: pct(funnel.waiting_client),
+      kind: "pending",
+    },
   ];
 }
 
@@ -157,11 +206,6 @@ export function funnelLosses(
   funnel: DashboardOrders["funnel"],
 ): { key: string; label: string; value: number }[] {
   return [
-    {
-      key: "in_consultation",
-      label: "En consulta o espera",
-      value: funnel.in_consultation,
-    },
     {
       key: "rejected",
       label: "Rechazadas por el cliente",
