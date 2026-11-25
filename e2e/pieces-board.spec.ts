@@ -91,6 +91,8 @@ test.describe("Vista de piezas", () => {
     await page.goto("/piezas");
     // Logística no ve clientes: el filtro de texto dice solo "Código o descripción".
     await page.getByLabel("Código o descripción").fill(clientName);
+    // "Ubicación" está en "Más filtros".
+    await page.getByRole("button", { name: "Más filtros" }).click();
     await page.getByLabel("Ubicación").click();
     await page.getByRole("option", { name: "Sin enviar" }).click();
     await page.keyboard.press("Escape");
