@@ -147,6 +147,8 @@ export const quoteSchema = z
     /** Sucursal que emite (se puede elegir después; sin ella no sale el PDF). */
     issuerId: z.guid().nullable(),
     applyIgv: z.boolean(),
+    /** Solo se usa al crear: después la cotización conserva cómo se escribieron sus precios. */
+    pricesIncludeIgv: z.boolean(),
     notes: text(2000),
     terms: text(5000),
     lines: z.array(quoteLineSchema).min(1, "Agrega al menos un producto"),
@@ -175,8 +177,10 @@ export type QuoteFormInput = {
   creditDays: string;
   deliveryDays: string;
   issuerId: string | null;
-  /** "Sumar IGV (18 %)". */
+  /** "Los precios incluyen IGV" (o "Sumar IGV" en las anteriores). */
   applyIgv: boolean;
+  /** Precios con IGV incluido (cotizaciones nuevas); se envía solo para crear. */
+  pricesIncludeIgv: boolean;
   notes: string;
   terms: string;
   lines: QuoteLineDraft[];
@@ -196,6 +200,7 @@ export function quoteRpcArgs(v: QuoteInput) {
       delivery_days: v.deliveryDays,
       issuer_id: v.issuerId,
       apply_igv: v.applyIgv,
+      prices_include_igv: v.pricesIncludeIgv,
       notes: v.notes,
       terms: v.terms,
     },

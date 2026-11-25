@@ -390,6 +390,63 @@ test.describe("Vista de piezas", () => {
     await expect(page).toHaveURL(new RegExp(`/restauraciones/${r.id}$`));
   });
 
+  test("filtra «Falta asignar» (sin precio / sin costo de servicio); ventas no ve la opción del costo", async ({
+    page,
+    loginAs,
+  }) => {
+    const admin = adminClient();
+    const { data: r, error } = await admin
+      .from("restorations")
+      .insert({ client_id: clientId, payment_type: "contado" })
+      .select("id")
+      .single();
+    if (error) throw error;
+    restorationIds.push(r.id);
+    const tag = `Falta${run}`;
+    const { error: piecesError } = await admin.from("pieces").insert(
+      [
+        { description: `${tag} completa`, price: 10, service_cost: 5 },
+        { description: `${tag} sin precio`, price: null, service_cost: 5 },
+        { description: `${tag} sin costo`, price: 10, service_cost: null },
+        // El 0 cuenta como costo asignado.
+        { description: `${tag} costo cero`, price: 10, service_cost: 0 },
+      ].map((piece) => ({ ...piece, restoration_id: r.id })) as never,
+    );
+    if (piecesError) throw piecesError;
+
+    await loginAs("admin");
+    await page.goto(`/piezas?q=${tag}`);
+    await expect(page.getByText("4 piezas · Página 1 de 1")).toBeVisible();
+    // "Falta asignar" está en "Más filtros".
+    await page.getByRole("button", { name: "Más filtros" }).click();
+    await page.getByLabel("Falta asignar").click();
+    await page.getByRole("option", { name: "Sin costo de servicio" }).click();
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/falta=costo/);
+    await expect(page.getByText("1 pieza · Página 1 de 1")).toBeVisible();
+    await expect(page.getByText(`${tag} sin costo`)).toBeVisible();
+    // Varias opciones se suman.
+    await page.getByLabel("Falta asignar").click();
+    await page.getByRole("option", { name: "Sin precio" }).click();
+    await page.keyboard.press("Escape");
+    await expect(page).toHaveURL(/falta=costo&falta=precio/);
+    await expect(page.getByText("2 piezas · Página 1 de 1")).toBeVisible();
+    await expect(page.getByText(`${tag} sin precio`)).toBeVisible();
+
+    // Ventas ve el precio pero no el costo: solo "Sin precio", y un `falta=costo` en la
+    // URL no filtra.
+    await loginAs("ventas");
+    await page.goto(`/piezas?q=${tag}&falta=costo`);
+    await expect(page.getByText("4 piezas · Página 1 de 1")).toBeVisible();
+    await page.getByLabel("Falta asignar").click();
+    await expect(
+      page.getByRole("option", { name: "Sin precio" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("option", { name: "Sin costo de servicio" }),
+    ).toHaveCount(0);
+  });
+
   test("la vista lista también las entregadas días atrás y se filtra por fecha de entrega", async ({
     page,
     loginAs,

@@ -124,7 +124,7 @@ describe("getMyAlerts", () => {
     expect(alerts[0]).toMatchObject({
       title: "COT-000042 · Cotización aceptada",
       body: "Vera aceptó la cotización COT-000042. Asigna el taller y la ubicación del trabajo.",
-      href: "/cotizaciones/00000000-0000-4000-8000-000000000027",
+      href: "/corporativo/00000000-0000-4000-8000-000000000027",
     });
   });
 

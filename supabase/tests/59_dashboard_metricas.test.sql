@@ -1,10 +1,11 @@
 begin;
 
-select plan(72);
+select plan(80);
 
 -- Métricas del dashboard (Fase 13, P33). Datos de marzo de 2025 (el seed es reciente, así
 -- que no se mezcla). Las cifras "de hoy" (saldo por cobrar) se comparan contra lo que
--- había antes de insertar.
+-- había antes de insertar (igual que las demás fotos de hoy: guías y piezas antes de aprobar
+-- y aprobadas, y las listas por cobrar).
 select set_config('app.deliver_with_balance', 'on', true);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
@@ -13,14 +14,24 @@ insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000055a3', 'ventas2@dash.test', '{"role":"ventas"}', '{"full_name":"Víctor Ventas"}'),
   ('00000000-0000-0000-0000-0000000055a4', 'logistica@dash.test', '{"role":"logistica"}', '{"full_name":"Lola Logística"}');
 
-create temporary table base (due numeric);
+create temporary table base (
+  due numeric, guides_before int, guides_approved int, pieces_before int, pieces_approved int,
+  ready_pieces int, ready_guides int, ready_balance numeric
+);
 grant all on base to authenticated;
 create temporary table res (name text, j jsonb);
 grant all on res to authenticated;
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000055a1","role":"authenticated"}', true);
-insert into base select (public.dashboard_summary('2025-03-01', '2025-03-31')->>'balance_due')::numeric;
+insert into base
+select (s.j->>'balance_due')::numeric,
+       (s.j->>'guides_before_approval')::int, (s.j->>'guides_approved')::int,
+       (s.j->>'pieces_before_approval')::int, (s.j->>'pieces_approved')::int,
+       (v.j->'ready_to_collect'->>'pieces')::int, (v.j->'ready_to_collect'->>'guides')::int,
+       (v.j->'ready_to_collect'->>'guides_balance')::numeric
+from (select public.dashboard_summary('2025-03-01', '2025-03-31') j) s,
+     (select public.dashboard_sales('2025-03-01', '2025-03-31') j) v;
 reset role;
 
 -- ---------------------------------------------------------------------------------------
@@ -184,6 +195,14 @@ select is((select (j->>'collected')::numeric from res where name = 'summary'), 1
 select is((select (j->>'refunds')::numeric from res where name = 'summary'), 20::numeric, 'reembolsos del periodo');
 select is((select (j->>'balance_due')::numeric from res where name = 'summary') - (select due from base), 350::numeric,
   'saldo por cobrar: 50 (R1) + 170 (R2) + 40 (WhatsApp) + 90 (anterior); la guía Registrada no cuenta');
+select is((select (j->>'guides_before_approval')::int from res where name = 'summary') - (select guides_before from base), 1,
+  'guías antes de aprobar (hoy): la Registrada R3');
+select is((select (j->>'guides_approved')::int from res where name = 'summary') - (select guides_approved from base), 4,
+  'guías aprobadas (hoy): R0, R1, R2 y la de WhatsApp; la interna no cuenta');
+select is((select (j->>'pieces_before_approval')::int from res where name = 'summary') - (select pieces_before from base), 1,
+  'piezas antes de aprobar (hoy): la que está En consulta');
+select is((select (j->>'pieces_approved')::int from res where name = 'summary') - (select pieces_approved from base), 5,
+  'piezas aprobadas (hoy): P0, P2, P4, P5 y P8; sin la entregada, la anulada ni la interna');
 select is((select (j->>'orders')::int from res where name = 'summary'), 4, 'guías Normales registradas (sin la interna)');
 select is((select (j->>'delivered')::int from res where name = 'summary'), 1, 'piezas entregadas');
 select is((select (j->>'fulfillment_avg')::numeric from res where name = 'summary'), 6.0, 'cumplimiento promedio: 2 → 8 de marzo = 6 días');
@@ -203,15 +222,17 @@ select is((select (j->>'sold')::numeric from res where name = 'summary_final'), 
 -- Ventas
 select is((select (j->>'collection_rate')::numeric from res where name = 'sales'), 31.0, 'cobranza = 130 / 420');
 select is((select j->'by_method' from res where name = 'sales'),
-  '[{"label":"Efectivo","value":80.00},{"label":"Yape","value":50.00}]'::jsonb, 'cobrado por método (Efectivo neto de reembolso)');
+  '[{"label":"Efectivo","value":80.00,"count":1},{"label":"Yape","value":50.00,"count":1}]'::jsonb,
+  'cobrado por método (Efectivo neto de reembolso; el reembolso no suma a la cantidad de pagos)');
 select is((select j->'by_origin' from res where name = 'sales'),
   '[{"key":"oficina","sold":380.00,"orders":2,"ticket":190.00},{"key":"whatsapp","sold":40.00,"orders":1,"ticket":40.00}]'::jsonb,
   'vendido por origen');
 select is((select j->'by_service' from res where name = 'sales'),
-  '[{"label":"Sin servicio","value":240.00},{"label":"Baño dash","value":140.00},{"label":"Pulido dash","value":40.00}]'::jsonb,
-  'vendido por servicio (la pieza con dos servicios reparte su importe)');
+  '[{"label":"Sin servicio","value":240.00,"count":2},{"label":"Baño dash","value":140.00,"count":2},{"label":"Pulido dash","value":40.00,"count":1}]'::jsonb,
+  'vendido por servicio (la pieza con dos servicios reparte su importe pero cuenta en ambos)');
 select is((select j->'by_material'->0 from res where name = 'sales'),
-  '{"label":"Sin material","value":320.00}'::jsonb, 'vendido por material');
+  '{"label":"Sin material","value":320.00,"count":3}'::jsonb, 'vendido por material');
+select is((select j ? 'by_payment_type' from res where name = 'sales'), false, 'ya no hay «vendido según tipo de pago»');
 select is((select j->'margin' from res where name = 'sales'),
   '{"margin":235.00,"base":300.00,"cost":65.00,"pieces":2,"pieces_without_cost":2}'::jsonb, 'margen de ventas (admin)');
 
@@ -221,8 +242,8 @@ select is((select j->'by_status' from res where name = 'orders'),
 select is((select j->'by_kind' from res where name = 'orders'),
   '[{"key":"normal","value":4},{"key":"interno","value":1}]'::jsonb, 'guías por tipo');
 select is((select j->'funnel' from res where name = 'orders'),
-  '{"registered":7,"approved":6,"delivered":1,"in_consultation":1,"rejected":0,"no_fix":0,"cancelled":1,"urgent":1}'::jsonb,
-  'embudo de piezas registradas en el rango');
+  '{"registered":7,"approved":6,"delivered":1,"in_consultation":1,"waiting_client":0,"rejected":0,"no_fix":0,"cancelled":1,"urgent":1}'::jsonb,
+  'embudo de piezas registradas en el rango (En consulta y En espera por separado)');
 select is((select (j->'fulfillment'->>'median')::numeric from res where name = 'orders'), 6.0, 'mediana de cumplimiento');
 select is((select j->'fulfillment'->'buckets'->1 from res where name = 'orders'),
   '{"label":"4–7 días","value":1}'::jsonb, 'distribución del cumplimiento');
@@ -285,6 +306,24 @@ select is((select j->'discard_reasons' from res where name = 'quotes'),
 select is((select j->'cot'->>'acceptance' from res where name = 'quotes'), '33.3', 'cotizador: 1 aceptada de 3 no borrador');
 select is((select (j->'cot'->>'vencida')::int from res where name = 'quotes'), 2, 'cotizador: las emitidas de 2025 ya vencieron');
 select is((select (j->'cot'->>'borrador')::int from res where name = 'quotes'), 1, 'cotizador: un borrador');
+
+-- Listas por cobrar (foto de hoy): P2 (R1) y P4 (R2) volvieron del taller y sus guías aún
+-- deben dinero. R1 pasa a «parcialmente lista» y R2 a «lista»; la de WhatsApp sigue Aprobada.
+update public.restorations set status = 'parcialmente_lista' where id = '00000000-0000-0000-0000-000000005501';
+update public.restorations set status = 'lista' where id = '00000000-0000-0000-0000-000000005502';
+delete from res;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000055a1","role":"authenticated"}', true);
+insert into res values ('sales_listas', public.dashboard_sales('2025-03-01', '2025-03-31', 'dia'));
+reset role;
+select is((select (j->'ready_to_collect'->>'pieces')::int from res where name = 'sales_listas') - (select ready_pieces from base), 2,
+  'listas por cobrar: dos piezas listas de guías con saldo');
+select is((select (j->'ready_to_collect'->>'guides')::int from res where name = 'sales_listas') - (select ready_guides from base), 2,
+  'listas por cobrar: dos guías lista o parcialmente lista con saldo');
+select is((select (j->'ready_to_collect'->>'guides_balance')::numeric from res where name = 'sales_listas') - (select ready_balance from base),
+  (select sum(balance) from public.restorations where id in (
+    '00000000-0000-0000-0000-000000005501', '00000000-0000-0000-0000-000000005502')),
+  'listas por cobrar: el monto es el saldo de esas guías');
 
 -- ---------------------------------------------------------------------------------------
 -- Permisos por rol

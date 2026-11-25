@@ -33,6 +33,10 @@ const summary = (sold: number) => ({
   collected: 100,
   refunds: 0,
   balance_due: 50,
+  guides_before_approval: 2,
+  guides_approved: 5,
+  pieces_before_approval: 3,
+  pieces_approved: 7,
   orders: 3,
   delivered: 1,
   fulfillment_avg: null,
@@ -91,9 +95,9 @@ describe("dashboard-metrics", () => {
         series: [],
         by_method: [],
         by_origin: [],
-        by_payment_type: [],
         by_service: [],
         by_material: [],
+        ready_to_collect: { pieces: 0, guides: 0, guides_balance: 0 },
         margin: null,
       },
       error: null,
@@ -107,6 +111,74 @@ describe("dashboard-metrics", () => {
       p_from: "2026-01-01",
       p_to: "2026-06-30",
       p_bucket: "semana",
+    });
+  });
+
+  it("ventas lee las listas por cobrar y la cantidad de cada desglose", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        from: "2026-09-28",
+        to: "2026-10-27",
+        bucket: "dia",
+        sold: 100,
+        collected: 50,
+        collection_rate: 50,
+        series: [],
+        by_method: [{ label: "Yape", value: 50, count: 2 }],
+        by_origin: [],
+        by_service: [{ label: "Pulido", value: 100, count: 3 }],
+        by_material: [{ label: "Plata", value: 100, count: 1 }],
+        ready_to_collect: { pieces: 4, guides: 2, guides_balance: 230.5 },
+        margin: null,
+      },
+      error: null,
+    });
+    const sales = await dashboardSales(RANGE);
+    expect(sales.ready_to_collect).toEqual({
+      pieces: 4,
+      guides: 2,
+      guides_balance: 230.5,
+    });
+    expect(sales.by_method[0]?.count).toBe(2);
+    expect(sales.by_service[0]?.count).toBe(3);
+    expect("by_payment_type" in sales).toBe(false);
+  });
+
+  it("antes de la migración los campos nuevos llegan en cero en vez de romper", async () => {
+    mocks.rpc.mockResolvedValue({
+      data: {
+        from: "2026-09-28",
+        to: "2026-10-27",
+        bucket: "dia",
+        sold: 0,
+        collected: 0,
+        collection_rate: null,
+        series: [],
+        by_method: [{ label: "Yape", value: 50 }],
+        by_origin: [],
+        by_service: [],
+        by_material: [],
+        margin: null,
+      },
+      error: null,
+    });
+    const sales = await dashboardSales(RANGE);
+    expect(sales.by_method[0]?.count).toBe(0);
+    expect(sales.ready_to_collect).toEqual({
+      pieces: 0,
+      guides: 0,
+      guides_balance: 0,
+    });
+  });
+
+  it("el resumen lee las fotos de guías y piezas antes de aprobar y aprobadas", async () => {
+    mocks.rpc.mockResolvedValue({ data: summary(300), error: null });
+    const result = await dashboardSummary(RANGE);
+    expect(result).toMatchObject({
+      guides_before_approval: 2,
+      guides_approved: 5,
+      pieces_before_approval: 3,
+      pieces_approved: 7,
     });
   });
 

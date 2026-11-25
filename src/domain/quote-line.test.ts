@@ -127,7 +127,7 @@ describe("montos de la línea en edición", () => {
       unitPrice: 0,
       discount: null,
     });
-    expect(quoteTotals([draftAmounts(line)], true).total).toBe(0);
+    expect(quoteTotals([draftAmounts(line)], true, true).total).toBe(0);
   });
 
   it("parseQuantity y parsePercent", () => {

@@ -23,6 +23,8 @@ import {
   PIECE_DATE_FIELD_LABELS,
   PIECE_DATE_FIELDS,
   parsePieceBoardFilters,
+  PIECE_MISSING,
+  PIECE_MISSING_LABELS,
   pieceBoardHref,
   PIECE_BOARD_SORT_LABELS,
   PIECE_BOARD_SORTS,
@@ -47,6 +49,7 @@ export function PiecesBoardFiltersForm({
   workshops,
   showClient = true,
   showPrice = true,
+  showCost = true,
 }: {
   filters: PieceBoardFilters;
   workshops: { id: string; name: string }[];
@@ -54,6 +57,8 @@ export function PiecesBoardFiltersForm({
   showClient?: boolean;
   /** Sin ver el precio de venta, no se ordena por él. */
   showPrice?: boolean;
+  /** Sin ver el costo de servicio (solo admin y logística), no se filtra por él. */
+  showCost?: boolean;
 }) {
   const { state, update, reset, submit, pending } = useLiveFilters(
     filters,
@@ -67,10 +72,15 @@ export function PiecesBoardFiltersForm({
   // Los filtros secundarios se ocultan, salvo que alguno ya esté aplicado.
   const hiddenActive = [
     filters.location.length > 0,
+    filters.missing.length > 0,
     filters.from !== null,
     filters.to !== null,
   ].filter(Boolean).length;
   const [showMore, setShowMore] = useState(hiddenActive > 0);
+  // "Falta asignar": cada opción solo para quien ve ese dato.
+  const missingOptions = PIECE_MISSING.filter((m) =>
+    m === "precio" ? showPrice : showCost,
+  ).map((m) => ({ value: m, label: PIECE_MISSING_LABELS[m] }));
 
   return (
     <form
@@ -179,6 +189,16 @@ export function PiecesBoardFiltersForm({
           id="filtros-adicionales"
           className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
         >
+          {missingOptions.length ? (
+            <FilterMulti
+              id="filtro-falta"
+              label="Falta asignar"
+              allLabel="Cualquiera"
+              value={state.missing}
+              options={missingOptions}
+              onChange={(missing) => set({ missing })}
+            />
+          ) : null}
           <FilterMulti
             id="filtro-ubicacion"
             label="Ubicación"

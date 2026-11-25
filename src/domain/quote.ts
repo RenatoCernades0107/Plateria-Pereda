@@ -1,12 +1,18 @@
-import { percentOf, sumCents, type Cents } from "./money";
+import { percentOf, sumCents, withoutPercent, type Cents } from "./money";
 
 /**
  * Cálculos de la cotización (Fase 14). Mismas reglas que la BD (migración
  * `cotizaciones`): subtotal de la línea = cantidad × precio; descuento opcional por
- * línea en monto o % (P35, propuesta) redondeado a céntimos. Los precios se escriben
- * sin IGV; si la cotización lo suma (`apply_igv`, por defecto sí), IGV = 18 % de
- * subtotal − descuentos redondeado una sola vez a céntimos (migración `igv_cotizador`).
- * Total = subtotal − descuentos + IGV.
+ * línea en monto o % (P35, propuesta) redondeado a céntimos.
+ *
+ * IGV, según `prices_include_igv` (migración `igv_incluido_cotizaciones`, 2026-11-24):
+ * - Precios con IGV incluido (las cotizaciones nuevas): bruto = Σ cantidad × precio −
+ *   descuentos es lo que paga el cliente (total = bruto); base = bruto ÷ 1.18 y
+ *   IGV = bruto − base, con un solo redondeo a céntimos.
+ * - Precios sin IGV (las anteriores, que no cambian): si la cotización lo suma
+ *   (`apply_igv`), IGV = 18 % de subtotal − descuentos redondeado una sola vez
+ *   (migración `igv_cotizador`) y total = subtotal − descuentos + IGV.
+ * Con `apply_igv` en falso no hay IGV en ningún caso: total = subtotal − descuentos.
  */
 
 export const QUOTE_STATUSES = [
@@ -79,7 +85,7 @@ export const QUOTE_PAYMENT_CONDITION_LABELS: Record<
 > = {
   contado: "Al contado",
   credito: "Al crédito",
-  a_cuenta: "A cuenta",
+  a_cuenta: "50% adelanto, saldo contraentrega",
 };
 export const DEFAULT_QUOTE_PAYMENT_CONDITION: QuotePaymentCondition = "contado";
 /** Tiempo de entrega por defecto, en días hábiles desde la aprobación. */
@@ -89,7 +95,7 @@ export const DEFAULT_QUOTE_CREDIT_DAYS = 30;
 
 /**
  * Texto de la condición de pago en el PDF: «Crédito a 30 días» con los días de crédito;
- * las demás, su etiqueta («Al contado», «A cuenta»).
+ * las demás, su etiqueta («Al contado», «50% adelanto, saldo contraentrega»).
  */
 export function quotePaymentConditionText(
   condition: QuotePaymentCondition,
@@ -133,32 +139,51 @@ export function lineTotal(line: QuoteLineAmounts): Cents {
   return lineGross(line) - lineDiscount(line);
 }
 
-/** IGV que se suma en el cotizador (solo en `COT-`; restauraciones y WhatsApp no). */
+/** IGV del cotizador (solo en `COT-`; restauraciones y WhatsApp no lo desglosan así). */
 export const QUOTE_IGV_PERCENT = 18;
 
 export type QuoteTotals = {
-  /** Suma de cantidad × precio. */
+  /**
+   * Suma de cantidad × precio. Con precios con IGV incluido se muestra sin IGV
+   * (bruto ÷ 1.18); si no, es la suma tal cual.
+   */
   subtotal: Cents;
-  /** Suma de los descuentos por línea. */
+  /** Descuentos (sin IGV si los precios lo incluyen). */
   discount: Cents;
   /** Subtotal menos descuentos (sin IGV). */
   base: Cents;
-  /** 18 % de `base` si la cotización suma el IGV; 0 si no. */
+  /** El IGV: parte de `total` si los precios lo incluyen; 18 % de `base` si se suma; 0 si no hay. */
   igv: Cents;
-  /** Lo que paga el cliente: subtotal − descuentos + IGV. */
+  /** Lo que paga el cliente. */
   total: Cents;
 };
 
-/** Subtotal, descuentos, IGV y total de las líneas. */
+/**
+ * Subtotal, descuentos, IGV y total de las líneas. `pricesIncludeIgv` dice cómo se
+ * escribieron los precios (no cambia con el tiempo: lo guarda la cotización) y `applyIgv`,
+ * si la cotización lleva IGV. Siempre `subtotal − discount = base` y `base + igv = total`.
+ */
 export function quoteTotals(
   lines: readonly QuoteLineAmounts[],
   applyIgv: boolean,
+  pricesIncludeIgv: boolean,
 ): QuoteTotals {
-  const subtotal = sumCents(lines.map(lineGross));
+  const gross = sumCents(lines.map(lineGross));
   const discount = sumCents(lines.map(lineDiscount));
-  const base = sumCents(lines.map(lineTotal));
-  const igv = applyIgv ? percentOf(base, QUOTE_IGV_PERCENT) : 0;
-  return { subtotal, discount, base, igv, total: base + igv };
+  const net = sumCents(lines.map(lineTotal));
+  if (applyIgv && pricesIncludeIgv) {
+    const base = withoutPercent(net, QUOTE_IGV_PERCENT);
+    const subtotal = withoutPercent(gross, QUOTE_IGV_PERCENT);
+    return {
+      subtotal,
+      discount: subtotal - base,
+      base,
+      igv: net - base,
+      total: net,
+    };
+  }
+  const igv = applyIgv ? percentOf(net, QUOTE_IGV_PERCENT) : 0;
+  return { subtotal: gross, discount, base: net, igv, total: net + igv };
 }
 
 // --- Vigencia (fechas calendario en Lima, como `private.lima_today()` de la BD) ---

@@ -2,8 +2,9 @@
 -- con rango de fechas por registro o por entrega y tope mayor para exportar a CSV.
 -- `p_active_only` conserva el comportamiento anterior para el kanban sin filtros.
 -- Las funciones de historial desaparecen: ya no hay página de historial.
+-- Parte de la versión de 20261124160000 (falta asignar y listas por cobrar).
 
-drop function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text);
+drop function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text, text[], boolean);
 drop function public.list_pieces_history(text, text, public.piece_status[], uuid[], date, date, integer, integer);
 
 create function public.list_pieces_board(
@@ -21,6 +22,8 @@ create function public.list_pieces_board(
   p_no_workshop boolean default false,
   p_sort text default 'guia',
   p_dir text default 'desc',
+  p_missing text[] default null,
+  p_to_collect boolean default false,
   p_from date default null,
   p_to date default null,
   p_date_field text default 'registro',
@@ -159,6 +162,26 @@ as $$
       -- Listas: para entregar o para devolver al cliente.
       and (not coalesce(p_ready, false) or p.ready_for_delivery or p.to_return)
       and (not coalesce(p_to_return, false) or p.to_return)
+      -- Falta asignar: sin precio y/o sin costo de servicio (0 cuenta como asignado); basta
+      -- con cumplir una opción. Cada rama solo para quien ve ese dato (como las columnas de
+      -- salida): sin ello, ventas podría deducir qué piezas tienen costo.
+      and (
+        coalesce(cardinality(p_missing), 0) = 0
+        or ('precio' = any (p_missing) and p.price is null
+            and private.has_role('{admin,ventas,logistica}'))
+        or ('costo' = any (p_missing) and p.service_cost is null
+            and private.has_role('{admin,logistica}'))
+      )
+      -- Listas por cobrar: lista para entregar y su guía Normal aún debe dinero (pago
+      -- pendiente o parcial y saldo > 0); es la misma cuenta del KPI del dashboard. Solo
+      -- para quien ve los montos (como `dinero.ver`): sin ello, el filtro delataría qué
+      -- guías no están pagadas.
+      and (
+        not coalesce(p_to_collect, false)
+        or (p.ready_for_delivery and r.kind = 'normal'
+            and r.payment_status in ('pendiente', 'parcial') and r.balance > 0
+            and private.has_role('{admin,ventas}'))
+      )
       and (
         nullif(trim(p_query), '') is null
         or p.code ilike '%' || trim(p_query) || '%'
@@ -252,5 +275,5 @@ as $$
   order by e.ord;
 $$;
 
-revoke execute on function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text, date, date, text, boolean) from public, anon;
-grant execute on function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text, date, date, text, boolean) to authenticated;
+revoke execute on function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text, text[], boolean, date, date, text, boolean) from public, anon;
+grant execute on function public.list_pieces_board(text, public.piece_location[], public.piece_status[], uuid[], integer, integer, integer, boolean, boolean, boolean, text, boolean, text, text, text[], boolean, date, date, text, boolean) to authenticated;

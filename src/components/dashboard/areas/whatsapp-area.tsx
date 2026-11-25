@@ -1,14 +1,12 @@
-import { FileText, MessageCircle, PackageCheck, Percent } from "lucide-react";
+import { MessageCircle, PackageCheck, Percent } from "lucide-react";
 
 import { BarList, Meter, StackedBar } from "@/components/dashboard/bars";
-import {
-  COT_STATUS_COLORS,
-  WHATSAPP_STATUS_COLORS,
-} from "@/components/dashboard/colors";
+import { WHATSAPP_STATUS_COLORS } from "@/components/dashboard/colors";
 import { KpiTile } from "@/components/dashboard/kpi";
 import { KpiGrid, Panel, PanelEmpty } from "@/components/dashboard/panel";
 import { TimeSeriesChart } from "@/components/dashboard/time-series-chart";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import { seriesPoints } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -27,22 +25,19 @@ import {
 import { WHATSAPP_QUOTE_STATUS_LABELS } from "@/domain/whatsapp-quotes";
 import { dashboardQuotes } from "@/server/dashboard-metrics";
 
-const COT_LABELS = {
-  borrador: "Borradores",
-  emitida: "Emitidas",
-  aceptada: "Aceptadas",
-  facturada: "Facturadas",
-  reembolsada: "Reembolsadas",
-  rechazada: "Rechazadas",
-  vencida: "Vencidas",
-  anulada: "Anuladas",
-} as const;
-
-export async function QuotesArea({ range }: { range: DashboardRange }) {
+export async function WhatsappArea({
+  range,
+  today,
+}: {
+  range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
+}) {
+  const scope = dashboardScopes(range, today);
   const data = await dashboardQuotes(range);
   const bucket = bucketFor(range);
   const points = seriesPoints(data.series, bucket);
-  const { cwa, cot } = data;
+  const { cwa } = data;
   const cwaSegments = (
     ["cotizada", "pedida_parcial", "pedida", "descartada"] as const
   )
@@ -53,25 +48,6 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
       color: WHATSAPP_STATUS_COLORS[key],
     }))
     .filter((s) => s.value > 0);
-  const cotSegments = (
-    [
-      "borrador",
-      "emitida",
-      "aceptada",
-      "facturada",
-      "reembolsada",
-      "rechazada",
-      "vencida",
-      "anulada",
-    ] as const
-  )
-    .map((key) => ({
-      key,
-      label: COT_LABELS[key],
-      value: cot[key],
-      color: COT_STATUS_COLORS[key],
-    }))
-    .filter((s) => s.value > 0);
   const itemRate =
     cwa.items_quoted > 0 ? (cwa.items_ordered / cwa.items_quoted) * 100 : null;
 
@@ -80,6 +56,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
       <KpiGrid>
         <KpiTile
           testId="kpi-cwa-cotizadas"
+          scope={scope.periodo}
           icon={MessageCircle}
           label="Cotizaciones de WhatsApp"
           value={formatCount(cwa.created)}
@@ -87,6 +64,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cwa-conversion"
+          scope={scope.cohorte}
           info={METRIC_HELP.conversionWhatsapp}
           icon={Percent}
           label="Cotizaciones que se piden"
@@ -95,6 +73,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         />
         <KpiTile
           testId="kpi-cwa-monto-pedido"
+          scope={scope.cohorte}
           info={METRIC_HELP.montoPedido}
           icon={PackageCheck}
           label="Monto pedido"
@@ -105,18 +84,6 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
               : undefined
           }
         />
-        <KpiTile
-          testId="kpi-cot"
-          info={METRIC_HELP.cot}
-          icon={FileText}
-          label="Cotizador (COT)"
-          value={formatCount(cot.created)}
-          hint={
-            cot.acceptance !== null
-              ? `${formatPercent(cot.acceptance, 0)} aceptadas`
-              : "Sin cotizaciones emitidas"
-          }
-        />
       </KpiGrid>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -124,6 +91,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
           title="Cotizaciones de WhatsApp"
           description="Estado de las cotizadas en el periodo"
           testId="panel-cwa"
+          scope={scope.cohorte}
         >
           {cwaSegments.length === 0 ? (
             <PanelEmpty />
@@ -135,6 +103,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
           title="Piezas cotizadas y pedidas"
           description="Cuántas de las piezas cotizadas el cliente terminó pidiendo"
           testId="panel-cwa-piezas"
+          scope={scope.cohorte}
           info={METRIC_HELP.piezasPedidas}
         >
           {cwa.items_quoted === 0 ? (
@@ -153,6 +122,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
         title="Cotizadas y pedidas en el tiempo"
         description={`Cotizaciones de WhatsApp ${BUCKET_LABELS[bucket]}`}
         testId="grafico-cwa"
+        scope={scope.cohorte}
       >
         <TimeSeriesChart
           data={points}
@@ -180,6 +150,7 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
           title="¿Por qué se descartan?"
           description="Motivos escritos al descartar, agrupados"
           testId="panel-motivos"
+          scope={scope.periodo}
         >
           {data.discard_reasons.length === 0 ? (
             <PanelEmpty>
@@ -196,48 +167,30 @@ export async function QuotesArea({ range }: { range: DashboardRange }) {
           )}
         </Panel>
         <Panel
-          title="Cotizador de productos"
-          description="Estado de las cotizaciones COT"
-          testId="panel-cot"
+          title="Oficina frente a WhatsApp"
+          description="Guías normales del periodo según su origen"
+          testId="panel-origen"
+          scope={scope.periodo}
         >
-          {cotSegments.length === 0 ? (
-            <PanelEmpty />
-          ) : (
-            <>
-              <StackedBar segments={cotSegments} />
-              {cot.amount > 0 ? (
-                <p className="text-muted-foreground mt-4 text-xs">
-                  {formatSolesWhole(cot.accepted_amount)} aceptados de{" "}
-                  {formatSolesWhole(cot.amount)} emitidos.
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {data.by_origin.map((o) => (
+              <li key={o.key} className="bg-muted/40 rounded-lg p-4">
+                <p className="text-muted-foreground text-xs">
+                  {RESTORATION_ORIGIN_LABELS[o.key as RestorationOrigin] ??
+                    o.key}
                 </p>
-              ) : null}
-            </>
-          )}
+                <p className="text-heading mt-1 text-xl font-semibold">
+                  {formatSolesWhole(o.sold)}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {o.orders} {o.orders === 1 ? "guía" : "guías"} · ticket{" "}
+                  {formatSolesWhole(o.ticket)}
+                </p>
+              </li>
+            ))}
+          </ul>
         </Panel>
       </div>
-
-      <Panel
-        title="Oficina frente a WhatsApp"
-        description="Guías normales del periodo según su origen"
-        testId="panel-origen"
-      >
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {data.by_origin.map((o) => (
-            <li key={o.key} className="bg-muted/40 rounded-lg p-4">
-              <p className="text-muted-foreground text-xs">
-                {RESTORATION_ORIGIN_LABELS[o.key as RestorationOrigin] ?? o.key}
-              </p>
-              <p className="text-heading mt-1 text-xl font-semibold">
-                {formatSolesWhole(o.sold)}
-              </p>
-              <p className="text-muted-foreground text-xs">
-                {o.orders} {o.orders === 1 ? "guía" : "guías"} · ticket{" "}
-                {formatSolesWhole(o.ticket)}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </Panel>
     </>
   );
 }

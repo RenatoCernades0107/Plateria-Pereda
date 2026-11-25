@@ -2,12 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import {
   clientsCsv,
+  corporativoCsv,
   dashboardCsvFilename,
   ordersCsv,
-  quotesCsv,
   salesCsv,
   sellersCsv,
   summaryCsv,
+  whatsappCsv,
   workshopsCsv,
 } from "@/domain/dashboard-csv";
 import {
@@ -70,8 +71,11 @@ export async function GET(request: NextRequest) {
     case "vendedores":
       csv = sellersCsv(await dashboardSellers(range), period);
       break;
-    case "cotizaciones":
-      csv = quotesCsv(await dashboardQuotes(range), period);
+    case "whatsapp":
+      csv = whatsappCsv(await dashboardQuotes(range), period);
+      break;
+    case "corporativo":
+      csv = corporativoCsv(await dashboardQuotes(range), period);
       break;
   }
 

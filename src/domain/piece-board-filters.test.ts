@@ -26,6 +26,8 @@ describe("filtros de la vista de piezas", () => {
       from: null,
       to: null,
       dateField: "registro",
+      toCollect: false,
+      missing: [],
       sort: "guia",
       dir: "desc",
       page: 1,
@@ -41,6 +43,7 @@ describe("filtros de la vista de piezas", () => {
         dias: "10",
         urgentes: "1",
         listas: "1",
+        porcobrar: "1",
         devolver: "1",
         pagina: "2",
       }),
@@ -57,6 +60,8 @@ describe("filtros de la vista de piezas", () => {
       from: null,
       to: null,
       dateField: "registro",
+      toCollect: true,
+      missing: [],
       sort: "guia",
       dir: "desc",
       page: 2,
@@ -260,6 +265,27 @@ describe("filtros de la vista de piezas", () => {
     expect(
       pieceBoardHref(filters, { noWorkshop: false, workshopIds: [] }),
     ).toBe("/piezas");
+  });
+
+  it("filtra por «Falta asignar» (falta=precio&falta=costo) y lo guarda en la URL", () => {
+    const filters = parsePieceBoardFilters({
+      falta: ["costo", "precio", "costo", "otro"],
+    });
+    expect(filters.missing).toEqual(["costo", "precio"]);
+    const url = pieceBoardHref(filters);
+    expect(url).toBe("/piezas?falta=costo&falta=precio");
+    const query = new URLSearchParams(url.split("?")[1]);
+    expect(parsePieceBoardFilters({ falta: query.getAll("falta") })).toEqual(
+      filters,
+    );
+    expect(listPiecesBoardArgs(filters)).toMatchObject({
+      p_missing: ["costo", "precio"],
+    });
+    expect(
+      listPiecesBoardArgs(parsePieceBoardFilters({})).p_missing,
+    ).toBeUndefined();
+    expect(pieceBoardHref(filters, { missing: [] })).toBe("/piezas");
+    expect(parsePieceBoardFilters({}).missing).toEqual([]);
   });
 
   it("ya no lee el chip «Por devolver» (va dentro de «Listas»)", () => {

@@ -77,6 +77,17 @@ export const PIECE_BOARD_SORT_LABELS: Record<PieceBoardSort, string> = {
   dias_taller: "Días en taller",
 };
 
+/**
+ * "Falta asignar": piezas a las que aún no se les puso precio de venta o costo de
+ * servicio (0 cuenta como asignado). Varias opciones se suman (basta con cumplir una).
+ */
+export const PIECE_MISSING = ["precio", "costo"] as const;
+export type PieceMissing = (typeof PIECE_MISSING)[number];
+export const PIECE_MISSING_LABELS: Record<PieceMissing, string> = {
+  precio: "Sin precio",
+  costo: "Sin costo de servicio",
+};
+
 export type PieceBoardFilters = {
   /** Código de la pieza, descripción o cliente. */
   q: string;
@@ -103,6 +114,13 @@ export type PieceBoardFilters = {
   from: string | null;
   to: string | null;
   dateField: PieceDateField;
+  /**
+   * "Listas por cobrar": listas para entregar cuya guía aún debe dinero (pago pendiente o
+   * parcial). Solo la ven y la aplican quienes ven los montos.
+   */
+  toCollect: boolean;
+  /** Falta asignar (`[]` = sin filtro): sin precio y/o sin costo de servicio. */
+  missing: PieceMissing[];
   /** Por guía: la más reciente primero y sus piezas en orden. */
   sort: PieceBoardSort;
   dir: PieceBoardSortDir;
@@ -149,6 +167,8 @@ export function parsePieceBoardFilters(
     from: isoDate(first(params.desde)),
     to: isoDate(first(params.hasta)),
     dateField: oneOf(PIECE_DATE_FIELDS, first(params.fecha)) ?? "registro",
+    toCollect: first(params.porcobrar) === "1",
+    missing: manyOf(PIECE_MISSING, params.falta),
     sort: oneOf(PIECE_BOARD_SORTS, first(params.orden)) ?? "guia",
     dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
@@ -176,6 +196,8 @@ export function pieceBoardQuery(
   if (next.to) params.set("hasta", next.to);
   if ((next.from || next.to) && next.dateField !== "registro")
     params.set("fecha", next.dateField);
+  if (next.toCollect) params.set("porcobrar", "1");
+  appendAll(params, "falta", next.missing);
   if (next.sort !== "guia") params.set("orden", next.sort);
   if (next.dir !== "desc") params.set("dir", next.dir);
   if (next.page > 1 && next.view === "tabla")
@@ -225,6 +247,8 @@ export function listPiecesBoardArgs(
     p_to: filters.to ?? undefined,
     p_date_field: filters.dateField,
     p_active_only: pieceActiveOnly(filters) || undefined,
+    p_to_collect: filters.toCollect || undefined,
+    p_missing: filters.missing.length ? filters.missing : undefined,
     p_sort: filters.sort,
     p_dir: filters.dir,
     p_limit: all

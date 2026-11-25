@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { METRIC_HELP } from "@/domain/dashboard-help";
+import { dashboardScopes } from "@/domain/dashboard-scope";
 import { barWidth, workshopTone } from "@/domain/dashboard-charts";
 import {
   formatCount,
@@ -46,11 +47,15 @@ function loadLabel(row: DashboardWorkshopRow, alertDays: number): string {
 
 export async function WorkshopsArea({
   range,
+  today,
   canMargins,
 }: {
   range: DashboardRange;
+  /** Hoy en Lima ("AAAA-MM-DD"), para las etiquetas de tiempo. */
+  today: string;
   canMargins: boolean;
 }) {
+  const scope = dashboardScopes(range, today);
   const data = await dashboardWorkshops(range);
   const rows = data.workshops;
   const withDays = rows.filter((r) => r.avg_days !== null);
@@ -66,6 +71,7 @@ export async function WorkshopsArea({
       <KpiGrid>
         <KpiTile
           testId="kpi-devueltas"
+          scope={scope.periodo}
           icon={PackageCheck}
           label="Piezas devueltas"
           value={formatCount(data.total.returned)}
@@ -73,6 +79,7 @@ export async function WorkshopsArea({
         />
         <KpiTile
           testId="kpi-dias-promedio"
+          scope={scope.periodo}
           info={METRIC_HELP.diasTaller}
           icon={Hourglass}
           label="Días en taller (promedio)"
@@ -81,6 +88,7 @@ export async function WorkshopsArea({
         />
         <KpiTile
           testId="kpi-en-taller"
+          scope={scope.hoy}
           icon={Hammer}
           label="En taller ahora"
           value={formatCount(data.total.in_workshop)}
@@ -89,6 +97,7 @@ export async function WorkshopsArea({
         />
         <KpiTile
           testId="kpi-con-retraso"
+          scope={scope.hoy}
           info={METRIC_HELP.alertaTaller}
           icon={AlarmClock}
           label={`Con ${data.alert_days}+ días`}
@@ -107,6 +116,7 @@ export async function WorkshopsArea({
           description="La barra es el promedio; la marca vertical, la mediana"
           className="lg:col-span-2"
           testId="panel-dias-taller"
+          scope={scope.periodo}
         >
           {withDays.length === 0 ? (
             <PanelEmpty>
@@ -162,6 +172,7 @@ export async function WorkshopsArea({
           title="¿Cuánto tardan?"
           description="Piezas devueltas según sus días en el taller"
           testId="panel-distribucion-taller"
+          scope={scope.periodo}
         >
           {data.total.returned === 0 ? (
             <PanelEmpty />
@@ -173,8 +184,9 @@ export async function WorkshopsArea({
 
       <Panel
         title="Detalle por taller"
-        description="Devueltas, enviadas y carga de hoy"
+        description="Enviadas, devueltas y observadas en el periodo; «En taller hoy» y la carga son de hoy"
         testId="tabla-talleres"
+        scope={[scope.periodo, scope.hoy]}
         action={
           showCost ? (
             <span className="text-muted-foreground flex items-center gap-1.5 text-xs">

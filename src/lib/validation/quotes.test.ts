@@ -48,6 +48,7 @@ const input = (patch: Partial<QuoteFormInput> = {}): QuoteFormInput => ({
   deliveryDays: "30",
   issuerId: null,
   applyIgv: true,
+  pricesIncludeIgv: true,
   notes: "",
   terms: "",
   lines: [anillo, libre],
@@ -228,6 +229,20 @@ describe("IGV", () => {
     ).toBe(false);
   });
 
+  it("lleva cómo se escribieron los precios (con IGV incluido o sin él)", () => {
+    expect(
+      quoteRpcArgs(quoteSchema.parse(input())).p_quote.prices_include_igv,
+    ).toBe(true);
+    expect(
+      quoteRpcArgs(quoteSchema.parse(input({ pricesIncludeIgv: false })))
+        .p_quote.prices_include_igv,
+    ).toBe(false);
+    expect(
+      quoteSchema.safeParse({ ...input(), pricesIncludeIgv: undefined })
+        .success,
+    ).toBe(false);
+  });
+
   it("la casilla es obligatoria", () => {
     expect(
       quoteSchema.safeParse({ ...input(), applyIgv: undefined }).success,
@@ -258,6 +273,7 @@ describe("quoteRpcArgs", () => {
       delivery_days: 45,
       issuer_id: null,
       apply_igv: true,
+      prices_include_igv: true,
       notes: "",
       terms: "",
     });

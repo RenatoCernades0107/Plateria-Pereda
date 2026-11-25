@@ -49,7 +49,7 @@ describe("filtros del seguimiento de cotizaciones", () => {
 
   it("arma la URL omitiendo los filtros vacíos", () => {
     const filters = parseTrackingFilters({});
-    expect(trackingFiltersHref(filters)).toBe("/cotizaciones");
+    expect(trackingFiltersHref(filters)).toBe("/corporativo");
     expect(
       trackingFiltersHref(filters, {
         status: ["aceptada"],
@@ -58,7 +58,7 @@ describe("filtros del seguimiento de cotizaciones", () => {
         page: 2,
       }),
     ).toBe(
-      "/cotizaciones?estado=aceptada&taller=sin&ubicacion=entregado&pagina=2",
+      "/corporativo?estado=aceptada&taller=sin&ubicacion=entregado&pagina=2",
     );
   });
 });

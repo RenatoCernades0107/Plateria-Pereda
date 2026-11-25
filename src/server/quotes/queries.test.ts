@@ -160,6 +160,7 @@ describe("getQuote", () => {
       payment_condition: "credito",
       delivery_days: 45,
       apply_igv: false,
+      prices_include_igv: true,
       issue_date: null,
       valid_until: null,
       notes: "",
@@ -184,6 +185,7 @@ describe("getQuote", () => {
       paymentCondition: "credito",
       deliveryDays: 45,
       applyIgv: false,
+      pricesIncludeIgv: true,
     });
   });
 });

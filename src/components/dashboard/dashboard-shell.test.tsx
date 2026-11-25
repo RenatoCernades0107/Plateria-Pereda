@@ -62,6 +62,14 @@ describe("DashboardShell", () => {
     expect(screen.getByText("contenido")).toBeInTheDocument();
   });
 
+  it("explica qué significa cada etiqueta de tiempo", () => {
+    setup();
+    const legend = screen.getByTestId("rango-leyenda");
+    expect(legend).toHaveTextContent("Periodo");
+    expect(legend).toHaveTextContent("Estado actual");
+    expect(legend).toHaveTextContent("Hoy");
+  });
+
   it("los atajos son enlaces compartibles que conservan la pestaña", () => {
     setup({ area: "ventas" });
     expect(screen.getByTestId("rango-mes")).toHaveAttribute(

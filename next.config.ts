@@ -15,6 +15,18 @@ export default function config(phase: string): NextConfig {
   return {
     // Habilita forbidden() para responder 403 a quien no tiene permiso.
     experimental: { authInterrupts: true },
+    async redirects() {
+      return [
+        // /cotizaciones pasó a /corporativo (2026-11-24): cubre favoritos, notificaciones
+        // push ya enviadas y enlaces viejos. `:path*` también cubre la raíz y no toca
+        // /cotizaciones-whatsapp (el patrón exige `/` después de `/cotizaciones`).
+        {
+          source: "/cotizaciones/:path*",
+          destination: "/corporativo/:path*",
+          permanent: true,
+        },
+      ];
+    },
     async headers() {
       return [
         {

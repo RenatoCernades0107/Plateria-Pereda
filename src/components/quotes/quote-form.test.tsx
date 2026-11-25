@@ -67,6 +67,8 @@ const values = (patch: Partial<QuoteFormValues> = {}): QuoteFormValues => ({
   issuerId: null,
   deliveryDays: "30",
   applyIgv: true,
+  // Por defecto, una cotización anterior (precios sin IGV); las nuevas, con IGV incluido.
+  pricesIncludeIgv: false,
   notes: "",
   terms: "Pago al contado.",
   lines: [
@@ -141,6 +143,56 @@ describe("QuoteForm", () => {
     expect(screen.getByTestId("total")).toHaveTextContent("S/ 800.00");
   });
 
+  describe("precios con IGV incluido (cotizaciones nuevas)", () => {
+    it('"Los precios incluyen IGV": el total no cambia y se desglosa el IGV', async () => {
+      const user = userEvent.setup();
+      render(<QuoteForm initial={values({ pricesIncludeIgv: true })} />);
+      const igv = screen.getByRole("checkbox", {
+        name: "Los precios incluyen IGV (18 %)",
+      });
+      expect(igv).toBeChecked();
+      expect(
+        screen.queryByRole("checkbox", { name: "Sumar IGV (18 %)" }),
+      ).not.toBeInTheDocument();
+      // Total 840.00; base 840 ÷ 1.18 = 711.86; IGV 128.14.
+      expect(screen.getByText("Subtotal sin IGV")).toBeInTheDocument();
+      expect(screen.getByTestId("subtotal")).toHaveTextContent("S/ 711.86");
+      expect(screen.getByTestId("igv")).toHaveTextContent("S/ 128.14");
+      expect(screen.getByTestId("total")).toHaveTextContent("S/ 840.00");
+
+      // Descuento de S/ 40: total 800.00; base 677.97; IGV 122.03; descuento sin IGV 33.89.
+      await user.click(within(lineGroup(2)).getByLabelText("Descuento"));
+      await user.click(screen.getByRole("option", { name: "Monto (S/)" }));
+      await user.type(
+        within(lineGroup(2)).getByLabelText("Descuento (S/)"),
+        "40",
+      );
+      expect(screen.getByTestId("subtotal")).toHaveTextContent("S/ 711.86");
+      expect(screen.getByTestId("descuentos")).toHaveTextContent("S/ 33.89");
+      expect(screen.getByTestId("igv")).toHaveTextContent("S/ 122.03");
+      expect(screen.getByTestId("total")).toHaveTextContent("S/ 800.00");
+
+      // Al desmarcarla no hay desglose; el total es el mismo.
+      await user.click(igv);
+      expect(screen.queryByTestId("igv")).not.toBeInTheDocument();
+      expect(screen.getByText("Subtotal")).toBeInTheDocument();
+      expect(screen.getByTestId("total")).toHaveTextContent("S/ 800.00");
+    });
+
+    it("envía cómo se escribieron los precios al guardar", async () => {
+      const user = userEvent.setup();
+      render(<QuoteForm initial={values({ pricesIncludeIgv: true })} />);
+      await user.click(
+        screen.getByRole("button", { name: "Guardar borrador" }),
+      );
+      await waitFor(() => expect(mocks.save).toHaveBeenCalled());
+      expect(mocks.save).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ applyIgv: true, pricesIncludeIgv: true }),
+      );
+    });
+  });
+
   it("envía la casilla del IGV al guardar", async () => {
     const user = userEvent.setup();
     render(<QuoteForm initial={values()} />);
@@ -176,7 +228,11 @@ describe("QuoteForm", () => {
     const condicion = screen.getByLabelText("Condición de pago");
     expect(condicion).toHaveTextContent("Al contado");
     await user.click(condicion);
-    for (const name of ["Al contado", "Al crédito", "A cuenta"])
+    for (const name of [
+      "Al contado",
+      "Al crédito",
+      "50% adelanto, saldo contraentrega",
+    ])
       expect(screen.getByRole("option", { name })).toBeInTheDocument();
     await user.click(screen.getByRole("option", { name: "Al crédito" }));
     expect(condicion).toHaveTextContent("Al crédito");
@@ -251,7 +307,7 @@ describe("QuoteForm", () => {
     render(<QuoteForm initial={values()} />);
     await user.click(screen.getByRole("button", { name: "Guardar borrador" }));
     await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith("/cotizaciones/q1"),
+      expect(mocks.push).toHaveBeenCalledWith("/corporativo/q1"),
     );
     expect(mocks.save).toHaveBeenCalledWith(
       null,

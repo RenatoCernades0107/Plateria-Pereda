@@ -15,7 +15,7 @@ test.describe("Permisos por rol", () => {
     await expect(nav(page).getByRole("link")).toHaveText([
       "Restauraciones",
       "Piezas",
-      "Cotizaciones",
+      "Corporativo",
       "Talleres",
     ]);
   });
@@ -25,7 +25,7 @@ test.describe("Permisos por rol", () => {
     loginAs,
   }) => {
     await loginAs("logistica");
-    const response = await page.goto("/cotizaciones");
+    const response = await page.goto("/corporativo");
     expect(response?.status()).toBe(200);
     await expect(
       page.getByRole("heading", { name: "Cotizaciones aprobadas" }),
@@ -33,7 +33,7 @@ test.describe("Permisos por rol", () => {
     await expect(
       page.getByRole("link", { name: "Nueva cotización" }),
     ).toHaveCount(0);
-    expect((await page.goto("/cotizaciones/nueva"))?.status()).toBe(403);
+    expect((await page.goto("/corporativo/nueva"))?.status()).toBe(403);
   });
 
   for (const ruta of [
@@ -65,7 +65,7 @@ test.describe("Permisos por rol", () => {
       "Piezas",
       "Cotizaciones de WhatsApp",
       "Clientes",
-      "Cotizaciones",
+      "Corporativo",
     ]);
     for (const ruta of [
       "/usuarios",

@@ -1070,6 +1070,7 @@ export type Database = {
           notes: string;
           number: number;
           payment_condition: Database["public"]["Enums"]["quote_payment_condition"];
+          prices_include_igv: boolean;
           status: Database["public"]["Enums"]["quote_status"];
           subtotal: number;
           supplier_delivery_date: string | null;
@@ -1114,6 +1115,7 @@ export type Database = {
           notes?: string;
           number?: never;
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           supplier_delivery_date?: string | null;
@@ -1157,6 +1159,7 @@ export type Database = {
           notes?: string;
           number?: never;
           payment_condition?: Database["public"]["Enums"]["quote_payment_condition"];
+          prices_include_igv?: boolean;
           status?: Database["public"]["Enums"]["quote_status"];
           subtotal?: number;
           supplier_delivery_date?: string | null;
@@ -2460,6 +2463,7 @@ export type Database = {
           p_limit?: number;
           p_location?: Database["public"]["Enums"]["piece_location"][];
           p_min_workshop_days?: number;
+          p_missing?: string[];
           p_no_workshop?: boolean;
           p_offset?: number;
           p_query?: string;
@@ -2468,6 +2472,7 @@ export type Database = {
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["piece_status"][];
           p_to?: string;
+          p_to_collect?: boolean;
           p_to_return?: boolean;
           p_urgent?: boolean;
           p_workshop_ids?: string[];
