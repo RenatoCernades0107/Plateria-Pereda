@@ -1,6 +1,5 @@
-import { History } from "lucide-react";
+import { Download, MoreHorizontal } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { FilteredEmptyState } from "@/components/empty-state";
 import { FilterChips } from "@/components/filter-chips";
@@ -10,6 +9,12 @@ import { PiecesBoardFiltersForm } from "@/components/restorations/pieces-board-f
 import { PiecesKanban } from "@/components/restorations/pieces-kanban";
 import { PiecesBoardTable } from "@/components/restorations/pieces-board-table";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ViewToggle } from "@/components/view-toggle";
 import {
   pieceChipCountFilters,
@@ -18,6 +23,7 @@ import {
 import {
   parsePieceBoardFilters,
   pieceBoardHref,
+  pieceBoardQuery,
   WORKSHOP_DAYS_ALERT,
 } from "@/domain/piece-board-filters";
 import { can } from "@/domain/permissions";
@@ -60,6 +66,7 @@ export default async function PiezasPage({
   });
   const filtered =
     pieceBoardHref(filters, { page: 1, view: "tabla" }) !== "/piezas";
+  const exportQuery = pieceBoardQuery(filters, { page: 1, view: "tabla" });
   const summary =
     filters.view === "kanban" && items.length < total
       ? `Se muestran ${items.length} de ${total} piezas. Usa los filtros para ver las demás.`
@@ -74,7 +81,7 @@ export default async function PiezasPage({
     <div className="space-y-4">
       <PageHeader
         title="Piezas"
-        description={`Piezas en curso de todas las restauraciones y las entregadas hoy. Se resaltan las que llevan ${WORKSHOP_DAYS_ALERT} días o más en el taller.`}
+        description={`Piezas de todas las restauraciones, las terminadas al final. Se resaltan las que llevan ${WORKSHOP_DAYS_ALERT} días o más en el taller.`}
       />
       {/* Atajos de un clic en su propia franja, bajo el título, como en Restauraciones. */}
       <FilterChips
@@ -98,12 +105,24 @@ export default async function PiezasPage({
             tableHref={pieceBoardHref(filters, { view: "tabla", page: 1 })}
             kanbanHref={pieceBoardHref(filters, { view: "kanban" })}
           />
-          <Button asChild variant="outline">
-            <Link href="/piezas/historial">
-              <History />
-              Historial
-            </Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Más acciones">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a
+                  href={`/api/piezas/exportar${exportQuery ? `?${exportQuery}` : ""}`}
+                  download
+                >
+                  <Download />
+                  Exportar CSV
+                </a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {total === 0 && filtered ? (

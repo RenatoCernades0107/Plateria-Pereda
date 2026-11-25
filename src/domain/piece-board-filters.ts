@@ -13,6 +13,8 @@ import type { PieceLocation } from "./restoration-status";
 export const PIECES_PAGE_SIZE = 50;
 /** El kanban muestra todo en una página (con el tope de la consulta). */
 export const PIECES_KANBAN_LIMIT = 200;
+/** Tope de filas del CSV. */
+export const PIECES_EXPORT_LIMIT = 5000;
 
 /**
  * Desde cuántos días en el taller se resalta una pieza. Propuesta: una semana; se
@@ -21,10 +23,10 @@ export const PIECES_KANBAN_LIMIT = 200;
 export const WORKSHOP_DAYS_ALERT = 7;
 
 /**
- * La vista muestra piezas en curso (P42): sin anuladas; las rechazadas o sin arreglo
- * mientras siguen en la tienda (por devolver, P47). Las entregadas (o devueltas al
- * cliente) siguen a la vista solo el día de la entrega, en hora de Lima; desde el día
- * siguiente están en el historial (`/piezas/historial`).
+ * La tabla lista todas las piezas, como Restauraciones: las en curso primero y las
+ * terminadas (entregadas, anuladas y rechazadas o sin arreglo ya devueltas) al final;
+ * se filtran por estado, ubicación o fecha. El kanban muestra solo las en curso y las
+ * entregadas o devueltas hoy, salvo que se filtre por estado o por fecha.
  */
 export const BOARD_LOCATIONS = [
   "por_whatsapp",
@@ -32,8 +34,10 @@ export const BOARD_LOCATIONS = [
   "en_taller",
   "en_tienda",
   "entregada",
+  "anulada",
 ] as const satisfies readonly PieceLocation[];
-export const BOARD_STATUSES = [
+/** Columnas del kanban (las anuladas no tienen columna). */
+export const KANBAN_STATUSES = [
   "registrada",
   "en_consulta",
   "en_espera",
@@ -43,6 +47,18 @@ export const BOARD_STATUSES = [
   "rechazada",
   "sin_arreglo",
 ] as const satisfies readonly PieceStatus[];
+export const BOARD_STATUSES = [
+  ...KANBAN_STATUSES,
+  "anulada",
+] as const satisfies readonly PieceStatus[];
+
+/** Qué fecha filtran "Desde" y "Hasta": el registro de la pieza o su entrega o cierre. */
+export const PIECE_DATE_FIELDS = ["registro", "entrega"] as const;
+export type PieceDateField = (typeof PIECE_DATE_FIELDS)[number];
+export const PIECE_DATE_FIELD_LABELS: Record<PieceDateField, string> = {
+  registro: "Fecha de registro",
+  entrega: "Fecha de entrega o cierre",
+};
 
 /** Orden de la vista: por guía (por defecto), fecha de registro, precio o días en taller. */
 export const PIECE_BOARD_SORTS = [
@@ -83,6 +99,10 @@ export type PieceBoardFilters = {
    * arreglo que siguen en la tienda (por devolver).
    */
   ready: boolean;
+  /** Rango de fechas en Lima, "AAAA-MM-DD" (inclusive), según `dateField`. */
+  from: string | null;
+  to: string | null;
+  dateField: PieceDateField;
   /** Por guía: la más reciente primero y sus piezas en orden. */
   sort: PieceBoardSort;
   dir: PieceBoardSortDir;
@@ -100,6 +120,16 @@ const first = (value: string | string[] | undefined) =>
 const oneOf = <T extends string>(options: readonly T[], value: string) =>
   (options as readonly string[]).includes(value) ? (value as T) : null;
 
+/** "AAAA-MM-DD" válida, o null. */
+function isoDate(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) &&
+    date.toISOString().slice(0, 10) === value
+    ? value
+    : null;
+}
+
 export function parsePieceBoardFilters(
   params: SearchParams,
 ): PieceBoardFilters {
@@ -116,6 +146,9 @@ export function parsePieceBoardFilters(
     minDays: Number.isFinite(days) && days > 0 ? Math.min(days, 365) : null,
     urgent: first(params.urgentes) === "1",
     ready: first(params.listas) === "1",
+    from: isoDate(first(params.desde)),
+    to: isoDate(first(params.hasta)),
+    dateField: oneOf(PIECE_DATE_FIELDS, first(params.fecha)) ?? "registro",
     sort: oneOf(PIECE_BOARD_SORTS, first(params.orden)) ?? "guia",
     dir: first(params.dir) === "asc" ? "asc" : "desc",
     page: Number.isFinite(page) && page > 0 ? page : 1,
@@ -123,7 +156,8 @@ export function parsePieceBoardFilters(
   };
 }
 
-export function pieceBoardHref(
+/** Parámetros de la URL con esos filtros (omite los vacíos y los valores por defecto). */
+export function pieceBoardQuery(
   filters: PieceBoardFilters,
   changes: Partial<PieceBoardFilters> = {},
 ): string {
@@ -138,16 +172,43 @@ export function pieceBoardHref(
   if (next.minDays) params.set("dias", String(next.minDays));
   if (next.urgent) params.set("urgentes", "1");
   if (next.ready) params.set("listas", "1");
+  if (next.from) params.set("desde", next.from);
+  if (next.to) params.set("hasta", next.to);
+  if ((next.from || next.to) && next.dateField !== "registro")
+    params.set("fecha", next.dateField);
   if (next.sort !== "guia") params.set("orden", next.sort);
   if (next.dir !== "desc") params.set("dir", next.dir);
   if (next.page > 1 && next.view === "tabla")
     params.set("pagina", String(next.page));
   if (next.view === "kanban") params.set("vista", "kanban");
-  const query = params.toString();
+  return params.toString();
+}
+
+export function pieceBoardHref(
+  filters: PieceBoardFilters,
+  changes: Partial<PieceBoardFilters> = {},
+): string {
+  const query = pieceBoardQuery(filters, changes);
   return query ? `/piezas?${query}` : "/piezas";
 }
 
-export function listPiecesBoardArgs(filters: PieceBoardFilters) {
+/**
+ * El kanban solo trae las piezas en curso (y las terminadas hoy), salvo que se filtre
+ * por estado o por fecha: así no se llena de terminadas.
+ */
+export function pieceActiveOnly(filters: PieceBoardFilters): boolean {
+  return (
+    filters.view === "kanban" &&
+    filters.status.length === 0 &&
+    !filters.from &&
+    !filters.to
+  );
+}
+
+export function listPiecesBoardArgs(
+  filters: PieceBoardFilters,
+  { all = false }: { all?: boolean } = {},
+) {
   return {
     p_query: filters.q || undefined,
     p_restoration_code: filters.guide || undefined,
@@ -160,11 +221,21 @@ export function listPiecesBoardArgs(filters: PieceBoardFilters) {
     p_min_workshop_days: filters.minDays ?? undefined,
     p_urgent: filters.urgent || undefined,
     p_ready: filters.ready || undefined,
+    p_from: filters.from ?? undefined,
+    p_to: filters.to ?? undefined,
+    p_date_field: filters.dateField,
+    p_active_only: pieceActiveOnly(filters) || undefined,
     p_sort: filters.sort,
     p_dir: filters.dir,
-    p_limit: filters.view === "kanban" ? PIECES_KANBAN_LIMIT : PIECES_PAGE_SIZE,
+    p_limit: all
+      ? PIECES_EXPORT_LIMIT
+      : filters.view === "kanban"
+        ? PIECES_KANBAN_LIMIT
+        : PIECES_PAGE_SIZE,
     p_offset:
-      filters.view === "kanban" ? 0 : (filters.page - 1) * PIECES_PAGE_SIZE,
+      all || filters.view === "kanban"
+        ? 0
+        : (filters.page - 1) * PIECES_PAGE_SIZE,
   };
 }
 

@@ -4,7 +4,10 @@ import {
   isLongInWorkshop,
   listPiecesBoardArgs,
   parsePieceBoardFilters,
+  pieceActiveOnly,
   pieceBoardHref,
+  pieceBoardQuery,
+  PIECES_EXPORT_LIMIT,
   pieceSortChange,
 } from "./piece-board-filters";
 
@@ -20,6 +23,9 @@ describe("filtros de la vista de piezas", () => {
       minDays: null,
       urgent: false,
       ready: false,
+      from: null,
+      to: null,
+      dateField: "registro",
       sort: "guia",
       dir: "desc",
       page: 1,
@@ -48,13 +54,16 @@ describe("filtros de la vista de piezas", () => {
       minDays: 10,
       urgent: true,
       ready: true,
+      from: null,
+      to: null,
+      dateField: "registro",
       sort: "guia",
       dir: "desc",
       page: 2,
       view: "tabla",
     });
     const closed = parsePieceBoardFilters({
-      ubicacion: "anulada",
+      ubicacion: "otra",
       estado: "recibida",
       dias: "-3",
     });
@@ -63,7 +72,7 @@ describe("filtros de la vista de piezas", () => {
       [],
       null,
     ]);
-    // Las entregadas hoy siguen en la vista: se pueden filtrar.
+    // Las terminadas (entregadas, anuladas…) también se listan: se pueden filtrar.
     const today = parsePieceBoardFilters({
       ubicacion: "entregada",
       estado: "entregada",
@@ -96,9 +105,84 @@ describe("filtros de la vista de piezas", () => {
       p_min_workshop_days: 7,
       p_sort: "guia",
       p_dir: "desc",
+      p_from: undefined,
+      p_to: undefined,
+      p_date_field: "registro",
+      p_active_only: undefined,
       p_limit: 50,
       p_offset: 100,
     });
+  });
+
+  it("filtra por fecha de registro o de entrega y la lleva a la URL y a la consulta", () => {
+    const byRegistro = parsePieceBoardFilters({
+      desde: "2026-11-01",
+      hasta: "2026-11-30",
+    });
+    expect([byRegistro.from, byRegistro.to, byRegistro.dateField]).toEqual([
+      "2026-11-01",
+      "2026-11-30",
+      "registro",
+    ]);
+    // La fecha de registro es la de por defecto: no va en la URL.
+    expect(pieceBoardHref(byRegistro)).toBe(
+      "/piezas?desde=2026-11-01&hasta=2026-11-30",
+    );
+    const byEntrega = parsePieceBoardFilters({
+      desde: "2026-11-01",
+      fecha: "entrega",
+    });
+    expect(pieceBoardHref(byEntrega)).toBe(
+      "/piezas?desde=2026-11-01&fecha=entrega",
+    );
+    expect(listPiecesBoardArgs(byEntrega)).toMatchObject({
+      p_from: "2026-11-01",
+      p_to: undefined,
+      p_date_field: "entrega",
+    });
+    // Sin fechas, el campo no va en la URL; fechas o campos inválidos se ignoran.
+    expect(pieceBoardHref(parsePieceBoardFilters({ fecha: "entrega" }))).toBe(
+      "/piezas",
+    );
+    const invalid = parsePieceBoardFilters({
+      desde: "2026-13-40",
+      hasta: "ayer",
+      fecha: "otro",
+    });
+    expect([invalid.from, invalid.to, invalid.dateField]).toEqual([
+      null,
+      null,
+      "registro",
+    ]);
+  });
+
+  it("el kanban sin filtros de estado ni fecha trae solo las piezas en curso", () => {
+    const kanban = parsePieceBoardFilters({ vista: "kanban" });
+    expect(pieceActiveOnly(kanban)).toBe(true);
+    expect(listPiecesBoardArgs(kanban)).toMatchObject({ p_active_only: true });
+    expect(
+      pieceActiveOnly(
+        parsePieceBoardFilters({ vista: "kanban", estado: "entregada" }),
+      ),
+    ).toBe(false);
+    expect(
+      pieceActiveOnly(
+        parsePieceBoardFilters({ vista: "kanban", desde: "2026-11-01" }),
+      ),
+    ).toBe(false);
+    // La tabla lista todas.
+    expect(pieceActiveOnly(parsePieceBoardFilters({}))).toBe(false);
+  });
+
+  it("la exportación pide todas las piezas del filtro, sin paginar", () => {
+    const filters = parsePieceBoardFilters({ pagina: "3", vista: "kanban" });
+    expect(listPiecesBoardArgs(filters, { all: true })).toMatchObject({
+      p_limit: PIECES_EXPORT_LIMIT,
+      p_offset: 0,
+    });
+    expect(pieceBoardQuery(parsePieceBoardFilters({ estado: "anulada" }))).toBe(
+      "estado=anulada",
+    );
   });
 
   it("ordena por guía por defecto; el orden elegido va en la URL", () => {

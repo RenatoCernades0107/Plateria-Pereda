@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { KanbanCard, KanbanColumns } from "@/components/kanban-columns";
-import { BOARD_STATUSES, isLongInWorkshop } from "@/domain/piece-board-filters";
+import {
+  KANBAN_STATUSES,
+  isLongInWorkshop,
+} from "@/domain/piece-board-filters";
 import { can } from "@/domain/permissions";
 import type { AppRole } from "@/lib/roles";
 import { cn } from "@/lib/utils";
@@ -66,7 +69,7 @@ export function PiecesKanban({
       <KanbanColumns
         label="Piezas por estado"
         emptyText="Sin piezas"
-        columns={pieceBoardColumns(BOARD_STATUSES).map(
+        columns={pieceBoardColumns(KANBAN_STATUSES).map(
           ({ key, label, dropOnly }) => ({
             key,
             label,

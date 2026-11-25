@@ -32,6 +32,7 @@ import {
 } from "@/domain/restoration-filters";
 import type { CsvRestoration } from "@/domain/restorations-csv";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import { signedPhotoUrls } from "@/server/files/queries";
 
@@ -721,6 +722,10 @@ export type BoardPiece = {
   photoUrl: string | null;
   /** Días calendario en el estado actual (C5). */
   statusDays: number;
+  /** Cuándo se registró la pieza (ISO). */
+  registeredAt?: string;
+  /** Cuándo se entregó, devolvió o anuló (ISO); null si sigue en curso. */
+  finishedAt?: string | null;
 };
 
 /**
@@ -743,55 +748,86 @@ export async function listPiecesBoard(
     signedPhotoUrls(data.flatMap((p) => (p.photo_path ? [p.photo_path] : []))),
     statusSince(data.map((p) => p.id)),
   ]);
-  const now = new Date();
   return {
     total,
     pages: Math.max(1, Math.ceil(total / PIECES_PAGE_SIZE)),
-    items: data.map((p) => ({
-      id: p.id,
-      code: p.code,
-      restorationId: p.restoration_id,
-      restorationCode: p.restoration_code,
-      clientName: withClient ? (p.client_name ?? "") : "",
-      description: p.description,
-      status: toPieceStatus(p.status),
-      location: p.location,
-      urgent: p.urgent,
-      estimatedDeliveryDate: p.estimated_delivery_date,
-      workshopDeliveryDate: p.workshop_delivery_date,
-      readyForDelivery: p.ready_for_delivery,
-      toReturn: p.to_return ?? false,
-      quantity: p.quantity ?? 1,
-      locationSince: p.location_since ?? null,
-      locationDays: p.location_since
-        ? calendarDaysBetween(new Date(p.location_since), now)
-        : null,
-      returnedAt: null,
-      observedAt: p.observed_at ?? null,
-      firstSentAt: p.first_sent_at ?? null,
-      lastSentAt: p.last_sent_at ?? null,
-      lastReturnedAt: p.last_returned_at ?? null,
-      reviewSentAt: p.review_sent_at ?? null,
-      reviewReturnedAt: p.review_returned_at ?? null,
-      workshopId: p.workshop_id,
-      workshopName: p.workshop_name,
-      arrivedAt: p.arrived_at,
-      workshopDays: p.workshop_days,
-      workshopOngoing: p.workshop_ongoing,
-      lastObservation: p.last_observation,
-      serviceName: p.service_name,
-      materialName: p.material_name,
-      measure: p.measure,
-      weightGrams: p.weight_grams,
-      serviceCostCents: centsOrNull(p.service_cost),
-      priceCents: centsOrNull(p.price),
-      hasOrder: p.has_order,
-      photoUrl: p.photo_path ? (photos.get(p.photo_path) ?? null) : null,
-      statusDays: since.has(p.id)
-        ? calendarDaysBetween(new Date(since.get(p.id)!), now)
-        : 0,
-    })),
+    items: toBoardPieces(data, photos, since, withClient),
   };
+}
+
+type BoardRow =
+  Database["public"]["Functions"]["list_pieces_board"]["Returns"][number];
+
+function toBoardPieces(
+  data: BoardRow[],
+  photos: Map<string, string>,
+  since: Map<string, string>,
+  withClient: boolean,
+): BoardPiece[] {
+  const now = new Date();
+  return data.map((p) => ({
+    id: p.id,
+    code: p.code,
+    restorationId: p.restoration_id,
+    restorationCode: p.restoration_code,
+    clientName: withClient ? (p.client_name ?? "") : "",
+    description: p.description,
+    status: toPieceStatus(p.status),
+    location: p.location,
+    urgent: p.urgent,
+    estimatedDeliveryDate: p.estimated_delivery_date,
+    workshopDeliveryDate: p.workshop_delivery_date,
+    readyForDelivery: p.ready_for_delivery,
+    toReturn: p.to_return ?? false,
+    quantity: p.quantity ?? 1,
+    locationSince: p.location_since ?? null,
+    locationDays: p.location_since
+      ? calendarDaysBetween(new Date(p.location_since), now)
+      : null,
+    returnedAt: null,
+    observedAt: p.observed_at ?? null,
+    firstSentAt: p.first_sent_at ?? null,
+    lastSentAt: p.last_sent_at ?? null,
+    lastReturnedAt: p.last_returned_at ?? null,
+    reviewSentAt: p.review_sent_at ?? null,
+    reviewReturnedAt: p.review_returned_at ?? null,
+    workshopId: p.workshop_id,
+    workshopName: p.workshop_name,
+    arrivedAt: p.arrived_at,
+    workshopDays: p.workshop_days,
+    workshopOngoing: p.workshop_ongoing,
+    lastObservation: p.last_observation,
+    serviceName: p.service_name,
+    materialName: p.material_name,
+    measure: p.measure,
+    weightGrams: p.weight_grams,
+    serviceCostCents: centsOrNull(p.service_cost),
+    priceCents: centsOrNull(p.price),
+    hasOrder: p.has_order,
+    photoUrl: p.photo_path ? (photos.get(p.photo_path) ?? null) : null,
+    statusDays: since.has(p.id)
+      ? calendarDaysBetween(new Date(since.get(p.id)!), now)
+      : 0,
+    registeredAt: p.registered_at,
+    finishedAt: p.finished_at ?? null,
+  }));
+}
+
+/**
+ * Todas las piezas con esos filtros (también las terminadas), con todos los datos del
+ * CSV y sin paginar. Montos y clientes según el rol, como en la vista.
+ */
+export async function exportPieces(
+  filters: PieceBoardFilters,
+  { withClient }: { withClient: boolean },
+): Promise<BoardPiece[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(
+    "list_pieces_board",
+    listPiecesBoardArgs({ ...filters, view: "tabla", page: 1 }, { all: true }),
+  );
+  if (error) throw error;
+  return toBoardPieces(data, new Map(), new Map(), withClient);
 }
 
 /** Cuántas piezas dan estos filtros (contadores de los chips). */

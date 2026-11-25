@@ -22,7 +22,6 @@ const PAGES: { path: string; role: AppRole }[] = [
   { path: "/restauraciones/pagos", role: "ventas" },
   { path: `/restauraciones/${SEED.restoration}`, role: "admin" },
   { path: "/piezas", role: "logistica" },
-  { path: "/piezas/historial", role: "ventas" },
   { path: `/piezas/${SEED.piece}`, role: "logistica" },
   { path: "/cotizaciones-whatsapp", role: "ventas" },
   { path: "/clientes", role: "ventas" },

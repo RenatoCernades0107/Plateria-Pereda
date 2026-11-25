@@ -228,13 +228,13 @@ select is(
   1, 'la completada que terminó antes de hoy pasa al historial'
 );
 select is(
-  (select count(*)::int from public.list_pieces_history(p_query => 'Tapa sin arreglo')),
-  1, 'la pieza devuelta va al historial de piezas'
+  (select count(*)::int from public.list_pieces_board(p_query => 'Tapa sin arreglo')),
+  1, 'la pieza devuelta sigue en la vista de piezas (al final)'
 );
 select results_eq(
-  $$ select quantity from public.list_pieces_history(p_query => 'Tapa sin arreglo') $$,
+  $$ select quantity from public.list_pieces_board(p_query => 'Tapa sin arreglo') $$,
   $$ values (1) $$,
-  'el historial de piezas trae la cantidad'
+  'la vista de piezas trae la cantidad'
 );
 
 select * from finish();

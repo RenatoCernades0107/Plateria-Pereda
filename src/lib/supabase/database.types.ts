@@ -2453,7 +2453,10 @@ export type Database = {
       };
       list_pieces_board: {
         Args: {
+          p_active_only?: boolean;
+          p_date_field?: string;
           p_dir?: string;
+          p_from?: string;
           p_limit?: number;
           p_location?: Database["public"]["Enums"]["piece_location"][];
           p_min_workshop_days?: number;
@@ -2464,6 +2467,7 @@ export type Database = {
           p_restoration_code?: string;
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["piece_status"][];
+          p_to?: string;
           p_to_return?: boolean;
           p_urgent?: boolean;
           p_workshop_ids?: string[];
@@ -2474,6 +2478,7 @@ export type Database = {
           code: string;
           description: string;
           estimated_delivery_date: string;
+          finished_at: string;
           first_sent_at: string;
           has_order: boolean;
           id: string;
@@ -2489,6 +2494,7 @@ export type Database = {
           price: number;
           quantity: number;
           ready_for_delivery: boolean;
+          registered_at: string;
           restoration_code: string;
           restoration_id: string;
           review_returned_at: string;
@@ -2505,41 +2511,6 @@ export type Database = {
           workshop_id: string;
           workshop_name: string;
           workshop_ongoing: boolean;
-        }[];
-      };
-      list_pieces_history: {
-        Args: {
-          p_from?: string;
-          p_limit?: number;
-          p_offset?: number;
-          p_query?: string;
-          p_restoration_code?: string;
-          p_status?: Database["public"]["Enums"]["piece_status"][];
-          p_to?: string;
-          p_workshop_ids?: string[];
-        };
-        Returns: {
-          client_name: string;
-          code: string;
-          description: string;
-          finished_at: string;
-          id: string;
-          location: Database["public"]["Enums"]["piece_location"];
-          material_name: string;
-          measure: string;
-          photo_path: string;
-          price: number;
-          quantity: number;
-          restoration_code: string;
-          restoration_id: string;
-          service_cost: number;
-          service_name: string;
-          status: Database["public"]["Enums"]["piece_status"];
-          total_count: number;
-          urgent: boolean;
-          weight_grams: number;
-          workshop_id: string;
-          workshop_name: string;
         }[];
       };
       list_restorations: {
