@@ -2461,7 +2461,6 @@ export type Database = {
           p_location?: Database["public"]["Enums"]["piece_location"][];
           p_min_workshop_days?: number;
           p_missing?: string[];
-          p_to_collect?: boolean;
           p_no_workshop?: boolean;
           p_offset?: number;
           p_query?: string;
@@ -2469,6 +2468,7 @@ export type Database = {
           p_restoration_code?: string;
           p_sort?: string;
           p_status?: Database["public"]["Enums"]["piece_status"][];
+          p_to_collect?: boolean;
           p_to_return?: boolean;
           p_urgent?: boolean;
           p_workshop_ids?: string[];
