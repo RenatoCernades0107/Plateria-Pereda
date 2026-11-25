@@ -91,6 +91,8 @@ test.describe("Vista de piezas", () => {
     await page.goto("/piezas");
     // Logística no ve clientes: el filtro de texto dice solo "Código o descripción".
     await page.getByLabel("Código o descripción").fill(clientName);
+    // "Ubicación" está en "Más filtros".
+    await page.getByRole("button", { name: "Más filtros" }).click();
     await page.getByLabel("Ubicación").click();
     await page.getByRole("option", { name: "Sin enviar" }).click();
     await page.keyboard.press("Escape");
@@ -417,6 +419,8 @@ test.describe("Vista de piezas", () => {
     await loginAs("admin");
     await page.goto(`/piezas?q=${tag}`);
     await expect(page.getByText("4 piezas · Página 1 de 1")).toBeVisible();
+    // "Falta asignar" está en "Más filtros".
+    await page.getByRole("button", { name: "Más filtros" }).click();
     await page.getByLabel("Falta asignar").click();
     await page.getByRole("option", { name: "Sin costo de servicio" }).click();
     await page.keyboard.press("Escape");
@@ -436,6 +440,8 @@ test.describe("Vista de piezas", () => {
     await loginAs("ventas");
     await page.goto(`/piezas?q=${tag}&falta=costo`);
     await expect(page.getByText("4 piezas · Página 1 de 1")).toBeVisible();
+    // El `falta=costo` se descarta, así que "Más filtros" no se abre solo.
+    await page.getByRole("button", { name: "Más filtros" }).click();
     await page.getByLabel("Falta asignar").click();
     await expect(
       page.getByRole("option", { name: "Sin precio" }),
@@ -445,7 +451,7 @@ test.describe("Vista de piezas", () => {
     ).toHaveCount(0);
   });
 
-  test("las entregadas hoy siguen en la vista; las de días anteriores, en el historial", async ({
+  test("la vista lista también las entregadas días atrás y se filtra por fecha de entrega", async ({
     page,
     loginAs,
   }) => {
@@ -477,13 +483,21 @@ test.describe("Vista de piezas", () => {
     await expect(page.getByTestId(`pieza-${today!.code}`)).toContainText(
       "Entregada",
     );
-    await expect(page.getByTestId(`pieza-${before!.code}`)).toHaveCount(0);
 
-    await page.getByRole("link", { name: "Historial" }).click();
-    await expect(page).toHaveURL(/\/piezas\/historial$/);
-    await page.getByLabel("Código, descripción o cliente").fill(clientName);
-    await expect(page.getByTestId(`historial-${before!.code}`)).toBeVisible();
-    await expect(page.getByTestId(`historial-${today!.code}`)).toBeVisible();
+    // Sin historial aparte: la vista también lista las entregadas días atrás y se
+    // pueden filtrar por fecha de entrega.
+    await page.goto(`/piezas?q=${clientName}&estado=entregada`);
+    await expect(page.getByTestId(`pieza-${before!.code}`)).toBeVisible();
+    await expect(page.getByTestId(`pieza-${today!.code}`)).toBeVisible();
+    const lima = (offsetDays: number) =>
+      new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(
+        new Date(Date.now() - offsetDays * 86_400_000),
+      );
+    await page.goto(
+      `/piezas?q=${clientName}&fecha=entrega&desde=${lima(5)}&hasta=${lima(1)}`,
+    );
+    await expect(page.getByTestId(`pieza-${before!.code}`)).toBeVisible();
+    await expect(page.getByTestId(`pieza-${today!.code}`)).toHaveCount(0);
   });
 
   test("cambia el estado desde la fila de la tabla, con su diálogo si pide datos", async ({

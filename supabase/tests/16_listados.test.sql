@@ -101,16 +101,16 @@ select is(
 );
 
 select results_eq(
-  $$ select description, workshop_days, workshop_ongoing from public.list_pieces_board(p_query => 'listada', p_sort => 'dias_taller') $$,
+  $$ select description, workshop_days, workshop_ongoing from public.list_pieces_board(p_query => 'listada', p_sort => 'dias_taller', p_active_only => true) $$,
   $$ values ('Fuente listada', 10, true), ('Bandeja listada', 0, false) $$,
   'la vista de piezas muestra las piezas en curso; por días en taller, primero las que llevan más'
 );
 select is(
-  (select count(*)::int from public.list_pieces_board(p_query => 'Jarra entregada')),
-  0, 'no muestra piezas entregadas ni de restauraciones pasadas'
+  (select count(*)::int from public.list_pieces_board(p_query => 'Jarra entregada', p_active_only => true)),
+  0, 'en curso (kanban): no muestra piezas entregadas ni de restauraciones pasadas'
 );
 select results_eq(
-  $$ select description, urgent from public.list_pieces_board(p_query => 'Otra') order by description $$,
+  $$ select description, urgent from public.list_pieces_board(p_query => 'Otra', p_active_only => true) order by description $$,
   $$ values ('Copa urgente', true), ('Plato normal', false), ('Vaso por devolver', false) $$,
   'las rechazadas que siguen en la tienda aparecen (las devueltas no)'
 );

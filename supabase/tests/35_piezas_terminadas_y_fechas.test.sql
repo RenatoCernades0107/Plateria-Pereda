@@ -1,11 +1,12 @@
 begin;
 
-select plan(6);
+select plan(7);
 
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
 
--- Vista de piezas: las entregadas hoy siguen a la vista; el historial guarda las demás.
+-- Vista de piezas: lista todas (las terminadas al final), con rango de fechas y
+-- `p_active_only` para el kanban (solo en curso y entregadas hoy).
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data) values
   ('00000000-0000-0000-0000-000000000db1', 'admin@historial.test', '{"role":"admin"}', '{}'),
   ('00000000-0000-0000-0000-000000000db2', 'logistica@historial.test', '{"role":"logistica"}', '{}');
@@ -25,36 +26,44 @@ update public.pieces set status = 'entregada', delivered_at = now() - interval '
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000db1","role":"authenticated"}', true);
 select results_eq(
-  $$ select description from public.list_pieces_board(p_query => 'historial') order by description $$,
+  $$ select description from public.list_pieces_board(p_query => 'historial', p_active_only => true) order by description $$,
   $$ values ('En curso historial'), ('Hoy historial') $$,
-  'la vista muestra las piezas en curso y las entregadas hoy, no las de días anteriores'
+  'en curso: las piezas en curso y las entregadas hoy, no las de días anteriores'
+);
+select results_eq(
+  $$ select description from public.list_pieces_board(p_query => 'historial') order by description $$,
+  $$ values ('Antes historial'), ('En curso historial'), ('Hoy historial') $$,
+  'la vista lista todas, también las entregadas días atrás'
 );
 select is(
-  (select description from public.list_pieces_board(p_query => 'historial') offset 1 limit 1),
-  'Hoy historial', 'las entregadas hoy van al final'
+  (select description from public.list_pieces_board(p_query => 'historial') offset 0 limit 1),
+  'En curso historial', 'las terminadas van al final'
 );
 select results_eq(
-  $$ select description from public.list_pieces_history(p_query => 'historial') $$,
-  $$ values ('Hoy historial'), ('Antes historial') $$,
-  'el historial tiene las entregadas, de la más reciente a la más antigua'
-);
-select results_eq(
-  $$ select description from public.list_pieces_history(
+  $$ select description from public.list_pieces_board(
        p_query => 'historial',
+       p_date_field => 'entrega',
        p_from => (now() at time zone 'America/Lima')::date - 5,
        p_to => (now() at time zone 'America/Lima')::date - 1) $$,
   $$ values ('Antes historial') $$,
   'filtra por la fecha de entrega (hora de Lima)'
 );
 select is(
-  (select count(*)::int from public.list_pieces_history(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),
+  (select count(*)::int from public.list_pieces_board(
+     p_query => 'historial',
+     p_from => (now() at time zone 'America/Lima')::date - 1,
+     p_to => (now() at time zone 'America/Lima')::date + 1)),
+  3, 'por fecha de registro (por defecto) entran las piezas registradas en el rango'
+);
+select is(
+  (select count(*)::int from public.list_pieces_board(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),
   0, 'filtra por estado'
 );
 
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000db2","role":"authenticated"}', true);
 select is(
-  (select price from public.list_pieces_history(p_query => 'Antes historial')),
-  10.00::numeric, 'logística ve el precio de venta en el historial (2026-10-19)'
+  (select price from public.list_pieces_board(p_query => 'Antes historial')),
+  10.00::numeric, 'logística ve el precio de venta (2026-10-19)'
 );
 
 select * from finish();
