@@ -47,6 +47,7 @@ import {
   PiecesBulkBar,
 } from "./pieces-bulk-bar";
 import { ProviderReportButton } from "./provider-report-button";
+import { SettlementReportButton } from "./settlement-report-button";
 import { usePieceActions, type PieceAction } from "./piece-status-actions";
 import { RT } from "./responsive-table";
 import {
@@ -522,6 +523,9 @@ export function PiecesBoardTable({
           pieces={chosen}
           showServiceCost={can(role, "piezas.costo-servicio")}
         />
+        {showCost ? (
+          <SettlementReportButton pieces={chosen} filters={filters} />
+        ) : null}
       </PiecesBulkBar>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {selectable.length > 0 ? (
