@@ -57,7 +57,7 @@ select is(
      p_to => (now() at time zone 'America/Lima')::date + 1)),
   3, 'por fecha de registro (por defecto) entran las piezas registradas en el rango'
 );
--- Fecha de recibido en tienda (`arrived_at`): las que nunca llegaron quedan fuera.
+-- Fecha de recibido en tienda (`arrived_at`; al registrarse llega hoy, db42 se ajustó a hace 2 días).
 select results_eq(
   $$ select description from public.list_pieces_board(
        p_query => 'historial',
@@ -70,8 +70,9 @@ select results_eq(
 select is(
   (select count(*)::int from public.list_pieces_board(
      p_query => 'historial', p_date_field => 'recibida',
-     p_from => (now() at time zone 'America/Lima')::date - 10)),
-  1, 'las piezas sin recibir en tienda no entran al filtro por recibido'
+     p_from => (now() at time zone 'America/Lima')::date - 10,
+     p_to => (now() at time zone 'America/Lima')::date - 1)),
+  1, 'las recibidas hoy no entran a un rango que termina ayer'
 );
 select is(
   (select count(*)::int from public.list_pieces_board(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),
