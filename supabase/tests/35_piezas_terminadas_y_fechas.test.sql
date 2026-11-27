@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(9);
 
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
@@ -20,7 +20,9 @@ insert into public.pieces (id, restoration_id, description, price) values
   ('00000000-0000-0000-0000-00000000db43', '00000000-0000-0000-0000-00000000db30', 'En curso historial', 10);
 update public.pieces set status = 'entregada', delivered_at = now()
   where id = '00000000-0000-0000-0000-00000000db41';
-update public.pieces set status = 'entregada', delivered_at = now() - interval '3 days'
+-- Recibida en tienda hace 2 días (las otras nunca llegaron).
+update public.pieces set status = 'entregada', delivered_at = now() - interval '3 days',
+  arrived_at = now() - interval '2 days'
   where id = '00000000-0000-0000-0000-00000000db42';
 
 set local role authenticated;
@@ -54,6 +56,23 @@ select is(
      p_from => (now() at time zone 'America/Lima')::date - 1,
      p_to => (now() at time zone 'America/Lima')::date + 1)),
   3, 'por fecha de registro (por defecto) entran las piezas registradas en el rango'
+);
+-- Fecha de recibido en tienda (`arrived_at`; al registrarse llega hoy, db42 se ajustó a hace 2 días).
+select results_eq(
+  $$ select description from public.list_pieces_board(
+       p_query => 'historial',
+       p_date_field => 'recibida',
+       p_from => (now() at time zone 'America/Lima')::date - 3,
+       p_to => (now() at time zone 'America/Lima')::date - 1) $$,
+  $$ values ('Antes historial') $$,
+  'filtra por la fecha de recibido en tienda (hora de Lima)'
+);
+select is(
+  (select count(*)::int from public.list_pieces_board(
+     p_query => 'historial', p_date_field => 'recibida',
+     p_from => (now() at time zone 'America/Lima')::date - 10,
+     p_to => (now() at time zone 'America/Lima')::date - 1)),
+  1, 'las recibidas hoy no entran a un rango que termina ayer'
 );
 select is(
   (select count(*)::int from public.list_pieces_board(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),
