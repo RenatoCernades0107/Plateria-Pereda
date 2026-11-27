@@ -1,6 +1,6 @@
 begin;
 
-select plan(7);
+select plan(9);
 
 -- Estas pruebas no tratan pagos: se entrega como si el saldo estuviera confirmado (P45).
 select set_config('app.deliver_with_balance', 'on', true);
@@ -54,6 +54,24 @@ select is(
      p_from => (now() at time zone 'America/Lima')::date - 1,
      p_to => (now() at time zone 'America/Lima')::date + 1)),
   3, 'por fecha de registro (por defecto) entran las piezas registradas en el rango'
+);
+-- Fecha de recibido en tienda (`arrived_at`): las que nunca llegaron quedan fuera.
+update public.pieces set arrived_at = now() - interval '2 days'
+  where id = '00000000-0000-0000-0000-00000000db42';
+select results_eq(
+  $$ select description from public.list_pieces_board(
+       p_query => 'historial',
+       p_date_field => 'recibida',
+       p_from => (now() at time zone 'America/Lima')::date - 3,
+       p_to => (now() at time zone 'America/Lima')::date - 1) $$,
+  $$ values ('Antes historial') $$,
+  'filtra por la fecha de recibido en tienda (hora de Lima)'
+);
+select is(
+  (select count(*)::int from public.list_pieces_board(
+     p_query => 'historial', p_date_field => 'recibida',
+     p_from => (now() at time zone 'America/Lima')::date - 10)),
+  1, 'las piezas sin recibir en tienda no entran al filtro por recibido'
 );
 select is(
   (select count(*)::int from public.list_pieces_board(p_query => 'historial', p_status => array['anulada']::public.piece_status[])),

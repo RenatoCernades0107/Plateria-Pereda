@@ -145,6 +145,18 @@ describe("filtros de la vista de piezas", () => {
       p_to: undefined,
       p_date_field: "entrega",
     });
+    const byRecibida = parsePieceBoardFilters({
+      desde: "2026-11-01",
+      fecha: "recibida",
+    });
+    expect(byRecibida.dateField).toBe("recibida");
+    expect(pieceBoardHref(byRecibida)).toBe(
+      "/piezas?desde=2026-11-01&fecha=recibida",
+    );
+    expect(listPiecesBoardArgs(byRecibida)).toMatchObject({
+      p_from: "2026-11-01",
+      p_date_field: "recibida",
+    });
     // Sin fechas, el campo no va en la URL; fechas o campos inválidos se ignoran.
     expect(pieceBoardHref(parsePieceBoardFilters({ fecha: "entrega" }))).toBe(
       "/piezas",

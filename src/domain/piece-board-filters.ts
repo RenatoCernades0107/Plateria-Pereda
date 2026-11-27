@@ -52,11 +52,15 @@ export const BOARD_STATUSES = [
   "anulada",
 ] as const satisfies readonly PieceStatus[];
 
-/** Qué fecha filtran "Desde" y "Hasta": el registro de la pieza o su entrega o cierre. */
-export const PIECE_DATE_FIELDS = ["registro", "entrega"] as const;
+/**
+ * Qué fecha filtran "Desde" y "Hasta": el registro de la pieza, cuándo se recibió en
+ * tienda o su entrega o cierre.
+ */
+export const PIECE_DATE_FIELDS = ["registro", "recibida", "entrega"] as const;
 export type PieceDateField = (typeof PIECE_DATE_FIELDS)[number];
 export const PIECE_DATE_FIELD_LABELS: Record<PieceDateField, string> = {
   registro: "Fecha de registro",
+  recibida: "Fecha de recibido en tienda",
   entrega: "Fecha de entrega o cierre",
 };
 
